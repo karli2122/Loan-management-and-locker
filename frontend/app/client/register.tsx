@@ -78,9 +78,44 @@ export default function ClientRegister() {
       }
 
       await AsyncStorage.setItem('client_id', data.client_id);
-      Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
-        { text: 'OK', onPress: () => router.replace('/client/home') },
-      ]);
+      
+      // Store client data including lock_mode
+      const clientData = data.client;
+      await AsyncStorage.setItem('client_data', JSON.stringify(clientData));
+      
+      // Handle Device Admin mode setup automatically
+      if (clientData?.lock_mode === 'device_admin') {
+        // Dynamic import to avoid crashes on non-Android
+        try {
+          const DeviceAdmin = (await import('../../src/components/DeviceAdmin')).default;
+          const isActive = await DeviceAdmin.isDeviceAdminActive();
+          
+          if (!isActive) {
+            // Request Device Admin permissions
+            await DeviceAdmin.requestDeviceAdmin();
+            // Show message that permissions are needed
+            Alert.alert(
+              t('success'), 
+              'Device registered! Please grant Device Admin permission in the next screen to complete setup.',
+              [{ text: 'OK', onPress: () => router.replace('/client/home') }]
+            );
+          } else {
+            Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
+              { text: 'OK', onPress: () => router.replace('/client/home') },
+            ]);
+          }
+        } catch (err) {
+          console.log('Device Admin not available:', err);
+          Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
+            { text: 'OK', onPress: () => router.replace('/client/home') },
+          ]);
+        }
+      } else {
+        // Device Owner mode - registration complete
+        Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
+          { text: 'OK', onPress: () => router.replace('/client/home') },
+        ]);
+      }
     } catch (error: any) {
       Alert.alert(t('error'), error.message || 'Registration failed');
     } finally {
