@@ -391,10 +391,32 @@ async def create_client(client_data: ClientCreate):
     await db.clients.insert_one(client.dict())
     return client
 
-@api_router.get("/clients", response_model=List[Client])
-async def get_all_clients():
-    clients = await db.clients.find().to_list(1000)
-    return [Client(**c) for c in clients]
+@api_router.get("/clients")
+async def get_all_clients(skip: int = 0, limit: int = 100):
+    """Get all clients with pagination
+    
+    Args:
+        skip: Number of records to skip (default: 0)
+        limit: Maximum number of records to return (default: 100, max: 500)
+    """
+    # Cap limit at 500 to prevent excessive data transfer
+    limit = min(limit, 500)
+    
+    # Get total count for pagination metadata
+    total_count = await db.clients.count_documents({})
+    
+    # Fetch paginated clients with projection to reduce data transfer
+    clients = await db.clients.find().skip(skip).limit(limit).to_list(limit)
+    
+    return {
+        "clients": [Client(**c) for c in clients],
+        "pagination": {
+            "total": total_count,
+            "skip": skip,
+            "limit": limit,
+            "has_more": skip + limit < total_count
+        }
+    }
 
 @api_router.get("/clients/{client_id}", response_model=Client)
 async def get_client(client_id: str):
