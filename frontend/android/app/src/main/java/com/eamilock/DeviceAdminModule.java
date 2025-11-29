@@ -93,6 +93,44 @@ public class DeviceAdminModule extends Module {
                     return "error: " + e.getMessage();
                 }
             });
+
+            builder.asyncFunction("startTamperDetection", () -> {
+                try {
+                    Context context = getContext();
+                    Intent serviceIntent = new Intent(context, TamperDetectionService.class);
+                    context.startService(serviceIntent);
+                    return "tamper_detection_started";
+                } catch (Exception e) {
+                    return "error: " + e.getMessage();
+                }
+            });
+
+            builder.asyncFunction("stopTamperDetection", () -> {
+                try {
+                    Context context = getContext();
+                    Intent serviceIntent = new Intent(context, TamperDetectionService.class);
+                    context.stopService(serviceIntent);
+                    return "tamper_detection_stopped";
+                } catch (Exception e) {
+                    return "error: " + e.getMessage();
+                }
+            });
+
+            builder.asyncFunction("preventUninstall", (boolean prevent) -> {
+                try {
+                    Context context = getContext();
+                    DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
+                    ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
+                    
+                    if (dpm.isAdminActive(adminComponent)) {
+                        // This prevents uninstallation as long as device admin is active
+                        return prevent ? "uninstall_blocked" : "uninstall_allowed";
+                    }
+                    return "not_admin";
+                } catch (Exception e) {
+                    return "error: " + e.getMessage();
+                }
+            });
         });
     }
 
