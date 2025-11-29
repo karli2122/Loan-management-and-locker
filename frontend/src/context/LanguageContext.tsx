@@ -466,6 +466,80 @@ const translations: Translations = {
     et: 'Teie seade on lukustatud tasumata EMI makse tõttu.',
     en: 'Your device has been locked due to pending EMI payment.',
   },
+
+  // Settings Screen
+  settings: {
+    et: 'Seaded',
+    en: 'Settings',
+  },
+  adminManagement: {
+    et: 'Administraatori haldus',
+    en: 'Admin Management',
+  },
+  createNewAdmin: {
+    et: 'Loo uus administraator',
+    en: 'Create New Admin',
+  },
+  newAdminUsername: {
+    et: 'Uue administraatori kasutajanimi',
+    en: 'New Admin Username',
+  },
+  newAdminPassword: {
+    et: 'Uue administraatori parool',
+    en: 'New Admin Password',
+  },
+  createAdmin: {
+    et: 'Loo administraator',
+    en: 'Create Admin',
+  },
+  changePassword: {
+    et: 'Muuda parooli',
+    en: 'Change Password',
+  },
+  currentPassword: {
+    et: 'Praegune parool',
+    en: 'Current Password',
+  },
+  newPassword: {
+    et: 'Uus parool',
+    en: 'New Password',
+  },
+  updatePassword: {
+    et: 'Uuenda parooli',
+    en: 'Update Password',
+  },
+  existingAdmins: {
+    et: 'Olemasolevad administraatorid',
+    en: 'Existing Admins',
+  },
+  adminCreatedSuccess: {
+    et: 'Administraator loodud edukalt!',
+    en: 'Admin created successfully!',
+  },
+  passwordChangedSuccess: {
+    et: 'Parool muudetud edukalt!',
+    en: 'Password changed successfully!',
+  },
+  passwordMinLength: {
+    et: 'Parool peab olema vähemalt 6 tähemärki',
+    en: 'Password must be at least 6 characters',
+  },
+  adminDeletedSuccess: {
+    et: 'Administraator kustutatud edukalt',
+    en: 'Admin deleted successfully',
+  },
+  deleteAdminConfirm: {
+    et: 'Kas oled kindel, et soovid selle administraatori kustutada?',
+    en: 'Are you sure you want to delete this admin?',
+  },
+  cannotDeleteSelf: {
+    et: 'Te ei saa oma kontot kustutada',
+    en: 'You cannot delete your own account',
+  },
+  createdAt: {
+    et: 'Loodud',
+    en: 'Created At',
+  },
 };
 
 interface LanguageContextType {
