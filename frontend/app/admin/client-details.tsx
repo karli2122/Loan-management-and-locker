@@ -40,6 +40,9 @@ interface Client {
   is_registered: boolean;
   registered_at: string | null;
   created_at: string;
+  tamper_attempts: number;
+  last_tamper_attempt: string | null;
+  last_reboot: string | null;
 }
 
 export default function ClientDetails() {
