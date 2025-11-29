@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
-import { devicePolicy } from '../utils/DevicePolicy';
+import { devicePolicy } from '../../src/utils/DevicePolicy';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
