@@ -107,6 +107,9 @@ class ClientUpdate(BaseModel):
     is_locked: Optional[bool] = None
     lock_message: Optional[str] = None
     warning_message: Optional[str] = None
+    device_make: Optional[str] = None
+    device_model: Optional[str] = None
+    used_price_eur: Optional[float] = None
 
 class DeviceRegistration(BaseModel):
     registration_code: str
