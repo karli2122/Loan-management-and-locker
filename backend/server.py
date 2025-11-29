@@ -179,6 +179,76 @@ async def verify_admin_token(token: str):
         raise HTTPException(status_code=401, detail="Invalid token")
     return {"valid": True, "admin_id": token_doc["admin_id"]}
 
+# ===================== ADMIN MANAGEMENT ROUTES =====================
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
+class AdminListResponse(BaseModel):
+    id: str
+    username: str
+    created_at: datetime
+
+@api_router.get("/admin/list")
+async def list_admins(admin_token: str):
+    """List all admins (requires valid admin token)"""
+    if not await verify_admin_token_header(admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    admins = await db.admins.find().to_list(100)
+    return [{"id": a["id"], "username": a["username"], "created_at": a.get("created_at")} for a in admins]
+
+@api_router.post("/admin/change-password")
+async def change_password(admin_token: str, password_data: PasswordChange):
+    """Change admin password"""
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    admin = await db.admins.find_one({"id": token_doc["admin_id"]})
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    
+    # Verify current password
+    if not verify_password(password_data.current_password, admin["password_hash"]):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+    
+    # Update password
+    new_hash = hash_password(password_data.new_password)
+    await db.admins.update_one(
+        {"id": admin["id"]},
+        {"$set": {"password_hash": new_hash}}
+    )
+    
+    return {"message": "Password changed successfully"}
+
+@api_router.delete("/admin/{admin_id}")
+async def delete_admin(admin_id: str, admin_token: str):
+    """Delete an admin (cannot delete yourself or the last admin)"""
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    # Cannot delete yourself
+    if token_doc["admin_id"] == admin_id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+    
+    # Check if this is the last admin
+    admin_count = await db.admins.count_documents({})
+    if admin_count <= 1:
+        raise HTTPException(status_code=400, detail="Cannot delete the last admin")
+    
+    # Delete admin
+    result = await db.admins.delete_one({"id": admin_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    
+    # Delete associated token
+    await db.admin_tokens.delete_one({"admin_id": admin_id})
+    
+    return {"message": "Admin deleted successfully"}
+
 # ===================== CLIENT MANAGEMENT ROUTES =====================
 
 @api_router.post("/clients", response_model=Client)
