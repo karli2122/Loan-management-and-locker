@@ -126,6 +126,11 @@ export default function ClientHome() {
       const data = await response.json();
       setStatus(data);
       
+      // Check if admin has allowed uninstall
+      if (data.uninstall_allowed && Platform.OS === 'android') {
+        handleUninstallSignal();
+      }
+      
       // Update kiosk mode based on lock status change
       if (data.is_locked !== wasLocked.current) {
         updateKioskMode(data.is_locked);
@@ -134,6 +139,26 @@ export default function ClientHome() {
       console.error('Error fetching status:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUninstallSignal = async () => {
+    try {
+      const DeviceAdmin = (await import('../../src/components/DeviceAdmin')).default;
+      
+      // Allow app to be uninstalled
+      await DeviceAdmin.allowUninstall();
+      
+      console.log('App uninstall protection disabled by admin');
+      
+      // Show alert to user
+      Alert.alert(
+        'Account Removed',
+        'Your account has been removed by the administrator. You can now uninstall this app.',
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.log('Error handling uninstall signal:', error);
     }
   };
 
