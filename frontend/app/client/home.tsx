@@ -139,6 +139,7 @@ export default function ClientHome() {
   };
 
   useEffect(() => {
+    checkDeviceOwner();
     loadClientData();
 
     intervalRef.current = setInterval(() => {
@@ -157,13 +158,22 @@ export default function ClientHome() {
       appState.current = nextAppState;
     });
 
+    // Block back button when locked
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (status?.is_locked) {
+        return true; // Prevent going back when locked
+      }
+      return false;
+    });
+
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
       subscription.remove();
+      backHandler.remove();
     };
-  }, [clientId]);
+  }, [clientId, status?.is_locked]);
 
   const onRefresh = useCallback(async () => {
     if (!clientId) return;
