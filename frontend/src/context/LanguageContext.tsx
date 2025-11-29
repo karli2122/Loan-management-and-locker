@@ -540,6 +540,26 @@ const translations: Translations = {
     et: 'Loodud',
     en: 'Created At',
   },
+  devicePrice: {
+    et: 'Seadme hind',
+    en: 'Device Price',
+  },
+  fetchPrice: {
+    et: 'Hangi hind',
+    en: 'Fetch Price',
+  },
+  usedPrice: {
+    et: 'Kasutatud hind',
+    en: 'Used Price',
+  },
+  estimatedValue: {
+    et: 'Hinnanguline väärtus',
+    en: 'Estimated Value',
+  },
+  priceNotFetched: {
+    et: 'Hinda pole veel hangitud',
+    en: 'Price not fetched yet',
+  },
 };
 
 interface LanguageContextType {
