@@ -123,6 +123,26 @@ class Client(BaseModel):
     last_tamper_attempt: Optional[datetime] = None  # Last tamper attempt timestamp
     last_reboot: Optional[datetime] = None  # Last device reboot timestamp
 
+class Payment(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    client_id: str
+    amount: float
+    payment_date: datetime = Field(default_factory=datetime.utcnow)
+    payment_method: str = "cash"  # cash, bank_transfer, card, etc.
+    notes: str = ""
+    recorded_by: str = ""  # Admin username
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class PaymentCreate(BaseModel):
+    amount: float
+    payment_date: Optional[datetime] = None
+    payment_method: str = "cash"
+    notes: str = ""
+
+class LoanSettings(BaseModel):
+    auto_lock_enabled: bool
+    auto_lock_grace_days: int
+
 class ClientCreate(BaseModel):
     name: str
     phone: str
@@ -130,6 +150,11 @@ class ClientCreate(BaseModel):
     emi_amount: float = 0.0
     emi_due_date: Optional[str] = None
     lock_mode: str = "device_admin"  # "device_owner" or "device_admin"
+    # Loan fields
+    loan_amount: float = 0.0
+    down_payment: float = 0.0
+    interest_rate: float = 10.0  # Default 10% annual
+    loan_tenure_months: int = 12
 
 class ClientUpdate(BaseModel):
     name: Optional[str] = None
