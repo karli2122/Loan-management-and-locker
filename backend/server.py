@@ -332,10 +332,26 @@ async def get_stats():
         "unlocked_devices": total_clients - locked_devices
     }
 
-# Health check
+# Health check - works without database connection
 @api_router.get("/")
 async def root():
-    return {"message": "EMI Phone Lock API is running"}
+    return {"message": "EMI Phone Lock API is running", "status": "healthy"}
+
+@api_router.get("/health")
+async def health_check():
+    """Health check endpoint for Kubernetes liveness/readiness probes"""
+    try:
+        # Try to ping the database
+        await client.admin.command('ping')
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    
+    return {
+        "status": "healthy",
+        "database": db_status,
+        "version": "1.0.0"
+    }
 
 # Include the router in the main app
 app.include_router(api_router)
@@ -348,13 +364,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+@app.on_event("startup")
+async def startup_db_client():
+    """Create database indexes on startup for better performance"""
+    try:
+        logger.info("Creating database indexes...")
+        # Client collection indexes
+        await db.clients.create_index("id", unique=True)
+        await db.clients.create_index("registration_code", unique=True)
+        await db.clients.create_index("is_locked")
+        await db.clients.create_index("is_registered")
+        
+        # Admin collection indexes
+        await db.admins.create_index("id", unique=True)
+        await db.admins.create_index("username", unique=True)
+        
+        # Admin tokens collection indexes
+        await db.admin_tokens.create_index("admin_id")
+        await db.admin_tokens.create_index("token", unique=True)
+        
+        logger.info("Database indexes created successfully")
+    except Exception as e:
+        logger.warning(f"Could not create indexes: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    """Close database connection on shutdown"""
+    logger.info("Closing database connection...")
     client.close()
