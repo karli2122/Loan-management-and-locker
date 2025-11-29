@@ -8,6 +8,9 @@ export interface DeviceAdminAPI {
   lockDevice(): Promise<string>;
   disableOtherApps(disable: boolean): Promise<string>;
   resetPassword(newPassword: string): Promise<string>;
+  startTamperDetection(): Promise<string>;
+  stopTamperDetection(): Promise<string>;
+  preventUninstall(prevent: boolean): Promise<string>;
 }
 
 // Mock implementation for non-Android platforms
@@ -17,6 +20,9 @@ const MockDeviceAdmin: DeviceAdminAPI = {
   lockDevice: async () => 'not_supported',
   disableOtherApps: async () => 'not_supported',
   resetPassword: async () => 'not_supported',
+  startTamperDetection: async () => 'not_supported',
+  stopTamperDetection: async () => 'not_supported',
+  preventUninstall: async () => 'not_supported',
 };
 
 // Use real module on Android, mock on other platforms
