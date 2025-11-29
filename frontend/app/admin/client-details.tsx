@@ -52,8 +52,12 @@ export default function ClientDetails() {
   const [fetchingPrice, setFetchingPrice] = useState(false);
   const [warningModal, setWarningModal] = useState(false);
   const [lockModal, setLockModal] = useState(false);
+  const [editDeviceModal, setEditDeviceModal] = useState(false);
   const [warningMessage, setWarningMessage] = useState('');
   const [lockMessage, setLockMessage] = useState('');
+  const [editDeviceMake, setEditDeviceMake] = useState('');
+  const [editDeviceModel, setEditDeviceModel] = useState('');
+  const [editDevicePrice, setEditDevicePrice] = useState('');
 
   const fetchClient = async () => {
     try {
