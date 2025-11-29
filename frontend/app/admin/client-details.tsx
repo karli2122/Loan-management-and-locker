@@ -456,6 +456,15 @@ export default function ClientDetails() {
             <Ionicons name="warning" size={20} color="#fff" />
             <Text style={styles.actionButtonText}>{t('sendWarning')}</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.allowUninstallButton]}
+            onPress={handleAllowUninstall}
+            disabled={actionLoading}
+          >
+            <Ionicons name="shield-checkmark" size={20} color="#fff" />
+            <Text style={styles.actionButtonText}>Allow Uninstall</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
