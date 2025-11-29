@@ -295,6 +295,51 @@ export default function ClientDetails() {
           )}
         </View>
 
+        {/* Device Price Section */}
+        {client.is_registered && client.device_model && client.device_model !== 'Unknown Device' && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{t('estimatedValue')}</Text>
+              <TouchableOpacity 
+                style={styles.fetchPriceButton}
+                onPress={handleFetchPrice}
+                disabled={fetchingPrice}
+              >
+                {fetchingPrice ? (
+                  <ActivityIndicator size="small" color="#4F46E5" />
+                ) : (
+                  <>
+                    <Ionicons name="sync" size={16} color="#4F46E5" />
+                    <Text style={styles.fetchPriceText}>{t('fetchPrice')}</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+            
+            {client.used_price_eur ? (
+              <View style={styles.priceCard}>
+                <View style={styles.priceIconContainer}>
+                  <Ionicons name="pricetag" size={32} color="#10B981" />
+                </View>
+                <View style={styles.priceInfo}>
+                  <Text style={styles.priceLabel}>{t('usedPrice')}</Text>
+                  <Text style={styles.priceValue}>€{client.used_price_eur.toFixed(2)}</Text>
+                  {client.price_fetched_at && (
+                    <Text style={styles.priceDate}>
+                      {new Date(client.price_fetched_at).toLocaleDateString('et-EE')}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            ) : (
+              <View style={styles.noPriceCard}>
+                <Ionicons name="information-circle" size={24} color="#64748B" />
+                <Text style={styles.noPriceText}>{t('priceNotFetched')}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Action Buttons */}
         <View style={styles.actionsSection}>
           <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
