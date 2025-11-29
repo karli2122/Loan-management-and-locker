@@ -301,11 +301,44 @@ async def update_client(client_id: str, update_data: ClientUpdate):
     updated_client = await db.clients.find_one({"id": client_id})
     return Client(**updated_client)
 
+@api_router.post("/clients/{client_id}/allow-uninstall")
+async def allow_uninstall(client_id: str):
+    """Signal device to allow app uninstallation - must be called before deletion"""
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Mark client as ready for uninstall
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {"uninstall_allowed": True}}
+    )
+    
+    logger.info(f"Client {client_id} marked for uninstallation")
+    
+    return {
+        "message": "Device has been signaled to allow uninstall",
+        "next_step": "The device will disable its protection. You can now delete this client."
+    }
+
 @api_router.delete("/clients/{client_id}")
 async def delete_client(client_id: str):
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Check if uninstall was allowed first
+    if not client.get("uninstall_allowed", False):
+        raise HTTPException(
+            status_code=400, 
+            detail="Must signal device to allow uninstall first. Use the 'Allow Uninstall' button before deleting."
+        )
+    
     result = await db.clients.delete_one({"id": client_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Client not found")
+    
+    logger.info(f"Client {client_id} deleted successfully")
     return {"message": "Client deleted successfully"}
 
 # ===================== LOCK CONTROL ROUTES =====================
