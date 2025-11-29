@@ -189,6 +189,46 @@ export default function ClientDetails() {
     }
   };
 
+  const openEditDeviceModal = () => {
+    if (client) {
+      setEditDeviceMake(client.device_make || '');
+      setEditDeviceModel(client.device_model || '');
+      setEditDevicePrice(client.used_price_eur?.toString() || '');
+      setEditDeviceModal(true);
+    }
+  };
+
+  const handleSaveDeviceInfo = async () => {
+    setActionLoading(true);
+    try {
+      const updateData: any = {};
+      if (editDeviceMake.trim()) updateData.device_make = editDeviceMake.trim();
+      if (editDeviceModel.trim()) updateData.device_model = editDeviceModel.trim();
+      if (editDevicePrice.trim()) {
+        const priceNum = parseFloat(editDevicePrice);
+        if (!isNaN(priceNum) && priceNum >= 0) {
+          updateData.used_price_eur = priceNum;
+        }
+      }
+
+      const response = await fetch(`${API_URL}/api/clients/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) throw new Error('Failed to update device info');
+      
+      await fetchClient();
+      setEditDeviceModal(false);
+      Alert.alert(t('success'), t('deviceInfoUpdated'));
+    } catch (error: any) {
+      Alert.alert(t('error'), error.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const openMap = () => {
     if (client?.latitude && client?.longitude) {
       const url = `https://www.google.com/maps/search/?api=1&query=${client.latitude},${client.longitude}`;
