@@ -40,10 +40,22 @@ export default function ClientsList() {
 
   const fetchClients = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/clients`);
+      // Fetch with pagination - get first 500 records (increased limit for admin panel)
+      const response = await fetch(`${API_URL}/api/clients?limit=500`);
       const data = await response.json();
-      setClients(data);
-      applyFilters(data, searchQuery, filter);
+      
+      // Handle both old and new API response format
+      const clientList = data.clients || data;
+      setClients(clientList);
+      applyFilters(clientList, searchQuery, filter);
+      
+      // Log pagination info if available
+      if (data.pagination) {
+        console.log(`Loaded ${data.pagination.skip + clientList.length} of ${data.pagination.total} clients`);
+        if (data.pagination.has_more) {
+          console.log('More clients available - consider implementing load more');
+        }
+      }
     } catch (error) {
       console.error('Failed to fetch clients:', error);
     }
