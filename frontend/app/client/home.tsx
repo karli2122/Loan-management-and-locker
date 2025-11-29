@@ -522,6 +522,14 @@ export default function ClientHome() {
 
         {/* Status Card */}
         <View style={styles.statusCard}>
+          {isOffline && (
+            <View style={styles.offlineBanner}>
+              <Ionicons name="cloud-offline" size={16} color="#F59E0B" />
+              <Text style={styles.offlineBannerText}>
+                Offline Mode - Using Cached Data
+              </Text>
+            </View>
+          )}
           <View style={styles.statusHeader}>
             <Ionicons name="shield-checkmark" size={32} color="#10B981" />
             <Text style={styles.statusTitle}>{t('deviceStatus')}</Text>
