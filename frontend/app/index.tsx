@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import { useLanguage } from './context/LanguageContext';
+import { useLanguage } from '../src/context/LanguageContext';
 
 export default function Index() {
   const router = useRouter();
