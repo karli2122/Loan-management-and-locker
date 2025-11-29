@@ -71,8 +71,8 @@ def check_and_auto_lock_overdue_payments():
         import asyncio
         
         async def auto_lock_job():
-            # Get all clients with auto-lock enabled
-            clients = await db.clients.find({"auto_lock_enabled": True}).to_list(None)
+            # Get all clients with auto-lock enabled (limit to 1000 for performance)
+            clients = await db.clients.find({"auto_lock_enabled": True}).to_list(1000)
             
             for client in clients:
                 if not client.get("next_payment_due"):
