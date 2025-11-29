@@ -206,6 +206,10 @@ async def list_admins(admin_token: str):
 @api_router.post("/admin/change-password")
 async def change_password(admin_token: str, password_data: PasswordChange):
     """Change admin password"""
+    # Validate new password length
+    if len(password_data.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
         raise HTTPException(status_code=401, detail="Invalid admin token")
