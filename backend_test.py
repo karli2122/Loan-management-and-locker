@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 
 # Get backend URL from frontend env
-BACKEND_URL = "https://emi-phone-lock.preview.emergentagent.com/api"
+BACKEND_URL = "https://emilock-system.preview.emergentagent.com/api"
 
 class EMIBackendTester:
     def __init__(self):
