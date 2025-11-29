@@ -98,6 +98,7 @@ class ClientCreate(BaseModel):
     email: str
     emi_amount: float = 0.0
     emi_due_date: Optional[str] = None
+    lock_mode: str = "device_admin"  # "device_owner" or "device_admin"
 
 class ClientUpdate(BaseModel):
     name: Optional[str] = None
