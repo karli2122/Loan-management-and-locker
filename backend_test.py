@@ -390,6 +390,275 @@ class EMIBackendTester:
             self.log_test("Stats", False, f"Error: {str(e)}")
             return False
     
+    def test_admin_management_login(self):
+        """Test login with existing admin for management tests"""
+        try:
+            # Login with existing admin credentials
+            login_data = {
+                "username": "karli1987",
+                "password": "nasvakas123"
+            }
+            
+            response = requests.post(f"{self.base_url}/admin/login", json=login_data)
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.admin_token = data.get("token")
+                self.log_test("Admin Management Login", True, f"Successfully logged in as {data.get('username')}")
+                return True
+            else:
+                self.log_test("Admin Management Login", False, f"Status: {response.status_code}, Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Admin Management Login", False, f"Error: {str(e)}")
+            return False
+    
+    def test_list_admins_api(self):
+        """Test GET /api/admin/list endpoint"""
+        if not self.admin_token:
+            self.log_test("List Admins API", False, "No admin token available")
+            return False
+            
+        try:
+            # Test with valid token
+            params = {"admin_token": self.admin_token}
+            response = requests.get(f"{self.base_url}/admin/list", params=params)
+            
+            if response.status_code == 200:
+                admins = response.json()
+                self.log_test("List Admins API - Valid Token", True, f"Retrieved {len(admins)} admin(s)")
+                
+                # Verify response structure
+                if admins and isinstance(admins, list):
+                    first_admin = admins[0]
+                    required_fields = ["id", "username", "created_at"]
+                    if all(field in first_admin for field in required_fields):
+                        self.log_test("List Admins API - Response Structure", True, "Response contains required fields")
+                    else:
+                        self.log_test("List Admins API - Response Structure", False, f"Missing required fields. Got: {list(first_admin.keys())}")
+                
+                # Test with invalid token
+                params = {"admin_token": "invalid_token"}
+                response = requests.get(f"{self.base_url}/admin/list", params=params)
+                
+                if response.status_code == 401:
+                    self.log_test("List Admins API - Invalid Token", True, "Correctly rejected invalid token")
+                else:
+                    self.log_test("List Admins API - Invalid Token", False, f"Should have rejected invalid token, got status {response.status_code}")
+                
+                return True
+            else:
+                self.log_test("List Admins API - Valid Token", False, f"Status: {response.status_code}, Response: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_test("List Admins API", False, f"Error: {str(e)}")
+            return False
+    
+    def test_create_admin_management(self):
+        """Test POST /api/admin/register endpoint with comprehensive scenarios"""
+        if not self.admin_token:
+            self.log_test("Create Admin Management", False, "No admin token available")
+            return False
+        
+        created_admin_id = None
+        
+        try:
+            # Test 1: Create admin with valid data
+            admin_data = {
+                "username": f"testadmin_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                "password": "securepass123"
+            }
+            
+            params = {"admin_token": self.admin_token}
+            response = requests.post(f"{self.base_url}/admin/register", json=admin_data, params=params)
+            
+            if response.status_code == 200:
+                data = response.json()
+                created_admin_id = data.get("id")
+                self.log_test("Create Admin - Valid Data", True, f"Successfully created admin {data.get('username')}")
+            else:
+                self.log_test("Create Admin - Valid Data", False, f"Status: {response.status_code}, Response: {response.text}")
+            
+            # Test 2: Create admin with short password (should fail)
+            admin_data_short = {
+                "username": f"testadmin2_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                "password": "123"  # Less than 6 characters
+            }
+            
+            response = requests.post(f"{self.base_url}/admin/register", json=admin_data_short, params=params)
+            
+            # Note: The backend doesn't validate password length in the current implementation
+            # This test documents the current behavior
+            if response.status_code == 200:
+                self.log_test("Create Admin - Short Password", False, "Should have rejected short password but didn't (validation missing)")
+            else:
+                self.log_test("Create Admin - Short Password", True, "Correctly rejected short password")
+            
+            # Test 3: Create admin with duplicate username (should fail)
+            duplicate_data = {
+                "username": "karli1987",  # Existing username
+                "password": "validpass123"
+            }
+            
+            response = requests.post(f"{self.base_url}/admin/register", json=duplicate_data, params=params)
+            
+            if response.status_code == 400:
+                self.log_test("Create Admin - Duplicate Username", True, "Correctly rejected duplicate username")
+            else:
+                self.log_test("Create Admin - Duplicate Username", False, f"Should have rejected duplicate username, got status {response.status_code}")
+            
+            # Test 4: Create admin without token (should fail)
+            response = requests.post(f"{self.base_url}/admin/register", json=admin_data)
+            
+            if response.status_code == 401:
+                self.log_test("Create Admin - No Token", True, "Correctly rejected request without token")
+            else:
+                self.log_test("Create Admin - No Token", False, f"Should have rejected request without token, got status {response.status_code}")
+            
+            return created_admin_id
+            
+        except Exception as e:
+            self.log_test("Create Admin Management", False, f"Error: {str(e)}")
+            return None
+    
+    def test_change_password_api(self):
+        """Test POST /api/admin/change-password endpoint"""
+        if not self.admin_token:
+            self.log_test("Change Password API", False, "No admin token available")
+            return False
+            
+        try:
+            # Test 1: Change password with correct current password
+            password_data = {
+                "current_password": "nasvakas123",
+                "new_password": "newpassword123"
+            }
+            
+            params = {"admin_token": self.admin_token}
+            response = requests.post(f"{self.base_url}/admin/change-password", json=password_data, params=params)
+            
+            if response.status_code == 200:
+                self.log_test("Change Password - Valid", True, "Successfully changed password")
+                
+                # Change it back for other tests
+                password_data_back = {
+                    "current_password": "newpassword123",
+                    "new_password": "nasvakas123"
+                }
+                requests.post(f"{self.base_url}/admin/change-password", json=password_data_back, params=params)
+            else:
+                self.log_test("Change Password - Valid", False, f"Status: {response.status_code}, Response: {response.text}")
+            
+            # Test 2: Change password with wrong current password
+            wrong_password_data = {
+                "current_password": "wrongpassword",
+                "new_password": "newpassword123"
+            }
+            
+            response = requests.post(f"{self.base_url}/admin/change-password", json=wrong_password_data, params=params)
+            
+            if response.status_code == 401:
+                self.log_test("Change Password - Wrong Current", True, "Correctly rejected wrong current password")
+            else:
+                self.log_test("Change Password - Wrong Current", False, f"Should have rejected wrong password, got status {response.status_code}")
+            
+            # Test 3: Change password with short new password
+            short_password_data = {
+                "current_password": "nasvakas123",
+                "new_password": "123"  # Less than 6 characters
+            }
+            
+            response = requests.post(f"{self.base_url}/admin/change-password", json=short_password_data, params=params)
+            
+            # Note: The backend doesn't validate new password length in the current implementation
+            if response.status_code == 200:
+                self.log_test("Change Password - Short New Password", False, "Should have rejected short new password but didn't (validation missing)")
+                # Change back to original
+                password_data_back = {
+                    "current_password": "123",
+                    "new_password": "nasvakas123"
+                }
+                requests.post(f"{self.base_url}/admin/change-password", json=password_data_back, params=params)
+            else:
+                self.log_test("Change Password - Short New Password", True, "Correctly rejected short new password")
+            
+            # Test 4: Change password without token
+            response = requests.post(f"{self.base_url}/admin/change-password", json=password_data)
+            
+            if response.status_code == 422:  # FastAPI validation error for missing query param
+                self.log_test("Change Password - No Token", True, "Correctly rejected request without token")
+            else:
+                self.log_test("Change Password - No Token", False, f"Should have rejected request without token, got status {response.status_code}")
+            
+            return True
+            
+        except Exception as e:
+            self.log_test("Change Password API", False, f"Error: {str(e)}")
+            return False
+    
+    def test_delete_admin_api(self, test_admin_id=None):
+        """Test DELETE /api/admin/{admin_id} endpoint"""
+        if not self.admin_token:
+            self.log_test("Delete Admin API", False, "No admin token available")
+            return False
+            
+        try:
+            # First get current admin ID to test self-deletion prevention
+            params = {"admin_token": self.admin_token}
+            response = requests.get(f"{self.base_url}/admin/list", params=params)
+            
+            current_admin_id = None
+            if response.status_code == 200:
+                admins = response.json()
+                # Find the current admin (karli1987)
+                for admin in admins:
+                    if admin.get("username") == "karli1987":
+                        current_admin_id = admin.get("id")
+                        break
+            
+            # Test 1: Try to delete own account (should fail)
+            if current_admin_id:
+                response = requests.delete(f"{self.base_url}/admin/{current_admin_id}", params=params)
+                
+                if response.status_code == 400:
+                    self.log_test("Delete Admin - Self Deletion", True, "Correctly prevented self-deletion")
+                else:
+                    self.log_test("Delete Admin - Self Deletion", False, f"Should have prevented self-deletion, got status {response.status_code}")
+            
+            # Test 2: Delete a test admin (if we created one)
+            if test_admin_id:
+                response = requests.delete(f"{self.base_url}/admin/{test_admin_id}", params=params)
+                
+                if response.status_code == 200:
+                    self.log_test("Delete Admin - Test Admin", True, "Successfully deleted test admin")
+                else:
+                    self.log_test("Delete Admin - Test Admin", False, f"Status: {response.status_code}, Response: {response.text}")
+            
+            # Test 3: Delete non-existent admin
+            fake_admin_id = "non-existent-admin-id"
+            response = requests.delete(f"{self.base_url}/admin/{fake_admin_id}", params=params)
+            
+            if response.status_code == 404:
+                self.log_test("Delete Admin - Non-existent", True, "Correctly handled non-existent admin")
+            else:
+                self.log_test("Delete Admin - Non-existent", False, f"Should have returned 404 for non-existent admin, got status {response.status_code}")
+            
+            # Test 4: Delete admin without token
+            response = requests.delete(f"{self.base_url}/admin/{fake_admin_id}")
+            
+            if response.status_code == 422:  # FastAPI validation error for missing query param
+                self.log_test("Delete Admin - No Token", True, "Correctly rejected request without token")
+            else:
+                self.log_test("Delete Admin - No Token", False, f"Should have rejected request without token, got status {response.status_code}")
+            
+            return True
+            
+        except Exception as e:
+            self.log_test("Delete Admin API", False, f"Error: {str(e)}")
+            return False
+    
     def test_delete_client(self):
         """Test client deletion (run last to clean up)"""
         if not self.client_id:
