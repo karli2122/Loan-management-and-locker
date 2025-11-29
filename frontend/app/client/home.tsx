@@ -920,4 +920,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#FCA5A5',
   },
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F59E0B20',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  offlineBannerText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#F59E0B',
+  },
 });
