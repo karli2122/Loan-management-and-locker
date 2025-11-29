@@ -560,6 +560,30 @@ const translations: Translations = {
     et: 'Hinda pole veel hangitud',
     en: 'Price not fetched yet',
   },
+  editDeviceInfo: {
+    et: 'Muuda seadme infot',
+    en: 'Edit Device Info',
+  },
+  deviceMake: {
+    et: 'Tootja',
+    en: 'Make',
+  },
+  deviceModel: {
+    et: 'Mudel',
+    en: 'Model',
+  },
+  price: {
+    et: 'Hind',
+    en: 'Price',
+  },
+  saveChanges: {
+    et: 'Salvesta muudatused',
+    en: 'Save Changes',
+  },
+  deviceInfoUpdated: {
+    et: 'Seadme info uuendatud!',
+    en: 'Device info updated!',
+  },
 };
 
 interface LanguageContextType {
