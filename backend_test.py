@@ -764,15 +764,18 @@ class EMIBackendTester:
             print()  # Add spacing between tests
         
         print("=" * 60)
-        print(f"📊 Test Summary: {passed} passed, {failed} failed")
+        print(f"📊 Overall Test Summary: {passed + admin_passed} passed, {failed + admin_failed} failed")
+        print(f"   - Admin Management: {admin_passed} passed, {admin_failed} failed")
+        print(f"   - Regular Backend: {passed} passed, {failed} failed")
         
-        if failed > 0:
+        total_failed = failed + admin_failed
+        if total_failed > 0:
             print("\n❌ Failed Tests:")
             for result in self.test_results:
                 if not result["success"]:
                     print(f"  - {result['test']}: {result['message']}")
         
-        return failed == 0
+        return total_failed == 0
 
 if __name__ == "__main__":
     tester = EMIBackendTester()
