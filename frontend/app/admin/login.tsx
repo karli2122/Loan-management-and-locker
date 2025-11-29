@@ -72,9 +72,9 @@ export default function AdminLogin() {
             <View style={styles.iconContainer}>
               <Ionicons name="shield" size={50} color="#fff" />
             </View>
-            <Text style={styles.title}>{isLogin ? 'Admin Login' : 'Create Account'}</Text>
+            <Text style={styles.title}>Admin Login</Text>
             <Text style={styles.subtitle}>
-              {isLogin ? 'Sign in to manage your clients' : 'Register a new admin account'}
+              Sign in to manage your clients
             </Text>
           </View>
 
@@ -118,18 +118,8 @@ export default function AdminLogin() {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.buttonText}>{isLogin ? 'Sign In' : 'Create Account'}</Text>
+                <Text style={styles.buttonText}>Sign In</Text>
               )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.switchButton}
-              onPress={() => setIsLogin(!isLogin)}
-            >
-              <Text style={styles.switchText}>
-                {isLogin ? "Don't have an account? " : 'Already have an account? '}
-                <Text style={styles.switchTextBold}>{isLogin ? 'Register' : 'Sign In'}</Text>
-              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
