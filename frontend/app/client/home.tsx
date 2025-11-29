@@ -116,16 +116,12 @@ export default function ClientHome() {
 
   const fetchStatus = async (id: string) => {
     try {
-      const response = await fetch(`${API_URL}/api/device/status/${id}`);
-      if (!response.ok) {
-        if (response.status === 404) {
-          await AsyncStorage.removeItem('client_id');
-          router.replace('/client/register');
-          return;
-        }
-        throw new Error('Failed to fetch status');
-      }
-      const data = await response.json();
+      // Use offline sync manager for smart caching
+      const data = await OfflineSyncManager.syncStatus(id, API_URL);
+      
+      // Update offline indicator
+      setIsOffline(data.offline || false);
+      
       setStatus(data);
       
       // Check if admin has allowed uninstall
@@ -139,6 +135,7 @@ export default function ClientHome() {
       }
     } catch (error) {
       console.error('Error fetching status:', error);
+      setIsOffline(true);
     } finally {
       setLoading(false);
     }
