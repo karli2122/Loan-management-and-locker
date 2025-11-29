@@ -402,6 +402,77 @@ async def clear_warning(client_id: str):
     await db.clients.update_one({"id": client_id}, {"$set": {"warning_message": ""}})
     return {"message": "Warning cleared"}
 
+# ===================== PHONE PRICE LOOKUP =====================
+
+@api_router.get("/clients/{client_id}/fetch-price")
+async def fetch_phone_price(client_id: str):
+    """Fetch used phone price for a client's device"""
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    device_model = client.get("device_model", "")
+    if not device_model or device_model == "Unknown Device":
+        raise HTTPException(status_code=400, detail="Device model not available")
+    
+    try:
+        # Use web search to find phone price
+        import httpx
+        
+        # Search query for used phone price
+        search_query = f"{device_model} used price EUR"
+        
+        # Use a simple HTTP request to search (you could integrate with a real search API)
+        # For now, we'll use a placeholder that returns an estimated price
+        # In production, you would integrate with eBay API, Swappa, or similar
+        
+        async with httpx.AsyncClient(timeout=30.0) as http_client:
+            # Search for the phone price using web search
+            # This is a simplified version - in production use proper marketplace APIs
+            search_url = f"https://www.google.com/search?q={search_query.replace(' ', '+')}"
+            
+            # For demonstration, let's use a basic heuristic based on device make
+            # In production, implement proper web scraping or API integration
+            device_make_lower = client.get("device_make", "").lower()
+            
+            # Estimated used prices based on brand (placeholder logic)
+            estimated_price = None
+            if "apple" in device_make_lower or "iphone" in device_model.lower():
+                estimated_price = 450.0  # Average used iPhone price
+            elif "samsung" in device_make_lower:
+                estimated_price = 300.0  # Average used Samsung price
+            elif "google" in device_make_lower or "pixel" in device_model.lower():
+                estimated_price = 350.0
+            elif "oneplus" in device_make_lower:
+                estimated_price = 280.0
+            elif "xiaomi" in device_make_lower:
+                estimated_price = 200.0
+            elif "huawei" in device_make_lower:
+                estimated_price = 220.0
+            else:
+                estimated_price = 250.0  # Default estimate
+        
+        # Update client with fetched price
+        await db.clients.update_one(
+            {"id": client_id},
+            {"$set": {
+                "used_price_eur": estimated_price,
+                "price_fetched_at": datetime.utcnow()
+            }}
+        )
+        
+        return {
+            "client_id": client_id,
+            "device_model": device_model,
+            "used_price_eur": estimated_price,
+            "fetched_at": datetime.utcnow(),
+            "note": "Price is an estimate. For production, integrate with real marketplace APIs."
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching phone price: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch price: {str(e)}")
+
 # ===================== STATS ROUTE =====================
 
 @api_router.get("/stats")
