@@ -16,11 +16,13 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLanguage } from '../context/LanguageContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function ClientRegister() {
   const router = useRouter();
+  const { language, setLanguage, t } = useLanguage();
   const [registrationCode, setRegistrationCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingRegistration, setCheckingRegistration] = useState(true);
@@ -33,13 +35,11 @@ export default function ClientRegister() {
     try {
       const clientId = await AsyncStorage.getItem('client_id');
       if (clientId) {
-        // Verify the client still exists
         const response = await fetch(`${API_URL}/api/device/status/${clientId}`);
         if (response.ok) {
           router.replace('/client/home');
           return;
         } else {
-          // Client no longer exists, clear storage
           await AsyncStorage.removeItem('client_id');
         }
       }
@@ -52,7 +52,7 @@ export default function ClientRegister() {
 
   const handleRegister = async () => {
     if (!registrationCode.trim()) {
-      Alert.alert('Error', 'Please enter your registration code');
+      Alert.alert(t('error'), t('fillAllFields'));
       return;
     }
 
@@ -78,11 +78,11 @@ export default function ClientRegister() {
       }
 
       await AsyncStorage.setItem('client_id', data.client_id);
-      Alert.alert('Success', 'Device registered successfully!', [
+      Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
         { text: 'OK', onPress: () => router.replace('/client/home') },
       ]);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Registration failed. Please check your code.');
+      Alert.alert(t('error'), error.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -93,7 +93,7 @@ export default function ClientRegister() {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#10B981" />
-          <Text style={styles.loadingText}>Checking registration...</Text>
+          <Text style={styles.loadingText}>{t('checkingRegistration')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -106,17 +106,33 @@ export default function ClientRegister() {
         style={styles.keyboardView}
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
+          <View style={styles.topBar}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <View style={styles.langSwitcher}>
+              <TouchableOpacity
+                style={[styles.langButton, language === 'et' && styles.langButtonActive]}
+                onPress={() => setLanguage('et')}
+              >
+                <Text style={[styles.langText, language === 'et' && styles.langTextActive]}>EST</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.langButton, language === 'en' && styles.langButtonActive]}
+                onPress={() => setLanguage('en')}
+              >
+                <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>ENG</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
           <View style={styles.header}>
             <View style={styles.iconContainer}>
               <Ionicons name="phone-portrait" size={50} color="#fff" />
             </View>
-            <Text style={styles.title}>Register Device</Text>
+            <Text style={styles.title}>{t('registerDevice')}</Text>
             <Text style={styles.subtitle}>
-              Enter the registration code provided by your EMI provider to link your device
+              {t('enterRegistrationCode')}
             </Text>
           </View>
 
@@ -124,7 +140,7 @@ export default function ClientRegister() {
             <View style={styles.codeInputContainer}>
               <TextInput
                 style={styles.codeInput}
-                placeholder="Enter Code"
+                placeholder={t('enterCode')}
                 placeholderTextColor="#64748B"
                 value={registrationCode}
                 onChangeText={(text) => setRegistrationCode(text.toUpperCase())}
@@ -136,7 +152,7 @@ export default function ClientRegister() {
             <View style={styles.deviceInfo}>
               <Ionicons name="information-circle" size={20} color="#3B82F6" />
               <View style={styles.deviceInfoContent}>
-                <Text style={styles.deviceInfoTitle}>Device Information</Text>
+                <Text style={styles.deviceInfoTitle}>{t('deviceInformation')}</Text>
                 <Text style={styles.deviceInfoText}>
                   {Device.brand} {Device.modelName}
                 </Text>
@@ -153,7 +169,7 @@ export default function ClientRegister() {
               ) : (
                 <>
                   <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                  <Text style={styles.buttonText}>Register Device</Text>
+                  <Text style={styles.buttonText}>{t('registerDevice')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -161,7 +177,7 @@ export default function ClientRegister() {
             <View style={styles.helpBox}>
               <Ionicons name="help-circle" size={20} color="#94A3B8" />
               <Text style={styles.helpText}>
-                Don't have a code? Contact your EMI provider to get your unique registration code.
+                {t('noCodeHelp')}
               </Text>
             </View>
           </View>
@@ -193,6 +209,11 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 20,
   },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   backButton: {
     width: 44,
     height: 44,
@@ -200,6 +221,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E293B',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  langSwitcher: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  langButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#1E293B',
+  },
+  langButtonActive: {
+    backgroundColor: '#059669',
+  },
+  langText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  langTextActive: {
+    color: '#fff',
   },
   header: {
     alignItems: 'center',

@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   ScrollView,
   RefreshControl,
-  Modal,
   Linking,
   AppState,
 } from 'react-native';
@@ -17,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLanguage } from '../context/LanguageContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -32,6 +32,7 @@ interface ClientStatus {
 
 export default function ClientHome() {
   const router = useRouter();
+  const { language, setLanguage, t } = useLanguage();
   const [status, setStatus] = useState<ClientStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -96,14 +97,12 @@ export default function ClientHome() {
   useEffect(() => {
     loadClientData();
 
-    // Set up periodic status check
     intervalRef.current = setInterval(() => {
       if (clientId) {
         fetchStatus(clientId);
       }
-    }, 5000); // Check every 5 seconds
+    }, 5000);
 
-    // Handle app state changes
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         if (clientId) {
@@ -144,12 +143,12 @@ export default function ClientHome() {
 
   const handleUnregister = () => {
     Alert.alert(
-      'Unregister Device',
-      'Are you sure you want to unregister this device? You will need to re-register with a new code.',
+      t('unregisterDevice'),
+      t('unregisterConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Unregister',
+          text: t('unregister'),
           style: 'destructive',
           onPress: async () => {
             await AsyncStorage.removeItem('client_id');
@@ -161,10 +160,10 @@ export default function ClientHome() {
   };
 
   const handleContactSupport = () => {
-    Alert.alert('Contact Support', 'How would you like to contact support?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Call', onPress: () => Linking.openURL('tel:+1234567890') },
-      { text: 'Email', onPress: () => Linking.openURL('mailto:support@emilock.com') },
+    Alert.alert(t('contactSupport'), t('howToContact'), [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('call'), onPress: () => Linking.openURL('tel:+1234567890') },
+      { text: t('email'), onPress: () => Linking.openURL('mailto:support@emilock.com') },
     ]);
   };
 
@@ -173,7 +172,7 @@ export default function ClientHome() {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#10B981" />
-          <Text style={styles.loadingText}>Loading your account...</Text>
+          <Text style={styles.loadingText}>{t('loadingAccount')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -187,17 +186,17 @@ export default function ClientHome() {
           <View style={styles.lockIconContainer}>
             <Ionicons name="lock-closed" size={80} color="#EF4444" />
           </View>
-          <Text style={styles.lockTitle}>Device Locked</Text>
+          <Text style={styles.lockTitle}>{t('deviceLocked')}</Text>
           <Text style={styles.lockMessage}>{status.lock_message}</Text>
 
           <View style={styles.lockEmiInfo}>
             <View style={styles.lockEmiItem}>
-              <Text style={styles.lockEmiLabel}>Pending Amount</Text>
-              <Text style={styles.lockEmiValue}>₹{status.emi_amount.toLocaleString()}</Text>
+              <Text style={styles.lockEmiLabel}>{t('pendingAmount')}</Text>
+              <Text style={styles.lockEmiValue}>€{status.emi_amount.toLocaleString()}</Text>
             </View>
             {status.emi_due_date && (
               <View style={styles.lockEmiItem}>
-                <Text style={styles.lockEmiLabel}>Due Date</Text>
+                <Text style={styles.lockEmiLabel}>{t('dueDate')}</Text>
                 <Text style={styles.lockEmiValue}>{status.emi_due_date}</Text>
               </View>
             )}
@@ -205,11 +204,11 @@ export default function ClientHome() {
 
           <TouchableOpacity style={styles.contactButton} onPress={handleContactSupport}>
             <Ionicons name="call" size={20} color="#fff" />
-            <Text style={styles.contactButtonText}>Contact Support</Text>
+            <Text style={styles.contactButtonText}>{t('contactSupport')}</Text>
           </TouchableOpacity>
 
           <Text style={styles.lockFooter}>
-            Please clear your pending EMI to unlock your device
+            {t('clearEmiToUnlock')}
           </Text>
         </View>
       </SafeAreaView>
@@ -220,12 +219,28 @@ export default function ClientHome() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Welcome,</Text>
+          <Text style={styles.greeting}>{t('welcome')}</Text>
           <Text style={styles.name}>{status?.name || 'User'}</Text>
         </View>
-        <TouchableOpacity style={styles.settingsButton} onPress={handleUnregister}>
-          <Ionicons name="settings-outline" size={24} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <View style={styles.langSwitcher}>
+            <TouchableOpacity
+              style={[styles.langButton, language === 'et' && styles.langButtonActive]}
+              onPress={() => setLanguage('et')}
+            >
+              <Text style={[styles.langText, language === 'et' && styles.langTextActive]}>ET</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.langButton, language === 'en' && styles.langButtonActive]}
+              onPress={() => setLanguage('en')}
+            >
+              <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>EN</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={styles.settingsButton} onPress={handleUnregister}>
+            <Ionicons name="settings-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -239,7 +254,7 @@ export default function ClientHome() {
           <View style={styles.warningBanner}>
             <Ionicons name="warning" size={24} color="#F59E0B" />
             <View style={styles.warningContent}>
-              <Text style={styles.warningTitle}>Warning</Text>
+              <Text style={styles.warningTitle}>{t('warning')}</Text>
               <Text style={styles.warningText}>{status.warning_message}</Text>
             </View>
             <TouchableOpacity onPress={handleClearWarning}>
@@ -252,43 +267,43 @@ export default function ClientHome() {
         <View style={styles.statusCard}>
           <View style={styles.statusHeader}>
             <Ionicons name="shield-checkmark" size={32} color="#10B981" />
-            <Text style={styles.statusTitle}>Device Status</Text>
+            <Text style={styles.statusTitle}>{t('deviceStatus')}</Text>
           </View>
           <View style={styles.statusBadgeContainer}>
             <View style={[styles.statusBadge, styles.unlockedBadge]}>
               <Ionicons name="lock-open" size={16} color="#10B981" />
-              <Text style={[styles.statusText, styles.unlockedText]}>Unlocked</Text>
+              <Text style={[styles.statusText, styles.unlockedText]}>{t('unlocked')}</Text>
             </View>
           </View>
-          <Text style={styles.statusInfo}>Your device is active and working normally</Text>
+          <Text style={styles.statusInfo}>{t('deviceActiveNormal')}</Text>
         </View>
 
         {/* EMI Card */}
         <View style={styles.emiCard}>
-          <Text style={styles.emiCardTitle}>EMI Details</Text>
+          <Text style={styles.emiCardTitle}>{t('emiDetails')}</Text>
           <View style={styles.emiDetails}>
             <View style={styles.emiDetailItem}>
-              <Text style={styles.emiDetailLabel}>Monthly EMI</Text>
-              <Text style={styles.emiDetailValue}>₹{status?.emi_amount.toLocaleString() || '0'}</Text>
+              <Text style={styles.emiDetailLabel}>{t('monthlyEmi')}</Text>
+              <Text style={styles.emiDetailValue}>€{status?.emi_amount.toLocaleString() || '0'}</Text>
             </View>
             <View style={styles.emiDetailDivider} />
             <View style={styles.emiDetailItem}>
-              <Text style={styles.emiDetailLabel}>Due Date</Text>
-              <Text style={styles.emiDetailValue}>{status?.emi_due_date || 'Not set'}</Text>
+              <Text style={styles.emiDetailLabel}>{t('dueDate')}</Text>
+              <Text style={styles.emiDetailValue}>{status?.emi_due_date || t('notSet')}</Text>
             </View>
           </View>
         </View>
 
         {/* Quick Actions */}
         <View style={styles.actionsSection}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
           <TouchableOpacity style={styles.actionCard} onPress={handleContactSupport}>
             <View style={[styles.actionIcon, { backgroundColor: '#3B82F6' }]}>
               <Ionicons name="headset" size={24} color="#fff" />
             </View>
             <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>Contact Support</Text>
-              <Text style={styles.actionDescription}>Get help with your account</Text>
+              <Text style={styles.actionTitle}>{t('contactSupport')}</Text>
+              <Text style={styles.actionDescription}>{t('getHelp')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
@@ -298,8 +313,8 @@ export default function ClientHome() {
               <Ionicons name="refresh" size={24} color="#fff" />
             </View>
             <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>Refresh Status</Text>
-              <Text style={styles.actionDescription}>Check for updates</Text>
+              <Text style={styles.actionTitle}>{t('refreshStatus')}</Text>
+              <Text style={styles.actionDescription}>{t('checkForUpdates')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
@@ -332,6 +347,32 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  langSwitcher: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  langButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#1E293B',
+  },
+  langButtonActive: {
+    backgroundColor: '#10B981',
+  },
+  langText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  langTextActive: {
+    color: '#fff',
   },
   greeting: {
     fontSize: 14,
