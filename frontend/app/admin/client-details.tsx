@@ -25,6 +25,9 @@ interface Client {
   email: string;
   device_id: string;
   device_model: string;
+  device_make: string;
+  used_price_eur: number | null;
+  price_fetched_at: string | null;
   registration_code: string;
   emi_amount: number;
   emi_due_date: string | null;
@@ -46,6 +49,7 @@ export default function ClientDetails() {
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [fetchingPrice, setFetchingPrice] = useState(false);
   const [warningModal, setWarningModal] = useState(false);
   const [lockModal, setLockModal] = useState(false);
   const [warningMessage, setWarningMessage] = useState('');
