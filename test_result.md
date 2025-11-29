@@ -140,6 +140,9 @@ backend:
       - working: true
         agent: "main"
         comment: "Create, Read, Update, Delete clients working - tested with curl"
+      - working: true
+        agent: "testing"
+        comment: "Comprehensive Delete Client functionality testing completed successfully. Tested DELETE /api/clients/{client_id} endpoint with 15 test scenarios: 1) Admin login and test client creation, 2) Successful client deletion with proper response message, 3) Verification client no longer exists (404), 4) Stats updated correctly after deletion, 5) Client removed from clients list, 6) Non-existent client returns 404, 7) Invalid client ID formats handled properly, 8) Double deletion returns 404. All critical functionality working perfectly. Minor: Empty string client ID returns 405 (Method Not Allowed) which is correct behavior for /api/clients/ endpoint."
 
   - task: "Lock/Unlock Device APIs"
     implemented: true
