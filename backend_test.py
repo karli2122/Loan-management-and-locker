@@ -962,7 +962,37 @@ class EMIBackendTester:
         
         return total_failed == 0
 
+    def run_delete_client_test_only(self):
+        """Run only the comprehensive delete client test"""
+        print(f"🚀 Starting Delete Client Functionality Test")
+        print(f"Backend URL: {self.base_url}")
+        print("=" * 60)
+        
+        success = self.test_delete_client_comprehensive()
+        
+        # Count results
+        passed = sum(1 for result in self.test_results if result["success"])
+        failed = sum(1 for result in self.test_results if not result["success"])
+        
+        print(f"\n📊 Delete Client Test Summary: {passed} passed, {failed} failed")
+        
+        if failed > 0:
+            print("\n❌ Failed Tests:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+        
+        return failed == 0
+
 if __name__ == "__main__":
-    tester = EMIBackendTester()
-    success = tester.run_all_tests()
-    sys.exit(0 if success else 1)
+    import sys
+    
+    # Check if we should run only delete client test
+    if len(sys.argv) > 1 and sys.argv[1] == "delete-client":
+        tester = EMIBackendTester()
+        success = tester.run_delete_client_test_only()
+        sys.exit(0 if success else 1)
+    else:
+        tester = EMIBackendTester()
+        success = tester.run_all_tests()
+        sys.exit(0 if success else 1)
