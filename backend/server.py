@@ -80,17 +80,45 @@ class Client(BaseModel):
     price_fetched_at: Optional[datetime] = None  # When price was last fetched
     lock_mode: str = "device_admin"  # "device_owner" or "device_admin"
     registration_code: str = Field(default_factory=lambda: secrets.token_hex(4).upper())
+    
+    # Loan Management Fields
+    loan_amount: float = 0.0  # Total loan amount (device price - down payment)
+    down_payment: float = 0.0  # Initial down payment
+    interest_rate: float = 0.0  # Annual interest rate percentage
+    loan_tenure_months: int = 12  # Loan duration in months
+    monthly_emi: float = 0.0  # Calculated monthly EMI
+    total_amount_due: float = 0.0  # Principal + Interest
+    total_paid: float = 0.0  # Total amount paid so far
+    outstanding_balance: float = 0.0  # Remaining balance
+    loan_start_date: Optional[datetime] = None  # When loan started
+    last_payment_date: Optional[datetime] = None  # Last payment received
+    next_payment_due: Optional[datetime] = None  # Next payment due date
+    days_overdue: int = 0  # Days past due date
+    
+    # Auto-lock settings
+    auto_lock_enabled: bool = True  # Enable auto-lock on missed payment
+    auto_lock_grace_days: int = 3  # Days grace period before auto-lock
+    
+    # Legacy fields (kept for backwards compatibility)
     emi_amount: float = 0.0
     emi_due_date: Optional[str] = None
+    
+    # Device control
     is_locked: bool = False
     lock_message: str = "Your device has been locked due to pending EMI payment."
     warning_message: str = ""
+    
+    # Location tracking
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     last_location_update: Optional[datetime] = None
+    
+    # Registration
     is_registered: bool = False
     registered_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    # Security
     tamper_attempts: int = 0  # Count of tampering attempts
     last_tamper_attempt: Optional[datetime] = None  # Last tamper attempt timestamp
     last_reboot: Optional[datetime] = None  # Last device reboot timestamp
