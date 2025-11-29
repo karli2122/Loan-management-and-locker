@@ -344,11 +344,15 @@ async def register_device(registration: DeviceRegistration):
     if client.get("is_registered"):
         raise HTTPException(status_code=400, detail="Device already registered")
     
+    # Extract device make (brand) from device_model string
+    device_make = registration.device_model.split()[0] if registration.device_model else ""
+    
     await db.clients.update_one(
         {"id": client["id"]},
         {"$set": {
             "device_id": registration.device_id,
             "device_model": registration.device_model,
+            "device_make": device_make,
             "is_registered": True,
             "registered_at": datetime.utcnow()
         }}
