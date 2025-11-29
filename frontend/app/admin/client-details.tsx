@@ -800,6 +800,9 @@ const styles = StyleSheet.create({
   warningButton: {
     backgroundColor: '#F59E0B',
   },
+  allowUninstallButton: {
+    backgroundColor: '#8B5CF6',
+  },
   actionButtonText: {
     fontSize: 16,
     fontWeight: '600',
