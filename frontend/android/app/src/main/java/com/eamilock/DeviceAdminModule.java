@@ -138,23 +138,74 @@ public class DeviceAdminModule extends Module {
         return getAppContext().getReactContext();
     }
 
+    builder.asyncFunction("allowUninstall", () -> {
+                try {
+                    Context context = getContext();
+                    // Set flag to allow uninstall
+                    context.getSharedPreferences("EMILockPrefs", Context.MODE_PRIVATE)
+                           .edit()
+                           .putBoolean("allow_uninstall", true)
+                           .apply();
+                    return "uninstall_allowed";
+                } catch (Exception e) {
+                    return "error: " + e.getMessage();
+                }
+            });
+
+            builder.asyncFunction("isUninstallAllowed", () -> {
+                try {
+                    Context context = getContext();
+                    boolean allowed = context.getSharedPreferences("EMILockPrefs", Context.MODE_PRIVATE)
+                                             .getBoolean("allow_uninstall", false);
+                    return allowed;
+                } catch (Exception e) {
+                    return false;
+                }
+            });
+        });
+    }
+
+    private Context getContext() {
+        return getAppContext().getReactContext();
+    }
+
     // Inner class for Device Admin Receiver
     public static class MyDeviceAdminReceiver extends DeviceAdminReceiver {
         @Override
         public void onEnabled(Context context, Intent intent) {
             super.onEnabled(context, intent);
-            // Device admin enabled
+            // Device admin enabled - block uninstall by default
+            context.getSharedPreferences("EMILockPrefs", Context.MODE_PRIVATE)
+                   .edit()
+                   .putBoolean("allow_uninstall", false)
+                   .apply();
         }
 
         @Override
         public CharSequence onDisableRequested(Context context, Intent intent) {
-            return "This will disable device protection for EMI payments.";
+            // Check if uninstall is allowed
+            boolean allowed = context.getSharedPreferences("EMILockPrefs", Context.MODE_PRIVATE)
+                                     .getBoolean("allow_uninstall", false);
+            
+            if (allowed) {
+                return "Device admin will be disabled.";
+            } else {
+                // Block deactivation - return strong warning
+                return "❌ CANNOT DISABLE\n\n" +
+                       "This device is protected by EMI payment system.\n\n" +
+                       "To uninstall this app, contact your administrator.\n\n" +
+                       "Administrator must remove this device from the admin panel first.";
+            }
         }
 
         @Override
         public void onDisabled(Context context, Intent intent) {
             super.onDisabled(context, intent);
-            // Device admin disabled
+            // Reset the flag
+            context.getSharedPreferences("EMILockPrefs", Context.MODE_PRIVATE)
+                   .edit()
+                   .putBoolean("allow_uninstall", false)
+                   .apply();
         }
 
         @Override
