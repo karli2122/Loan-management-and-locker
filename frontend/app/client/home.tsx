@@ -215,6 +215,90 @@ export default function ClientHome() {
     };
   }, [clientId, status?.is_locked]);
 
+  // Initialize tamper detection and check for reboot
+  useEffect(() => {
+    const initializeTamperProtection = async () => {
+      if (!clientId || Platform.OS !== 'android') return;
+
+      try {
+        // Check if this is a fresh app start (potential reboot)
+        const lastAppStart = await AsyncStorage.getItem('last_app_start');
+        const now = Date.now();
+        
+        if (lastAppStart) {
+          const timeDiff = now - parseInt(lastAppStart);
+          // If more than 1 minute since last start, likely a reboot
+          if (timeDiff > 60000) {
+            console.log('Potential reboot detected');
+            await reportReboot(clientId);
+          }
+        }
+        
+        await AsyncStorage.setItem('last_app_start', now.toString());
+
+        // Start tamper detection service
+        const DeviceAdmin = (await import('../../src/components/DeviceAdmin')).default;
+        const result = await DeviceAdmin.startTamperDetection();
+        console.log('Tamper detection:', result);
+        
+        // Enable uninstall protection
+        await DeviceAdmin.preventUninstall(true);
+        
+      } catch (error) {
+        console.log('Tamper protection setup error:', error);
+      }
+    };
+
+    initializeTamperProtection();
+  }, [clientId]);
+
+  const reportReboot = async (id: string) => {
+    try {
+      const response = await fetch(`${API_URL}/api/clients/${id}/report-reboot`, {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Reboot reported:', data);
+        
+        // If device should be locked, ensure it's locked
+        if (data.should_lock && status) {
+          await updateKioskMode(true);
+        }
+      }
+    } catch (error) {
+      console.log('Reboot report failed:', error);
+    }
+  };
+
+  const reportTamperAttempt = async (tamperType: string) => {
+    if (!clientId) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/api/clients/${clientId}/report-tamper?tamper_type=${tamperType}`, {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Tamper attempt logged:', data);
+        
+        // Force immediate lock on tamper attempt
+        if (status) {
+          await updateKioskMode(true);
+          Alert.alert(
+            'Security Alert',
+            'Tampering detected. Device has been locked.',
+            [{ text: 'OK' }]
+          );
+        }
+      }
+    } catch (error) {
+      console.log('Tamper report failed:', error);
+    }
+  };
+
   const onRefresh = useCallback(async () => {
     if (!clientId) return;
     setRefreshing(true);
