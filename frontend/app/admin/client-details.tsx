@@ -163,6 +163,28 @@ export default function ClientDetails() {
     ]);
   };
 
+  const handleFetchPrice = async () => {
+    setFetchingPrice(true);
+    try {
+      const response = await fetch(`${API_URL}/api/clients/${id}/fetch-price`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to fetch price');
+      }
+      const data = await response.json();
+      // Refresh client data to show updated price
+      await fetchClient();
+      Alert.alert(
+        t('success'),
+        `${t('devicePrice')}: €${data.used_price_eur}\n${data.note || ''}`
+      );
+    } catch (error: any) {
+      Alert.alert(t('error'), error.message);
+    } finally {
+      setFetchingPrice(false);
+    }
+  };
+
   const openMap = () => {
     if (client?.latitude && client?.longitude) {
       const url = `https://www.google.com/maps/search/?api=1&query=${client.latitude},${client.longitude}`;
