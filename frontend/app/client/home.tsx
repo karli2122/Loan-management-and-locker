@@ -41,41 +41,74 @@ export default function ClientHome() {
   const [refreshing, setRefreshing] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
   const [isDeviceOwner, setIsDeviceOwner] = useState(false);
+  const [isAdminActive, setIsAdminActive] = useState(false);
   const [kioskActive, setKioskActive] = useState(false);
+  const [setupComplete, setSetupComplete] = useState(false);
   const appState = useRef(AppState.currentState);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wasLocked = useRef(false);
 
-  // Check Device Owner status
-  const checkDeviceOwner = async () => {
-    if (Platform.OS === 'android') {
+  // Check and setup Device Owner/Admin
+  const checkAndSetupDeviceProtection = async () => {
+    if (Platform.OS !== 'android') return;
+    
+    try {
+      // Check Device Owner status
       const owner = await devicePolicy.isDeviceOwner();
       setIsDeviceOwner(owner);
+      
+      // Check Admin status
+      const admin = await devicePolicy.isAdminActive();
+      setIsAdminActive(admin);
+      
       if (owner) {
-        // Block uninstall if device owner
+        // If device owner, enable uninstall protection
         await devicePolicy.disableUninstall(true);
+        setSetupComplete(true);
+        console.log('Device Owner mode active - full protection enabled');
+      } else if (!admin) {
+        // If not admin, request admin permissions automatically
+        console.log('Requesting Device Admin permissions...');
+        // Small delay to let UI load first
+        setTimeout(async () => {
+          try {
+            await devicePolicy.requestAdmin();
+          } catch (e) {
+            console.log('Admin request failed:', e);
+          }
+        }, 2000);
+      } else {
+        setSetupComplete(true);
+        console.log('Device Admin active - basic protection enabled');
       }
+    } catch (error) {
+      console.error('Device protection setup error:', error);
     }
   };
 
   // Enable/Disable Kiosk mode based on lock status
   const updateKioskMode = async (locked: boolean) => {
-    if (Platform.OS === 'android' && isDeviceOwner) {
-      try {
+    if (Platform.OS !== 'android') return;
+    
+    try {
+      // Save lock state for boot receiver
+      await devicePolicy.setLockState(locked);
+      
+      if (isDeviceOwner) {
         if (locked && !kioskActive) {
           await devicePolicy.setKioskMode(true);
-          await devicePolicy.setLockState(true);
           setKioskActive(true);
-          wasLocked.current = true;
+          console.log('Kiosk mode enabled');
         } else if (!locked && kioskActive) {
           await devicePolicy.setKioskMode(false);
-          await devicePolicy.setLockState(false);
           setKioskActive(false);
-          wasLocked.current = false;
+          console.log('Kiosk mode disabled');
         }
-      } catch (error) {
-        console.error('Kiosk mode error:', error);
       }
+      
+      wasLocked.current = locked;
+    } catch (error) {
+      console.error('Kiosk mode error:', error);
     }
   };
 
@@ -93,7 +126,7 @@ export default function ClientHome() {
       const data = await response.json();
       setStatus(data);
       
-      // Update kiosk mode based on lock status
+      // Update kiosk mode based on lock status change
       if (data.is_locked !== wasLocked.current) {
         updateKioskMode(data.is_locked);
       }
@@ -139,21 +172,28 @@ export default function ClientHome() {
   };
 
   useEffect(() => {
-    checkDeviceOwner();
+    // Setup device protection first
+    checkAndSetupDeviceProtection();
+    
+    // Then load client data
     loadClientData();
 
+    // Poll status every 5 seconds
     intervalRef.current = setInterval(() => {
       if (clientId) {
         fetchStatus(clientId);
       }
     }, 5000);
 
+    // Handle app state changes
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         if (clientId) {
           fetchStatus(clientId);
           updateLocation(clientId);
         }
+        // Re-check protection on app resume
+        checkAndSetupDeviceProtection();
       }
       appState.current = nextAppState;
     });
@@ -196,6 +236,15 @@ export default function ClientHome() {
   };
 
   const handleUnregister = () => {
+    // Don't allow unregister if device is locked
+    if (status?.is_locked) {
+      Alert.alert(
+        language === 'et' ? 'Keelatud' : 'Not Allowed',
+        language === 'et' ? 'Seade on lukustatud. Registreerimist ei saa tühistada.' : 'Device is locked. Cannot unregister.'
+      );
+      return;
+    }
+    
     Alert.alert(
       t('unregisterDevice'),
       t('unregisterConfirm'),
@@ -232,7 +281,7 @@ export default function ClientHome() {
     );
   }
 
-  // Lock Screen Overlay
+  // Lock Screen Overlay - Full screen, no escape
   if (status?.is_locked) {
     return (
       <SafeAreaView style={styles.lockContainer}>
@@ -264,6 +313,20 @@ export default function ClientHome() {
           <Text style={styles.lockFooter}>
             {t('clearEmiToUnlock')}
           </Text>
+          
+          {/* Protection Status */}
+          <View style={styles.protectionStatus}>
+            <Ionicons 
+              name={isDeviceOwner ? "shield-checkmark" : "shield"} 
+              size={16} 
+              color={isDeviceOwner ? "#10B981" : "#F59E0B"} 
+            />
+            <Text style={styles.protectionText}>
+              {isDeviceOwner 
+                ? (language === 'et' ? 'Täielik kaitse aktiivne' : 'Full protection active')
+                : (language === 'et' ? 'Põhikaitse aktiivne' : 'Basic protection active')}
+            </Text>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -303,6 +366,27 @@ export default function ClientHome() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10B981" />
         }
       >
+        {/* Protection Status Banner */}
+        <View style={[styles.protectionBanner, isDeviceOwner ? styles.protectionFull : styles.protectionBasic]}>
+          <Ionicons 
+            name={isDeviceOwner ? "shield-checkmark" : "shield"} 
+            size={24} 
+            color={isDeviceOwner ? "#10B981" : "#F59E0B"} 
+          />
+          <View style={styles.protectionBannerContent}>
+            <Text style={styles.protectionBannerTitle}>
+              {isDeviceOwner 
+                ? (language === 'et' ? 'Täielik kaitse' : 'Full Protection')
+                : (language === 'et' ? 'Põhikaitse' : 'Basic Protection')}
+            </Text>
+            <Text style={styles.protectionBannerText}>
+              {isDeviceOwner 
+                ? (language === 'et' ? 'Seade on täielikult kaitstud' : 'Device is fully protected')
+                : (language === 'et' ? 'Administraatori õigused aktiivsed' : 'Admin permissions active')}
+            </Text>
+          </View>
+        </View>
+
         {/* Warning Banner */}
         {status?.warning_message && (
           <View style={styles.warningBanner}>
@@ -448,6 +532,37 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
+  },
+  protectionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    gap: 12,
+  },
+  protectionFull: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  protectionBasic: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  protectionBannerContent: {
+    flex: 1,
+  },
+  protectionBannerTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  protectionBannerText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 2,
   },
   warningBanner: {
     flexDirection: 'row',
@@ -663,5 +778,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#FCA5A5',
     textAlign: 'center',
+    marginBottom: 16,
+  },
+  protectionStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  protectionText: {
+    fontSize: 12,
+    color: '#FCA5A5',
   },
 });
