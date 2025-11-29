@@ -1,0 +1,64 @@
+{
+  "cli": {
+    "version": ">= 5.0.0"
+  },
+  "build": {
+    "admin-development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "APP_MODE": "admin"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "admin-preview": {
+      "distribution": "internal",
+      "env": {
+        "APP_MODE": "admin"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "admin-production": {
+      "env": {
+        "APP_MODE": "admin"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "client-development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "APP_MODE": "client"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "client-preview": {
+      "distribution": "internal",
+      "env": {
+        "APP_MODE": "client"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "client-production": {
+      "env": {
+        "APP_MODE": "client"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
