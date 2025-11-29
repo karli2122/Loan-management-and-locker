@@ -210,6 +210,18 @@ backend:
         agent: "main"
         comment: "Stats endpoint working - tested with curl"
 
+  - task: "Admin Management APIs"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented admin user management endpoints: GET /api/admin/list, POST /api/admin/change-password, DELETE /api/admin/{admin_id}. These endpoints allow listing all admins, changing password, and deleting admins (with protections). Ready for testing."
+
 frontend:
   - task: "Mode Selection Screen (Home)"
     implemented: true
