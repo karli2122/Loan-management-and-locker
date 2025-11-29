@@ -10,6 +10,8 @@ import {
   RefreshControl,
   Linking,
   AppState,
+  Platform,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -17,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../context/LanguageContext';
+import { devicePolicy } from '../utils/DevicePolicy';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -37,8 +40,44 @@ export default function ClientHome() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
+  const [isDeviceOwner, setIsDeviceOwner] = useState(false);
+  const [kioskActive, setKioskActive] = useState(false);
   const appState = useRef(AppState.currentState);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const wasLocked = useRef(false);
+
+  // Check Device Owner status
+  const checkDeviceOwner = async () => {
+    if (Platform.OS === 'android') {
+      const owner = await devicePolicy.isDeviceOwner();
+      setIsDeviceOwner(owner);
+      if (owner) {
+        // Block uninstall if device owner
+        await devicePolicy.disableUninstall(true);
+      }
+    }
+  };
+
+  // Enable/Disable Kiosk mode based on lock status
+  const updateKioskMode = async (locked: boolean) => {
+    if (Platform.OS === 'android' && isDeviceOwner) {
+      try {
+        if (locked && !kioskActive) {
+          await devicePolicy.setKioskMode(true);
+          await devicePolicy.setLockState(true);
+          setKioskActive(true);
+          wasLocked.current = true;
+        } else if (!locked && kioskActive) {
+          await devicePolicy.setKioskMode(false);
+          await devicePolicy.setLockState(false);
+          setKioskActive(false);
+          wasLocked.current = false;
+        }
+      } catch (error) {
+        console.error('Kiosk mode error:', error);
+      }
+    }
+  };
 
   const fetchStatus = async (id: string) => {
     try {
@@ -53,6 +92,11 @@ export default function ClientHome() {
       }
       const data = await response.json();
       setStatus(data);
+      
+      // Update kiosk mode based on lock status
+      if (data.is_locked !== wasLocked.current) {
+        updateKioskMode(data.is_locked);
+      }
     } catch (error) {
       console.error('Error fetching status:', error);
     } finally {
