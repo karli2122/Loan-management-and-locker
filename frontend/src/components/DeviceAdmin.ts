@@ -11,6 +11,8 @@ export interface DeviceAdminAPI {
   startTamperDetection(): Promise<string>;
   stopTamperDetection(): Promise<string>;
   preventUninstall(prevent: boolean): Promise<string>;
+  allowUninstall(): Promise<string>;
+  isUninstallAllowed(): Promise<boolean>;
 }
 
 // Mock implementation for non-Android platforms
@@ -23,6 +25,8 @@ const MockDeviceAdmin: DeviceAdminAPI = {
   startTamperDetection: async () => 'not_supported',
   stopTamperDetection: async () => 'not_supported',
   preventUninstall: async () => 'not_supported',
+  allowUninstall: async () => 'not_supported',
+  isUninstallAllowed: async () => false,
 };
 
 // Use real module on Android, mock on other platforms
