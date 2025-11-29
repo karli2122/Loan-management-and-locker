@@ -181,6 +181,18 @@ export default function Dashboard() {
             <Text style={styles.actionDescription}>{language === 'et' ? 'QR-kood automaatseks seadistuseks' : 'QR code for automatic setup'}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/admin/settings')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#8B5CF6' }]}>
+              <Ionicons name="settings" size={24} color="#fff" />
+            </View>
+            <Text style={styles.actionTitle}>{t('settings')}</Text>
+            <Text style={styles.actionDescription}>{t('adminManagement')}</Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
