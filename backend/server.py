@@ -40,12 +40,74 @@ api_router = APIRouter(prefix="/api")
 
 security = HTTPBasic()
 
-# Utility functions
+# ===================== HELPER FUNCTIONS =====================
+
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
-def verify_password(password: str, hashed: str) -> bool:
-    return hash_password(password) == hashed
+def verify_password(password: str, password_hash: str) -> bool:
+    return hash_password(password) == password_hash
+
+def calculate_simple_interest_emi(principal: float, annual_rate: float, months: int) -> dict:
+    """Calculate EMI using simple interest formula"""
+    # Simple Interest = (P × R × T) / 100
+    # where P = principal, R = annual rate, T = time in years
+    years = months / 12
+    interest = (principal * annual_rate * years) / 100
+    total_amount = principal + interest
+    monthly_emi = total_amount / months
+    
+    return {
+        "monthly_emi": round(monthly_emi, 2),
+        "total_amount": round(total_amount, 2),
+        "total_interest": round(interest, 2),
+        "principal": round(principal, 2)
+    }
+
+def check_and_auto_lock_overdue_payments():
+    """Background job to check overdue payments and auto-lock devices"""
+    try:
+        from datetime import datetime, timedelta
+        import asyncio
+        
+        async def auto_lock_job():
+            # Get all clients with auto-lock enabled
+            clients = await db.clients.find({"auto_lock_enabled": True}).to_list(None)
+            
+            for client in clients:
+                if not client.get("next_payment_due"):
+                    continue
+                
+                next_due = client["next_payment_due"]
+                grace_days = client.get("auto_lock_grace_days", 3)
+                
+                # Calculate days overdue
+                days_overdue = (datetime.utcnow() - next_due).days
+                
+                # Auto-lock if past grace period and not already locked
+                if days_overdue > grace_days and not client.get("is_locked", False):
+                    await db.clients.update_one(
+                        {"id": client["id"]},
+                        {"$set": {
+                            "is_locked": True,
+                            "lock_message": f"Device locked: Payment overdue by {days_overdue} days. Please contact admin.",
+                            "days_overdue": days_overdue
+                        }}
+                    )
+                    logger.warning(f"Auto-locked client {client['id']} - {days_overdue} days overdue")
+                else:
+                    # Update days overdue counter
+                    await db.clients.update_one(
+                        {"id": client["id"]},
+                        {"$set": {"days_overdue": max(0, days_overdue)}}
+                    )
+        
+        # Run the async job
+        loop = asyncio.get_event_loop()
+        loop.create_task(auto_lock_job())
+        
+    except Exception as e:
+        logger.error(f"Auto-lock job error: {str(e)}")
 
 # ===================== MODELS =====================
 
