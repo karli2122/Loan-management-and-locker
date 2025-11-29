@@ -169,6 +169,18 @@ export default function Dashboard() {
             <Text style={styles.actionDescription}>{t('registerNewClient')}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/admin/device-setup')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#F59E0B' }]}>
+              <Ionicons name="qr-code" size={24} color="#fff" />
+            </View>
+            <Text style={styles.actionTitle}>{language === 'et' ? 'Seadme seadistus' : 'Device Setup'}</Text>
+            <Text style={styles.actionDescription}>{language === 'et' ? 'QR-kood automaatseks seadistuseks' : 'QR code for automatic setup'}</Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
