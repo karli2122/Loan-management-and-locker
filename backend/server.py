@@ -115,8 +115,21 @@ class ClientStatusResponse(BaseModel):
 
 # ===================== ADMIN ROUTES =====================
 
+async def verify_admin_token_header(token: str) -> bool:
+    """Helper function to verify admin token"""
+    token_doc = await db.admin_tokens.find_one({"token": token})
+    return token_doc is not None
+
 @api_router.post("/admin/register", response_model=AdminResponse)
-async def register_admin(admin_data: AdminCreate):
+async def register_admin(admin_data: AdminCreate, admin_token: str = None):
+    # Check if any admin exists - if yes, require token
+    admin_count = await db.admins.count_documents({})
+    if admin_count > 0:
+        if not admin_token:
+            raise HTTPException(status_code=401, detail="Admin token required to register new admins")
+        if not await verify_admin_token_header(admin_token):
+            raise HTTPException(status_code=401, detail="Invalid admin token")
+    
     # Check if admin already exists
     existing = await db.admins.find_one({"username": admin_data.username})
     if existing:
