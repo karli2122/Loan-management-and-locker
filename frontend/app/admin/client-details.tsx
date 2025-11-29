@@ -145,6 +145,36 @@ export default function ClientDetails() {
     }
   };
 
+  const handleAllowUninstall = async () => {
+    Alert.alert(
+      'Allow App Uninstall',
+      'This will signal the device to disable its protection, allowing the app to be uninstalled. Continue?',
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: 'Allow',
+          style: 'default',
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              const response = await fetch(`${API_URL}/api/clients/${id}/allow-uninstall`, {
+                method: 'POST',
+              });
+              if (!response.ok) throw new Error('Failed to allow uninstall');
+              const data = await response.json();
+              Alert.alert(t('success'), data.message + '\n\nYou can now delete this client.');
+              await fetchClient(); // Refresh to show updated status
+            } catch (error: any) {
+              Alert.alert(t('error'), error.message);
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleDelete = async () => {
     Alert.alert(t('deleteClient'), t('deleteConfirm'), [
       { text: t('cancel'), style: 'cancel' },
@@ -157,7 +187,12 @@ export default function ClientDetails() {
             const response = await fetch(`${API_URL}/api/clients/${id}`, {
               method: 'DELETE',
             });
-            if (!response.ok) throw new Error('Failed to delete client');
+            
+            if (!response.ok) {
+              const error = await response.json();
+              throw new Error(error.detail || 'Failed to delete client');
+            }
+            
             Alert.alert(t('success'), t('clientDeletedSuccess'));
             router.back();
           } catch (error: any) {
