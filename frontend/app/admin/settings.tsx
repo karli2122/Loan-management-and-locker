@@ -99,10 +99,14 @@ export default function AdminSettings() {
 
     setActionLoading(true);
     try {
+      // Send admin_token as query parameter, not in the body
       const response = await fetch(`${API_URL}/api/admin/register?admin_token=${adminToken}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: newUsername, password: newPassword }),
+        body: JSON.stringify({ 
+          username: newUsername, 
+          password: newPassword 
+        }),
       });
 
       const data = await response.json();
