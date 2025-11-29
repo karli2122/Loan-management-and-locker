@@ -495,6 +495,69 @@ export default function ClientDetails() {
           </View>
         </View>
       </Modal>
+
+      {/* Edit Device Info Modal */}
+      <Modal visible={editDeviceModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{t('editDeviceInfo')}</Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>{t('deviceMake')}</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={editDeviceMake}
+                onChangeText={setEditDeviceMake}
+                placeholder={t('deviceMake')}
+                placeholderTextColor="#64748B"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>{t('deviceModel')}</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={editDeviceModel}
+                onChangeText={setEditDeviceModel}
+                placeholder={t('deviceModel')}
+                placeholderTextColor="#64748B"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>{t('usedPrice')} (EUR)</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={editDevicePrice}
+                onChangeText={setEditDevicePrice}
+                placeholder="0.00"
+                placeholderTextColor="#64748B"
+                keyboardType="decimal-pad"
+              />
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={() => setEditDeviceModal(false)}
+              >
+                <Text style={styles.modalCancelText}>{t('cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalConfirmButton]}
+                onPress={handleSaveDeviceInfo}
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>{t('saveChanges')}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
