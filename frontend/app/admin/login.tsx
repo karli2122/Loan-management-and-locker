@@ -20,7 +20,6 @@ const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function AdminLogin() {
   const router = useRouter();
-  const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,8 +33,7 @@ export default function AdminLogin() {
 
     setLoading(true);
     try {
-      const endpoint = isLogin ? '/api/admin/login' : '/api/admin/register';
-      const response = await fetch(`${API_URL}${endpoint}`, {
+      const response = await fetch(`${API_URL}/api/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
