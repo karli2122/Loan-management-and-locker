@@ -313,7 +313,18 @@ export default function ClientDetails() {
 
         {/* Device Info */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('deviceInfo')}</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{t('deviceInfo')}</Text>
+            {client.is_registered && (
+              <TouchableOpacity 
+                style={styles.editButton}
+                onPress={openEditDeviceModal}
+              >
+                <Ionicons name="create-outline" size={18} color="#4F46E5" />
+                <Text style={styles.editButtonText}>{t('edit')}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           {client.is_registered ? (
             <>
               <View style={styles.infoRow}>
