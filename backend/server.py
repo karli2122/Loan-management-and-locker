@@ -410,6 +410,57 @@ async def clear_warning(client_id: str):
     await db.clients.update_one({"id": client_id}, {"$set": {"warning_message": ""}})
     return {"message": "Warning cleared"}
 
+# ===================== TAMPER DETECTION =====================
+
+@api_router.post("/clients/{client_id}/report-tamper")
+async def report_tamper_attempt(client_id: str, tamper_type: str = "unknown"):
+    """Report tampering attempt from client device"""
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    current_attempts = client.get("tamper_attempts", 0)
+    
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {
+            "tamper_attempts": current_attempts + 1,
+            "last_tamper_attempt": datetime.utcnow(),
+            "warning_message": f"Tamper attempt detected: {tamper_type}"
+        }}
+    )
+    
+    logger.warning(f"Tamper attempt on client {client_id}: {tamper_type}")
+    
+    return {
+        "message": "Tamper attempt recorded",
+        "total_attempts": current_attempts + 1,
+        "action": "device_locked"
+    }
+
+@api_router.post("/clients/{client_id}/report-reboot")
+async def report_reboot(client_id: str):
+    """Report device reboot"""
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {
+            "last_reboot": datetime.utcnow()
+        }}
+    )
+    
+    logger.info(f"Client {client_id} rebooted")
+    
+    # Return lock status - device should re-lock if it was locked before reboot
+    return {
+        "message": "Reboot recorded",
+        "should_lock": client.get("is_locked", False),
+        "lock_message": client.get("lock_message", "")
+    }
+
 # ===================== PHONE PRICE LOOKUP =====================
 
 @api_router.get("/clients/{client_id}/fetch-price")
