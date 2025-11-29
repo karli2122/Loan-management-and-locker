@@ -706,6 +706,53 @@ class EMIBackendTester:
             self.test_delete_client
         ]
         
+        # Admin Management API Tests (specific focus)
+        admin_management_tests = [
+            self.test_admin_management_login,
+            self.test_list_admins_api,
+            self.test_change_password_api,
+        ]
+        
+        # Run admin management tests and get created admin ID for deletion test
+        print("\n" + "="*60)
+        print("🔐 ADMIN MANAGEMENT API TESTS")
+        print("="*60)
+        
+        admin_passed = 0
+        admin_failed = 0
+        created_admin_id = None
+        
+        for test in admin_management_tests:
+            if test():
+                admin_passed += 1
+            else:
+                admin_failed += 1
+            print()
+        
+        # Test admin creation and deletion
+        created_admin_id = self.test_create_admin_management()
+        if created_admin_id:
+            admin_passed += 1
+        else:
+            admin_failed += 1
+        print()
+        
+        # Test admin deletion with the created admin ID
+        if self.test_delete_admin_api(created_admin_id):
+            admin_passed += 1
+        else:
+            admin_failed += 1
+        print()
+        
+        print("="*60)
+        print(f"🔐 Admin Management Tests: {admin_passed} passed, {admin_failed} failed")
+        print("="*60)
+        
+        # Run regular backend tests
+        print("\n" + "="*60)
+        print("🚀 REGULAR BACKEND API TESTS")
+        print("="*60)
+        
         passed = 0
         failed = 0
         
