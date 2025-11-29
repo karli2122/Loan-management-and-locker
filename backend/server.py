@@ -133,6 +133,10 @@ async def verify_admin_token_header(token: str) -> bool:
 
 @api_router.post("/admin/register", response_model=AdminResponse)
 async def register_admin(admin_data: AdminCreate, admin_token: str = None):
+    # Validate password length
+    if len(admin_data.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    
     # Check if any admin exists - if yes, require token
     admin_count = await db.admins.count_documents({})
     if admin_count > 0:
