@@ -42,8 +42,8 @@ export default {
           backgroundColor: "#0F172A"
         }
       ],
-      // Device Owner plugin for Client app only
-      ...(IS_ADMIN_APP ? [] : ["./plugins/withDeviceOwner"])
+      // Device Owner and Device Admin plugins for Client app only
+      ...(IS_ADMIN_APP ? [] : ["./plugins/withDeviceOwner", "./plugins/withDeviceAdmin"])
     ],
     experiments: {
       typedRoutes: true
