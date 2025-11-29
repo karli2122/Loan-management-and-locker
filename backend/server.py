@@ -78,6 +78,7 @@ class Client(BaseModel):
     device_make: str = ""  # Brand/Manufacturer
     used_price_eur: Optional[float] = None  # Used phone price in EUR
     price_fetched_at: Optional[datetime] = None  # When price was last fetched
+    lock_mode: str = "device_admin"  # "device_owner" or "device_admin"
     registration_code: str = Field(default_factory=lambda: secrets.token_hex(4).upper())
     emi_amount: float = 0.0
     emi_due_date: Optional[str] = None
