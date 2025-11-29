@@ -659,6 +659,191 @@ class EMIBackendTester:
             self.log_test("Delete Admin API", False, f"Error: {str(e)}")
             return False
     
+    def test_delete_client_comprehensive(self):
+        """Comprehensive Delete Client functionality testing as requested"""
+        print("\n" + "="*60)
+        print("🗑️  COMPREHENSIVE DELETE CLIENT TESTING")
+        print("="*60)
+        
+        # Step 1: Login as admin (karli1987/nasvakas123) to get token
+        print("\n1. SETUP - Admin Login")
+        try:
+            login_data = {
+                "username": "karli1987",
+                "password": "nasvakas123"
+            }
+            
+            response = requests.post(f"{self.base_url}/admin/login", json=login_data)
+            if response.status_code == 200:
+                admin_data = response.json()
+                admin_token = admin_data.get("token")
+                self.log_test("Delete Test - Admin Login", True, f"Admin token obtained: {admin_token[:20]}...")
+            else:
+                self.log_test("Delete Test - Admin Login", False, f"Status {response.status_code}: {response.text}")
+                return False
+        except Exception as e:
+            self.log_test("Delete Test - Admin Login", False, f"Error: {str(e)}")
+            return False
+        
+        # Step 2: Create a test client for deletion
+        print("\n2. SETUP - Create Test Client")
+        try:
+            client_data = {
+                "name": "John Doe Test Client",
+                "phone": "+1234567890",
+                "email": "john.doe.test@example.com",
+                "emi_amount": 15000.0,
+                "emi_due_date": "2024-02-15"
+            }
+            
+            response = requests.post(f"{self.base_url}/clients", json=client_data)
+            if response.status_code == 200:
+                client = response.json()
+                test_client_id = client.get("id")
+                self.log_test("Delete Test - Create Client", True, f"Test client created with ID: {test_client_id}")
+            else:
+                self.log_test("Delete Test - Create Client", False, f"Status {response.status_code}: {response.text}")
+                return False
+        except Exception as e:
+            self.log_test("Delete Test - Create Client", False, f"Error: {str(e)}")
+            return False
+        
+        # Step 3: Get initial stats for comparison
+        print("\n3. SETUP - Get Initial Stats")
+        try:
+            response = requests.get(f"{self.base_url}/stats")
+            if response.status_code == 200:
+                initial_stats = response.json()
+                initial_total = initial_stats.get("total_clients", 0)
+                self.log_test("Delete Test - Initial Stats", True, f"Initial total clients: {initial_total}")
+            else:
+                self.log_test("Delete Test - Initial Stats", False, f"Status {response.status_code}: {response.text}")
+                initial_total = None
+        except Exception as e:
+            self.log_test("Delete Test - Initial Stats", False, f"Error: {str(e)}")
+            initial_total = None
+        
+        # Step 4: Verify client exists before deletion
+        print("\n4. VERIFICATION - Client Exists")
+        try:
+            response = requests.get(f"{self.base_url}/clients/{test_client_id}")
+            if response.status_code == 200:
+                client = response.json()
+                self.log_test("Delete Test - Client Exists", True, f"Client verified: {client.get('name')}")
+            else:
+                self.log_test("Delete Test - Client Exists", False, f"Status {response.status_code}: {response.text}")
+        except Exception as e:
+            self.log_test("Delete Test - Client Exists", False, f"Error: {str(e)}")
+        
+        # Step 5: DELETE CLIENT - Success Case
+        print("\n5. DELETE CLIENT - Success Case")
+        try:
+            response = requests.delete(f"{self.base_url}/clients/{test_client_id}")
+            if response.status_code == 200:
+                result = response.json()
+                expected_message = "Client deleted successfully"
+                if result.get("message") == expected_message:
+                    self.log_test("Delete Test - Success Case", True, f"Client deletion successful: {result.get('message')}")
+                else:
+                    self.log_test("Delete Test - Success Case", False, f"Expected '{expected_message}', got '{result.get('message')}'")
+            else:
+                self.log_test("Delete Test - Success Case", False, f"Status {response.status_code}: {response.text}")
+                return False
+        except Exception as e:
+            self.log_test("Delete Test - Success Case", False, f"Error: {str(e)}")
+            return False
+        
+        # Step 6: Verify client no longer exists
+        print("\n6. VERIFICATION - Client Deleted")
+        try:
+            response = requests.get(f"{self.base_url}/clients/{test_client_id}")
+            if response.status_code == 404:
+                self.log_test("Delete Test - Client Not Found", True, "Deleted client returns 404 as expected")
+            else:
+                self.log_test("Delete Test - Client Not Found", False, f"Expected 404, got {response.status_code}")
+        except Exception as e:
+            self.log_test("Delete Test - Client Not Found", False, f"Error: {str(e)}")
+        
+        # Step 7: Verify stats updated
+        print("\n7. VERIFICATION - Stats Updated")
+        if initial_total is not None:
+            try:
+                response = requests.get(f"{self.base_url}/stats")
+                if response.status_code == 200:
+                    updated_stats = response.json()
+                    updated_total = updated_stats.get("total_clients", 0)
+                    if updated_total == initial_total - 1:
+                        self.log_test("Delete Test - Stats Updated", True, f"Stats updated correctly: {initial_total} → {updated_total}")
+                    else:
+                        self.log_test("Delete Test - Stats Updated", False, f"Expected {initial_total - 1}, got {updated_total}")
+                else:
+                    self.log_test("Delete Test - Stats Updated", False, f"Status {response.status_code}: {response.text}")
+            except Exception as e:
+                self.log_test("Delete Test - Stats Updated", False, f"Error: {str(e)}")
+        
+        # Step 8: Verify client not in clients list
+        print("\n8. VERIFICATION - Client Not in List")
+        try:
+            response = requests.get(f"{self.base_url}/clients")
+            if response.status_code == 200:
+                clients = response.json()
+                client_ids = [c.get("id") for c in clients]
+                if test_client_id not in client_ids:
+                    self.log_test("Delete Test - Not in List", True, "Deleted client not in clients list")
+                else:
+                    self.log_test("Delete Test - Not in List", False, "Deleted client still appears in clients list")
+            else:
+                self.log_test("Delete Test - Not in List", False, f"Status {response.status_code}: {response.text}")
+        except Exception as e:
+            self.log_test("Delete Test - Not in List", False, f"Error: {str(e)}")
+        
+        # Step 9: ERROR CASES - Delete non-existent client
+        print("\n9. ERROR CASE - Delete Non-existent Client")
+        try:
+            fake_client_id = "non-existent-client-id-12345"
+            response = requests.delete(f"{self.base_url}/clients/{fake_client_id}")
+            if response.status_code == 404:
+                result = response.json()
+                if "not found" in result.get("detail", "").lower():
+                    self.log_test("Delete Test - Non-existent Client", True, f"Non-existent client returns 404: {result.get('detail')}")
+                else:
+                    self.log_test("Delete Test - Non-existent Client", False, f"Expected 'not found' message, got: {result.get('detail')}")
+            else:
+                self.log_test("Delete Test - Non-existent Client", False, f"Expected 404, got {response.status_code}")
+        except Exception as e:
+            self.log_test("Delete Test - Non-existent Client", False, f"Error: {str(e)}")
+        
+        # Step 10: ERROR CASES - Delete with invalid client ID formats
+        print("\n10. ERROR CASE - Invalid Client ID Formats")
+        invalid_ids = ["", "123", "invalid-format", "null", "undefined"]
+        
+        for invalid_id in invalid_ids:
+            try:
+                response = requests.delete(f"{self.base_url}/clients/{invalid_id}")
+                if response.status_code == 404:
+                    self.log_test(f"Delete Test - Invalid ID '{invalid_id}'", True, "Returns 404 as expected")
+                else:
+                    self.log_test(f"Delete Test - Invalid ID '{invalid_id}'", False, f"Expected 404, got {response.status_code}")
+            except Exception as e:
+                self.log_test(f"Delete Test - Invalid ID '{invalid_id}'", False, f"Error: {str(e)}")
+        
+        # Step 11: Try to delete the same client again (double deletion)
+        print("\n11. ERROR CASE - Double Deletion")
+        try:
+            response = requests.delete(f"{self.base_url}/clients/{test_client_id}")
+            if response.status_code == 404:
+                self.log_test("Delete Test - Double Deletion", True, "Double deletion returns 404 as expected")
+            else:
+                self.log_test("Delete Test - Double Deletion", False, f"Expected 404, got {response.status_code}")
+        except Exception as e:
+            self.log_test("Delete Test - Double Deletion", False, f"Error: {str(e)}")
+        
+        print("\n" + "="*60)
+        print("🗑️  DELETE CLIENT TESTING COMPLETED")
+        print("="*60)
+        
+        return True
+
     def test_delete_client(self):
         """Test client deletion (run last to clean up)"""
         if not self.client_id:
