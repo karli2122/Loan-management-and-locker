@@ -2,7 +2,8 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';\nimport Constants from 'expo-constants';
+import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { useLanguage } from './context/LanguageContext';
 
 export default function Index() {
