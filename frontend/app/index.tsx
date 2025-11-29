@@ -1,14 +1,41 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';\nimport Constants from 'expo-constants';
 import { useLanguage } from './context/LanguageContext';
 
 export default function Index() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
+  
+  // Get app mode from config
+  const appMode = Constants.expoConfig?.extra?.appMode;
 
+  useEffect(() => {
+    // Auto-redirect based on app mode
+    if (appMode === 'admin') {
+      router.replace('/admin/login');
+    } else if (appMode === 'client') {
+      router.replace('/client/register');
+    }
+  }, [appMode]);
+
+  // If app mode is set, show loading while redirecting
+  if (appMode === 'admin' || appMode === 'client') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Ionicons name="shield-checkmark" size={80} color="#4F46E5" />
+          <Text style={styles.loadingText}>
+            {appMode === 'admin' ? 'EMI Admin' : 'EMI Client'}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Default: Show mode selection (for development/combined app)
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
