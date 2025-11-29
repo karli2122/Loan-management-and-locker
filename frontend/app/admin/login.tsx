@@ -15,11 +15,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLanguage } from '../context/LanguageContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function AdminLogin() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,7 +29,7 @@ export default function AdminLogin() {
 
   const handleSubmit = async () => {
     if (!username.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert(t('error'), t('fillAllFields'));
       return;
     }
 
@@ -51,7 +53,7 @@ export default function AdminLogin() {
 
       router.replace('/admin/dashboard');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Something went wrong');
+      Alert.alert(t('error'), error.message || 'Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -72,9 +74,9 @@ export default function AdminLogin() {
             <View style={styles.iconContainer}>
               <Ionicons name="shield" size={50} color="#fff" />
             </View>
-            <Text style={styles.title}>Admin Login</Text>
+            <Text style={styles.title}>{t('adminLogin')}</Text>
             <Text style={styles.subtitle}>
-              Sign in to manage your clients
+              {t('signInToManage')}
             </Text>
           </View>
 
@@ -83,7 +85,7 @@ export default function AdminLogin() {
               <Ionicons name="person" size={20} color="#64748B" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Username"
+                placeholder={t('username')}
                 placeholderTextColor="#64748B"
                 value={username}
                 onChangeText={setUsername}
@@ -95,7 +97,7 @@ export default function AdminLogin() {
               <Ionicons name="lock-closed" size={20} color="#64748B" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Password"
+                placeholder={t('password')}
                 placeholderTextColor="#64748B"
                 value={password}
                 onChangeText={setPassword}
@@ -118,7 +120,7 @@ export default function AdminLogin() {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.buttonText}>Sign In</Text>
+                <Text style={styles.buttonText}>{t('signIn')}</Text>
               )}
             </TouchableOpacity>
           </View>

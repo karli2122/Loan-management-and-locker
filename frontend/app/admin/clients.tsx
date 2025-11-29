@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '../context/LanguageContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -30,6 +31,7 @@ interface Client {
 
 export default function ClientsList() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [clients, setClients] = useState<Client[]>([]);
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -82,6 +84,15 @@ export default function ClientsList() {
     setRefreshing(false);
   }, []);
 
+  const getFilterLabel = (f: string) => {
+    switch (f) {
+      case 'all': return t('all');
+      case 'locked': return t('locked');
+      case 'unlocked': return t('unlocked');
+      default: return f;
+    }
+  };
+
   const renderClient = ({ item }: { item: Client }) => (
     <TouchableOpacity
       style={styles.clientCard}
@@ -97,26 +108,26 @@ export default function ClientsList() {
               color={item.is_locked ? '#EF4444' : '#10B981'}
             />
             <Text style={[styles.statusText, item.is_locked ? styles.lockedText : styles.unlockedText]}>
-              {item.is_locked ? 'Locked' : 'Unlocked'}
+              {item.is_locked ? t('locked') : t('unlocked')}
             </Text>
           </View>
         </View>
         <Text style={styles.clientPhone}>{item.phone}</Text>
         <View style={styles.clientMeta}>
-          <Text style={styles.emiAmount}>EMI: ₹{item.emi_amount.toLocaleString()}</Text>
+          <Text style={styles.emiAmount}>{t('emi')}: €{item.emi_amount.toLocaleString()}</Text>
           {item.is_registered ? (
             <View style={styles.registeredBadge}>
               <Ionicons name="checkmark-circle" size={14} color="#10B981" />
-              <Text style={styles.registeredText}>Registered</Text>
+              <Text style={styles.registeredText}>{t('registered')}</Text>
             </View>
           ) : (
             <View style={styles.pendingBadge}>
               <Ionicons name="time" size={14} color="#F59E0B" />
-              <Text style={styles.pendingText}>Pending</Text>
+              <Text style={styles.pendingText}>{t('pending')}</Text>
             </View>
           )}
         </View>
-        <Text style={styles.regCode}>Code: {item.registration_code}</Text>
+        <Text style={styles.regCode}>{t('code')}: {item.registration_code}</Text>
       </View>
       <Ionicons name="chevron-forward" size={20} color="#64748B" />
     </TouchableOpacity>
@@ -128,7 +139,7 @@ export default function ClientsList() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.title}>Clients</Text>
+        <Text style={styles.title}>{t('clients')}</Text>
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => router.push('/admin/add-client')}
@@ -141,7 +152,7 @@ export default function ClientsList() {
         <Ionicons name="search" size={20} color="#64748B" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by name, phone, or email"
+          placeholder={t('searchPlaceholder')}
           placeholderTextColor="#64748B"
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -156,7 +167,7 @@ export default function ClientsList() {
             onPress={() => setFilter(f)}
           >
             <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>
-              {f.charAt(0).toUpperCase() + f.slice(1)}
+              {getFilterLabel(f)}
             </Text>
           </TouchableOpacity>
         ))}
@@ -173,7 +184,7 @@ export default function ClientsList() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="people-outline" size={64} color="#334155" />
-            <Text style={styles.emptyText}>No clients found</Text>
+            <Text style={styles.emptyText}>{t('noClientsFound')}</Text>
           </View>
         }
       />

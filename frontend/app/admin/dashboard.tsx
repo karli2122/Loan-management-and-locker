@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLanguage } from '../context/LanguageContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -24,6 +25,7 @@ interface Stats {
 
 export default function Dashboard() {
   const router = useRouter();
+  const { language, setLanguage, t } = useLanguage();
   const [stats, setStats] = useState<Stats>({
     total_clients: 0,
     locked_devices: 0,
@@ -60,10 +62,10 @@ export default function Dashboard() {
   }, []);
 
   const handleLogout = async () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('logout'), t('logoutConfirm'), [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: 'Logout',
+        text: t('logout'),
         style: 'destructive',
         onPress: async () => {
           await AsyncStorage.multiRemove(['admin_token', 'admin_id', 'admin_username']);
@@ -77,19 +79,35 @@ export default function Dashboard() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Welcome back,</Text>
+          <Text style={styles.greeting}>{t('welcomeBack')}</Text>
           <Text style={styles.username}>{username || 'Admin'}</Text>
         </View>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#EF4444" />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <View style={styles.langSwitcher}>
+            <TouchableOpacity
+              style={[styles.langButton, language === 'et' && styles.langButtonActive]}
+              onPress={() => setLanguage('et')}
+            >
+              <Text style={[styles.langText, language === 'et' && styles.langTextActive]}>ET</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.langButton, language === 'en' && styles.langButtonActive]}
+              onPress={() => setLanguage('en')}
+            >
+              <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>EN</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={24} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
         style={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />}
       >
-        <Text style={styles.sectionTitle}>Dashboard Overview</Text>
+        <Text style={styles.sectionTitle}>{t('dashboardOverview')}</Text>
 
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, { backgroundColor: '#1E3A5F' }]}>
@@ -97,7 +115,7 @@ export default function Dashboard() {
               <Ionicons name="people" size={28} color="#3B82F6" />
             </View>
             <Text style={styles.statValue}>{stats.total_clients}</Text>
-            <Text style={styles.statLabel}>Total Clients</Text>
+            <Text style={styles.statLabel}>{t('totalClients')}</Text>
           </View>
 
           <View style={[styles.statCard, { backgroundColor: '#3D1F1F' }]}>
@@ -105,7 +123,7 @@ export default function Dashboard() {
               <Ionicons name="lock-closed" size={28} color="#EF4444" />
             </View>
             <Text style={styles.statValue}>{stats.locked_devices}</Text>
-            <Text style={styles.statLabel}>Locked Devices</Text>
+            <Text style={styles.statLabel}>{t('lockedDevices')}</Text>
           </View>
 
           <View style={[styles.statCard, { backgroundColor: '#1F3D2E' }]}>
@@ -113,7 +131,7 @@ export default function Dashboard() {
               <Ionicons name="checkmark-circle" size={28} color="#10B981" />
             </View>
             <Text style={styles.statValue}>{stats.registered_devices}</Text>
-            <Text style={styles.statLabel}>Registered</Text>
+            <Text style={styles.statLabel}>{t('registered')}</Text>
           </View>
 
           <View style={[styles.statCard, { backgroundColor: '#3D3D1F' }]}>
@@ -121,11 +139,11 @@ export default function Dashboard() {
               <Ionicons name="lock-open" size={28} color="#F59E0B" />
             </View>
             <Text style={styles.statValue}>{stats.unlocked_devices}</Text>
-            <Text style={styles.statLabel}>Unlocked</Text>
+            <Text style={styles.statLabel}>{t('unlocked')}</Text>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
 
         <View style={styles.actionsContainer}>
           <TouchableOpacity
@@ -135,8 +153,8 @@ export default function Dashboard() {
             <View style={[styles.actionIcon, { backgroundColor: '#4F46E5' }]}>
               <Ionicons name="list" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>View Clients</Text>
-            <Text style={styles.actionDescription}>Manage all registered clients</Text>
+            <Text style={styles.actionTitle}>{t('viewClients')}</Text>
+            <Text style={styles.actionDescription}>{t('manageClients')}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
 
@@ -147,8 +165,8 @@ export default function Dashboard() {
             <View style={[styles.actionIcon, { backgroundColor: '#10B981' }]}>
               <Ionicons name="person-add" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>Add New Client</Text>
-            <Text style={styles.actionDescription}>Register a new client</Text>
+            <Text style={styles.actionTitle}>{t('addNewClient')}</Text>
+            <Text style={styles.actionDescription}>{t('registerNewClient')}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
         </View>
@@ -170,6 +188,32 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  langSwitcher: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  langButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#1E293B',
+  },
+  langButtonActive: {
+    backgroundColor: '#4F46E5',
+  },
+  langText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  langTextActive: {
+    color: '#fff',
   },
   greeting: {
     fontSize: 14,

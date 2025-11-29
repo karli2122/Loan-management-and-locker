@@ -14,11 +14,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '../context/LanguageContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function AddClient() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: '',
@@ -30,7 +32,7 @@ export default function AddClient() {
 
   const handleSubmit = async () => {
     if (!form.name.trim() || !form.phone.trim() || !form.email.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      Alert.alert(t('error'), t('fillAllFields'));
       return;
     }
 
@@ -52,12 +54,12 @@ export default function AddClient() {
 
       const client = await response.json();
       Alert.alert(
-        'Success',
-        `Client created!\n\nRegistration Code: ${client.registration_code}\n\nShare this code with the client to register their device.`,
+        t('success'),
+        `${t('clientCreated')}\n\n${t('registrationCode')}: ${client.registration_code}\n\n${t('shareCodeMessage')}`,
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Something went wrong');
+      Alert.alert(t('error'), error.message || 'Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -73,30 +75,30 @@ export default function AddClient() {
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.title}>Add New Client</Text>
+          <Text style={styles.title}>{t('addNewClient')}</Text>
           <View style={styles.placeholder} />
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.form}>
-            <Text style={styles.label}>Full Name *</Text>
+            <Text style={styles.label}>{t('fullName')} *</Text>
             <View style={styles.inputContainer}>
               <Ionicons name="person" size={20} color="#64748B" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Enter client's name"
+                placeholder={t('enterClientName')}
                 placeholderTextColor="#64748B"
                 value={form.name}
                 onChangeText={(text) => setForm({ ...form, name: text })}
               />
             </View>
 
-            <Text style={styles.label}>Phone Number *</Text>
+            <Text style={styles.label}>{t('phoneNumber')} *</Text>
             <View style={styles.inputContainer}>
               <Ionicons name="call" size={20} color="#64748B" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Enter phone number"
+                placeholder={t('enterPhone')}
                 placeholderTextColor="#64748B"
                 value={form.phone}
                 onChangeText={(text) => setForm({ ...form, phone: text })}
@@ -104,12 +106,12 @@ export default function AddClient() {
               />
             </View>
 
-            <Text style={styles.label}>Email Address *</Text>
+            <Text style={styles.label}>{t('emailAddress')} *</Text>
             <View style={styles.inputContainer}>
               <Ionicons name="mail" size={20} color="#64748B" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Enter email address"
+                placeholder={t('enterEmail')}
                 placeholderTextColor="#64748B"
                 value={form.email}
                 onChangeText={(text) => setForm({ ...form, email: text })}
@@ -118,12 +120,12 @@ export default function AddClient() {
               />
             </View>
 
-            <Text style={styles.label}>EMI Amount</Text>
+            <Text style={styles.label}>{t('emiAmount')}</Text>
             <View style={styles.inputContainer}>
-              <Text style={styles.currencySymbol}>₹</Text>
+              <Text style={styles.currencySymbol}>€</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter EMI amount"
+                placeholder={t('enterEmiAmount')}
                 placeholderTextColor="#64748B"
                 value={form.emi_amount}
                 onChangeText={(text) => setForm({ ...form, emi_amount: text })}
@@ -131,7 +133,7 @@ export default function AddClient() {
               />
             </View>
 
-            <Text style={styles.label}>EMI Due Date</Text>
+            <Text style={styles.label}>{t('emiDueDate')}</Text>
             <View style={styles.inputContainer}>
               <Ionicons name="calendar" size={20} color="#64748B" style={styles.inputIcon} />
               <TextInput
@@ -153,7 +155,7 @@ export default function AddClient() {
               ) : (
                 <>
                   <Ionicons name="person-add" size={20} color="#fff" />
-                  <Text style={styles.submitButtonText}>Create Client</Text>
+                  <Text style={styles.submitButtonText}>{t('createClient')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -161,7 +163,7 @@ export default function AddClient() {
             <View style={styles.infoBox}>
               <Ionicons name="information-circle" size={20} color="#3B82F6" />
               <Text style={styles.infoText}>
-                A unique registration code will be generated. Share this code with the client to register their device.
+                {t('registrationCodeInfo')}
               </Text>
             </View>
           </View>

@@ -1,24 +1,42 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from './context/LanguageContext';
 
 export default function Index() {
   const router = useRouter();
+  const { language, setLanguage, t } = useLanguage();
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       
+      {/* Language Switcher */}
+      <View style={styles.langSwitcher}>
+        <TouchableOpacity
+          style={[styles.langButton, language === 'et' && styles.langButtonActive]}
+          onPress={() => setLanguage('et')}
+        >
+          <Text style={[styles.langText, language === 'et' && styles.langTextActive]}>EST</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.langButton, language === 'en' && styles.langButtonActive]}
+          onPress={() => setLanguage('en')}
+        >
+          <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>ENG</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.header}>
         <Ionicons name="shield-checkmark" size={80} color="#4F46E5" />
-        <Text style={styles.title}>EMI Lock System</Text>
-        <Text style={styles.subtitle}>Phone Lock Management for EMI</Text>
+        <Text style={styles.title}>{t('appTitle')}</Text>
+        <Text style={styles.subtitle}>{t('appSubtitle')}</Text>
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.selectText}>Select Your Mode</Text>
+        <Text style={styles.selectText}>{t('selectMode')}</Text>
         
         <TouchableOpacity 
           style={[styles.modeCard, styles.adminCard]}
@@ -29,9 +47,9 @@ export default function Index() {
             <Ionicons name="shield" size={40} color="#fff" />
           </View>
           <View style={styles.cardContent}>
-            <Text style={styles.cardTitle}>Admin Panel</Text>
+            <Text style={styles.cardTitle}>{t('adminPanel')}</Text>
             <Text style={styles.cardDescription}>
-              Manage clients, lock/unlock devices, send warnings, and track locations
+              {t('adminDescription')}
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={24} color="#fff" />
@@ -46,9 +64,9 @@ export default function Index() {
             <Ionicons name="phone-portrait" size={40} color="#fff" />
           </View>
           <View style={styles.cardContent}>
-            <Text style={styles.cardTitle}>Client Device</Text>
+            <Text style={styles.cardTitle}>{t('clientDevice')}</Text>
             <Text style={styles.cardDescription}>
-              Register your device, view EMI status, and manage your account
+              {t('clientDescription')}
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={24} color="#fff" />
@@ -56,7 +74,7 @@ export default function Index() {
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Secure EMI Management System</Text>
+        <Text style={styles.footerText}>{t('secureSystem')}</Text>
       </View>
     </SafeAreaView>
   );
@@ -67,9 +85,33 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0F172A',
   },
+  langSwitcher: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    gap: 8,
+  },
+  langButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#1E293B',
+  },
+  langButtonActive: {
+    backgroundColor: '#4F46E5',
+  },
+  langText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  langTextActive: {
+    color: '#fff',
+  },
   header: {
     alignItems: 'center',
-    paddingTop: 40,
+    paddingTop: 20,
     paddingBottom: 30,
   },
   title: {

@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '../context/LanguageContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -41,6 +42,7 @@ interface Client {
 export default function ClientDetails() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const { t } = useLanguage();
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -57,7 +59,7 @@ export default function ClientDetails() {
       setClient(data);
       setLockMessage(data.lock_message);
     } catch (error) {
-      Alert.alert('Error', 'Failed to load client details');
+      Alert.alert(t('error'), 'Failed to load client details');
       router.back();
     } finally {
       setLoading(false);
@@ -77,19 +79,19 @@ export default function ClientDetails() {
       if (!response.ok) throw new Error('Failed to lock device');
       await fetchClient();
       setLockModal(false);
-      Alert.alert('Success', 'Device locked successfully');
+      Alert.alert(t('success'), t('deviceLockedSuccess'));
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert(t('error'), error.message);
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleUnlock = async () => {
-    Alert.alert('Unlock Device', 'Are you sure you want to unlock this device?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('unlockDevice'), t('unlockConfirm'), [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: 'Unlock',
+        text: t('unlockDevice'),
         onPress: async () => {
           setActionLoading(true);
           try {
@@ -98,9 +100,9 @@ export default function ClientDetails() {
             });
             if (!response.ok) throw new Error('Failed to unlock device');
             await fetchClient();
-            Alert.alert('Success', 'Device unlocked successfully');
+            Alert.alert(t('success'), t('deviceUnlockedSuccess'));
           } catch (error: any) {
-            Alert.alert('Error', error.message);
+            Alert.alert(t('error'), error.message);
           } finally {
             setActionLoading(false);
           }
@@ -111,7 +113,7 @@ export default function ClientDetails() {
 
   const handleSendWarning = async () => {
     if (!warningMessage.trim()) {
-      Alert.alert('Error', 'Please enter a warning message');
+      Alert.alert(t('error'), t('enterWarningMessage'));
       return;
     }
     setActionLoading(true);
@@ -124,19 +126,19 @@ export default function ClientDetails() {
       await fetchClient();
       setWarningModal(false);
       setWarningMessage('');
-      Alert.alert('Success', 'Warning sent successfully');
+      Alert.alert(t('success'), t('warningSentSuccess'));
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert(t('error'), error.message);
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleDelete = async () => {
-    Alert.alert('Delete Client', 'Are you sure you want to delete this client? This action cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('deleteClient'), t('deleteConfirm'), [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('delete'),
         style: 'destructive',
         onPress: async () => {
           setActionLoading(true);
@@ -145,10 +147,10 @@ export default function ClientDetails() {
               method: 'DELETE',
             });
             if (!response.ok) throw new Error('Failed to delete client');
-            Alert.alert('Success', 'Client deleted successfully');
+            Alert.alert(t('success'), t('clientDeletedSuccess'));
             router.back();
           } catch (error: any) {
-            Alert.alert('Error', error.message);
+            Alert.alert(t('error'), error.message);
           } finally {
             setActionLoading(false);
           }
@@ -162,7 +164,7 @@ export default function ClientDetails() {
       const url = `https://www.google.com/maps/search/?api=1&query=${client.latitude},${client.longitude}`;
       Linking.openURL(url);
     } else {
-      Alert.alert('Location Unavailable', 'No location data available for this device');
+      Alert.alert(t('error'), t('locationNotAvailable'));
     }
   };
 
@@ -184,7 +186,7 @@ export default function ClientDetails() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.title}>Client Details</Text>
+        <Text style={styles.title}>{t('clientDetails')}</Text>
         <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
           <Ionicons name="trash" size={20} color="#EF4444" />
         </TouchableOpacity>
@@ -204,15 +206,15 @@ export default function ClientDetails() {
               color={client.is_locked ? '#EF4444' : '#10B981'}
             />
             <Text style={[styles.statusText, client.is_locked ? styles.lockedText : styles.unlockedText]}>
-              {client.is_locked ? 'Locked' : 'Unlocked'}
+              {client.is_locked ? t('locked') : t('unlocked')}
             </Text>
           </View>
-          <Text style={styles.regCode}>Registration Code: {client.registration_code}</Text>
+          <Text style={styles.regCode}>{t('registrationCode')}: {client.registration_code}</Text>
         </View>
 
         {/* Contact Info */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contact Information</Text>
+          <Text style={styles.sectionTitle}>{t('contactInfo')}</Text>
           <View style={styles.infoRow}>
             <Ionicons name="call" size={18} color="#64748B" />
             <Text style={styles.infoText}>{client.phone}</Text>
@@ -225,23 +227,23 @@ export default function ClientDetails() {
 
         {/* EMI Info */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>EMI Details</Text>
+          <Text style={styles.sectionTitle}>{t('emiDetails')}</Text>
           <View style={styles.emiCard}>
             <View style={styles.emiItem}>
-              <Text style={styles.emiLabel}>Amount</Text>
-              <Text style={styles.emiValue}>₹{client.emi_amount.toLocaleString()}</Text>
+              <Text style={styles.emiLabel}>{t('amount')}</Text>
+              <Text style={styles.emiValue}>€{client.emi_amount.toLocaleString()}</Text>
             </View>
             <View style={styles.emiDivider} />
             <View style={styles.emiItem}>
-              <Text style={styles.emiLabel}>Due Date</Text>
-              <Text style={styles.emiValue}>{client.emi_due_date || 'Not set'}</Text>
+              <Text style={styles.emiLabel}>{t('dueDate')}</Text>
+              <Text style={styles.emiValue}>{client.emi_due_date || t('notSet')}</Text>
             </View>
           </View>
         </View>
 
         {/* Device Info */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Device Information</Text>
+          <Text style={styles.sectionTitle}>{t('deviceInfo')}</Text>
           {client.is_registered ? (
             <>
               <View style={styles.infoRow}>
@@ -255,21 +257,21 @@ export default function ClientDetails() {
               <TouchableOpacity style={styles.locationButton} onPress={openMap}>
                 <Ionicons name="location" size={18} color="#3B82F6" />
                 <Text style={styles.locationText}>
-                  {client.latitude ? 'View Location on Map' : 'Location not available'}
+                  {client.latitude ? t('viewLocationOnMap') : t('locationNotAvailable')}
                 </Text>
               </TouchableOpacity>
             </>
           ) : (
             <View style={styles.notRegistered}>
               <Ionicons name="time" size={24} color="#F59E0B" />
-              <Text style={styles.notRegisteredText}>Device not registered yet</Text>
+              <Text style={styles.notRegisteredText}>{t('deviceNotRegistered')}</Text>
             </View>
           )}
         </View>
 
         {/* Action Buttons */}
         <View style={styles.actionsSection}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
           
           <TouchableOpacity
             style={[styles.actionButton, client.is_locked ? styles.unlockButton : styles.lockButton]}
@@ -278,7 +280,7 @@ export default function ClientDetails() {
           >
             <Ionicons name={client.is_locked ? 'lock-open' : 'lock-closed'} size={20} color="#fff" />
             <Text style={styles.actionButtonText}>
-              {client.is_locked ? 'Unlock Device' : 'Lock Device'}
+              {client.is_locked ? t('unlockDevice') : t('lockDevice')}
             </Text>
           </TouchableOpacity>
 
@@ -288,7 +290,7 @@ export default function ClientDetails() {
             disabled={actionLoading}
           >
             <Ionicons name="warning" size={20} color="#fff" />
-            <Text style={styles.actionButtonText}>Send Warning</Text>
+            <Text style={styles.actionButtonText}>{t('sendWarning')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -297,10 +299,10 @@ export default function ClientDetails() {
       <Modal visible={warningModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Send Warning</Text>
+            <Text style={styles.modalTitle}>{t('sendWarning')}</Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="Enter warning message"
+              placeholder={t('enterWarningMessage')}
               placeholderTextColor="#64748B"
               value={warningMessage}
               onChangeText={setWarningMessage}
@@ -312,7 +314,7 @@ export default function ClientDetails() {
                 style={[styles.modalButton, styles.modalCancelButton]}
                 onPress={() => setWarningModal(false)}
               >
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text style={styles.modalCancelText}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalConfirmButton]}
@@ -322,7 +324,7 @@ export default function ClientDetails() {
                 {actionLoading ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.modalConfirmText}>Send</Text>
+                  <Text style={styles.modalConfirmText}>{t('send')}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -334,11 +336,11 @@ export default function ClientDetails() {
       <Modal visible={lockModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Lock Device</Text>
-            <Text style={styles.modalSubtitle}>Customize the lock message shown to the client</Text>
+            <Text style={styles.modalTitle}>{t('lockDevice')}</Text>
+            <Text style={styles.modalSubtitle}>{t('customizeLockMessage')}</Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="Enter lock message"
+              placeholder={t('enterLockMessage')}
               placeholderTextColor="#64748B"
               value={lockMessage}
               onChangeText={setLockMessage}
@@ -350,7 +352,7 @@ export default function ClientDetails() {
                 style={[styles.modalButton, styles.modalCancelButton]}
                 onPress={() => setLockModal(false)}
               >
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text style={styles.modalCancelText}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.lockConfirmButton]}
@@ -360,7 +362,7 @@ export default function ClientDetails() {
                 {actionLoading ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.modalConfirmText}>Lock</Text>
+                  <Text style={styles.modalConfirmText}>{t('lock')}</Text>
                 )}
               </TouchableOpacity>
             </View>
