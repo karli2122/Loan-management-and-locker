@@ -16,6 +16,7 @@ export default function AdminLayout() {
       <Stack.Screen name="add-client" />
       <Stack.Screen name="client-details" />
       <Stack.Screen name="device-setup" />
+      <Stack.Screen name="settings" />
     </Stack>
   );
 }
