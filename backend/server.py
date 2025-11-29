@@ -91,6 +91,9 @@ class Client(BaseModel):
     is_registered: bool = False
     registered_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    tamper_attempts: int = 0  # Count of tampering attempts
+    last_tamper_attempt: Optional[datetime] = None  # Last tamper attempt timestamp
+    last_reboot: Optional[datetime] = None  # Last device reboot timestamp
 
 class ClientCreate(BaseModel):
     name: str
