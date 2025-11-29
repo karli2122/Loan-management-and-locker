@@ -12,6 +12,7 @@ This project produces two separate APKs:
 ### 2. EMI Client App (`com.emi.client`)
 - For customers with EMI devices
 - Features: Register device, view EMI status, receive lock/warning notifications
+- **Device Owner Mode**: Uninstall & Factory Reset protection
 
 ---
 
@@ -42,6 +43,24 @@ APP_MODE=client eas build --profile client-preview --platform android
 # Production build
 APP_MODE=client eas build --profile client-production --platform android
 ```
+
+---
+
+## Device Owner Setup (CRITICAL for Client App)
+
+For full protection (uninstall block, factory reset protection, kiosk mode), you MUST set up Device Owner mode.
+
+### Quick Setup Steps:
+1. Factory reset the device
+2. Skip all setup steps (don't add Google account)
+3. Enable USB Debugging
+4. Connect to computer and run:
+   ```bash
+   adb shell dpm set-device-owner com.emi.client/.DeviceAdminReceiver
+   ```
+5. Install the EMI Client app
+
+**See `DEVICE_OWNER_SETUP.md` for detailed instructions.**
 
 ---
 
@@ -76,8 +95,13 @@ APP_MODE=client npx expo start
 
 ### Client App
 - Package: `com.emi.client`
-- Name: "EMI Client"
+- Name: "EMI Client"  
 - Icon: Green phone
+- **Device Owner Features**:
+  - Uninstall protection
+  - Kiosk mode when locked
+  - Boot protection
+  - Factory reset protection
 
 ---
 
