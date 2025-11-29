@@ -319,6 +319,18 @@ frontend:
         agent: "main"
         comment: "Client home with status and lock screen overlay implemented"
 
+  - task: "Admin Settings Screen"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/app/admin/settings.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created admin settings screen with features: create new admin users (with 6-char password validation), change current admin password, list existing admins with deletion capability (cannot delete self). Added navigation from dashboard. Screen includes modals for creating admins and changing passwords."
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
