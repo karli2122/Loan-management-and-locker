@@ -211,16 +211,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
-  switchButton: {
-    marginTop: 24,
-    alignItems: 'center',
-  },
-  switchText: {
-    fontSize: 14,
-    color: '#94A3B8',
-  },
-  switchTextBold: {
-    color: '#4F46E5',
-    fontWeight: '600',
-  },
 });
