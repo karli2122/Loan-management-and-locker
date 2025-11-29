@@ -170,15 +170,26 @@ export default function ClientHome() {
         accuracy: Location.Accuracy.Balanced,
       });
 
-      await fetch(`${API_URL}/api/device/location`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: id,
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        }),
-      });
+      // Check if online
+      if (OfflineSyncManager.isDeviceOnline()) {
+        await fetch(`${API_URL}/api/device/location`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_id: id,
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+          }),
+        });
+      } else {
+        // Queue for later sync when online
+        await OfflineSyncManager.reportLocationOffline(
+          id,
+          location.coords.latitude,
+          location.coords.longitude
+        );
+        console.log('[Offline] Location queued for sync');
+      }
     } catch (error) {
       console.error('Error updating location:', error);
     }
