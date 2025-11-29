@@ -41,7 +41,9 @@ export default {
           resizeMode: "contain",
           backgroundColor: "#0F172A"
         }
-      ]
+      ],
+      // Device Owner plugin for Client app only
+      ...(IS_ADMIN_APP ? [] : ["./plugins/withDeviceOwner"])
     ],
     experiments: {
       typedRoutes: true
