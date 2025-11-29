@@ -584,6 +584,10 @@ const translations: Translations = {
     et: 'Seadme info uuendatud!',
     en: 'Device info updated!',
   },
+  edit: {
+    et: 'Muuda',
+    en: 'Edit',
+  },
 };
 
 interface LanguageContextType {
