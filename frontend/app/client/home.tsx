@@ -44,6 +44,7 @@ export default function ClientHome() {
   const [isDeviceOwner, setIsDeviceOwner] = useState(false);
   const [isAdminActive, setIsAdminActive] = useState(false);
   const [kioskActive, setKioskActive] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const [setupComplete, setSetupComplete] = useState(false);
   const appState = useRef(AppState.currentState);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
