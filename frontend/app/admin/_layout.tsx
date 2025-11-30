@@ -18,6 +18,8 @@ export default function AdminLayout() {
       <Stack.Screen name="device-setup" />
       <Stack.Screen name="settings" />
       <Stack.Screen name="loan-management" />
+      <Stack.Screen name="loan-plans" />
+      <Stack.Screen name="calculator" />
     </Stack>
   );
 }
