@@ -399,4 +399,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
   },
+  financialSummary: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  financialRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  financialLabel: {
+    fontSize: 14,
+    color: '#94A3B8',
+  },
+  financialValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
 });
