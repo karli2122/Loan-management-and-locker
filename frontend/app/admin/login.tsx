@@ -50,6 +50,8 @@ export default function AdminLogin() {
       await AsyncStorage.setItem('admin_token', data.token);
       await AsyncStorage.setItem('admin_id', data.id);
       await AsyncStorage.setItem('admin_username', data.username);
+      await AsyncStorage.setItem('admin_role', data.role || 'user');
+      await AsyncStorage.setItem('is_super_admin', data.is_super_admin ? 'true' : 'false');
 
       router.replace('/admin/dashboard');
     } catch (error: any) {
