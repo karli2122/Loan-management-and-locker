@@ -1,0 +1,508 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+
+export default function Reports() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  // Report data
+  const [collectionReport, setCollectionReport] = useState<any>(null);
+  const [clientReport, setClientReport] = useState<any>(null);
+  const [financialReport, setFinancialReport] = useState<any>(null);
+
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  const fetchReports = async () => {
+    try {
+      const [collection, clients, financial] = await Promise.all([
+        fetch(`${API_URL}/api/reports/collection`).then(r => r.json()),
+        fetch(`${API_URL}/api/reports/clients`).then(r => r.json()),
+        fetch(`${API_URL}/api/reports/financial`).then(r => r.json()),
+      ]);
+      
+      setCollectionReport(collection);
+      setClientReport(clients);
+      setFinancialReport(financial);
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchReports();
+  };
+
+  const handleCalculateLateFees = async () => {
+    try {
+      const token = await AsyncStorage.getItem('admin_token');
+      await fetch(`${API_URL}/api/late-fees/calculate-all?admin_token=${token}`, {
+        method: 'POST',
+      });
+      fetchReports(); // Refresh data
+    } catch (error) {
+      console.error('Error calculating late fees:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4F46E5" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Reports & Analytics</Text>
+        <TouchableOpacity onPress={handleCalculateLateFees} style={styles.refreshButton}>
+          <Ionicons name="calculator" size={20} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        style={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />}
+      >
+        {/* Collection Report */}
+        {collectionReport && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Collection Overview</Text>
+            
+            <View style={styles.statsGrid}>
+              <View style={[styles.statCard, { backgroundColor: '#4F46E520' }]}>
+                <Ionicons name="people" size={24} color="#4F46E5" />
+                <Text style={styles.statValue}>{collectionReport.overview.total_clients}</Text>
+                <Text style={styles.statLabel}>Total Clients</Text>
+              </View>
+
+              <View style={[styles.statCard, { backgroundColor: '#10B98120' }]}>
+                <Ionicons name="trending-up" size={24} color="#10B981" />
+                <Text style={styles.statValue}>{collectionReport.overview.active_loans}</Text>
+                <Text style={styles.statLabel}>Active Loans</Text>
+              </View>
+
+              <View style={[styles.statCard, { backgroundColor: '#EF444420' }]}>
+                <Ionicons name="warning" size={24} color="#EF4444" />
+                <Text style={styles.statValue}>{collectionReport.overview.overdue_clients}</Text>
+                <Text style={styles.statLabel}>Overdue</Text>
+              </View>
+
+              <View style={[styles.statCard, { backgroundColor: '#F59E0B20' }]}>
+                <Ionicons name="checkmark-circle" size={24} color="#F59E0B" />
+                <Text style={styles.statValue}>{collectionReport.overview.completed_loans}</Text>
+                <Text style={styles.statLabel}>Completed</Text>
+              </View>
+            </View>
+
+            <View style={styles.financialCard}>
+              <View style={styles.financialRow}>
+                <Text style={styles.financialLabel}>Disbursed</Text>
+                <Text style={styles.financialValue}>€{collectionReport.financial.total_disbursed.toFixed(2)}</Text>
+              </View>
+              <View style={styles.financialRow}>
+                <Text style={styles.financialLabel}>Collected</Text>
+                <Text style={[styles.financialValue, { color: '#10B981' }]}>
+                  €{collectionReport.financial.total_collected.toFixed(2)}
+                </Text>
+              </View>
+              <View style={styles.financialRow}>
+                <Text style={styles.financialLabel}>Outstanding</Text>
+                <Text style={[styles.financialValue, { color: '#F59E0B' }]}>
+                  €{collectionReport.financial.total_outstanding.toFixed(2)}
+                </Text>
+              </View>
+              <View style={styles.financialRow}>
+                <Text style={styles.financialLabel}>Late Fees</Text>
+                <Text style={[styles.financialValue, { color: '#EF4444' }]}>
+                  €{collectionReport.financial.total_late_fees.toFixed(2)}
+                </Text>
+              </View>
+              <View style={[styles.financialRow, styles.separator]}>
+                <Text style={[styles.financialLabel, { fontWeight: 'bold' }]}>Collection Rate</Text>
+                <Text style={[styles.financialValue, { color: '#4F46E5', fontWeight: 'bold' }]}>
+                  {collectionReport.financial.collection_rate}%
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.monthCard}>
+              <Text style={styles.monthTitle}>This Month</Text>
+              <View style={styles.monthDetails}>
+                <View>
+                  <Text style={styles.monthLabel}>Collected</Text>
+                  <Text style={styles.monthValue}>€{collectionReport.this_month.total_collected.toFixed(2)}</Text>
+                </View>
+                <View>
+                  <Text style={styles.monthLabel}>Payments</Text>
+                  <Text style={styles.monthValue}>{collectionReport.this_month.number_of_payments}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Client Report */}
+        {clientReport && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Client Status</Text>
+            
+            <View style={styles.clientStats}>
+              <View style={styles.clientStatItem}>
+                <View style={[styles.clientStatBadge, { backgroundColor: '#10B981' }]}>
+                  <Text style={styles.clientStatValue}>{clientReport.summary.on_time_clients}</Text>
+                </View>
+                <Text style={styles.clientStatLabel}>On Time</Text>
+              </View>
+
+              <View style={styles.clientStatItem}>
+                <View style={[styles.clientStatBadge, { backgroundColor: '#F59E0B' }]}>
+                  <Text style={styles.clientStatValue}>{clientReport.summary.at_risk_clients}</Text>
+                </View>
+                <Text style={styles.clientStatLabel}>At Risk</Text>
+              </View>
+
+              <View style={styles.clientStatItem}>
+                <View style={[styles.clientStatBadge, { backgroundColor: '#EF4444' }]}>
+                  <Text style={styles.clientStatValue}>{clientReport.summary.defaulted_clients}</Text>
+                </View>
+                <Text style={styles.clientStatLabel}>Defaulted</Text>
+              </View>
+
+              <View style={styles.clientStatItem}>
+                <View style={[styles.clientStatBadge, { backgroundColor: '#4F46E5' }]}>
+                  <Text style={styles.clientStatValue}>{clientReport.summary.completed_clients}</Text>
+                </View>
+                <Text style={styles.clientStatLabel}>Completed</Text>
+              </View>
+            </View>
+
+            {clientReport.details.at_risk.length > 0 && (
+              <View style={styles.alertBox}>
+                <Ionicons name="alert-circle" size={20} color="#F59E0B" />
+                <Text style={styles.alertText}>
+                  {clientReport.details.at_risk.length} clients need attention
+                </Text>
+              </View>
+            )}
+
+            {clientReport.details.defaulted.length > 0 && (
+              <View style={[styles.alertBox, { backgroundColor: '#EF444420', borderColor: '#EF4444' }]}>
+                <Ionicons name="warning" size={20} color="#EF4444" />
+                <Text style={[styles.alertText, { color: '#EF4444' }]}>
+                  {clientReport.details.defaulted.length} clients defaulted (>7 days)
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Financial Report */}
+        {financialReport && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Financial Breakdown</Text>
+            
+            <View style={styles.revenueCard}>
+              <View style={styles.revenueItem}>
+                <Text style={styles.revenueLabel}>Principal</Text>
+                <Text style={styles.revenueValue}>€{financialReport.totals.principal_disbursed.toFixed(2)}</Text>
+              </View>
+              <View style={styles.revenueItem}>
+                <Text style={styles.revenueLabel}>Interest</Text>
+                <Text style={[styles.revenueValue, { color: '#10B981' }]}>
+                  €{financialReport.totals.interest_earned.toFixed(2)}
+                </Text>
+              </View>
+              <View style={styles.revenueItem}>
+                <Text style={styles.revenueLabel}>Processing Fees</Text>
+                <Text style={styles.revenueValue}>€{financialReport.totals.processing_fees.toFixed(2)}</Text>
+              </View>
+              <View style={styles.revenueItem}>
+                <Text style={styles.revenueLabel}>Late Fees</Text>
+                <Text style={styles.revenueValue}>€{financialReport.totals.late_fees.toFixed(2)}</Text>
+              </View>
+              <View style={[styles.revenueItem, styles.separator]}>
+                <Text style={[styles.revenueLabel, { fontWeight: 'bold' }]}>Total Revenue</Text>
+                <Text style={[styles.revenueValue, { color: '#4F46E5', fontWeight: 'bold', fontSize: 20 }]}>
+                  €{financialReport.totals.total_revenue.toFixed(2)}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.trendTitle}>6-Month Trend</Text>
+            {financialReport.monthly_trend.map((month: any, index: number) => (
+              <View key={index} style={styles.trendItem}>
+                <Text style={styles.trendMonth}>{month.month}</Text>
+                <View style={styles.trendBar}>
+                  <View 
+                    style={[
+                      styles.trendBarFill, 
+                      { width: `${Math.min(month.revenue / 100, 100)}%` }
+                    ]} 
+                  />
+                </View>
+                <Text style={styles.trendValue}>€{month.revenue.toFixed(0)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0F172A',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#1E293B',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  refreshButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#4F46E5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  content: {
+    flex: 1,
+    padding: 20,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 16,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 16,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: '45%',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginTop: 8,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 4,
+  },
+  financialCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  financialRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  financialLabel: {
+    fontSize: 14,
+    color: '#94A3B8',
+  },
+  financialValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  separator: {
+    borderTopWidth: 1,
+    borderTopColor: '#334155',
+    marginTop: 8,
+    paddingTop: 12,
+  },
+  monthCard: {
+    backgroundColor: '#4F46E520',
+    borderRadius: 12,
+    padding: 16,
+  },
+  monthTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4F46E5',
+    marginBottom: 12,
+  },
+  monthDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  monthLabel: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginBottom: 4,
+  },
+  monthValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  clientStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+  },
+  clientStatItem: {
+    alignItems: 'center',
+  },
+  clientStatBadge: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  clientStatValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  clientStatLabel: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+  alertBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    backgroundColor: '#F59E0B20',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    marginBottom: 8,
+  },
+  alertText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F59E0B',
+  },
+  revenueCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  revenueItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  revenueLabel: {
+    fontSize: 14,
+    color: '#94A3B8',
+  },
+  revenueValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  trendTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#94A3B8',
+    marginBottom: 12,
+  },
+  trendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 12,
+  },
+  trendMonth: {
+    fontSize: 12,
+    color: '#94A3B8',
+    width: 60,
+  },
+  trendBar: {
+    flex: 1,
+    height: 24,
+    backgroundColor: '#1E293B',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  trendBarFill: {
+    height: '100%',
+    backgroundColor: '#4F46E5',
+    borderRadius: 4,
+  },
+  trendValue: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+    width: 60,
+    textAlign: 'right',
+  },
+});
