@@ -715,6 +715,156 @@ async def report_reboot(client_id: str):
         "lock_message": client.get("lock_message", "")
     }
 
+# ===================== LOAN PLANS =====================
+
+@api_router.post("/loan-plans", response_model=LoanPlan)
+async def create_loan_plan(plan_data: LoanPlanCreate, admin_token: str):
+    """Create a new loan plan"""
+    if not await verify_admin_token_header(admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    plan = LoanPlan(**plan_data.dict())
+    await db.loan_plans.insert_one(plan.dict())
+    
+    logger.info(f"Loan plan created: {plan.name}")
+    return plan
+
+@api_router.get("/loan-plans")
+async def get_loan_plans(active_only: bool = False):
+    """Get all loan plans"""
+    query = {"is_active": True} if active_only else {}
+    plans = await db.loan_plans.find(query).to_list(100)
+    return [LoanPlan(**p) for p in plans]
+
+@api_router.get("/loan-plans/{plan_id}", response_model=LoanPlan)
+async def get_loan_plan(plan_id: str):
+    """Get a specific loan plan"""
+    plan = await db.loan_plans.find_one({"id": plan_id})
+    if not plan:
+        raise HTTPException(status_code=404, detail="Loan plan not found")
+    return LoanPlan(**plan)
+
+@api_router.put("/loan-plans/{plan_id}", response_model=LoanPlan)
+async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token: str):
+    """Update a loan plan"""
+    if not await verify_admin_token_header(admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    plan = await db.loan_plans.find_one({"id": plan_id})
+    if not plan:
+        raise HTTPException(status_code=404, detail="Loan plan not found")
+    
+    await db.loan_plans.update_one(
+        {"id": plan_id},
+        {"$set": plan_data.dict()}
+    )
+    
+    updated_plan = await db.loan_plans.find_one({"id": plan_id})
+    logger.info(f"Loan plan updated: {plan_id}")
+    return LoanPlan(**updated_plan)
+
+@api_router.delete("/loan-plans/{plan_id}")
+async def delete_loan_plan(plan_id: str, admin_token: str):
+    """Delete (deactivate) a loan plan"""
+    if not await verify_admin_token_header(admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    # Soft delete - just deactivate
+    result = await db.loan_plans.update_one(
+        {"id": plan_id},
+        {"$set": {"is_active": False}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Loan plan not found")
+    
+    logger.info(f"Loan plan deactivated: {plan_id}")
+    return {"message": "Loan plan deactivated successfully"}
+
+# ===================== EMI CALCULATOR =====================
+
+@api_router.post("/calculator/compare")
+async def compare_emi_methods(
+    principal: float,
+    annual_rate: float,
+    months: int
+):
+    """Compare EMI calculations using all three methods"""
+    if principal <= 0 or months <= 0:
+        raise HTTPException(status_code=400, detail="Principal and months must be positive")
+    
+    if annual_rate < 0:
+        raise HTTPException(status_code=400, detail="Interest rate cannot be negative")
+    
+    comparison = calculate_all_methods(principal, annual_rate, months)
+    
+    # Add savings comparison
+    methods = [comparison["simple_interest"], comparison["reducing_balance"], comparison["flat_rate"]]
+    min_total = min(m["total_amount"] for m in methods)
+    
+    for method in methods:
+        method["savings_vs_highest"] = round(
+            max(m["total_amount"] for m in methods) - method["total_amount"], 2
+        )
+        method["is_cheapest"] = method["total_amount"] == min_total
+    
+    return comparison
+
+@api_router.post("/calculator/amortization")
+async def calculate_amortization_schedule(
+    principal: float,
+    annual_rate: float,
+    months: int,
+    method: str = "reducing_balance"
+):
+    """Generate month-by-month amortization schedule"""
+    if principal <= 0 or months <= 0:
+        raise HTTPException(status_code=400, detail="Principal and months must be positive")
+    
+    # Calculate EMI based on method
+    if method == "reducing_balance":
+        emi_data = calculate_reducing_balance_emi(principal, annual_rate, months)
+    elif method == "simple_interest":
+        emi_data = calculate_simple_interest_emi(principal, annual_rate, months)
+    else:
+        emi_data = calculate_flat_rate_emi(principal, annual_rate, months)
+    
+    monthly_emi = emi_data["monthly_emi"]
+    monthly_rate = (annual_rate / 12) / 100
+    
+    schedule = []
+    remaining_principal = principal
+    
+    for month in range(1, months + 1):
+        if method == "reducing_balance":
+            interest_payment = remaining_principal * monthly_rate
+            principal_payment = monthly_emi - interest_payment
+        elif method == "simple_interest":
+            # Simple interest distributed equally
+            interest_payment = emi_data["total_interest"] / months
+            principal_payment = monthly_emi - interest_payment
+        else:  # flat_rate
+            interest_payment = emi_data["total_interest"] / months
+            principal_payment = monthly_emi - interest_payment
+        
+        remaining_principal -= principal_payment
+        
+        schedule.append({
+            "month": month,
+            "emi": round(monthly_emi, 2),
+            "principal": round(principal_payment, 2),
+            "interest": round(interest_payment, 2),
+            "balance": round(max(0, remaining_principal), 2)
+        })
+    
+    return {
+        "method": method,
+        "monthly_emi": monthly_emi,
+        "total_amount": emi_data["total_amount"],
+        "total_interest": emi_data["total_interest"],
+        "schedule": schedule
+    }
+
 # ===================== LOAN MANAGEMENT =====================
 
 @api_router.post("/loans/{client_id}/setup")
