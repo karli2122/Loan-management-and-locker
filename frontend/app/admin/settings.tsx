@@ -108,14 +108,15 @@ export default function AdminSettings() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           username: newUsername, 
-          password: newPassword 
+          password: newPassword,
+          role: newUserRole 
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.detail || 'Failed to create admin');
+        throw new Error(data.detail || 'Failed to create user');
       }
 
       Alert.alert(
