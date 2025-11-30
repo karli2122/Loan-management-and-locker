@@ -16,21 +16,29 @@ import { useLanguage } from '../../src/context/LanguageContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
-interface Stats {
+interface LoanStats {
   total_clients: number;
-  locked_devices: number;
-  registered_devices: number;
-  unlocked_devices: number;
+  active_loans: number;
+  completed_loans: number;
+  overdue_clients: number;
+  total_disbursed: number;
+  total_collected: number;
+  total_outstanding: number;
+  collection_rate: number;
 }
 
 export default function Dashboard() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
-  const [stats, setStats] = useState<Stats>({
+  const [loanStats, setLoanStats] = useState<LoanStats>({
     total_clients: 0,
-    locked_devices: 0,
-    registered_devices: 0,
-    unlocked_devices: 0,
+    active_loans: 0,
+    completed_loans: 0,
+    overdue_clients: 0,
+    total_disbursed: 0,
+    total_collected: 0,
+    total_outstanding: 0,
+    collection_rate: 0,
   });
   const [refreshing, setRefreshing] = useState(false);
   const [username, setUsername] = useState('');
@@ -38,9 +46,19 @@ export default function Dashboard() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/stats`);
+      const response = await fetch(`${API_URL}/api/reports/collection`);
       const data = await response.json();
-      setStats(data);
+      
+      setLoanStats({
+        total_clients: data.overview.total_clients,
+        active_loans: data.overview.active_loans,
+        completed_loans: data.overview.completed_loans,
+        overdue_clients: data.overview.overdue_clients,
+        total_disbursed: data.financial.total_disbursed,
+        total_collected: data.financial.total_collected,
+        total_outstanding: data.financial.total_outstanding,
+        collection_rate: data.financial.collection_rate,
+      });
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     }
