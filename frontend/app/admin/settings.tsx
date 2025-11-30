@@ -119,14 +119,16 @@ export default function AdminSettings() {
         throw new Error(data.detail || 'Failed to create user');
       }
 
+      const roleText = newUserRole === 'admin' ? (language === 'et' ? 'administraator' : 'admin') : (language === 'et' ? 'kasutaja' : 'user');
       Alert.alert(
         language === 'et' ? 'Õnnestus' : 'Success',
-        language === 'et' ? 'Uus administraator loodud' : 'New admin created successfully'
+        language === 'et' ? `Uus ${roleText} loodud` : `New ${roleText} created successfully`
       );
       
       setShowAddAdmin(false);
       setNewUsername('');
       setNewPassword('');
+      setNewUserRole('user');
       await fetchAdmins(adminToken!);
     } catch (error: any) {
       Alert.alert(
