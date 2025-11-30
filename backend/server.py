@@ -458,29 +458,46 @@ async def register_admin(admin_data: AdminCreate, admin_token: str = None):
     if len(admin_data.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
     
-    # Check if any admin exists - if yes, require token
+    # Check if any admin exists - if yes, require token and check creator's role
     admin_count = await db.admins.count_documents({})
-    if admin_count > 0:
-        if not admin_token:
-            raise HTTPException(status_code=401, detail="Admin token required to register new admins")
-        if not await verify_admin_token_header(admin_token):
-            raise HTTPException(status_code=401, detail="Invalid admin token")
+    is_first_admin = admin_count == 0
     
-    # Check if admin already exists
+    if not is_first_admin:
+        if not admin_token:
+            raise HTTPException(status_code=401, detail="Admin token required to register new users")
+        
+        # Get the creator's info
+        token_data = await db.admin_tokens.find_one({"token": admin_token})
+        if not token_data:
+            raise HTTPException(status_code=401, detail="Invalid admin token")
+        
+        creator = await db.admins.find_one({"id": token_data["admin_id"]})
+        if not creator or creator.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="Only admins can create new users")
+    
+    # Check if username already exists
     existing = await db.admins.find_one({"username": admin_data.username})
     if existing:
-        raise HTTPException(status_code=400, detail="Admin username already exists")
+        raise HTTPException(status_code=400, detail="Username already exists")
     
     admin = Admin(
         username=admin_data.username,
-        password_hash=hash_password(admin_data.password)
+        password_hash=hash_password(admin_data.password),
+        role=admin_data.role if not is_first_admin else "admin",
+        is_super_admin=is_first_admin
     )
     await db.admins.insert_one(admin.dict())
     
     token = secrets.token_hex(32)
     await db.admin_tokens.insert_one({"admin_id": admin.id, "token": token})
     
-    return AdminResponse(id=admin.id, username=admin.username, token=token)
+    return AdminResponse(
+        id=admin.id, 
+        username=admin.username, 
+        role=admin.role,
+        is_super_admin=admin.is_super_admin,
+        token=token
+    )
 
 @api_router.post("/admin/login", response_model=AdminResponse)
 async def login_admin(login_data: AdminLogin):
