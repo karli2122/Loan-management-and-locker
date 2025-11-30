@@ -354,12 +354,24 @@ export default function AdminSettings() {
                 <Text style={styles.adminAvatarText}>{admin.username.charAt(0).toUpperCase()}</Text>
               </View>
               <View style={styles.adminInfo}>
-                <Text style={styles.adminName}>{admin.username}</Text>
+                <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+                  <Text style={styles.adminName}>{admin.username}</Text>
+                  <View style={[styles.roleBadge, admin.role === 'admin' && styles.roleBadgeAdmin]}>
+                    <Text style={styles.roleBadgeText}>
+                      {admin.role === 'admin' ? (language === 'et' ? 'Admin' : 'Admin') : (language === 'et' ? 'Kasutaja' : 'User')}
+                    </Text>
+                  </View>
+                  {admin.is_super_admin && (
+                    <View style={styles.superAdminBadge}>
+                      <Ionicons name="shield-checkmark" size={12} color="#F59E0B" />
+                    </View>
+                  )}
+                </View>
                 {admin.id === currentAdminId && (
                   <Text style={styles.youBadge}>{language === 'et' ? '(sina)' : '(you)'}</Text>
                 )}
               </View>
-              {admin.id !== currentAdminId && (
+              {admin.id !== currentAdminId && !admin.is_super_admin && (
                 <TouchableOpacity
                   style={styles.deleteButton}
                   onPress={() => handleDeleteAdmin(admin)}
