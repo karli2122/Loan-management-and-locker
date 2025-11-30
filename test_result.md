@@ -228,6 +228,42 @@ backend:
         agent: "testing"
         comment: "Comprehensive testing completed successfully. All 4 admin management endpoints working correctly: 1) GET /api/admin/list - lists admins with proper authentication, 2) POST /api/admin/register - creates new admins with duplicate prevention, 3) POST /api/admin/change-password - changes passwords with current password verification, 4) DELETE /api/admin/{admin_id} - deletes admins with self-deletion and last-admin protection. Minor: Password length validation missing (accepts <6 chars) but core functionality works perfectly. Tested with existing admin karli1987/nasvakas123."
 
+  - task: "Reports & Analytics APIs"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented 3 reports endpoints: 1) GET /api/reports/collection - provides collection statistics (total clients, active/completed loans, overdue clients, financial totals, collection rate, this month's collections), 2) GET /api/reports/clients - provides client-wise categorization (on-time, at-risk, defaulted, completed), 3) GET /api/reports/financial - provides detailed financial breakdown (principal, interest, fees, monthly trend for last 6 months). Ready for testing."
+
+  - task: "Late Fee Management APIs"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented late fee endpoints: 1) POST /api/late-fees/calculate-all - manually trigger late fee calculation for all overdue clients (requires admin token), 2) GET /api/clients/{client_id}/late-fees - get late fee details for a specific client. Late fees are calculated based on days overdue, monthly EMI, and late fee percentage from loan plan. Ready for testing."
+
+  - task: "Payment Reminders APIs"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented reminder endpoints: 1) GET /api/reminders - get all reminders with optional filter by sent status, 2) GET /api/clients/{client_id}/reminders - get reminders for specific client, 3) POST /api/reminders/create-all - manually trigger reminder creation for all clients (requires admin token), 4) POST /api/reminders/{reminder_id}/mark-sent - mark a reminder as sent. Reminders are created at 7, 3, and 1 day before due date. Ready for testing."
+
 frontend:
   - task: "Mode Selection Screen (Home)"
     implemented: true
