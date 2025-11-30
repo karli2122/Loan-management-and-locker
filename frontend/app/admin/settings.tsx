@@ -338,21 +338,22 @@ export default function AdminSettings() {
           </View>
         </View>
 
-        {/* Admin Management Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
-              {language === 'et' ? 'Administraatorid' : 'Administrators'}
-            </Text>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => setShowAddAdmin(true)}
-            >
-              <Ionicons name="add" size={20} color="#fff" />
-            </TouchableOpacity>
-          </View>
+        {/* Admin Management Section - Only for Admins */}
+        {currentUserRole === 'admin' && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>
+                {language === 'et' ? 'Kasutajahaldus' : 'User Management'}
+              </Text>
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => setShowAddAdmin(true)}
+              >
+                <Ionicons name="add" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
 
-          {admins.map((admin) => (
+            {admins.map((admin) => (
             <View key={admin.id} style={styles.adminCard}>
               <View style={styles.adminAvatarSmall}>
                 <Text style={styles.adminAvatarText}>{admin.username.charAt(0).toUpperCase()}</Text>
