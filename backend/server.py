@@ -655,7 +655,23 @@ async def get_all_clients(skip: int = 0, limit: int = 100):
     total_count = await db.clients.count_documents({})
     
     # Fetch paginated clients with projection to reduce data transfer
-    clients = await db.clients.find().skip(skip).limit(limit).to_list(limit)
+    # Only fetch essential fields for listing, exclude large arrays
+    projection = {
+        "_id": 0,
+        "id": 1,
+        "name": 1,
+        "phone": 1,
+        "device_model": 1,
+        "is_locked": 1,
+        "registration_date": 1,
+        "principal_amount": 1,
+        "total_amount_due": 1,
+        "outstanding_balance": 1,
+        "next_payment_due": 1,
+        "monthly_emi": 1,
+        "loan_plan_id": 1
+    }
+    clients = await db.clients.find({}, projection).skip(skip).limit(limit).to_list(limit)
     
     return {
         "clients": [Client(**c) for c in clients],
