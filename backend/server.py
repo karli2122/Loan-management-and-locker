@@ -631,6 +631,194 @@ async def report_reboot(client_id: str):
         "lock_message": client.get("lock_message", "")
     }
 
+# ===================== LOAN MANAGEMENT =====================
+
+@api_router.post("/loans/{client_id}/setup")
+async def setup_loan(client_id: str, loan_data: ClientCreate):
+    """Setup or update loan details for a client"""
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Calculate EMI using simple interest
+    loan_calc = calculate_simple_interest_emi(
+        loan_data.loan_amount,
+        loan_data.interest_rate,
+        loan_data.loan_tenure_months
+    )
+    
+    # Calculate next payment due date (one month from now)
+    from dateutil.relativedelta import relativedelta
+    loan_start = datetime.utcnow()
+    next_due = loan_start + relativedelta(months=1)
+    
+    update_data = {
+        "loan_amount": loan_data.loan_amount,
+        "down_payment": loan_data.down_payment,
+        "interest_rate": loan_data.interest_rate,
+        "loan_tenure_months": loan_data.loan_tenure_months,
+        "monthly_emi": loan_calc["monthly_emi"],
+        "total_amount_due": loan_calc["total_amount"],
+        "outstanding_balance": loan_calc["total_amount"],
+        "loan_start_date": loan_start,
+        "next_payment_due": next_due,
+        "days_overdue": 0
+    }
+    
+    await db.clients.update_one({"id": client_id}, {"$set": update_data})
+    
+    updated_client = await db.clients.find_one({"id": client_id})
+    return {
+        "message": "Loan setup successfully",
+        "loan_details": loan_calc,
+        "client": Client(**updated_client)
+    }
+
+@api_router.post("/loans/{client_id}/payments")
+async def record_payment(client_id: str, payment_data: PaymentCreate, admin_token: str):
+    """Record a payment for a client's loan"""
+    # Verify admin token
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    admin = await db.admins.find_one({"id": token_doc["admin_id"]})
+    if not admin:
+        raise HTTPException(status_code=401, detail="Admin not found")
+    
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Create payment record
+    payment = Payment(
+        client_id=client_id,
+        amount=payment_data.amount,
+        payment_date=payment_data.payment_date or datetime.utcnow(),
+        payment_method=payment_data.payment_method,
+        notes=payment_data.notes,
+        recorded_by=admin["username"]
+    )
+    
+    await db.payments.insert_one(payment.dict())
+    
+    # Update client loan balance
+    total_paid = client.get("total_paid", 0) + payment_data.amount
+    outstanding = client.get("total_amount_due", 0) - total_paid
+    
+    # Calculate next payment due date
+    from dateutil.relativedelta import relativedelta
+    current_next_due = client.get("next_payment_due", datetime.utcnow())
+    next_payment_due = current_next_due + relativedelta(months=1)
+    
+    update_data = {
+        "total_paid": total_paid,
+        "outstanding_balance": max(0, outstanding),
+        "last_payment_date": payment.payment_date,
+        "next_payment_due": next_payment_due if outstanding > 0 else None,
+        "days_overdue": 0  # Reset overdue days on payment
+    }
+    
+    # Auto-unlock if loan is fully paid
+    if outstanding <= 0:
+        update_data["is_locked"] = False
+        update_data["lock_message"] = "Loan fully paid. Device unlocked."
+    
+    await db.clients.update_one({"id": client_id}, {"$set": update_data})
+    
+    logger.info(f"Payment recorded: €{payment_data.amount} for client {client_id} by {admin['username']}")
+    
+    return {
+        "message": "Payment recorded successfully",
+        "payment": payment.dict(),
+        "updated_balance": {
+            "total_paid": total_paid,
+            "outstanding_balance": max(0, outstanding),
+            "loan_paid_off": outstanding <= 0
+        }
+    }
+
+@api_router.get("/loans/{client_id}/payments")
+async def get_payment_history(client_id: str):
+    """Get payment history for a client"""
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    payments = await db.payments.find({"client_id": client_id}).sort("payment_date", -1).to_list(100)
+    
+    return {
+        "client_id": client_id,
+        "total_payments": len(payments),
+        "payments": [Payment(**p) for p in payments]
+    }
+
+@api_router.get("/loans/{client_id}/schedule")
+async def get_payment_schedule(client_id: str):
+    """Generate payment schedule for a client's loan"""
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    if not client.get("loan_start_date"):
+        raise HTTPException(status_code=400, detail="Loan not set up for this client")
+    
+    from dateutil.relativedelta import relativedelta
+    
+    schedule = []
+    start_date = client["loan_start_date"]
+    monthly_emi = client.get("monthly_emi", 0)
+    outstanding = client.get("total_amount_due", 0)
+    
+    for month in range(client.get("loan_tenure_months", 12)):
+        due_date = start_date + relativedelta(months=month + 1)
+        
+        # Check if payment was made for this month
+        payment_made = await db.payments.find_one({
+            "client_id": client_id,
+            "payment_date": {
+                "$gte": due_date - relativedelta(days=15),
+                "$lte": due_date + relativedelta(days=15)
+            }
+        })
+        
+        schedule.append({
+            "month": month + 1,
+            "due_date": due_date.isoformat(),
+            "amount_due": monthly_emi,
+            "status": "paid" if payment_made else ("overdue" if due_date < datetime.utcnow() else "pending"),
+            "payment_id": payment_made["id"] if payment_made else None
+        })
+    
+    return {
+        "client_id": client_id,
+        "loan_amount": client.get("loan_amount", 0),
+        "monthly_emi": monthly_emi,
+        "total_payments": client.get("loan_tenure_months", 12),
+        "schedule": schedule
+    }
+
+@api_router.put("/loans/{client_id}/settings")
+async def update_loan_settings(client_id: str, settings: LoanSettings):
+    """Update auto-lock settings for a client"""
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {
+            "auto_lock_enabled": settings.auto_lock_enabled,
+            "auto_lock_grace_days": settings.auto_lock_grace_days
+        }}
+    )
+    
+    return {
+        "message": "Loan settings updated",
+        "auto_lock_enabled": settings.auto_lock_enabled,
+        "auto_lock_grace_days": settings.auto_lock_grace_days
+    }
+
 # ===================== PHONE PRICE LOOKUP =====================
 
 @api_router.get("/clients/{client_id}/fetch-price")
