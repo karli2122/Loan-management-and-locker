@@ -525,40 +525,46 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
+  chartContainer: {
+    alignItems: 'center',
+    marginVertical: 16,
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 8,
+  },
   trendTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: '#94A3B8',
-    marginBottom: 12,
+    marginBottom: 8,
+    marginTop: 16,
   },
-  trendItem: {
+  trendSummary: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 12,
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
   },
-  trendMonth: {
-    fontSize: 12,
-    color: '#94A3B8',
-    width: 60,
-  },
-  trendBar: {
-    flex: 1,
-    height: 24,
+  trendSummaryItem: {
     backgroundColor: '#1E293B',
-    borderRadius: 4,
-    overflow: 'hidden',
+    borderRadius: 8,
+    padding: 12,
+    flex: 1,
+    minWidth: '30%',
   },
-  trendBarFill: {
-    height: '100%',
-    backgroundColor: '#4F46E5',
-    borderRadius: 4,
+  trendSummaryMonth: {
+    fontSize: 10,
+    color: '#94A3B8',
+    marginBottom: 4,
   },
-  trendValue: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-    width: 60,
-    textAlign: 'right',
+  trendSummaryValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4F46E5',
+    marginBottom: 2,
+  },
+  trendSummaryCount: {
+    fontSize: 10,
+    color: '#94A3B8',
   },
 });
