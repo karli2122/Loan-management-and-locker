@@ -82,20 +82,6 @@ export default function Dashboard() {
     setRefreshing(false);
   }, []);
 
-  const handleLogout = async () => {
-    Alert.alert(t('logout'), t('logoutConfirm'), [
-      { text: t('cancel'), style: 'cancel' },
-      {
-        text: t('logout'),
-        style: 'destructive',
-        onPress: async () => {
-          await AsyncStorage.multiRemove(['admin_token', 'admin_id', 'admin_username']);
-          router.replace('/');
-        },
-      },
-    ]);
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
