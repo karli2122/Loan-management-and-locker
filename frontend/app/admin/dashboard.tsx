@@ -34,6 +34,7 @@ export default function Dashboard() {
   });
   const [refreshing, setRefreshing] = useState(false);
   const [username, setUsername] = useState('');
+  const [userRole, setUserRole] = useState('user');
 
   const fetchStats = async () => {
     try {
@@ -47,7 +48,9 @@ export default function Dashboard() {
 
   const loadUserData = async () => {
     const storedUsername = await AsyncStorage.getItem('admin_username');
+    const role = await AsyncStorage.getItem('admin_role');
     if (storedUsername) setUsername(storedUsername);
+    if (role) setUserRole(role);
   };
 
   useEffect(() => {
