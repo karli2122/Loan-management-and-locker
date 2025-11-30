@@ -21,6 +21,8 @@ const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 interface Admin {
   id: string;
   username: string;
+  role: string;
+  is_super_admin: boolean;
   created_at: string;
 }
 
