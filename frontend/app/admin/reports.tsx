@@ -277,21 +277,56 @@ export default function Reports() {
               </View>
             </View>
 
-            <Text style={styles.trendTitle}>6-Month Trend</Text>
-            {financialReport.monthly_trend.map((month: any, index: number) => (
-              <View key={index} style={styles.trendItem}>
-                <Text style={styles.trendMonth}>{month.month}</Text>
-                <View style={styles.trendBar}>
-                  <View 
-                    style={[
-                      styles.trendBarFill, 
-                      { width: `${Math.min(month.revenue / 100, 100)}%` }
-                    ]} 
-                  />
+            <Text style={styles.trendTitle}>6-Month Revenue Trend</Text>
+            <View style={styles.chartContainer}>
+              <LineChart
+                data={{
+                  labels: financialReport.monthly_trend.map((m: any) => {
+                    const [month] = m.month.split(' ');
+                    return month.substring(0, 3);
+                  }),
+                  datasets: [
+                    {
+                      data: financialReport.monthly_trend.map((m: any) => m.revenue),
+                    },
+                  ],
+                }}
+                width={screenWidth - 40}
+                height={220}
+                chartConfig={{
+                  backgroundColor: '#1E293B',
+                  backgroundGradientFrom: '#1E293B',
+                  backgroundGradientTo: '#334155',
+                  decimalPlaces: 0,
+                  color: (opacity = 1) => `rgba(79, 70, 229, ${opacity})`,
+                  labelColor: (opacity = 1) => `rgba(148, 163, 184, ${opacity})`,
+                  style: {
+                    borderRadius: 16,
+                  },
+                  propsForDots: {
+                    r: '6',
+                    strokeWidth: '2',
+                    stroke: '#4F46E5',
+                  },
+                }}
+                bezier
+                style={{
+                  marginVertical: 8,
+                  borderRadius: 16,
+                }}
+              />
+            </View>
+
+            {/* Trend summary */}
+            <View style={styles.trendSummary}>
+              {financialReport.monthly_trend.map((month: any, index: number) => (
+                <View key={index} style={styles.trendSummaryItem}>
+                  <Text style={styles.trendSummaryMonth}>{month.month}</Text>
+                  <Text style={styles.trendSummaryValue}>€{month.revenue.toFixed(0)}</Text>
+                  <Text style={styles.trendSummaryCount}>{month.payments_count} payments</Text>
                 </View>
-                <Text style={styles.trendValue}>€{month.revenue.toFixed(0)}</Text>
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
         )}
       </ScrollView>
