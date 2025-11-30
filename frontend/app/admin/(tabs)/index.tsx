@@ -99,27 +99,22 @@ export default function Dashboard() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <View>
+        <View style={{flex: 1}}>
           <Text style={styles.greeting}>{t('welcomeBack')}</Text>
           <Text style={styles.username}>{username || 'Admin'}</Text>
         </View>
-        <View style={styles.headerRight}>
-          <View style={styles.langSwitcher}>
-            <TouchableOpacity
-              style={[styles.langButton, language === 'et' && styles.langButtonActive]}
-              onPress={() => setLanguage('et')}
-            >
-              <Text style={[styles.langText, language === 'et' && styles.langTextActive]}>ET</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.langButton, language === 'en' && styles.langButtonActive]}
-              onPress={() => setLanguage('en')}
-            >
-              <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>EN</Text>
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={24} color="#EF4444" />
+        <View style={styles.langSwitcher}>
+          <TouchableOpacity
+            style={[styles.langButton, language === 'et' && styles.langButtonActive]}
+            onPress={() => setLanguage('et')}
+          >
+            <Text style={[styles.langText, language === 'et' && styles.langTextActive]}>ET</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.langButton, language === 'en' && styles.langButtonActive]}
+            onPress={() => setLanguage('en')}
+          >
+            <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>EN</Text>
           </TouchableOpacity>
         </View>
       </View>
