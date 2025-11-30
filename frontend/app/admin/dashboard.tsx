@@ -188,34 +188,34 @@ export default function Dashboard() {
             onPress={() => router.push('/admin/clients')}
           >
             <View style={[styles.actionIcon, { backgroundColor: '#4F46E5' }]}>
-              <Ionicons name="list" size={24} color="#fff" />
+              <Ionicons name="people" size={24} color="#fff" />
             </View>
             <Text style={styles.actionTitle}>{t('viewClients')}</Text>
-            <Text style={styles.actionDescription}>{t('manageClients')}</Text>
+            <Text style={styles.actionDescription}>{language === 'et' ? 'Vaata ja halda kliente' : 'View and manage clients'}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => router.push('/admin/add-client')}
+            onPress={() => router.push('/admin/loan-management')}
           >
             <View style={[styles.actionIcon, { backgroundColor: '#10B981' }]}>
-              <Ionicons name="person-add" size={24} color="#fff" />
+              <Ionicons name="wallet" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>{t('addNewClient')}</Text>
-            <Text style={styles.actionDescription}>{t('registerNewClient')}</Text>
+            <Text style={styles.actionTitle}>{language === 'et' ? 'Laenuhaldus' : 'Loan Management'}</Text>
+            <Text style={styles.actionDescription}>{language === 'et' ? 'Halda laene ja makseid' : 'Manage loans & payments'}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => router.push('/admin/device-setup')}
+            onPress={() => router.push('/admin/device-management')}
           >
             <View style={[styles.actionIcon, { backgroundColor: '#F59E0B' }]}>
-              <Ionicons name="qr-code" size={24} color="#fff" />
+              <Ionicons name="phone-portrait" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>{language === 'et' ? 'Seadme seadistus' : 'Device Setup'}</Text>
-            <Text style={styles.actionDescription}>{language === 'et' ? 'QR-kood automaatseks seadistuseks' : 'QR code for automatic setup'}</Text>
+            <Text style={styles.actionTitle}>{language === 'et' ? 'Seadmehaldus' : 'Device Management'}</Text>
+            <Text style={styles.actionDescription}>{language === 'et' ? 'Lukusta/vabasta seadmeid' : 'Lock/unlock devices'}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
 
