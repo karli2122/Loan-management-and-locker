@@ -175,36 +175,54 @@ export default function Reports() {
         {/* Client Report */}
         {clientReport && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Client Status</Text>
+            <Text style={styles.sectionTitle}>Client Status Distribution</Text>
             
-            <View style={styles.clientStats}>
-              <View style={styles.clientStatItem}>
-                <View style={[styles.clientStatBadge, { backgroundColor: '#10B981' }]}>
-                  <Text style={styles.clientStatValue}>{clientReport.summary.on_time_clients}</Text>
-                </View>
-                <Text style={styles.clientStatLabel}>On Time</Text>
-              </View>
-
-              <View style={styles.clientStatItem}>
-                <View style={[styles.clientStatBadge, { backgroundColor: '#F59E0B' }]}>
-                  <Text style={styles.clientStatValue}>{clientReport.summary.at_risk_clients}</Text>
-                </View>
-                <Text style={styles.clientStatLabel}>At Risk</Text>
-              </View>
-
-              <View style={styles.clientStatItem}>
-                <View style={[styles.clientStatBadge, { backgroundColor: '#EF4444' }]}>
-                  <Text style={styles.clientStatValue}>{clientReport.summary.defaulted_clients}</Text>
-                </View>
-                <Text style={styles.clientStatLabel}>Defaulted</Text>
-              </View>
-
-              <View style={styles.clientStatItem}>
-                <View style={[styles.clientStatBadge, { backgroundColor: '#4F46E5' }]}>
-                  <Text style={styles.clientStatValue}>{clientReport.summary.completed_clients}</Text>
-                </View>
-                <Text style={styles.clientStatLabel}>Completed</Text>
-              </View>
+            {/* Pie Chart for Client Status */}
+            <View style={styles.chartContainer}>
+              <PieChart
+                data={[
+                  {
+                    name: 'On Time',
+                    population: clientReport.summary.on_time_clients,
+                    color: '#10B981',
+                    legendFontColor: '#94A3B8',
+                    legendFontSize: 12,
+                  },
+                  {
+                    name: 'At Risk',
+                    population: clientReport.summary.at_risk_clients,
+                    color: '#F59E0B',
+                    legendFontColor: '#94A3B8',
+                    legendFontSize: 12,
+                  },
+                  {
+                    name: 'Defaulted',
+                    population: clientReport.summary.defaulted_clients,
+                    color: '#EF4444',
+                    legendFontColor: '#94A3B8',
+                    legendFontSize: 12,
+                  },
+                  {
+                    name: 'Completed',
+                    population: clientReport.summary.completed_clients,
+                    color: '#4F46E5',
+                    legendFontColor: '#94A3B8',
+                    legendFontSize: 12,
+                  },
+                ]}
+                width={screenWidth - 40}
+                height={220}
+                chartConfig={{
+                  backgroundColor: '#1E293B',
+                  backgroundGradientFrom: '#1E293B',
+                  backgroundGradientTo: '#1E293B',
+                  color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                }}
+                accessor="population"
+                backgroundColor="transparent"
+                paddingLeft="15"
+                absolute
+              />
             </View>
 
             {clientReport.details.at_risk.length > 0 && (
