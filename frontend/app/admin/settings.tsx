@@ -34,6 +34,7 @@ export default function AdminSettings() {
   const [adminToken, setAdminToken] = useState<string | null>(null);
   const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
   const [currentUsername, setCurrentUsername] = useState<string>('');
+  const [currentUserRole, setCurrentUserRole] = useState<string>('user');
   
   // Modal states
   const [showAddAdmin, setShowAddAdmin] = useState(false);
