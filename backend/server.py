@@ -1159,6 +1159,204 @@ async def update_loan_settings(client_id: str, settings: LoanSettings):
         "auto_lock_grace_days": settings.auto_lock_grace_days
     }
 
+# ===================== LATE FEES & REMINDERS =====================
+
+@api_router.post("/late-fees/calculate-all")
+async def calculate_all_late_fees(admin_token: str):
+    """Manually trigger late fee calculation for all overdue clients"""
+    if not await verify_admin_token_header(admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    await apply_late_fees_to_overdue_clients()
+    return {"message": "Late fees calculated and applied successfully"}
+
+@api_router.get("/clients/{client_id}/late-fees")
+async def get_client_late_fees(client_id: str):
+    """Get late fee details for a specific client"""
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    days_overdue = client.get("days_overdue", 0)
+    late_fees = client.get("late_fees_accumulated", 0)
+    
+    return {
+        "client_id": client_id,
+        "days_overdue": days_overdue,
+        "late_fees_accumulated": late_fees,
+        "monthly_emi": client.get("monthly_emi", 0),
+        "outstanding_with_fees": client.get("outstanding_balance", 0) + late_fees
+    }
+
+@api_router.get("/reminders")
+async def get_reminders(sent: bool = None, limit: int = 100):
+    """Get all reminders, optionally filtered by sent status"""
+    query = {}
+    if sent is not None:
+        query["sent"] = sent
+    
+    reminders = await db.reminders.find(query).sort("scheduled_date", -1).limit(limit).to_list(limit)
+    return [Reminder(**r) for r in reminders]
+
+@api_router.get("/clients/{client_id}/reminders")
+async def get_client_reminders(client_id: str):
+    """Get reminders for a specific client"""
+    reminders = await db.reminders.find({"client_id": client_id}).sort("scheduled_date", -1).to_list(50)
+    return [Reminder(**r) for r in reminders]
+
+@api_router.post("/reminders/create-all")
+async def create_all_reminders(admin_token: str):
+    """Manually trigger reminder creation for all clients"""
+    if not await verify_admin_token_header(admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    await create_payment_reminders()
+    return {"message": "Reminders created successfully"}
+
+@api_router.post("/reminders/{reminder_id}/mark-sent")
+async def mark_reminder_sent(reminder_id: str):
+    """Mark a reminder as sent"""
+    result = await db.reminders.update_one(
+        {"id": reminder_id},
+        {"$set": {"sent": True, "sent_at": datetime.utcnow()}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+    
+    return {"message": "Reminder marked as sent"}
+
+# ===================== REPORTS & ANALYTICS =====================
+
+@api_router.get("/reports/collection")
+async def get_collection_report():
+    """Get collection statistics and metrics"""
+    # Total clients
+    total_clients = await db.clients.count_documents({})
+    active_loans = await db.clients.count_documents({"outstanding_balance": {"$gt": 0}})
+    completed_loans = await db.clients.count_documents({"outstanding_balance": 0, "total_paid": {"$gt": 0}})
+    
+    # Financial totals
+    clients = await db.clients.find().to_list(1000)
+    total_disbursed = sum(c.get("total_amount_due", 0) for c in clients)
+    total_collected = sum(c.get("total_paid", 0) for c in clients)
+    total_outstanding = sum(c.get("outstanding_balance", 0) for c in clients)
+    total_late_fees = sum(c.get("late_fees_accumulated", 0) for c in clients)
+    
+    # Overdue clients
+    overdue_clients = len([c for c in clients if c.get("days_overdue", 0) > 0])
+    
+    # Collection rate
+    collection_rate = (total_collected / total_disbursed * 100) if total_disbursed > 0 else 0
+    
+    # This month's collections
+    from dateutil.relativedelta import relativedelta
+    month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    month_payments = await db.payments.find({"payment_date": {"$gte": month_start}}).to_list(1000)
+    month_collected = sum(p.get("amount", 0) for p in month_payments)
+    
+    return {
+        "overview": {
+            "total_clients": total_clients,
+            "active_loans": active_loans,
+            "completed_loans": completed_loans,
+            "overdue_clients": overdue_clients
+        },
+        "financial": {
+            "total_disbursed": round(total_disbursed, 2),
+            "total_collected": round(total_collected, 2),
+            "total_outstanding": round(total_outstanding, 2),
+            "total_late_fees": round(total_late_fees, 2),
+            "collection_rate": round(collection_rate, 2)
+        },
+        "this_month": {
+            "total_collected": round(month_collected, 2),
+            "number_of_payments": len(month_payments)
+        }
+    }
+
+@api_router.get("/reports/clients")
+async def get_client_report():
+    """Get client-wise statistics"""
+    clients = await db.clients.find().to_list(1000)
+    
+    # Categorize clients
+    on_time = []
+    at_risk = []  # 1-7 days overdue
+    defaulted = []  # >7 days overdue
+    completed = []
+    
+    for client in clients:
+        days_overdue = client.get("days_overdue", 0)
+        outstanding = client.get("outstanding_balance", 0)
+        
+        if outstanding == 0 and client.get("total_paid", 0) > 0:
+            completed.append(client)
+        elif days_overdue > 7:
+            defaulted.append(client)
+        elif days_overdue > 0:
+            at_risk.append(client)
+        else:
+            on_time.append(client)
+    
+    return {
+        "summary": {
+            "on_time_clients": len(on_time),
+            "at_risk_clients": len(at_risk),
+            "defaulted_clients": len(defaulted),
+            "completed_clients": len(completed)
+        },
+        "details": {
+            "on_time": [{"id": c["id"], "name": c["name"], "outstanding": c.get("outstanding_balance", 0)} for c in on_time[:10]],
+            "at_risk": [{"id": c["id"], "name": c["name"], "days_overdue": c.get("days_overdue", 0)} for c in at_risk],
+            "defaulted": [{"id": c["id"], "name": c["name"], "days_overdue": c.get("days_overdue", 0)} for c in defaulted],
+        }
+    }
+
+@api_router.get("/reports/financial")
+async def get_financial_report():
+    """Get detailed financial breakdown"""
+    clients = await db.clients.find().to_list(1000)
+    payments = await db.payments.find().to_list(1000)
+    
+    # Calculate totals
+    total_principal = sum(c.get("loan_amount", 0) for c in clients)
+    total_interest = sum(c.get("total_amount_due", 0) - c.get("loan_amount", 0) for c in clients)
+    total_processing_fees = sum(c.get("processing_fee", 0) for c in clients)
+    total_late_fees = sum(c.get("late_fees_accumulated", 0) for c in clients)
+    
+    # Revenue breakdown
+    total_revenue = sum(p.get("amount", 0) for p in payments)
+    
+    # Monthly breakdown (last 6 months)
+    from dateutil.relativedelta import relativedelta
+    monthly_data = []
+    for i in range(6):
+        month_start = (datetime.utcnow() - relativedelta(months=i)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        month_end = month_start + relativedelta(months=1)
+        
+        month_payments = [p for p in payments if month_start <= p.get("payment_date", datetime.utcnow()) < month_end]
+        month_revenue = sum(p.get("amount", 0) for p in month_payments)
+        
+        monthly_data.append({
+            "month": month_start.strftime("%b %Y"),
+            "revenue": round(month_revenue, 2),
+            "payments_count": len(month_payments)
+        })
+    
+    monthly_data.reverse()
+    
+    return {
+        "totals": {
+            "principal_disbursed": round(total_principal, 2),
+            "interest_earned": round(total_interest, 2),
+            "processing_fees": round(total_processing_fees, 2),
+            "late_fees": round(total_late_fees, 2),
+            "total_revenue": round(total_revenue, 2)
+        },
+        "monthly_trend": monthly_data
+    }
+
 # ===================== PHONE PRICE LOOKUP =====================
 
 @api_router.get("/clients/{client_id}/fetch-price")
