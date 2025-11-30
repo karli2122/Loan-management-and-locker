@@ -329,7 +329,7 @@ class Client(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     phone: str
-    email: str
+    email: str = ""  # Made optional with default empty string for backwards compatibility
     device_id: str = ""
     device_model: str = ""
     device_make: str = ""  # Brand/Manufacturer
