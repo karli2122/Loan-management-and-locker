@@ -2,15 +2,26 @@
 """
 Comprehensive Backend API Testing for EMI Phone Lock System
 Tests all backend endpoints and complete flow
+UPDATED: Added Advanced Loan Management System API Tests
 """
 
 import requests
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Get backend URL from frontend env
-BACKEND_URL = "https://deviceloan-1.preview.emergentagent.com/api"
+def get_backend_url():
+    try:
+        with open('/app/frontend/.env', 'r') as f:
+            for line in f:
+                if line.startswith('EXPO_PUBLIC_BACKEND_URL='):
+                    return line.split('=', 1)[1].strip().strip('"')
+        return "https://deviceloan-1.preview.emergentagent.com"  # fallback
+    except:
+        return "https://deviceloan-1.preview.emergentagent.com"  # fallback
+
+BACKEND_URL = f"{get_backend_url()}/api"
 
 class EMIBackendTester:
     def __init__(self):
