@@ -185,17 +185,19 @@ export default function Dashboard() {
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/admin/settings')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#8B5CF6' }]}>
-              <Ionicons name="settings" size={24} color="#fff" />
-            </View>
-            <Text style={styles.actionTitle}>{t('settings')}</Text>
-            <Text style={styles.actionDescription}>{t('adminManagement')}</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
+          {userRole === 'admin' && (
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => router.push('/admin/settings')}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: '#8B5CF6' }]}>
+                <Ionicons name="settings" size={24} color="#fff" />
+              </View>
+              <Text style={styles.actionTitle}>{t('settings')}</Text>
+              <Text style={styles.actionDescription}>{t('adminManagement')}</Text>
+              <Ionicons name="chevron-forward" size={20} color="#64748B" />
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={styles.actionCard}
