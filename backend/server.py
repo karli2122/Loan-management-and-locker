@@ -783,7 +783,7 @@ async def delete_loan_plan(plan_id: str, admin_token: str):
 
 # ===================== EMI CALCULATOR =====================
 
-@api_router.post("/calculator/compare")
+@api_router.get("/calculator/compare")
 async def compare_emi_methods(
     principal: float,
     annual_rate: float,
