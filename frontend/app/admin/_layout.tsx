@@ -20,6 +20,7 @@ export default function AdminLayout() {
       <Stack.Screen name="loan-management" />
       <Stack.Screen name="loan-plans" />
       <Stack.Screen name="calculator" />
+      <Stack.Screen name="reports" />
     </Stack>
   );
 }
