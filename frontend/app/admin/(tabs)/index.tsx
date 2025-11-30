@@ -163,6 +163,15 @@ export default function Dashboard() {
 
         <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
 
+        <Text style={styles.sectionTitle}>{language === 'et' ? 'Kasuta vahekaarte allpool' : 'Use tabs below to navigate'}</Text>
+        <View style={styles.infoCard}>
+          <Ionicons name="information-circle" size={24} color="#4F46E5" />
+          <Text style={styles.infoText}>
+            {language === 'et' 
+              ? 'Kasuta allpool olevaid vahelehti: Laenud klientide haldamiseks, Tehingud maksete vaatamiseks ja Funktsioonid täpsemateks võimalusteks.'
+              : 'Use the tabs below: Loans to manage clients, Transactions to view payments, and Features for advanced options.'}
+          </Text>
+        </View>
         <View style={styles.actionsContainer}>
           <TouchableOpacity
             style={styles.actionCard}
