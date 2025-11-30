@@ -128,39 +128,55 @@ export default function Dashboard() {
         style={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />}
       >
-        <Text style={styles.sectionTitle}>{t('dashboardOverview')}</Text>
+        <Text style={styles.sectionTitle}>{language === 'et' ? 'Laenude ülevaade' : 'Loan Overview'}</Text>
 
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, { backgroundColor: '#1E3A5F' }]}>
             <View style={styles.statIcon}>
-              <Ionicons name="people" size={28} color="#3B82F6" />
+              <Ionicons name="trending-up" size={28} color="#3B82F6" />
             </View>
-            <Text style={styles.statValue}>{stats.total_clients}</Text>
-            <Text style={styles.statLabel}>{t('totalClients')}</Text>
+            <Text style={styles.statValue}>{loanStats.active_loans}</Text>
+            <Text style={styles.statLabel}>{language === 'et' ? 'Aktiivsed laenud' : 'Active Loans'}</Text>
           </View>
 
           <View style={[styles.statCard, { backgroundColor: '#3D1F1F' }]}>
             <View style={styles.statIcon}>
-              <Ionicons name="lock-closed" size={28} color="#EF4444" />
+              <Ionicons name="alert-circle" size={28} color="#EF4444" />
             </View>
-            <Text style={styles.statValue}>{stats.locked_devices}</Text>
-            <Text style={styles.statLabel}>{t('lockedDevices')}</Text>
+            <Text style={styles.statValue}>{loanStats.overdue_clients}</Text>
+            <Text style={styles.statLabel}>{language === 'et' ? 'Võlglased' : 'Overdue'}</Text>
           </View>
 
           <View style={[styles.statCard, { backgroundColor: '#1F3D2E' }]}>
             <View style={styles.statIcon}>
               <Ionicons name="checkmark-circle" size={28} color="#10B981" />
             </View>
-            <Text style={styles.statValue}>{stats.registered_devices}</Text>
-            <Text style={styles.statLabel}>{t('registered')}</Text>
+            <Text style={styles.statValue}>{loanStats.completed_loans}</Text>
+            <Text style={styles.statLabel}>{language === 'et' ? 'Lõpetatud' : 'Completed'}</Text>
           </View>
 
           <View style={[styles.statCard, { backgroundColor: '#3D3D1F' }]}>
             <View style={styles.statIcon}>
-              <Ionicons name="lock-open" size={28} color="#F59E0B" />
+              <Ionicons name="cash" size={28} color="#F59E0B" />
             </View>
-            <Text style={styles.statValue}>{stats.unlocked_devices}</Text>
-            <Text style={styles.statLabel}>{t('unlocked')}</Text>
+            <Text style={styles.statValue}>€{loanStats.total_collected.toFixed(0)}</Text>
+            <Text style={styles.statLabel}>{language === 'et' ? 'Kogutud' : 'Collected'}</Text>
+          </View>
+        </View>
+
+        {/* Financial Summary */}
+        <View style={styles.financialSummary}>
+          <View style={styles.financialRow}>
+            <Text style={styles.financialLabel}>{language === 'et' ? 'Laekumismäär' : 'Collection Rate'}</Text>
+            <Text style={[styles.financialValue, { color: '#10B981' }]}>{loanStats.collection_rate.toFixed(1)}%</Text>
+          </View>
+          <View style={styles.financialRow}>
+            <Text style={styles.financialLabel}>{language === 'et' ? 'Laenatud kokku' : 'Total Disbursed'}</Text>
+            <Text style={styles.financialValue}>€{loanStats.total_disbursed.toFixed(2)}</Text>
+          </View>
+          <View style={styles.financialRow}>
+            <Text style={styles.financialLabel}>{language === 'et' ? 'Võlgnevused' : 'Outstanding'}</Text>
+            <Text style={[styles.financialValue, { color: '#F59E0B' }]}>€{loanStats.total_outstanding.toFixed(2)}</Text>
           </View>
         </View>
 
