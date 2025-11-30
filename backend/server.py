@@ -512,7 +512,13 @@ async def login_admin(login_data: AdminLogin):
         upsert=True
     )
     
-    return AdminResponse(id=admin["id"], username=admin["username"], token=token)
+    return AdminResponse(
+        id=admin["id"], 
+        username=admin["username"], 
+        role=admin.get("role", "user"),
+        is_super_admin=admin.get("is_super_admin", False),
+        token=token
+    )
 
 @api_router.get("/admin/verify/{token}")
 async def verify_admin_token(token: str):
