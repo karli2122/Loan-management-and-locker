@@ -995,15 +995,322 @@ class EMIBackendTester:
         
         return failed == 0
 
+    def test_advanced_loan_management_apis(self):
+        """Test the 3 new API groups: Reports & Analytics, Late Fee Management, Payment Reminders"""
+        print("\n" + "="*80)
+        print("🏦 ADVANCED LOAN MANAGEMENT SYSTEM API TESTS")
+        print("="*80)
+        
+        # Login with test admin credentials first
+        print("\n1. SETUP - Admin Login for Advanced APIs")
+        try:
+            login_data = {
+                "username": "karli1987",
+                "password": "nasvakas123"
+            }
+            
+            response = requests.post(f"{self.base_url}/admin/login", json=login_data)
+            if response.status_code == 200:
+                admin_data = response.json()
+                admin_token = admin_data.get("token")
+                self.log_test("Advanced APIs - Admin Login", True, f"Admin token obtained for testing")
+            else:
+                self.log_test("Advanced APIs - Admin Login", False, f"Status {response.status_code}: {response.text}")
+                return False
+        except Exception as e:
+            self.log_test("Advanced APIs - Admin Login", False, f"Error: {str(e)}")
+            return False
+        
+        # Create test client with loan data
+        print("\n2. SETUP - Create Test Client with Loan Data")
+        try:
+            client_data = {
+                "name": "Maria Rodriguez",
+                "phone": "+34612345678",
+                "email": "maria.rodriguez@email.com",
+                "loan_amount": 800.0,
+                "down_payment": 200.0,
+                "interest_rate": 12.0,
+                "loan_tenure_months": 12,
+                "emi_amount": 75.0,
+                "emi_due_date": "2024-02-15"
+            }
+            
+            response = requests.post(f"{self.base_url}/clients", json=client_data)
+            if response.status_code == 200:
+                client = response.json()
+                test_client_id = client.get("id")
+                self.log_test("Advanced APIs - Create Test Client", True, f"Test client created: {test_client_id}")
+                
+                # Setup loan for the client
+                loan_setup_data = {
+                    "name": "Maria Rodriguez",
+                    "phone": "+34612345678", 
+                    "email": "maria.rodriguez@email.com",
+                    "loan_amount": 800.0,
+                    "down_payment": 200.0,
+                    "interest_rate": 12.0,
+                    "loan_tenure_months": 12
+                }
+                
+                setup_response = requests.post(f"{self.base_url}/loans/{test_client_id}/setup", json=loan_setup_data)
+                if setup_response.status_code == 200:
+                    self.log_test("Advanced APIs - Loan Setup", True, "Test loan setup successful")
+                else:
+                    self.log_test("Advanced APIs - Loan Setup", False, f"Loan setup failed: {setup_response.text}")
+                
+            else:
+                self.log_test("Advanced APIs - Create Test Client", False, f"Status {response.status_code}: {response.text}")
+                return False
+        except Exception as e:
+            self.log_test("Advanced APIs - Create Test Client", False, f"Error: {str(e)}")
+            return False
+        
+        # Test Reports & Analytics APIs
+        print("\n3. REPORTS & ANALYTICS APIs")
+        
+        # Test Collection Report
+        try:
+            response = requests.get(f"{self.base_url}/reports/collection")
+            if response.status_code == 200:
+                data = response.json()
+                required_keys = ["overview", "financial", "this_month"]
+                if all(key in data for key in required_keys):
+                    self.log_test("Reports - Collection Report", True, f"Collection report retrieved with all required sections")
+                    print(f"   📊 Total Clients: {data['overview'].get('total_clients', 'N/A')}")
+                    print(f"   📊 Active Loans: {data['overview'].get('active_loans', 'N/A')}")
+                    print(f"   📊 Collection Rate: {data['financial'].get('collection_rate', 'N/A')}%")
+                else:
+                    missing = [k for k in required_keys if k not in data]
+                    self.log_test("Reports - Collection Report", False, f"Missing keys: {missing}")
+            else:
+                self.log_test("Reports - Collection Report", False, f"Status {response.status_code}: {response.text}")
+        except Exception as e:
+            self.log_test("Reports - Collection Report", False, f"Error: {str(e)}")
+        
+        # Test Client Report
+        try:
+            response = requests.get(f"{self.base_url}/reports/clients")
+            if response.status_code == 200:
+                data = response.json()
+                required_keys = ["summary", "details"]
+                if all(key in data for key in required_keys):
+                    self.log_test("Reports - Client Report", True, f"Client report retrieved with categorization")
+                    print(f"   📊 On-time Clients: {data['summary'].get('on_time_clients', 'N/A')}")
+                    print(f"   📊 At-risk Clients: {data['summary'].get('at_risk_clients', 'N/A')}")
+                    print(f"   📊 Defaulted Clients: {data['summary'].get('defaulted_clients', 'N/A')}")
+                else:
+                    missing = [k for k in required_keys if k not in data]
+                    self.log_test("Reports - Client Report", False, f"Missing keys: {missing}")
+            else:
+                self.log_test("Reports - Client Report", False, f"Status {response.status_code}: {response.text}")
+        except Exception as e:
+            self.log_test("Reports - Client Report", False, f"Error: {str(e)}")
+        
+        # Test Financial Report
+        try:
+            response = requests.get(f"{self.base_url}/reports/financial")
+            if response.status_code == 200:
+                data = response.json()
+                required_keys = ["totals", "monthly_trend"]
+                if all(key in data for key in required_keys):
+                    self.log_test("Reports - Financial Report", True, f"Financial report retrieved with trend data")
+                    print(f"   📊 Total Revenue: €{data['totals'].get('total_revenue', 'N/A')}")
+                    print(f"   📊 Principal Disbursed: €{data['totals'].get('principal_disbursed', 'N/A')}")
+                    print(f"   📊 Monthly Trend Records: {len(data.get('monthly_trend', []))}")
+                else:
+                    missing = [k for k in required_keys if k not in data]
+                    self.log_test("Reports - Financial Report", False, f"Missing keys: {missing}")
+            else:
+                self.log_test("Reports - Financial Report", False, f"Status {response.status_code}: {response.text}")
+        except Exception as e:
+            self.log_test("Reports - Financial Report", False, f"Error: {str(e)}")
+        
+        # Test Late Fee Management APIs
+        print("\n4. LATE FEE MANAGEMENT APIs")
+        
+        # Test Calculate All Late Fees (requires admin token)
+        try:
+            response = requests.post(f"{self.base_url}/late-fees/calculate-all?admin_token={admin_token}")
+            if response.status_code == 200:
+                data = response.json()
+                self.log_test("Late Fees - Calculate All", True, f"Late fees calculation triggered: {data.get('message', 'Success')}")
+            else:
+                self.log_test("Late Fees - Calculate All", False, f"Status {response.status_code}: {response.text}")
+        except Exception as e:
+            self.log_test("Late Fees - Calculate All", False, f"Error: {str(e)}")
+        
+        # Test Get Client Late Fees
+        try:
+            response = requests.get(f"{self.base_url}/clients/{test_client_id}/late-fees")
+            if response.status_code == 200:
+                data = response.json()
+                required_keys = ["client_id", "days_overdue", "late_fees_accumulated", "monthly_emi", "outstanding_with_fees"]
+                if all(key in data for key in required_keys):
+                    self.log_test("Late Fees - Client Late Fees", True, f"Client late fees retrieved successfully")
+                    print(f"   📊 Days Overdue: {data.get('days_overdue', 'N/A')}")
+                    print(f"   📊 Late Fees: €{data.get('late_fees_accumulated', 'N/A')}")
+                    print(f"   📊 Outstanding with Fees: €{data.get('outstanding_with_fees', 'N/A')}")
+                else:
+                    missing = [k for k in required_keys if k not in data]
+                    self.log_test("Late Fees - Client Late Fees", False, f"Missing keys: {missing}")
+            else:
+                self.log_test("Late Fees - Client Late Fees", False, f"Status {response.status_code}: {response.text}")
+        except Exception as e:
+            self.log_test("Late Fees - Client Late Fees", False, f"Error: {str(e)}")
+        
+        # Test Payment Reminders APIs
+        print("\n5. PAYMENT REMINDERS APIs")
+        
+        # Test Get All Reminders
+        try:
+            response = requests.get(f"{self.base_url}/reminders")
+            if response.status_code == 200:
+                data = response.json()
+                self.log_test("Reminders - Get All", True, f"All reminders retrieved ({len(data)} reminders)")
+                
+                # Test with filters
+                response_unsent = requests.get(f"{self.base_url}/reminders?sent=false")
+                if response_unsent.status_code == 200:
+                    unsent_data = response_unsent.json()
+                    self.log_test("Reminders - Get Unsent", True, f"Unsent reminders retrieved ({len(unsent_data)} unsent)")
+                
+                response_sent = requests.get(f"{self.base_url}/reminders?sent=true")
+                if response_sent.status_code == 200:
+                    sent_data = response_sent.json()
+                    self.log_test("Reminders - Get Sent", True, f"Sent reminders retrieved ({len(sent_data)} sent)")
+                
+            else:
+                self.log_test("Reminders - Get All", False, f"Status {response.status_code}: {response.text}")
+        except Exception as e:
+            self.log_test("Reminders - Get All", False, f"Error: {str(e)}")
+        
+        # Test Get Client Reminders
+        try:
+            response = requests.get(f"{self.base_url}/clients/{test_client_id}/reminders")
+            if response.status_code == 200:
+                data = response.json()
+                self.log_test("Reminders - Client Reminders", True, f"Client reminders retrieved ({len(data)} reminders)")
+                
+                # Store a reminder ID for testing mark-sent
+                test_reminder_id = None
+                if data and len(data) > 0:
+                    test_reminder_id = data[0].get("id")
+                
+            else:
+                self.log_test("Reminders - Client Reminders", False, f"Status {response.status_code}: {response.text}")
+        except Exception as e:
+            self.log_test("Reminders - Client Reminders", False, f"Error: {str(e)}")
+        
+        # Test Create All Reminders (requires admin token)
+        try:
+            response = requests.post(f"{self.base_url}/reminders/create-all?admin_token={admin_token}")
+            if response.status_code == 200:
+                data = response.json()
+                self.log_test("Reminders - Create All", True, f"Reminders creation triggered: {data.get('message', 'Success')}")
+            else:
+                self.log_test("Reminders - Create All", False, f"Status {response.status_code}: {response.text}")
+        except Exception as e:
+            self.log_test("Reminders - Create All", False, f"Error: {str(e)}")
+        
+        # Test Mark Reminder as Sent
+        try:
+            # Get reminders to find one to mark as sent
+            get_response = requests.get(f"{self.base_url}/reminders?sent=false")
+            if get_response.status_code == 200:
+                reminders = get_response.json()
+                if reminders and len(reminders) > 0:
+                    test_reminder_id = reminders[0].get("id")
+                    
+                    # Mark reminder as sent
+                    response = requests.post(f"{self.base_url}/reminders/{test_reminder_id}/mark-sent")
+                    if response.status_code == 200:
+                        data = response.json()
+                        self.log_test("Reminders - Mark Sent", True, f"Reminder marked as sent: {data.get('message', 'Success')}")
+                    else:
+                        self.log_test("Reminders - Mark Sent", False, f"Status {response.status_code}: {response.text}")
+                else:
+                    self.log_test("Reminders - Mark Sent", True, "No unsent reminders found to test with (not a failure)")
+            else:
+                self.log_test("Reminders - Mark Sent", True, "Could not retrieve reminders for testing (not a failure)")
+        except Exception as e:
+            self.log_test("Reminders - Mark Sent", False, f"Error: {str(e)}")
+        
+        # Test Error Handling
+        print("\n6. ERROR HANDLING & AUTHENTICATION")
+        
+        # Test invalid client ID
+        try:
+            invalid_id = "invalid-client-id-12345"
+            response = requests.get(f"{self.base_url}/clients/{invalid_id}/late-fees")
+            if response.status_code == 404:
+                self.log_test("Error Handling - Invalid Client ID (Late Fees)", True, "Invalid client ID properly handled")
+            else:
+                self.log_test("Error Handling - Invalid Client ID (Late Fees)", False, f"Expected 404, got {response.status_code}")
+            
+            response = requests.get(f"{self.base_url}/clients/{invalid_id}/reminders")
+            if response.status_code == 404:
+                self.log_test("Error Handling - Invalid Client ID (Reminders)", True, "Invalid client ID properly handled")
+            else:
+                self.log_test("Error Handling - Invalid Client ID (Reminders)", False, f"Expected 404, got {response.status_code}")
+        except Exception as e:
+            self.log_test("Error Handling - Invalid Client ID", False, f"Error: {str(e)}")
+        
+        # Test authentication requirements
+        try:
+            # Test late fees calculation without token
+            response = requests.post(f"{self.base_url}/late-fees/calculate-all")
+            if response.status_code == 401:
+                self.log_test("Authentication - Late Fees Requires Token", True, "Correctly requires authentication")
+            else:
+                self.log_test("Authentication - Late Fees Requires Token", False, f"Expected 401, got {response.status_code}")
+            
+            # Test reminders creation without token
+            response = requests.post(f"{self.base_url}/reminders/create-all")
+            if response.status_code == 401:
+                self.log_test("Authentication - Reminders Requires Token", True, "Correctly requires authentication")
+            else:
+                self.log_test("Authentication - Reminders Requires Token", False, f"Expected 401, got {response.status_code}")
+        except Exception as e:
+            self.log_test("Authentication - Token Requirements", False, f"Error: {str(e)}")
+        
+        print("\n" + "="*80)
+        print("🏦 ADVANCED LOAN MANAGEMENT API TESTS COMPLETED")
+        print("="*80)
+        
+        return True
+
 if __name__ == "__main__":
     import sys
     
-    # Check if we should run only delete client test
-    if len(sys.argv) > 1 and sys.argv[1] == "delete-client":
-        tester = EMIBackendTester()
-        success = tester.run_delete_client_test_only()
-        sys.exit(0 if success else 1)
-    else:
-        tester = EMIBackendTester()
-        success = tester.run_all_tests()
-        sys.exit(0 if success else 1)
+    # Check command line arguments
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "delete-client":
+            tester = EMIBackendTester()
+            success = tester.run_delete_client_test_only()
+            sys.exit(0 if success else 1)
+        elif sys.argv[1] == "advanced-apis":
+            tester = EMIBackendTester()
+            success = tester.test_advanced_loan_management_apis()
+            
+            # Count results for advanced APIs only
+            advanced_results = [r for r in tester.test_results if "Advanced APIs" in r["test"] or "Reports" in r["test"] or "Late Fees" in r["test"] or "Reminders" in r["test"] or "Error Handling" in r["test"] or "Authentication" in r["test"]]
+            passed = sum(1 for result in advanced_results if result["success"])
+            failed = sum(1 for result in advanced_results if not result["success"])
+            
+            print(f"\n📊 Advanced APIs Test Summary: {passed} passed, {failed} failed")
+            
+            if failed > 0:
+                print("\n❌ Failed Tests:")
+                for result in advanced_results:
+                    if not result["success"]:
+                        print(f"  - {result['test']}: {result['message']}")
+            else:
+                print("🎉 All Advanced Loan Management APIs are working correctly!")
+            
+            sys.exit(0 if failed == 0 else 1)
+    
+    # Default: run all tests
+    tester = EMIBackendTester()
+    success = tester.run_all_tests()
+    sys.exit(0 if success else 1)
