@@ -1560,6 +1560,10 @@ async def startup_db_client():
         await db.clients.create_index("registration_code", unique=True)
         await db.clients.create_index("is_locked")
         await db.clients.create_index("is_registered")
+        # Compound index for overdue payment queries
+        await db.clients.create_index([("next_payment_due", 1), ("outstanding_balance", 1)])
+        # Index for loan plan lookups
+        await db.clients.create_index("loan_plan_id")
         
         # Admin collection indexes
         await db.admins.create_index("id", unique=True)
