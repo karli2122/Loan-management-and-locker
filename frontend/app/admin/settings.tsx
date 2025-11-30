@@ -412,6 +412,40 @@ export default function AdminSettings() {
               />
             </View>
 
+            <View style={styles.roleSelector}>
+              <Text style={styles.roleLabel}>
+                {language === 'et' ? 'Roll' : 'Role'}
+              </Text>
+              <View style={styles.roleButtons}>
+                <TouchableOpacity
+                  style={[styles.roleButton, newUserRole === 'user' && styles.roleButtonActive]}
+                  onPress={() => setNewUserRole('user')}
+                >
+                  <Ionicons 
+                    name="person" 
+                    size={18} 
+                    color={newUserRole === 'user' ? '#fff' : '#64748B'} 
+                  />
+                  <Text style={[styles.roleButtonText, newUserRole === 'user' && styles.roleButtonTextActive]}>
+                    {language === 'et' ? 'Kasutaja' : 'User'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.roleButton, newUserRole === 'admin' && styles.roleButtonActive]}
+                  onPress={() => setNewUserRole('admin')}
+                >
+                  <Ionicons 
+                    name="shield-checkmark" 
+                    size={18} 
+                    color={newUserRole === 'admin' ? '#fff' : '#64748B'} 
+                  />
+                  <Text style={[styles.roleButtonText, newUserRole === 'admin' && styles.roleButtonTextActive]}>
+                    {language === 'et' ? 'Administraator' : 'Admin'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
