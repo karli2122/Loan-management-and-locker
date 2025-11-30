@@ -133,6 +133,10 @@ async def apply_late_fees_to_overdue_clients():
             "outstanding_balance": {"$gt": 0}
         }).to_list(1000)
         
+        # Batch load all loan plans to avoid N+1 queries
+        loan_plans = await db.loan_plans.find().to_list(1000)
+        loan_plans_dict = {plan["id"]: plan for plan in loan_plans}
+        
         for client in clients:
             days_overdue = (datetime.utcnow() - client["next_payment_due"]).days
             
@@ -141,7 +145,7 @@ async def apply_late_fees_to_overdue_clients():
                 late_fee_rate = 2.0  # Default 2% per month
                 
                 if client.get("loan_plan_id"):
-                    plan = await db.loan_plans.find_one({"id": client["loan_plan_id"]})
+                    plan = loan_plans_dict.get(client["loan_plan_id"])
                     if plan:
                         late_fee_rate = plan.get("late_fee_percent", 2.0)
                 
