@@ -57,12 +57,15 @@ export default function AdminSettings() {
       const token = await AsyncStorage.getItem('admin_token');
       const adminId = await AsyncStorage.getItem('admin_id');
       const username = await AsyncStorage.getItem('admin_username');
+      const role = await AsyncStorage.getItem('admin_role');
       
       setAdminToken(token);
       setCurrentAdminId(adminId);
       setCurrentUsername(username || '');
+      setCurrentUserRole(role || 'user');
       
-      if (token) {
+      // Only fetch admin list if user is an admin
+      if (token && role === 'admin') {
         await fetchAdmins(token);
       }
     } catch (error) {
