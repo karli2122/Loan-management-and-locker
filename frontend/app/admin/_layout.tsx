@@ -21,6 +21,7 @@ export default function AdminLayout() {
       <Stack.Screen name="loan-plans" />
       <Stack.Screen name="calculator" />
       <Stack.Screen name="reports" />
+      <Stack.Screen name="device-management" />
     </Stack>
   );
 }
