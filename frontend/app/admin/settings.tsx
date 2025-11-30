@@ -386,7 +386,8 @@ export default function AdminSettings() {
               )}
             </View>
           ))}
-        </View>
+          </View>
+        )}
 
         {/* Logout Button */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
