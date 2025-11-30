@@ -270,11 +270,14 @@ class Admin(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     username: str
     password_hash: str
+    role: str = "user"  # "admin" or "user"
+    is_super_admin: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class AdminCreate(BaseModel):
     username: str
     password: str
+    role: str = "user"  # "admin" or "user"
 
 class AdminLogin(BaseModel):
     username: str
@@ -283,6 +286,8 @@ class AdminLogin(BaseModel):
 class AdminResponse(BaseModel):
     id: str
     username: str
+    role: str
+    is_super_admin: bool
     token: str
 
 class LoanPlan(BaseModel):
