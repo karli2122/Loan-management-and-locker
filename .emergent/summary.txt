@@ -1,110 +1,87 @@
 <analysis>
-The user initially requested two separate applications: one for an administrator to manage and lock phones for EMI payments, and another for the client's phone.
+The trajectory outlines the evolution of an application from a simple EMI phone lock system into a sophisticated, multi-featured loan management platform. The development process has been highly iterative, driven by a series of user requests that progressively added layers of complexity and functionality.
 
-The AI engineer began by building a single, unified Expo application with two distinct modes (Admin and Client) managed by . The backend was built with FastAPI and MongoDB.
+Initially, the project focused on creating separate Admin and Client apps from a single codebase, implementing device locking via Android's Device Owner mode. The work then expanded to include admin user management, internationalization, and device information fetching.
 
-Key development phases included:
-1.  **MVP Creation**: Built core frontend screens and backend CRUD APIs for admins, clients, and device locking/unlocking.
-2.  **Security Enhancement**: Restricted new user registration to be an admin-only function, protecting the relevant backend endpoint.
-3.  **Internationalization**: Added Estonian and English language support using a React Context, and changed currency to Euros (€).
-4.  **App Splitting**: Restructured the project to build two separate APKs (Admin and Client) from the same codebase using environment variables () and EAS build profiles.
-5.  **Native Android Integration**: Implemented Device Owner mode to provide uninstall protection and Kiosk mode. This was a significant step involving a custom Expo Config Plugin and native Java code.
-6.  **Deployment Fixes**: Addressed deployment-related issues by making the MongoDB connection string environment-aware and improving the health check endpoint.
-7.  **Automatic Provisioning**: Added a QR code generation feature in the admin panel to automate the Device Owner setup on new client devices.
+Subsequent user requests led to significant security enhancements, including a dual-mode system (Device Owner for high security, Device Admin for ease of setup), anti-tamper mechanisms (reboot/power-off detection), and robust uninstall protection requiring admin approval.
 
-The last request was to add admin user management (creation and password change) to the admin panel. The engineer started implementing the backend endpoints for this feature before this summary was requested.
-
-The user's primary language is English. The next agent should continue the conversation in **English**.
+A major pivot occurred with the request for an advanced loan management system. This shifted the core focus, turning device locking into a feature of the loan system. The engineer built out backend models and APIs for loans, payments, interest calculation, and pagination. The most recent work involved creating backend endpoints and a placeholder frontend file for late fees, payment reminders, and a financial reports dashboard, which are critical for a complete loan management product. The user's primary language is English, and future interactions should continue in English.
 </analysis>
 
 <product_requirements>
-The goal is to build an EMI Phone Lock Management System composed of two separate mobile applications: an Admin App and a Client App.
+The product is an Advanced Loan Management System with a primary focus on managing loans for mobile devices, complete with robust security and device control features. It consists of two applications:
 
 **Admin App:**
-*   A secure control panel for administrators.
-*   Features:
-    *   Login with dedicated credentials (/).
-    *   Dashboard with key statistics (total clients, locked/unlocked devices).
-    *   View and manage a list of clients.
-    *   Remotely lock or unlock a client's device.
-    *   Register new client devices.
-    *   Generate a QR code for automatic Device Owner provisioning of new client phones.
-    *   Manage other admin users (create new admins, change passwords).
+A web-based control panel for administrators to manage the entire loan lifecycle.
+- **Loan & Client Management:** Create and manage clients, loans (principal, interest, term), and configurable loan plans.
+- **Financial Tools:** Record payments, calculate EMI using various methods, and automate late fee application.
+- **Device Control:** Remotely lock/unlock devices, with an auto-lock feature for overdue payments.
+- **Security Management:** Choose security mode (Device Owner/Admin) per client, monitor for tampering, and grant uninstall permissions.
+- **Analytics:** A dashboard providing reports on revenue, defaults, and other key business metrics.
 
 **Client App:**
-*   Installed on the customer's device.
-*   Features:
-    *   Communicates with the backend to check its lock status.
-    *   When locked by an admin, the app enters Kiosk mode, blocking all other phone functionality.
-    *   Protected from uninstallation and factory reset via Android's Device Owner mode.
-
-**General Requirements:**
-*   The UI defaults to Estonian but can be switched to English.
-*   Currency is displayed in Euros (€).
-*   The project must be configured to build two separate APKs from a single codebase.
+An Android application installed on the borrower's device.
+- **Status Sync:** Communicates with the backend to sync lock status, even when offline.
+- **Kiosk Mode:** Locks the device completely when instructed by the admin, blocking all other functionality.
+- **High Security:** Protected against uninstallation, factory resets (in Device Owner mode), and tampering (power-off/reboot). It automatically prompts for necessary permissions (Device Admin) upon registration.
 </product_requirements>
 
 <key_technical_concepts>
-- **Full-Stack Application**: FastAPI (Python) backend, Expo (React Native) frontend.
-- **Database**: MongoDB.
-- **Mobile Routing**:  for file-system-based navigation.
-- **App Separation**: Using environment variables () and an  file to dynamically configure the app's name, bundle identifier, and entry point for building two distinct APKs ( profiles).
-- **Native Android Integration**: Custom Expo Config Plugin () to inject native Java code for Android's Device Policy Manager API (Device Owner mode, Kiosk mode, uninstall protection).
-- **Internationalization (i18n)**: React Context () for dynamic language switching between Estonian and English.
+- **Full-Stack:** FastAPI (Python) backend with a MongoDB database and an Expo (React Native) frontend.
+- **Native Android Integration:** Custom Expo Config Plugins to inject Java code for Android's Device Policy Manager (Device Owner, Device Admin, Kiosk Mode, anti-tamper).
+- **App Separation:**  and  use an  environment variable to build two distinct APKs from one codebase.
+- **Offline Functionality:** A custom  using  and  to cache status and queue actions.
+- **API Performance:** Implemented pagination on key database queries (e.g., fetching clients).
 </key_technical_concepts>
 
 <code_architecture>
-The project is structured into a  and a  directory.
+The project is a monorepo with  and  directories. The frontend uses  for file-based routing.
 
 
 
-**Key Files:**
+- ****:
+    - **Importance**: The monolithic backend containing all API logic. It manages authentication, clients, device security, and the entire advanced loan management system (loans, payments, plans, calculator, reports).
+    - **Summary of Changes**: This file has been extensively modified to add numerous models (Client, Payment, LoanPlan) and endpoints for each new feature, including loan calculations, late fees, reminders, and reporting APIs. Pagination was also added to the client-listing endpoint.
 
--   ****:
-    -   **Importance**: Contains the entire FastAPI backend logic, including all API endpoints for admin authentication, client management, device locking/unlocking, and dashboard statistics. It also handles the MongoDB connection and data models.
-    -   **Changes**: Heavily modified to add all CRUD operations, authentication, a robust health check (), and startup events for creating database indexes. Recently updated to begin adding endpoints for admin user management.
+- ****:
+    - **Importance**: The screen for viewing and managing a single client. It's a hub for many admin actions.
+    - **Summary of Changes**: Evolved significantly to display fetched device price, allow editing of device info, show tamper alerts, and include buttons for actions like Allow Uninstall and linking to the new loan management screen.
 
--   ****:
-    -   **Importance**: This Expo Application Services (EAS) configuration file defines the build profiles needed to generate two separate applications ( and ) from the single codebase. It specifies different environment variables () for each build.
+- ****:
+    - **Importance**: The main screen for the client application, responsible for enforcing the lock status.
+    - **Summary of Changes**: Heavily modified to integrate the  for offline capability, check for uninstall permissions, and initialize anti-tamper monitoring services upon startup.
 
--   ****:
-    -   **Importance**: Works with  to dynamically configure the application at build time. It reads the  environment variable to set the correct app name (e.g., Admin App or Client App), package name, and adds the native device owner plugin only for the client app build.
+- ****:
+    - **Importance**: A crucial new service that enables the client app to function without an internet connection by caching the lock status and queueing outgoing requests.
+    - **Summary of Changes**: Created to handle offline logic, using  for persistence and  for connectivity detection.
 
--   ****:
-    -   **Importance**: A custom Expo Config Plugin. It's the core of the advanced security feature, responsible for creating and linking the native Android Java files (, ) required to implement Device Owner and Kiosk modes.
-
--   ****:
-    -   **Importance**: A React Context provider that manages the application's language state (Estonian/English) and provides translations to all components wrapped within it. It was moved to the  directory to adhere to expo-router best practices.
-
--   ****:
-    -   **Importance**: The main screen for the client app. It communicates with the backend to check the device's lock status and uses the native  to enter/exit Kiosk mode.
-
--   ****:
-    -   **Importance**: A screen in the admin app that generates a QR code. This code is used for provisioning a new, factory-reset Android device, which automates the process of making the client app a Device Owner.
+- ****:
+    - **Importance**: This is the file for the newly requested Reports Dashboard, a critical component of the loan management system.
+    - **Summary of Changes**: This file was just created as a placeholder. It is the immediate next piece of frontend work to be done.
 </code_architecture>
 
 <pending_tasks>
-- **Implement Frontend for Admin Management**: Create the UI in the admin panel for:
-    1.  Creating new admin users.
-    2.  Changing the current admin's password.
-This involves creating a new settings screen and connecting it to the backend endpoints that were being developed.
+- **Implement Frontend for Reports Dashboard:** Build the UI in  to visualize data from the new reporting endpoints.
+- **Implement Frontend for Reminder System:** Create UI elements, likely in the loan management or client details screen, to configure and view payment reminders.
+- **Implement Frontend for Late Fee Automation:** Integrate UI controls to manage automated late fees, likely within the  screen.
+- **Add Navigation:** Add links from the admin dashboard to the new Loan Plans, Calculator, and Reports screens.
 </pending_tasks>
 
 <current_work>
-The immediate past work was focused on fulfilling the user's request to **let admin create new users for admin panel and add password change option in the admin panel**.
+The work immediately preceding this summary was the implementation of the final, business-critical features for the advanced loan management system, based on the user's request for **Late Fee Automation, a Reminder System, and a Reports Dashboard**.
 
-The AI engineer had started by modifying the backend. The work involved updating  to add new API endpoints and data models for admin user management.
+The AI engineer completed the necessary backend implementation for all three features. This involved:
+1.  **Updating the  model** in  to include fields for late fee configuration.
+2.  **Adding new API endpoints** to  to handle:
+    *   Applying late fees.
+    *   Managing payment reminders.
+    *   Fetching aggregated data for the financial reports dashboard.
 
-Specifically, the following changes were initiated:
-1.  **Defining new Pydantic models** for listing admin users and for the password change request body. The  model already existed but would be used for the new creation endpoint.
-2.  **Adding new API endpoints** to the . The plan was to add:
-    *   : To create a new admin user (protected, requires admin token).
-    *   : To list all existing admin users (protected).
-    *   : To allow a logged-in admin to change their own password (protected).
+After completing the backend, the engineer began the frontend work by creating the file for the most complex of the three features: the reports dashboard.
 
-The AI was in the process of writing the Python code for these endpoints in  when the work was paused. The next logical step would have been to create the corresponding frontend components for these features.
+**Last action taken**: A new, empty file was created at , and this new route was added to the admin navigation layout in . The implementation of the UI within  has not yet started.
 </current_work>
 
 <optional_next_step>
-Create the frontend settings screen () for admin user management, including forms for creating a new admin and changing the current admin's password.
+Implement the UI for the Reports Dashboard in , fetching and displaying data from the newly created backend reporting endpoints.
 </optional_next_step>
