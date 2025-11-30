@@ -380,7 +380,10 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus: []
+  current_focus:
+    - "Reports & Analytics APIs"
+    - "Late Fee Management APIs"
+    - "Payment Reminders APIs"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
