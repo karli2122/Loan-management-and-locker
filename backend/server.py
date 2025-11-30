@@ -536,16 +536,30 @@ class PasswordChange(BaseModel):
 class AdminListResponse(BaseModel):
     id: str
     username: str
+    role: str
+    is_super_admin: bool
     created_at: datetime
 
 @api_router.get("/admin/list")
 async def list_admins(admin_token: str):
-    """List all admins (requires valid admin token)"""
-    if not await verify_admin_token_header(admin_token):
+    """List all users (requires admin role)"""
+    # Verify token and check if requester is an admin
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
         raise HTTPException(status_code=401, detail="Invalid admin token")
     
+    requester = await db.admins.find_one({"id": token_doc["admin_id"]})
+    if not requester or requester.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can view user list")
+    
     admins = await db.admins.find().to_list(100)
-    return [{"id": a["id"], "username": a["username"], "created_at": a.get("created_at")} for a in admins]
+    return [{
+        "id": a["id"], 
+        "username": a["username"], 
+        "role": a.get("role", "user"),
+        "is_super_admin": a.get("is_super_admin", False),
+        "created_at": a.get("created_at")
+    } for a in admins]
 
 @api_router.post("/admin/change-password")
 async def change_password(admin_token: str, password_data: PasswordChange):
