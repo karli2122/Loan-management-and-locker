@@ -43,6 +43,7 @@ export default function AdminSettings() {
   // Form states
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [newUserRole, setNewUserRole] = useState('user'); // 'admin' or 'user'
   const [currentPassword, setCurrentPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
