@@ -193,6 +193,42 @@ export default function Dashboard() {
             <Text style={styles.actionDescription}>{t('adminManagement')}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/admin/reports')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#06B6D4' }]}>
+              <Ionicons name="bar-chart" size={24} color="#fff" />
+            </View>
+            <Text style={styles.actionTitle}>{language === 'et' ? 'Aruanded' : 'Reports'}</Text>
+            <Text style={styles.actionDescription}>{language === 'et' ? 'Finantsanalüütika ja aruanded' : 'Financial analytics & reports'}</Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/admin/loan-plans')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#EC4899' }]}>
+              <Ionicons name="pricetag" size={24} color="#fff" />
+            </View>
+            <Text style={styles.actionTitle}>{language === 'et' ? 'Laenuplaanid' : 'Loan Plans'}</Text>
+            <Text style={styles.actionDescription}>{language === 'et' ? 'Halda laenuplaane' : 'Manage loan plans'}</Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/admin/calculator')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#14B8A6' }]}>
+              <Ionicons name="calculator" size={24} color="#fff" />
+            </View>
+            <Text style={styles.actionTitle}>{language === 'et' ? 'EMI kalkulaator' : 'EMI Calculator'}</Text>
+            <Text style={styles.actionDescription}>{language === 'et' ? 'Arvuta laenumaksed' : 'Calculate loan payments'}</Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
