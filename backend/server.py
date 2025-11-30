@@ -591,29 +591,42 @@ async def change_password(admin_token: str, password_data: PasswordChange):
 
 @api_router.delete("/admin/{admin_id}")
 async def delete_admin(admin_id: str, admin_token: str):
-    """Delete an admin (cannot delete yourself or the last admin)"""
+    """Delete a user (requires admin role, cannot delete yourself, super admin, or last admin)"""
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
         raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    # Check if requester is an admin
+    requester = await db.admins.find_one({"id": token_doc["admin_id"]})
+    if not requester or requester.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can delete users")
     
     # Cannot delete yourself
     if token_doc["admin_id"] == admin_id:
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
     
+    # Check if target user is super admin
+    target_user = await db.admins.find_one({"id": admin_id})
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if target_user.get("is_super_admin", False):
+        raise HTTPException(status_code=403, detail="Cannot delete super admin")
+    
     # Check if this is the last admin
-    admin_count = await db.admins.count_documents({})
-    if admin_count <= 1:
+    admin_count = await db.admins.count_documents({"role": "admin"})
+    if admin_count <= 1 and target_user.get("role") == "admin":
         raise HTTPException(status_code=400, detail="Cannot delete the last admin")
     
-    # Delete admin
+    # Delete user
     result = await db.admins.delete_one({"id": admin_id})
     if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Admin not found")
+        raise HTTPException(status_code=404, detail="User not found")
     
     # Delete associated token
     await db.admin_tokens.delete_one({"admin_id": admin_id})
     
-    return {"message": "Admin deleted successfully"}
+    return {"message": "User deleted successfully"}
 
 # ===================== CLIENT MANAGEMENT ROUTES =====================
 
