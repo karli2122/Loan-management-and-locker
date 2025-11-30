@@ -130,6 +130,37 @@ class AdminResponse(BaseModel):
     username: str
     token: str
 
+class LoanPlan(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str  # e.g., "Standard Plan", "Premium Plan"
+    interest_rate: float  # Annual percentage
+    min_tenure_months: int = 3
+    max_tenure_months: int = 36
+    processing_fee_percent: float = 0.0
+    late_fee_percent: float = 2.0  # Per month
+    description: str = ""
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class LoanPlanCreate(BaseModel):
+    name: str
+    interest_rate: float
+    min_tenure_months: int = 3
+    max_tenure_months: int = 36
+    processing_fee_percent: float = 0.0
+    late_fee_percent: float = 2.0
+    description: str = ""
+
+class Reminder(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    client_id: str
+    reminder_type: str  # "payment_due", "overdue", "final_notice"
+    scheduled_date: datetime
+    sent: bool = False
+    sent_at: Optional[datetime] = None
+    message: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
 class Client(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
