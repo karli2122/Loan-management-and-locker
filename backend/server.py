@@ -113,6 +113,112 @@ def calculate_all_methods(principal: float, annual_rate: float, months: int) -> 
         "flat_rate": calculate_flat_rate_emi(principal, annual_rate, months)
     }
 
+def calculate_late_fee(principal_due: float, late_fee_percent: float, days_overdue: int) -> float:
+    """Calculate late fee based on days overdue"""
+    if days_overdue <= 0:
+        return 0.0
+    
+    # Calculate late fee: (principal × late_fee_percent × months_overdue) / 100
+    months_overdue = days_overdue / 30  # Approximate months
+    late_fee = (principal_due * late_fee_percent * months_overdue) / 100
+    
+    return round(late_fee, 2)
+
+async def apply_late_fees_to_overdue_clients():
+    """Background job to calculate and apply late fees to overdue clients"""
+    try:
+        # Get all clients with overdue payments
+        clients = await db.clients.find({
+            "next_payment_due": {"$lt": datetime.utcnow()},
+            "outstanding_balance": {"$gt": 0}
+        }).to_list(1000)
+        
+        for client in clients:
+            days_overdue = (datetime.utcnow() - client["next_payment_due"]).days
+            
+            if days_overdue > 0:
+                # Get late fee rate (from loan plan or default)
+                late_fee_rate = 2.0  # Default 2% per month
+                
+                if client.get("loan_plan_id"):
+                    plan = await db.loan_plans.find_one({"id": client["loan_plan_id"]})
+                    if plan:
+                        late_fee_rate = plan.get("late_fee_percent", 2.0)
+                
+                # Calculate late fee on monthly EMI
+                monthly_emi = client.get("monthly_emi", 0)
+                late_fee = calculate_late_fee(monthly_emi, late_fee_rate, days_overdue)
+                
+                # Update client with accumulated late fees
+                current_late_fees = client.get("late_fees_accumulated", 0)
+                new_late_fees = current_late_fees + late_fee
+                
+                await db.clients.update_one(
+                    {"id": client["id"]},
+                    {"$set": {
+                        "late_fees_accumulated": new_late_fees,
+                        "days_overdue": days_overdue
+                    }}
+                )
+                
+                logger.info(f"Applied late fee of €{late_fee} to client {client['id']} ({days_overdue} days overdue)")
+    
+    except Exception as e:
+        logger.error(f"Late fee calculation error: {str(e)}")
+
+async def create_payment_reminders():
+    """Background job to create payment reminders"""
+    try:
+        from dateutil.relativedelta import relativedelta
+        
+        # Get all clients with active loans
+        clients = await db.clients.find({
+            "outstanding_balance": {"$gt": 0},
+            "payment_reminders_enabled": True,
+            "next_payment_due": {"$exists": True}
+        }).to_list(1000)
+        
+        for client in clients:
+            next_due = client.get("next_payment_due")
+            if not next_due:
+                continue
+            
+            days_until_due = (next_due - datetime.utcnow()).days
+            
+            # Create reminders at specific intervals
+            reminder_configs = [
+                (7, "payment_due_7days", "Payment due in 7 days"),
+                (3, "payment_due_3days", "Payment due in 3 days"),
+                (1, "payment_due_1day", "Payment due tomorrow"),
+                (0, "payment_due_today", "Payment due today"),
+                (-1, "payment_overdue_1day", "Payment overdue by 1 day"),
+                (-3, "payment_overdue_3days", "Payment overdue by 3 days"),
+                (-7, "payment_overdue_7days", "Final notice: Payment overdue by 7 days"),
+            ]
+            
+            for days_before, reminder_type, message in reminder_configs:
+                if days_until_due == days_before:
+                    # Check if reminder already exists
+                    existing = await db.reminders.find_one({
+                        "client_id": client["id"],
+                        "reminder_type": reminder_type,
+                        "scheduled_date": {"$gte": datetime.utcnow() - relativedelta(days=1)}
+                    })
+                    
+                    if not existing:
+                        # Create reminder
+                        reminder = Reminder(
+                            client_id=client["id"],
+                            reminder_type=reminder_type,
+                            scheduled_date=datetime.utcnow(),
+                            message=f"{message}. Amount: €{client.get('monthly_emi', 0):.2f}"
+                        )
+                        await db.reminders.insert_one(reminder.dict())
+                        logger.info(f"Created {reminder_type} reminder for client {client['id']}")
+    
+    except Exception as e:
+        logger.error(f"Reminder creation error: {str(e)}")
+
 def check_and_auto_lock_overdue_payments():
     """Background job to check overdue payments and auto-lock devices"""
     try:
