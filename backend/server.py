@@ -175,6 +175,7 @@ class Client(BaseModel):
     registration_code: str = Field(default_factory=lambda: secrets.token_hex(4).upper())
     
     # Loan Management Fields
+    loan_plan_id: Optional[str] = None  # Reference to loan plan
     loan_amount: float = 0.0  # Total loan amount (device price - down payment)
     down_payment: float = 0.0  # Initial down payment
     interest_rate: float = 0.0  # Annual interest rate percentage
@@ -183,10 +184,13 @@ class Client(BaseModel):
     total_amount_due: float = 0.0  # Principal + Interest
     total_paid: float = 0.0  # Total amount paid so far
     outstanding_balance: float = 0.0  # Remaining balance
+    processing_fee: float = 0.0  # One-time processing fee
+    late_fees_accumulated: float = 0.0  # Total late fees
     loan_start_date: Optional[datetime] = None  # When loan started
     last_payment_date: Optional[datetime] = None  # Last payment received
     next_payment_due: Optional[datetime] = None  # Next payment due date
     days_overdue: int = 0  # Days past due date
+    payment_reminders_enabled: bool = True  # Enable payment reminders
     
     # Auto-lock settings
     auto_lock_enabled: bool = True  # Enable auto-lock on missed payment
