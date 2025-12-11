@@ -75,6 +75,18 @@ The project includes pre-configured build profiles in `eas.json`:
 
 ## Building APKs
 
+### APK vs AAB Format
+
+This project uses **APK format** for direct distribution rather than AAB (Android App Bundle):
+
+- **APK**: Direct installation on devices without Google Play Store
+- **AAB**: Optimized for Google Play Store submission
+- **Why APK**: This EMI system requires Device Owner mode setup before first boot, making direct APK distribution more suitable for controlled deployment environments
+
+If you need AAB format for Play Store submission, change `buildType` from `"apk"` to `"app-bundle"` in `eas.json`.
+
+---
+
 ### Cloud Builds (Recommended for Production)
 
 #### Build Admin APK
