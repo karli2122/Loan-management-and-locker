@@ -10,7 +10,8 @@
         "APP_MODE": "admin"
       },
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       }
     },
     "admin-preview": {
@@ -19,16 +20,21 @@
         "APP_MODE": "admin"
       },
       "android": {
-        "buildType": "apk"
-      }
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "channel": "preview"
     },
     "admin-production": {
+      "distribution": "store",
       "env": {
         "APP_MODE": "admin"
       },
       "android": {
-        "buildType": "apk"
-      }
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "channel": "production"
     },
     "client-development": {
       "developmentClient": true,
@@ -37,7 +43,8 @@
         "APP_MODE": "client"
       },
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       }
     },
     "client-preview": {
@@ -46,19 +53,29 @@
         "APP_MODE": "client"
       },
       "android": {
-        "buildType": "apk"
-      }
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "channel": "preview"
     },
     "client-production": {
+      "distribution": "store",
       "env": {
         "APP_MODE": "client"
       },
       "android": {
-        "buildType": "apk"
-      }
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "channel": "production"
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "./service-account-key.json",
+        "track": "internal"
+      }
+    }
   }
 }
