@@ -73,10 +73,9 @@ export default {
     },
     extra: {
       appMode: IS_ADMIN_APP ? "admin" : "client"
-      // Note: Add your EAS projectId here when ready to use EAS Build cloud services
-      // eas: {
-      //   projectId: "your-eas-project-id"
-      // }
+      eas: {
+         projectId: "7be3aec1-6fef-4200-9987-5868c4320a07"
+       }
     }
   }
 };
