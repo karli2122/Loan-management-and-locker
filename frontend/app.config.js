@@ -72,7 +72,7 @@ export default {
       typedRoutes: true
     },
     extra: {
-      appMode: IS_ADMIN_APP ? "admin" : "client"
+      appMode: IS_ADMIN_APP ? "admin" : "client",
       eas: {
          projectId: "7be3aec1-6fef-4200-9987-5868c4320a07"
        }
