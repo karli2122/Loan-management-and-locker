@@ -6,6 +6,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.util.Log;
 
 import expo.modules.kotlin.modules.Module;
 import expo.modules.kotlin.modules.ModuleDefinition;
@@ -23,6 +24,7 @@ public class DeviceAdminModule extends Module {
                     ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
                     return dpm.isAdminActive(adminComponent);
                 } catch (Exception e) {
+                    Log.e("DeviceAdminModule", "isDeviceAdminActive failed", e);
                     return false;
                 }
             });
