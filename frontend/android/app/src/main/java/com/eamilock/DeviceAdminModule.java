@@ -23,6 +23,9 @@ public class DeviceAdminModule extends Module {
                     DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
                     ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
                     return dpm.isAdminActive(adminComponent);
+                } catch (SecurityException e) {
+                    Log.e("DeviceAdminModule", "isDeviceAdminActive security failure", e);
+                    return false;
                 } catch (Exception e) {
                     Log.e("DeviceAdminModule", "isDeviceAdminActive failed", e);
                     return false;
@@ -45,6 +48,8 @@ public class DeviceAdminModule extends Module {
                         return "requested";
                     }
                     return "already_active";
+                } catch (SecurityException e) {
+                    return "security_error: " + e.getMessage();
                 } catch (Exception e) {
                     return "error: " + e.getMessage();
                 }
@@ -141,7 +146,7 @@ public class DeviceAdminModule extends Module {
                     return "error: " + e.getMessage();
                 }
             });
-            
+
             builder.asyncFunction("allowUninstall", () -> {
                 try {
                     Context context = getContext();
