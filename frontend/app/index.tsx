@@ -10,7 +10,11 @@ export default function Index() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
   const rootNavigationState = useRootNavigationState();
-  
+
+  if (!rootNavigationState?.key) {
+    return null;
+  }
+
   // Get app mode from config
   const appMode = Constants.expoConfig?.extra?.appMode;
 
