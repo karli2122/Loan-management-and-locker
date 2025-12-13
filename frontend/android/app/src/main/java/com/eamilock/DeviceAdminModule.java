@@ -17,27 +17,35 @@ public class DeviceAdminModule extends Module {
             builder.name("DeviceAdmin");
 
             builder.asyncFunction("isDeviceAdminActive", () -> {
-                Context context = getContext();
-                DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
-                ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
-                return dpm.isAdminActive(adminComponent);
+                try {
+                    Context context = getContext();
+                    DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
+                    ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
+                    return dpm.isAdminActive(adminComponent);
+                } catch (Exception e) {
+                    return false;
+                }
             });
 
             builder.asyncFunction("requestDeviceAdmin", () -> {
-                Context context = getContext();
-                DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
-                ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
-                
-                if (!dpm.isAdminActive(adminComponent)) {
-                    Intent intent = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
-                    intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent);
-                    intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, 
-                        "Enable device admin to protect your device and EMI payment.");
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    context.startActivity(intent);
-                    return "requested";
+                try {
+                    Context context = getContext();
+                    DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
+                    ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
+                    
+                    if (!dpm.isAdminActive(adminComponent)) {
+                        Intent intent = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
+                        intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent);
+                        intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, 
+                            "Enable device admin to protect your device and EMI payment.");
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        context.startActivity(intent);
+                        return "requested";
+                    }
+                    return "already_active";
+                } catch (Exception e) {
+                    return "error: " + e.getMessage();
                 }
-                return "already_active";
             });
 
             builder.asyncFunction("lockDevice", () -> {
@@ -131,17 +139,10 @@ public class DeviceAdminModule extends Module {
                     return "error: " + e.getMessage();
                 }
             });
-        });
-    }
-
-    private Context getContext() {
-        return getAppContext().getReactContext();
-    }
-
-    builder.asyncFunction("allowUninstall", () -> {
+            
+            builder.asyncFunction("allowUninstall", () -> {
                 try {
                     Context context = getContext();
-                    // Set flag to allow uninstall
                     context.getSharedPreferences("EMILockPrefs", Context.MODE_PRIVATE)
                            .edit()
                            .putBoolean("allow_uninstall", true)
