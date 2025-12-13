@@ -23,9 +23,6 @@ public class DeviceAdminModule extends Module {
                     DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
                     ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
                     return dpm.isAdminActive(adminComponent);
-                } catch (SecurityException e) {
-                    Log.e("DeviceAdminModule", "isDeviceAdminActive security failure", e);
-                    return false;
                 } catch (Exception e) {
                     Log.e("DeviceAdminModule", "isDeviceAdminActive failed", e);
                     return false;
@@ -48,9 +45,6 @@ public class DeviceAdminModule extends Module {
                         return "requested";
                     }
                     return "already_active";
-                } catch (SecurityException e) {
-                    Log.e("DeviceAdminModule", "requestDeviceAdmin security failure", e);
-                    return "security_error";
                 } catch (Exception e) {
                     Log.e("DeviceAdminModule", "requestDeviceAdmin failed", e);
                     return "error";
