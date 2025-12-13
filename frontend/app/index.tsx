@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, InteractionManager } from 'react-native';
 import { useRouter, useRootNavigationState } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,9 +23,9 @@ export default function Index() {
     if (!rootNavigationState?.key) return;
 
     if (appMode === 'admin') {
-      router.replace('/admin/login');
+      InteractionManager.runAfterInteractions(() => router.replace('/admin/login'));
     } else if (appMode === 'client') {
-      router.replace('/client/register');
+      InteractionManager.runAfterInteractions(() => router.replace('/client/register'));
     }
   }, [appMode, rootNavigationState?.key, router]);
 
