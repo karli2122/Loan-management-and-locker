@@ -27,6 +27,9 @@ public class DeviceAdminModule extends Module {
                     DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
                     ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
                     return dpm.isAdminActive(adminComponent);
+                } catch (SecurityException e) {
+                    Log.e(TAG, "isDeviceAdminActive security failure", e);
+                    return false;
                 } catch (Exception e) {
                     Log.e(TAG, "isDeviceAdminActive failed", e);
                     return false;
@@ -49,9 +52,12 @@ public class DeviceAdminModule extends Module {
                         return "requested";
                     }
                     return "already_active";
+                } catch (SecurityException e) {
+                    Log.e(TAG, "requestDeviceAdmin security failure", e);
+                    return "security_error";
                 } catch (Exception e) {
                     Log.e(TAG, "requestDeviceAdmin failed", e);
-                    return "error";
+                    return "error_request_admin";
                 }
             });
 
@@ -156,17 +162,18 @@ public class DeviceAdminModule extends Module {
                            .apply();
                     return "uninstall_allowed";
                 } catch (Exception e) {
-                    return "error: " + e.getMessage();
+                    Log.e(TAG, "allowUninstall failed", e);
+                    return "error_allow_uninstall";
                 }
             });
 
             builder.asyncFunction("isUninstallAllowed", () -> {
                 try {
                     Context context = getContext();
-                    boolean allowed = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                                             .getBoolean(KEY_ALLOW_UNINSTALL, false);
-                    return allowed;
+                    return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                                  .getBoolean(KEY_ALLOW_UNINSTALL, false);
                 } catch (Exception e) {
+                    Log.e(TAG, "isUninstallAllowed failed", e);
                     return false;
                 }
             });
