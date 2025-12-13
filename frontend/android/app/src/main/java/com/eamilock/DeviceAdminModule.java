@@ -183,17 +183,17 @@ public class DeviceAdminModule extends Module {
         public void onEnabled(Context context, Intent intent) {
             super.onEnabled(context, intent);
             // Device admin enabled - block uninstall by default
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            context.getSharedPreferences(DeviceAdminModule.PREFS_NAME, Context.MODE_PRIVATE)
                    .edit()
-                   .putBoolean(KEY_ALLOW_UNINSTALL, false)
+                   .putBoolean(DeviceAdminModule.KEY_ALLOW_UNINSTALL, false)
                    .apply();
         }
 
         @Override
         public CharSequence onDisableRequested(Context context, Intent intent) {
             // Check if uninstall is allowed
-            boolean allowed = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                                     .getBoolean(KEY_ALLOW_UNINSTALL, false);
+            boolean allowed = context.getSharedPreferences(DeviceAdminModule.PREFS_NAME, Context.MODE_PRIVATE)
+                                     .getBoolean(DeviceAdminModule.KEY_ALLOW_UNINSTALL, false);
             
             if (allowed) {
                 return "Device admin will be disabled.";
@@ -210,9 +210,9 @@ public class DeviceAdminModule extends Module {
         public void onDisabled(Context context, Intent intent) {
             super.onDisabled(context, intent);
             // Reset the flag
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            context.getSharedPreferences(DeviceAdminModule.PREFS_NAME, Context.MODE_PRIVATE)
                    .edit()
-                   .putBoolean(KEY_ALLOW_UNINSTALL, false)
+                   .putBoolean(DeviceAdminModule.KEY_ALLOW_UNINSTALL, false)
                    .apply();
         }
 
