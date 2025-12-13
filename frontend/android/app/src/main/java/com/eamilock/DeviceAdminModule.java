@@ -49,9 +49,11 @@ public class DeviceAdminModule extends Module {
                     }
                     return "already_active";
                 } catch (SecurityException e) {
-                    return "security_error: " + e.getMessage();
+                    Log.e("DeviceAdminModule", "requestDeviceAdmin security failure", e);
+                    return "security_error";
                 } catch (Exception e) {
-                    return "error: " + e.getMessage();
+                    Log.e("DeviceAdminModule", "requestDeviceAdmin failed", e);
+                    return "error";
                 }
             });
 
