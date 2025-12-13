@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useRootNavigationState } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
@@ -9,18 +9,21 @@ import { useLanguage } from '../src/context/LanguageContext';
 export default function Index() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
+  const rootNavigationState = useRootNavigationState();
   
   // Get app mode from config
   const appMode = Constants.expoConfig?.extra?.appMode;
 
   useEffect(() => {
     // Auto-redirect based on app mode
+    if (!rootNavigationState?.key) return;
+
     if (appMode === 'admin') {
       router.replace('/admin/login');
     } else if (appMode === 'client') {
       router.replace('/client/register');
     }
-  }, [appMode]);
+  }, [appMode, rootNavigationState?.key, router]);
 
   // If app mode is set, show loading while redirecting
   if (appMode === 'admin' || appMode === 'client') {
