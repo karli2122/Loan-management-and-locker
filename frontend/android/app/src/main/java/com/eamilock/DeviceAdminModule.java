@@ -12,6 +12,10 @@ import expo.modules.kotlin.modules.Module;
 import expo.modules.kotlin.modules.ModuleDefinition;
 
 public class DeviceAdminModule extends Module {
+    private static final String TAG = "DeviceAdminModule";
+    private static final String PREFS_NAME = "EMILockPrefs";
+    private static final String KEY_ALLOW_UNINSTALL = "allow_uninstall";
+
     @Override
     public ModuleDefinition definition() {
         return ModuleDefinition.create(builder -> {
@@ -24,7 +28,7 @@ public class DeviceAdminModule extends Module {
                     ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
                     return dpm.isAdminActive(adminComponent);
                 } catch (Exception e) {
-                    Log.e("DeviceAdminModule", "isDeviceAdminActive failed", e);
+                    Log.e(TAG, "isDeviceAdminActive failed", e);
                     return false;
                 }
             });
@@ -46,7 +50,7 @@ public class DeviceAdminModule extends Module {
                     }
                     return "already_active";
                 } catch (Exception e) {
-                    Log.e("DeviceAdminModule", "requestDeviceAdmin failed", e);
+                    Log.e(TAG, "requestDeviceAdmin failed", e);
                     return "error";
                 }
             });
@@ -146,9 +150,9 @@ public class DeviceAdminModule extends Module {
             builder.asyncFunction("allowUninstall", () -> {
                 try {
                     Context context = getContext();
-                    context.getSharedPreferences("EMILockPrefs", Context.MODE_PRIVATE)
+                    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                            .edit()
-                           .putBoolean("allow_uninstall", true)
+                           .putBoolean(KEY_ALLOW_UNINSTALL, true)
                            .apply();
                     return "uninstall_allowed";
                 } catch (Exception e) {
@@ -159,8 +163,8 @@ public class DeviceAdminModule extends Module {
             builder.asyncFunction("isUninstallAllowed", () -> {
                 try {
                     Context context = getContext();
-                    boolean allowed = context.getSharedPreferences("EMILockPrefs", Context.MODE_PRIVATE)
-                                             .getBoolean("allow_uninstall", false);
+                    boolean allowed = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                                             .getBoolean(KEY_ALLOW_UNINSTALL, false);
                     return allowed;
                 } catch (Exception e) {
                     return false;
@@ -179,17 +183,17 @@ public class DeviceAdminModule extends Module {
         public void onEnabled(Context context, Intent intent) {
             super.onEnabled(context, intent);
             // Device admin enabled - block uninstall by default
-            context.getSharedPreferences("EMILockPrefs", Context.MODE_PRIVATE)
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                    .edit()
-                   .putBoolean("allow_uninstall", false)
+                   .putBoolean(KEY_ALLOW_UNINSTALL, false)
                    .apply();
         }
 
         @Override
         public CharSequence onDisableRequested(Context context, Intent intent) {
             // Check if uninstall is allowed
-            boolean allowed = context.getSharedPreferences("EMILockPrefs", Context.MODE_PRIVATE)
-                                     .getBoolean("allow_uninstall", false);
+            boolean allowed = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                                     .getBoolean(KEY_ALLOW_UNINSTALL, false);
             
             if (allowed) {
                 return "Device admin will be disabled.";
@@ -206,9 +210,9 @@ public class DeviceAdminModule extends Module {
         public void onDisabled(Context context, Intent intent) {
             super.onDisabled(context, intent);
             // Reset the flag
-            context.getSharedPreferences("EMILockPrefs", Context.MODE_PRIVATE)
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                    .edit()
-                   .putBoolean("allow_uninstall", false)
+                   .putBoolean(KEY_ALLOW_UNINSTALL, false)
                    .apply();
         }
 
