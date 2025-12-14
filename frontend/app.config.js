@@ -3,7 +3,7 @@ const IS_ADMIN_APP = process.env.APP_MODE === 'admin';
 export default {
   expo: {
     name: IS_ADMIN_APP ? "EMI Admin" : "EMI Client",
-    slug: "client",  // Fixed slug for EAS project consistency
+    slug: "client",  // Shared EAS project slug for both admin and client modes
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
