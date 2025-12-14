@@ -62,7 +62,20 @@ export default function AdminLogin() {
 
       router.replace('/admin/(tabs)');
     } catch (error: any) {
-      Alert.alert(t('error'), error.message || 'Something went wrong');
+      console.error('Login error:', error);
+      
+      let errorMessage = error.message || 'Something went wrong';
+      
+      // Check for network errors
+      if (error.message && error.message.includes('Network request failed')) {
+        errorMessage = 'Network connection error. Please check your internet connection and try again.';
+      } else if (error.message && error.message.includes('Failed to fetch')) {
+        errorMessage = 'Unable to connect to server. Please check your connection.';
+      } else if (!API_URL) {
+        errorMessage = 'API configuration error. Please restart the app.';
+      }
+      
+      Alert.alert(t('error'), errorMessage);
     } finally {
       setLoading(false);
     }
