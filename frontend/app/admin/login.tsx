@@ -49,23 +49,26 @@ export default function AdminLogin() {
       });
 
       console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
+      console.log('Response content-type:', response.headers.get('content-type'));
 
-      // Check if response is JSON
+      // Read response as text first to handle both JSON and non-JSON
+      const responseText = await response.text();
+      console.log('Response preview:', responseText.substring(0, 100));
+
+      // Check if response is JSON by content-type
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        const textResponse = await response.text();
-        console.error('Non-JSON response:', textResponse.substring(0, 200));
+        console.error('Non-JSON response received');
         throw new Error('Server returned invalid response. Please try again.');
       }
 
+      // Try to parse as JSON
       let data;
       try {
-        data = await response.json();
+        data = JSON.parse(responseText);
       } catch (parseError: any) {
-        console.error('JSON parse error:', parseError);
-        const textResponse = await response.text();
-        console.error('Response text:', textResponse.substring(0, 200));
+        console.error('JSON parse error:', parseError.message);
+        console.error('Response text:', responseText.substring(0, 200));
         throw new Error('Failed to parse server response. Please try again.');
       }
 
