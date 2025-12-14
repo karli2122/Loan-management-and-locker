@@ -74,7 +74,7 @@ export default {
     extra: {
       appMode: IS_ADMIN_APP ? "admin" : "client",
       eas: {
-        projectId: "7be3aec1-6fef-4200-9987-5868c4320a07",
+        projectId: "0cb46d92-e754-4a76-a24b-c69c70ccd850",
         cli: {
           appVersionSource: "remote"
         }
