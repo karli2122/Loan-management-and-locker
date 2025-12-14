@@ -21,8 +21,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
 import OfflineSyncManager from '../../src/services/OfflineSyncManager';
+import API_URL from '../../src/constants/api';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 interface ClientStatus {
   id: string;

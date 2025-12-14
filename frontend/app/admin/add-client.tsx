@@ -15,8 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../../src/context/LanguageContext';
+import API_URL from '../../src/constants/api';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function AddClient() {
   const router = useRouter();
