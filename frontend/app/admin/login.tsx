@@ -35,6 +35,13 @@ export default function AdminLogin() {
 
     setLoading(true);
     try {
+      console.log('API_URL:', API_URL);
+      console.log('Login URL:', `${API_URL}/api/admin/login`);
+      
+      if (!API_URL) {
+        throw new Error('API URL is not configured. Please check .env file.');
+      }
+
       const response = await fetch(`${API_URL}/api/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
