@@ -59,7 +59,15 @@ export default function AdminLogin() {
         throw new Error('Server returned invalid response. Please try again.');
       }
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError: any) {
+        console.error('JSON parse error:', parseError);
+        const textResponse = await response.text();
+        console.error('Response text:', textResponse.substring(0, 200));
+        throw new Error('Failed to parse server response. Please try again.');
+      }
 
       if (!response.ok) {
         throw new Error(data.detail || 'Authentication failed');
