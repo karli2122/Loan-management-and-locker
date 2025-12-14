@@ -899,6 +899,7 @@ class EMIBackendTester:
             self.test_location_update,
             self.test_clear_warning,
             self.test_stats,
+            self.test_advanced_loan_management_apis,
             self.test_delete_client
         ]
         
@@ -1278,7 +1279,7 @@ class EMIBackendTester:
         print("🏦 ADVANCED LOAN MANAGEMENT API TESTS COMPLETED")
         print("="*80)
         
-        return True
+        return failed == 0
 
 if __name__ == "__main__":
     import sys
