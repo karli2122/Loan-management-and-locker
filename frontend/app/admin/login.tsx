@@ -48,6 +48,17 @@ export default function AdminLogin() {
         body: JSON.stringify({ username, password }),
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const textResponse = await response.text();
+        console.error('Non-JSON response:', textResponse.substring(0, 200));
+        throw new Error('Server returned invalid response. Please try again.');
+      }
+
       const data = await response.json();
 
       if (!response.ok) {
