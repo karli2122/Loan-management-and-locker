@@ -40,10 +40,17 @@ export default function AdminLogin() {
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data: any = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        // Non-JSON response (e.g., HTML error page)
+      }
 
       if (!response.ok) {
-        throw new Error(data.detail || 'Authentication failed');
+        const message = data?.detail || text || 'Authentication failed';
+        throw new Error(message);
       }
 
       await AsyncStorage.setItem('admin_token', data.token);
