@@ -24,6 +24,14 @@ import OfflineSyncManager from '../../src/services/OfflineSyncManager';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
+// Helper function to build API endpoint URL
+const getApiUrl = (endpoint: string) => {
+  if (!API_URL) return '';
+  const baseUrl = API_URL.replace(/\/$/, '');
+  const cleanEndpoint = endpoint.replace(/^\//, '');
+  return `${baseUrl}/${cleanEndpoint}`;
+};
+
 interface ClientStatus {
   id: string;
   name: string;
