@@ -16,14 +16,15 @@ function withDeviceOwner(config) {
     }
     
     // Check if already added
+    const receiverClass = '.EmiDeviceAdminReceiver';
     const hasReceiver = application.receiver.some(
-      r => r.$['android:name'] === '.DeviceAdminReceiver'
+      r => r.$['android:name'] === receiverClass
     );
     
     if (!hasReceiver) {
       application.receiver.push({
         $: {
-          'android:name': '.DeviceAdminReceiver',
+          'android:name': receiverClass,
           'android:permission': 'android.permission.BIND_DEVICE_ADMIN',
           'android:exported': 'true',
         },
@@ -120,12 +121,11 @@ function withDeviceOwner(config) {
     // Write DeviceAdminReceiver.java
     const deviceAdminReceiver = `package ${packageName};
 
-import android.app.admin.DeviceAdminReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.widget.Toast;
 
-public class DeviceAdminReceiver extends android.app.admin.DeviceAdminReceiver {
+public class EmiDeviceAdminReceiver extends android.app.admin.DeviceAdminReceiver {
     @Override
     public void onEnabled(Context context, Intent intent) {
         super.onEnabled(context, intent);
@@ -142,7 +142,7 @@ public class DeviceAdminReceiver extends android.app.admin.DeviceAdminReceiver {
     }
 }`;
     
-    fs.writeFileSync(path.join(javaDir, 'DeviceAdminReceiver.java'), deviceAdminReceiver);
+    fs.writeFileSync(path.join(javaDir, 'EmiDeviceAdminReceiver.java'), deviceAdminReceiver);
     
     // Write BootReceiver.java
     const bootReceiver = `package ${packageName};
@@ -201,7 +201,7 @@ public class DevicePolicyModule extends ReactContextBaseJavaModule {
         super(context);
         this.reactContext = context;
         this.devicePolicyManager = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
-        this.componentName = new ComponentName(context, DeviceAdminReceiver.class);
+        this.componentName = new ComponentName(context, EmiDeviceAdminReceiver.class);
     }
 
     @Override
