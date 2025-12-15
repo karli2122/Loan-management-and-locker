@@ -14,9 +14,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
+import API_URL from '../../src/constants/api';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function AddClient() {
   const router = useRouter();
@@ -38,12 +39,14 @@ export default function AddClient() {
 
     setLoading(true);
     try {
+      const adminId = await AsyncStorage.getItem('admin_id');
       const response = await fetch(`${API_URL}/api/clients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
           emi_amount: parseFloat(form.emi_amount) || 0,
+          admin_id: adminId || undefined,
         }),
       });
 

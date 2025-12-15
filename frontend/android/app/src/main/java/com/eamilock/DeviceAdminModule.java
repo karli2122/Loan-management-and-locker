@@ -6,38 +6,59 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.util.Log;
 
 import expo.modules.kotlin.modules.Module;
 import expo.modules.kotlin.modules.ModuleDefinition;
 
 public class DeviceAdminModule extends Module {
+    private static final String TAG = "DeviceAdminModule";
+    private static final String PREFS_NAME = "EMILockPrefs";
+    private static final String KEY_ALLOW_UNINSTALL = "allow_uninstall";
+
     @Override
     public ModuleDefinition definition() {
         return ModuleDefinition.create(builder -> {
             builder.name("DeviceAdmin");
 
             builder.asyncFunction("isDeviceAdminActive", () -> {
-                Context context = getContext();
-                DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
-                ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
-                return dpm.isAdminActive(adminComponent);
+                try {
+                    Context context = getContext();
+                    DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
+                    ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
+                    return dpm.isAdminActive(adminComponent);
+                } catch (SecurityException e) {
+                    Log.e(TAG, "isDeviceAdminActive security failure", e);
+                    return false;
+                } catch (Exception e) {
+                    Log.e(TAG, "isDeviceAdminActive failed", e);
+                    return false;
+                }
             });
 
             builder.asyncFunction("requestDeviceAdmin", () -> {
-                Context context = getContext();
-                DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
-                ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
-                
-                if (!dpm.isAdminActive(adminComponent)) {
-                    Intent intent = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
-                    intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent);
-                    intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, 
-                        "Enable device admin to protect your device and EMI payment.");
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    context.startActivity(intent);
-                    return "requested";
+                try {
+                    Context context = getContext();
+                    DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
+                    ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
+                    
+                    if (!dpm.isAdminActive(adminComponent)) {
+                        Intent intent = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
+                        intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent);
+                        intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, 
+                            "Enable device admin to protect your device and EMI payment.");
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        context.startActivity(intent);
+                        return "requested";
+                    }
+                    return "already_active";
+                } catch (SecurityException e) {
+                    Log.e(TAG, "requestDeviceAdmin security failure", e);
+                    return "security_error";
+                } catch (Exception e) {
+                    Log.e(TAG, "requestDeviceAdmin failed", e);
+                    return "error_request_admin";
                 }
-                return "already_active";
             });
 
             builder.asyncFunction("lockDevice", () -> {
@@ -131,34 +152,28 @@ public class DeviceAdminModule extends Module {
                     return "error: " + e.getMessage();
                 }
             });
-        });
-    }
 
-    private Context getContext() {
-        return getAppContext().getReactContext();
-    }
-
-    builder.asyncFunction("allowUninstall", () -> {
+            builder.asyncFunction("allowUninstall", () -> {
                 try {
                     Context context = getContext();
-                    // Set flag to allow uninstall
-                    context.getSharedPreferences("EMILockPrefs", Context.MODE_PRIVATE)
+                    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                            .edit()
-                           .putBoolean("allow_uninstall", true)
+                           .putBoolean(KEY_ALLOW_UNINSTALL, true)
                            .apply();
                     return "uninstall_allowed";
                 } catch (Exception e) {
-                    return "error: " + e.getMessage();
+                    Log.e(TAG, "allowUninstall failed", e);
+                    return "error_allow_uninstall";
                 }
             });
 
             builder.asyncFunction("isUninstallAllowed", () -> {
                 try {
                     Context context = getContext();
-                    boolean allowed = context.getSharedPreferences("EMILockPrefs", Context.MODE_PRIVATE)
-                                             .getBoolean("allow_uninstall", false);
-                    return allowed;
+                    return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                                  .getBoolean(KEY_ALLOW_UNINSTALL, false);
                 } catch (Exception e) {
+                    Log.e(TAG, "isUninstallAllowed failed", e);
                     return false;
                 }
             });
@@ -175,17 +190,17 @@ public class DeviceAdminModule extends Module {
         public void onEnabled(Context context, Intent intent) {
             super.onEnabled(context, intent);
             // Device admin enabled - block uninstall by default
-            context.getSharedPreferences("EMILockPrefs", Context.MODE_PRIVATE)
+            context.getSharedPreferences(DeviceAdminModule.PREFS_NAME, Context.MODE_PRIVATE)
                    .edit()
-                   .putBoolean("allow_uninstall", false)
+                   .putBoolean(DeviceAdminModule.KEY_ALLOW_UNINSTALL, false)
                    .apply();
         }
 
         @Override
         public CharSequence onDisableRequested(Context context, Intent intent) {
             // Check if uninstall is allowed
-            boolean allowed = context.getSharedPreferences("EMILockPrefs", Context.MODE_PRIVATE)
-                                     .getBoolean("allow_uninstall", false);
+            boolean allowed = context.getSharedPreferences(DeviceAdminModule.PREFS_NAME, Context.MODE_PRIVATE)
+                                     .getBoolean(DeviceAdminModule.KEY_ALLOW_UNINSTALL, false);
             
             if (allowed) {
                 return "Device admin will be disabled.";
@@ -202,9 +217,9 @@ public class DeviceAdminModule extends Module {
         public void onDisabled(Context context, Intent intent) {
             super.onDisabled(context, intent);
             // Reset the flag
-            context.getSharedPreferences("EMILockPrefs", Context.MODE_PRIVATE)
+            context.getSharedPreferences(DeviceAdminModule.PREFS_NAME, Context.MODE_PRIVATE)
                    .edit()
-                   .putBoolean("allow_uninstall", false)
+                   .putBoolean(DeviceAdminModule.KEY_ALLOW_UNINSTALL, false)
                    .apply();
         }
 

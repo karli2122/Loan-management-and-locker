@@ -16,8 +16,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
-
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import API_URL from '../../src/constants/api';
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -41,10 +40,17 @@ export default function AdminLogin() {
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data: any = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        // Non-JSON response (e.g., HTML error page)
+      }
 
       if (!response.ok) {
-        throw new Error(data.detail || 'Authentication failed');
+        const message = data?.detail || text || 'Authentication failed';
+        throw new Error(message);
       }
 
       await AsyncStorage.setItem('admin_token', data.token);

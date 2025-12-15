@@ -899,6 +899,7 @@ class EMIBackendTester:
             self.test_location_update,
             self.test_clear_warning,
             self.test_stats,
+            self.test_advanced_loan_management_apis,
             self.test_delete_client
         ]
         
@@ -1000,6 +1001,7 @@ class EMIBackendTester:
         print("\n" + "="*80)
         print("🏦 ADVANCED LOAN MANAGEMENT SYSTEM API TESTS")
         print("="*80)
+        start_index = len(self.test_results)
         
         # Login with test admin credentials first
         print("\n1. SETUP - Admin Login for Advanced APIs")
@@ -1274,11 +1276,14 @@ class EMIBackendTester:
         except Exception as e:
             self.log_test("Authentication - Token Requirements", False, f"Error: {str(e)}")
         
+        new_results = self.test_results[start_index:]
+        failed = sum(1 for result in new_results if not result["success"])
+        
         print("\n" + "="*80)
         print("🏦 ADVANCED LOAN MANAGEMENT API TESTS COMPLETED")
         print("="*80)
         
-        return True
+        return failed == 0
 
 if __name__ == "__main__":
     import sys

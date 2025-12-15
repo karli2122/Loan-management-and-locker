@@ -77,7 +77,23 @@ agenthub/agents/youtube/db
 .cache/
 
 # Mobile development
-android-sdk/ -e 
+android-sdk/
+
+# Android signing and credentials
+*.keystore
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+google-services.json
+credentials.json
+
+# APK and AAB files (build artifacts)
+*.apk
+*.aab
+
 # Environment files
 *.env
 *.env.*
+!.env.template

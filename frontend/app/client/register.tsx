@@ -17,8 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
+import API_URL from '../../src/constants/api';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function ClientRegister() {
   const router = useRouter();
@@ -71,17 +71,29 @@ export default function ClientRegister() {
         }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || 'Registration failed');
+      const text = await response.text();
+      let data: any = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        // non-JSON response
       }
 
-      await AsyncStorage.setItem('client_id', data.client_id);
+      if (!response.ok) {
+        const message = data?.detail || text || 'Registration failed';
+        throw new Error(message);
+      }
+
+      const clientId = data?.client_id;
+      if (clientId) {
+        await AsyncStorage.setItem('client_id', clientId);
+      }
       
       // Store client data including lock_mode
-      const clientData = data.client;
-      await AsyncStorage.setItem('client_data', JSON.stringify(clientData));
+      const clientData = data?.client;
+      if (clientData) {
+        await AsyncStorage.setItem('client_data', JSON.stringify(clientData));
+      }
       
       // Handle Device Admin mode setup automatically
       if (clientData?.lock_mode === 'device_admin') {

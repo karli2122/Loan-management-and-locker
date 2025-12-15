@@ -17,12 +17,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
 import OfflineSyncManager from '../../src/services/OfflineSyncManager';
+import API_URL from '../../src/constants/api';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 interface ClientStatus {
   id: string;
@@ -49,6 +52,57 @@ export default function ClientHome() {
   const appState = useRef(AppState.currentState);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wasLocked = useRef(false);
+  const resolveProjectId = useCallback(
+    () => Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId,
+    []
+  );
+  
+  const getPushToken = useCallback(async () => {
+    if (!Device.isDevice) return null;
+    
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== 'granted') return null;
+    
+    const projectId = resolveProjectId();
+    if (!projectId) {
+      console.log('Expo project ID missing; requesting push token without project ID');
+    }
+    const tokenResponse = projectId
+      ? await Notifications.getExpoPushTokenAsync({ projectId })
+      : await Notifications.getExpoPushTokenAsync();
+    return tokenResponse.data;
+  }, [resolveProjectId]);
+  
+  const registerPushToken = useCallback(async (id: string) => {
+    if (!id) return;
+    
+    try {
+      const token = await getPushToken();
+      if (!token) return;
+      
+      const stored = await AsyncStorage.getItem('push_token');
+      if (stored === token) return;
+      
+      await AsyncStorage.setItem('push_token', token);
+      const response = await fetch(`${API_URL}/api/device/push-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: id, push_token: token })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('Push token registration request failed', response.status, errorText);
+      }
+    } catch (error) {
+      console.log('Push token registration failed', error);
+    }
+  }, [getPushToken]);
 
   // Check and setup Device Owner/Admin
   const checkAndSetupDeviceProtection = async () => {
@@ -204,6 +258,7 @@ export default function ClientHome() {
     setClientId(id);
     await fetchStatus(id);
     await updateLocation(id);
+    await registerPushToken(id);
   };
 
   useEffect(() => {
