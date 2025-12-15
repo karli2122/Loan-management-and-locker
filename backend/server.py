@@ -42,6 +42,39 @@ security = HTTPBasic()
 
 # ===================== HELPER FUNCTIONS =====================
 
+async def get_admin_from_token(admin_token: str) -> dict:
+    """Return admin document for a token or raise HTTP errors"""
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    admin = await db.admins.find_one({"id": token_doc["admin_id"]})
+    if not admin:
+        raise HTTPException(status_code=401, detail="Admin not found")
+    return admin
+
+async def get_client_for_admin(client_id: str, admin: dict) -> dict:
+    """Fetch a client and ensure the requesting admin owns it (unless super admin)"""
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    if not admin.get("is_super_admin", False):
+        owner_id = client.get("owner_admin_id")
+        if owner_id and owner_id != admin["id"]:
+            raise HTTPException(status_code=403, detail="Not authorized to access this client")
+        if not owner_id:
+            await db.clients.update_one({"id": client_id}, {"$set": {"owner_admin_id": admin["id"]}})
+            client["owner_admin_id"] = admin["id"]
+    
+    return client
+
+def client_filter_for_admin(admin: dict) -> dict:
+    """Build a MongoDB filter restricting results to the admin's clients"""
+    if admin.get("is_super_admin", False):
+        return {}
+    return {"owner_admin_id": admin["id"]}
+
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
@@ -124,14 +157,18 @@ def calculate_late_fee(principal_due: float, late_fee_percent: float, days_overd
     
     return round(late_fee, 2)
 
-async def apply_late_fees_to_overdue_clients():
+async def apply_late_fees_to_overdue_clients(owner_admin_id: Optional[str] = None):
     """Background job to calculate and apply late fees to overdue clients"""
     try:
         # Get all clients with overdue payments
-        clients = await db.clients.find({
+        query = {
             "next_payment_due": {"$lt": datetime.utcnow()},
             "outstanding_balance": {"$gt": 0}
-        }).to_list(1000)
+        }
+        if owner_admin_id:
+            query["owner_admin_id"] = owner_admin_id
+        
+        clients = await db.clients.find(query).to_list(1000)
         
         # Batch load all loan plans to avoid N+1 queries
         loan_plans = await db.loan_plans.find().to_list(1000)
@@ -170,17 +207,21 @@ async def apply_late_fees_to_overdue_clients():
     except Exception as e:
         logger.error(f"Late fee calculation error: {str(e)}")
 
-async def create_payment_reminders():
+async def create_payment_reminders(owner_admin_id: Optional[str] = None):
     """Background job to create payment reminders"""
     try:
         from dateutil.relativedelta import relativedelta
         
         # Get all clients with active loans
-        clients = await db.clients.find({
+        query = {
             "outstanding_balance": {"$gt": 0},
             "payment_reminders_enabled": True,
             "next_payment_due": {"$exists": True}
-        }).to_list(1000)
+        }
+        if owner_admin_id:
+            query["owner_admin_id"] = owner_admin_id
+        
+        clients = await db.clients.find(query).to_list(1000)
         
         for client in clients:
             next_due = client.get("next_payment_due")
@@ -215,6 +256,7 @@ async def create_payment_reminders():
                             client_id=client["id"],
                             reminder_type=reminder_type,
                             scheduled_date=datetime.utcnow(),
+                            admin_id=client.get("owner_admin_id"),
                             message=f"{message}. Amount: €{client.get('monthly_emi', 0):.2f}"
                         )
                         await db.reminders.insert_one(reminder.dict())
@@ -320,6 +362,7 @@ class Reminder(BaseModel):
     client_id: str
     reminder_type: str  # "payment_due", "overdue", "final_notice"
     scheduled_date: datetime
+    admin_id: Optional[str] = None
     sent: bool = False
     sent_at: Optional[datetime] = None
     message: str
@@ -337,6 +380,7 @@ class Client(BaseModel):
     price_fetched_at: Optional[datetime] = None  # When price was last fetched
     lock_mode: str = "device_admin"  # "device_owner" or "device_admin"
     registration_code: str = Field(default_factory=lambda: secrets.token_hex(4).upper())
+    owner_admin_id: Optional[str] = None
     
     # Loan Management Fields
     loan_plan_id: Optional[str] = None  # Reference to loan plan
@@ -388,6 +432,7 @@ class Payment(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     client_id: str
     amount: float
+    admin_id: Optional[str] = None
     payment_date: datetime = Field(default_factory=datetime.utcnow)
     payment_method: str = "cash"  # cash, bank_transfer, card, etc.
     notes: str = ""
@@ -635,28 +680,32 @@ async def delete_admin(admin_id: str, admin_token: str):
 # ===================== CLIENT MANAGEMENT ROUTES =====================
 
 @api_router.post("/clients", response_model=Client)
-async def create_client(client_data: ClientCreate):
-    client = Client(**client_data.dict())
+async def create_client(client_data: ClientCreate, admin_token: str):
+    admin = await get_admin_from_token(admin_token)
+    client = Client(**client_data.dict(), owner_admin_id=admin["id"])
     await db.clients.insert_one(client.dict())
     return client
 
 @api_router.get("/clients")
-async def get_all_clients(skip: int = 0, limit: int = 100):
+async def get_all_clients(skip: int = 0, limit: int = 100, admin_token: str = None):
     """Get all clients with pagination
     
     Args:
         skip: Number of records to skip (default: 0)
         limit: Maximum number of records to return (default: 100, max: 500)
     """
+    admin = await get_admin_from_token(admin_token)
     # Cap limit at 500 to prevent excessive data transfer
     limit = min(limit, 500)
     
+    query = client_filter_for_admin(admin)
+    
     # Get total count for pagination metadata
-    total_count = await db.clients.count_documents({})
+    total_count = await db.clients.count_documents(query)
     
     # Fetch paginated clients - removed projection to avoid Pydantic validation errors
     # The Client model requires all fields, projection would cause missing field errors
-    clients = await db.clients.find().skip(skip).limit(limit).to_list(limit)
+    clients = await db.clients.find(query).skip(skip).limit(limit).to_list(limit)
     
     return {
         "clients": [Client(**c) for c in clients],
@@ -669,17 +718,15 @@ async def get_all_clients(skip: int = 0, limit: int = 100):
     }
 
 @api_router.get("/clients/{client_id}", response_model=Client)
-async def get_client(client_id: str):
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+async def get_client(client_id: str, admin_token: str):
+    admin = await get_admin_from_token(admin_token)
+    client = await get_client_for_admin(client_id, admin)
     return Client(**client)
 
 @api_router.put("/clients/{client_id}", response_model=Client)
-async def update_client(client_id: str, update_data: ClientUpdate):
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+async def update_client(client_id: str, update_data: ClientUpdate, admin_token: str):
+    admin = await get_admin_from_token(admin_token)
+    await get_client_for_admin(client_id, admin)
     
     update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
     if update_dict:
@@ -689,11 +736,10 @@ async def update_client(client_id: str, update_data: ClientUpdate):
     return Client(**updated_client)
 
 @api_router.post("/clients/{client_id}/allow-uninstall")
-async def allow_uninstall(client_id: str):
+async def allow_uninstall(client_id: str, admin_token: str):
     """Signal device to allow app uninstallation - must be called before deletion"""
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+    admin = await get_admin_from_token(admin_token)
+    await get_client_for_admin(client_id, admin)
     
     # Mark client as ready for uninstall
     await db.clients.update_one(
@@ -709,10 +755,10 @@ async def allow_uninstall(client_id: str):
     }
 
 @api_router.delete("/clients/{client_id}")
-async def delete_client(client_id: str):
+async def delete_client(client_id: str, admin_token: str):
+    admin = await get_admin_from_token(admin_token)
+    await get_client_for_admin(client_id, admin)
     client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
     
     # Check if uninstall was allowed first
     if not client.get("uninstall_allowed", False):
@@ -731,10 +777,9 @@ async def delete_client(client_id: str):
 # ===================== LOCK CONTROL ROUTES =====================
 
 @api_router.post("/clients/{client_id}/lock")
-async def lock_client_device(client_id: str, message: Optional[str] = None):
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+async def lock_client_device(client_id: str, message: Optional[str] = None, admin_token: str = None):
+    admin = await get_admin_from_token(admin_token)
+    await get_client_for_admin(client_id, admin)
     
     update_data = {"is_locked": True}
     if message:
@@ -744,19 +789,17 @@ async def lock_client_device(client_id: str, message: Optional[str] = None):
     return {"message": "Device locked successfully"}
 
 @api_router.post("/clients/{client_id}/unlock")
-async def unlock_client_device(client_id: str):
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+async def unlock_client_device(client_id: str, admin_token: str = None):
+    admin = await get_admin_from_token(admin_token)
+    await get_client_for_admin(client_id, admin)
     
     await db.clients.update_one({"id": client_id}, {"$set": {"is_locked": False, "warning_message": ""}})
     return {"message": "Device unlocked successfully"}
 
 @api_router.post("/clients/{client_id}/warning")
-async def send_warning(client_id: str, message: str):
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+async def send_warning(client_id: str, message: str, admin_token: str = None):
+    admin = await get_admin_from_token(admin_token)
+    await get_client_for_admin(client_id, admin)
     
     await db.clients.update_one({"id": client_id}, {"$set": {"warning_message": message}})
     return {"message": "Warning sent successfully"}
@@ -1034,11 +1077,10 @@ async def calculate_amortization_schedule(
 # ===================== LOAN MANAGEMENT =====================
 
 @api_router.post("/loans/{client_id}/setup")
-async def setup_loan(client_id: str, loan_data: ClientCreate):
+async def setup_loan(client_id: str, loan_data: ClientCreate, admin_token: str):
     """Setup or update loan details for a client"""
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+    admin = await get_admin_from_token(admin_token)
+    await get_client_for_admin(client_id, admin)
     
     # Calculate EMI using simple interest
     loan_calc = calculate_simple_interest_emi(
@@ -1077,18 +1119,8 @@ async def setup_loan(client_id: str, loan_data: ClientCreate):
 @api_router.post("/loans/{client_id}/payments")
 async def record_payment(client_id: str, payment_data: PaymentCreate, admin_token: str):
     """Record a payment for a client's loan"""
-    # Verify admin token
-    token_doc = await db.admin_tokens.find_one({"token": admin_token})
-    if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
-    
-    admin = await db.admins.find_one({"id": token_doc["admin_id"]})
-    if not admin:
-        raise HTTPException(status_code=401, detail="Admin not found")
-    
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+    admin = await get_admin_from_token(admin_token)
+    client = await get_client_for_admin(client_id, admin)
     
     # Create payment record
     payment = Payment(
@@ -1097,6 +1129,7 @@ async def record_payment(client_id: str, payment_data: PaymentCreate, admin_toke
         payment_date=payment_data.payment_date or datetime.utcnow(),
         payment_method=payment_data.payment_method,
         notes=payment_data.notes,
+        admin_id=admin["id"],
         recorded_by=admin["username"]
     )
     
@@ -1139,11 +1172,10 @@ async def record_payment(client_id: str, payment_data: PaymentCreate, admin_toke
     }
 
 @api_router.get("/loans/{client_id}/payments")
-async def get_payment_history(client_id: str):
+async def get_payment_history(client_id: str, admin_token: str):
     """Get payment history for a client"""
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+    admin = await get_admin_from_token(admin_token)
+    await get_client_for_admin(client_id, admin)
     
     payments = await db.payments.find({"client_id": client_id}).sort("payment_date", -1).to_list(100)
     
@@ -1154,11 +1186,10 @@ async def get_payment_history(client_id: str):
     }
 
 @api_router.get("/loans/{client_id}/schedule")
-async def get_payment_schedule(client_id: str):
+async def get_payment_schedule(client_id: str, admin_token: str):
     """Generate payment schedule for a client's loan"""
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+    admin = await get_admin_from_token(admin_token)
+    client = await get_client_for_admin(client_id, admin)
     
     if not client.get("loan_start_date"):
         raise HTTPException(status_code=400, detail="Loan not set up for this client")
@@ -1199,11 +1230,10 @@ async def get_payment_schedule(client_id: str):
     }
 
 @api_router.put("/loans/{client_id}/settings")
-async def update_loan_settings(client_id: str, settings: LoanSettings):
+async def update_loan_settings(client_id: str, settings: LoanSettings, admin_token: str):
     """Update auto-lock settings for a client"""
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+    admin = await get_admin_from_token(admin_token)
+    await get_client_for_admin(client_id, admin)
     
     await db.clients.update_one(
         {"id": client_id},
@@ -1224,18 +1254,18 @@ async def update_loan_settings(client_id: str, settings: LoanSettings):
 @api_router.post("/late-fees/calculate-all")
 async def calculate_all_late_fees(admin_token: str):
     """Manually trigger late fee calculation for all overdue clients"""
-    if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+    admin = await get_admin_from_token(admin_token)
     
-    await apply_late_fees_to_overdue_clients()
+    await apply_late_fees_to_overdue_clients(
+        None if admin.get("is_super_admin", False) else admin["id"]
+    )
     return {"message": "Late fees calculated and applied successfully"}
 
 @api_router.get("/clients/{client_id}/late-fees")
-async def get_client_late_fees(client_id: str):
+async def get_client_late_fees(client_id: str, admin_token: str):
     """Get late fee details for a specific client"""
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+    admin = await get_admin_from_token(admin_token)
+    client = await get_client_for_admin(client_id, admin)
     
     days_overdue = client.get("days_overdue", 0)
     late_fees = client.get("late_fees_accumulated", 0)
@@ -1249,9 +1279,14 @@ async def get_client_late_fees(client_id: str):
     }
 
 @api_router.get("/reminders")
-async def get_reminders(sent: bool = None, limit: int = 100):
+async def get_reminders(sent: bool = None, limit: int = 100, admin_token: str = None):
     """Get all reminders, optionally filtered by sent status"""
-    query = {}
+    admin = await get_admin_from_token(admin_token)
+    query = client_filter_for_admin(admin)
+    if query:
+        query = {"admin_id": query["owner_admin_id"]}
+    else:
+        query = {}
     if sent is not None:
         query["sent"] = sent
     
@@ -1259,23 +1294,37 @@ async def get_reminders(sent: bool = None, limit: int = 100):
     return [Reminder(**r) for r in reminders]
 
 @api_router.get("/clients/{client_id}/reminders")
-async def get_client_reminders(client_id: str):
+async def get_client_reminders(client_id: str, admin_token: str):
     """Get reminders for a specific client"""
+    admin = await get_admin_from_token(admin_token)
+    await get_client_for_admin(client_id, admin)
     reminders = await db.reminders.find({"client_id": client_id}).sort("scheduled_date", -1).to_list(50)
     return [Reminder(**r) for r in reminders]
 
 @api_router.post("/reminders/create-all")
 async def create_all_reminders(admin_token: str):
     """Manually trigger reminder creation for all clients"""
-    if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+    admin = await get_admin_from_token(admin_token)
     
-    await create_payment_reminders()
+    await create_payment_reminders(None if admin.get("is_super_admin", False) else admin["id"])
     return {"message": "Reminders created successfully"}
 
 @api_router.post("/reminders/{reminder_id}/mark-sent")
-async def mark_reminder_sent(reminder_id: str):
+async def mark_reminder_sent(reminder_id: str, admin_token: str):
     """Mark a reminder as sent"""
+    admin = await get_admin_from_token(admin_token)
+    reminder = await db.reminders.find_one({"id": reminder_id})
+    if not reminder:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+    
+    if not admin.get("is_super_admin", False):
+        reminder_admin = reminder.get("admin_id")
+        if reminder_admin and reminder_admin != admin["id"]:
+            raise HTTPException(status_code=403, detail="Not authorized to modify this reminder")
+        if not reminder_admin and reminder.get("client_id"):
+            client = await get_client_for_admin(reminder["client_id"], admin)
+            await db.reminders.update_one({"id": reminder_id}, {"$set": {"admin_id": client.get("owner_admin_id")}})
+    
     result = await db.reminders.update_one(
         {"id": reminder_id},
         {"$set": {"sent": True, "sent_at": datetime.utcnow()}}
@@ -1289,15 +1338,26 @@ async def mark_reminder_sent(reminder_id: str):
 # ===================== REPORTS & ANALYTICS =====================
 
 @api_router.get("/reports/collection")
-async def get_collection_report():
+async def get_collection_report(admin_token: str):
     """Get collection statistics and metrics"""
+    admin = await get_admin_from_token(admin_token)
+    base_filter = client_filter_for_admin(admin)
+    
     # Total clients
-    total_clients = await db.clients.count_documents({})
-    active_loans = await db.clients.count_documents({"outstanding_balance": {"$gt": 0}})
-    completed_loans = await db.clients.count_documents({"outstanding_balance": 0, "total_paid": {"$gt": 0}})
+    total_clients = await db.clients.count_documents(base_filter)
+    
+    active_filter = {"outstanding_balance": {"$gt": 0}}
+    if base_filter:
+        active_filter.update(base_filter)
+    active_loans = await db.clients.count_documents(active_filter)
+    
+    completed_filter = {"outstanding_balance": 0, "total_paid": {"$gt": 0}}
+    if base_filter:
+        completed_filter.update(base_filter)
+    completed_loans = await db.clients.count_documents(completed_filter)
     
     # Financial totals
-    clients = await db.clients.find().to_list(1000)
+    clients = await db.clients.find(base_filter).to_list(1000)
     total_disbursed = sum(c.get("total_amount_due", 0) for c in clients)
     total_collected = sum(c.get("total_paid", 0) for c in clients)
     total_outstanding = sum(c.get("outstanding_balance", 0) for c in clients)
@@ -1312,7 +1372,11 @@ async def get_collection_report():
     # This month's collections
     from dateutil.relativedelta import relativedelta
     month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    month_payments = await db.payments.find({"payment_date": {"$gte": month_start}}).to_list(1000)
+    payment_query = {"payment_date": {"$gte": month_start}}
+    client_ids = [c["id"] for c in clients]
+    if client_ids:
+        payment_query["client_id"] = {"$in": client_ids}
+    month_payments = await db.payments.find(payment_query).to_list(1000)
     month_collected = sum(p.get("amount", 0) for p in month_payments)
     
     return {
@@ -1336,9 +1400,10 @@ async def get_collection_report():
     }
 
 @api_router.get("/reports/clients")
-async def get_client_report():
+async def get_client_report(admin_token: str):
     """Get client-wise statistics"""
-    clients = await db.clients.find().to_list(1000)
+    admin = await get_admin_from_token(admin_token)
+    clients = await db.clients.find(client_filter_for_admin(admin)).to_list(1000)
     
     # Categorize clients
     on_time = []
@@ -1374,10 +1439,15 @@ async def get_client_report():
     }
 
 @api_router.get("/reports/financial")
-async def get_financial_report():
+async def get_financial_report(admin_token: str):
     """Get detailed financial breakdown"""
-    clients = await db.clients.find().to_list(1000)
-    payments = await db.payments.find().to_list(1000)
+    admin = await get_admin_from_token(admin_token)
+    clients = await db.clients.find(client_filter_for_admin(admin)).to_list(1000)
+    client_ids = [c["id"] for c in clients]
+    payment_query = {}
+    if client_ids:
+        payment_query["client_id"] = {"$in": client_ids}
+    payments = await db.payments.find(payment_query).to_list(1000)
     
     # Calculate totals
     total_principal = sum(c.get("loan_amount", 0) for c in clients)
@@ -1491,10 +1561,21 @@ async def fetch_phone_price(client_id: str):
 # ===================== STATS ROUTE =====================
 
 @api_router.get("/stats")
-async def get_stats():
-    total_clients = await db.clients.count_documents({})
-    locked_devices = await db.clients.count_documents({"is_locked": True})
-    registered_devices = await db.clients.count_documents({"is_registered": True})
+async def get_stats(admin_token: str):
+    admin = await get_admin_from_token(admin_token)
+    base_filter = client_filter_for_admin(admin)
+    
+    total_clients = await db.clients.count_documents(base_filter)
+    
+    locked_query = {"is_locked": True}
+    if base_filter:
+        locked_query.update(base_filter)
+    locked_devices = await db.clients.count_documents(locked_query)
+    
+    registered_query = {"is_registered": True}
+    if base_filter:
+        registered_query.update(base_filter)
+    registered_devices = await db.clients.count_documents(registered_query)
     
     return {
         "total_clients": total_clients,
