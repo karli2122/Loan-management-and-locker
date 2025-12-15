@@ -273,6 +273,19 @@ async def create_payment_reminders(admin_id: Optional[str] = None):
                             message=f"{message}. Amount: €{client.get('monthly_emi', 0):.2f}"
                         )
                         await db.reminders.insert_one(reminder.dict())
+                        
+                        # Create push notification for owner admin if enabled
+                        owner_id = client.get("owner_admin_id")
+                        if owner_id:
+                            owner_admin = await db.admins.find_one({"id": owner_id})
+                            if owner_admin and owner_admin.get("push_notifications_enabled", True):
+                                push = PushNotification(
+                                    admin_id=owner_id,
+                                    reminder_id=reminder.id,
+                                    client_id=client["id"],
+                                    message=reminder.message
+                                )
+                                await db.push_notifications.insert_one(push.dict())
                         logger.info(f"Created {reminder_type} reminder for client {client['id']}")
     
     except Exception as e:
@@ -331,12 +344,14 @@ class Admin(BaseModel):
     password_hash: str
     role: str = "user"  # "admin" or "user"
     is_super_admin: bool = False
+    push_notifications_enabled: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class AdminCreate(BaseModel):
     username: str
     password: str
     role: str = "user"  # "admin" or "user"
+    push_notifications_enabled: bool = True
 
 class AdminLogin(BaseModel):
     username: str
@@ -347,6 +362,7 @@ class AdminResponse(BaseModel):
     username: str
     role: str
     is_super_admin: bool
+    push_notifications_enabled: bool
     token: str
 
 class LoanPlan(BaseModel):
@@ -379,6 +395,15 @@ class Reminder(BaseModel):
     sent: bool = False
     sent_at: Optional[datetime] = None
     message: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class PushNotification(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    admin_id: str
+    reminder_id: str
+    client_id: str
+    message: str
+    sent: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class Client(BaseModel):
@@ -546,7 +571,8 @@ async def register_admin(admin_data: AdminCreate, admin_token: str = None):
         username=admin_data.username,
         password_hash=hash_password(admin_data.password),
         role=admin_data.role if not is_first_admin else "admin",
-        is_super_admin=is_first_admin
+        is_super_admin=is_first_admin,
+        push_notifications_enabled=admin_data.push_notifications_enabled
     )
     await db.admins.insert_one(admin.dict())
     
@@ -558,6 +584,7 @@ async def register_admin(admin_data: AdminCreate, admin_token: str = None):
         username=admin.username, 
         role=admin.role,
         is_super_admin=admin.is_super_admin,
+        push_notifications_enabled=admin.push_notifications_enabled,
         token=token
     )
 
@@ -579,6 +606,7 @@ async def login_admin(login_data: AdminLogin):
         username=admin["username"], 
         role=admin.get("role", "user"),
         is_super_admin=admin.get("is_super_admin", False),
+        push_notifications_enabled=admin.get("push_notifications_enabled", True),
         token=token
     )
 
@@ -595,11 +623,15 @@ class PasswordChange(BaseModel):
     current_password: str
     new_password: str
 
+class NotificationSettings(BaseModel):
+    push_notifications_enabled: bool
+
 class AdminListResponse(BaseModel):
     id: str
     username: str
     role: str
     is_super_admin: bool
+    push_notifications_enabled: bool
     created_at: datetime
 
 @api_router.get("/admin/list")
@@ -620,6 +652,7 @@ async def list_admins(admin_token: str):
         "username": a["username"], 
         "role": a.get("role", "user"),
         "is_super_admin": a.get("is_super_admin", False),
+        "push_notifications_enabled": a.get("push_notifications_enabled", True),
         "created_at": a.get("created_at")
     } for a in admins]
 
@@ -650,6 +683,21 @@ async def change_password(admin_token: str, password_data: PasswordChange):
     )
     
     return {"message": "Password changed successfully"}
+
+@api_router.post("/admin/notification-settings")
+async def update_notification_settings(admin_token: str, settings: NotificationSettings):
+    """Enable or disable push notifications for an admin"""
+    admin = await get_admin_from_token(admin_token)
+    
+    await db.admins.update_one(
+        {"id": admin["id"]},
+        {"$set": {"push_notifications_enabled": settings.push_notifications_enabled}}
+    )
+    
+    return {
+        "message": "Notification settings updated",
+        "push_notifications_enabled": settings.push_notifications_enabled
+    }
 
 @api_router.delete("/admin/{admin_id}")
 async def delete_admin(admin_id: str, admin_token: str):
