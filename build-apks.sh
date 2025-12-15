@@ -29,10 +29,10 @@ else
 fi
 
 # Build Client APK
-echo "Step 2/2: Building Client APK..."
+echo "Step 2/2: Building Client APK (production)..."
 echo "This may take 15-20 minutes..."
 echo ""
-APP_MODE=client npx eas-cli build --profile client-preview --platform android --local --non-interactive
+APP_MODE=client npx eas-cli build --profile client-production --platform android --local --non-interactive
 
 if [ $? -eq 0 ]; then
     echo ""
