@@ -18,6 +18,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
 
+const API_BASE = API_URL.toLowerCase().endsWith('/api') ? API_URL : `${API_URL}/api`;
+
 export default function AdminLogin() {
   const router = useRouter();
   const { t } = useLanguage();
@@ -34,7 +36,7 @@ export default function AdminLogin() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/admin/login`, {
+      const response = await fetch(`${API_BASE}/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
