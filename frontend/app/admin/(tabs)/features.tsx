@@ -53,7 +53,7 @@ export default function FeaturesTab() {
         </Text>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         <View style={styles.userCard}>
           <View style={styles.userAvatar}>
             <Text style={styles.userAvatarText}>{username.charAt(0).toUpperCase()}</Text>
@@ -218,6 +218,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0F172A',
+  },
+  contentContainer: {
+    paddingBottom: 96,
   },
   header: {
     paddingHorizontal: 16,
