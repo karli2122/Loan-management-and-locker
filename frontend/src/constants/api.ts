@@ -2,8 +2,8 @@ import Constants from 'expo-constants';
 
 function normalize(url: string) {
   let clean = url.trim();
-  if (clean.endsWith('/')) clean = clean.slice(0, -1);
-  if (clean.toLowerCase().endsWith('/api')) clean = clean.slice(0, -4);
+  while (clean.endsWith('/')) clean = clean.slice(0, -1);
+  while (clean.toLowerCase().endsWith('/api')) clean = clean.slice(0, -4);
   return clean;
 }
 
