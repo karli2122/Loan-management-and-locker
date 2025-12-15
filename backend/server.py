@@ -5,6 +5,7 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import httpx
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -170,6 +171,30 @@ async def apply_late_fees_to_overdue_clients():
     except Exception as e:
         logger.error(f"Late fee calculation error: {str(e)}")
 
+async def send_expo_push_notification(push_token: str, title: str, body: str, data: Optional[dict] = None) -> bool:
+    """Send a push notification via Expo."""
+    if not push_token:
+        return False
+    
+    payload = {
+        "to": push_token,
+        "sound": "default",
+        "title": title,
+        "body": body,
+        "data": data or {}
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=10) as client_session:
+            response = await client_session.post("https://exp.host/--/api/v2/push/send", json=payload)
+            if response.status_code >= 400:
+                logger.warning(f"Expo push send failed ({response.status_code}): {response.text}")
+                return False
+        return True
+    except Exception as exc:
+        logger.error(f"Expo push error: {exc}")
+        return False
+
 async def create_payment_reminders():
     """Background job to create payment reminders"""
     try:
@@ -191,9 +216,6 @@ async def create_payment_reminders():
             
             # Create reminders at specific intervals
             reminder_configs = [
-                (7, "payment_due_7days", "Payment due in 7 days"),
-                (3, "payment_due_3days", "Payment due in 3 days"),
-                (1, "payment_due_1day", "Payment due tomorrow"),
                 (0, "payment_due_today", "Payment due today"),
                 (-1, "payment_overdue_1day", "Payment overdue by 1 day"),
                 (-3, "payment_overdue_3days", "Payment overdue by 3 days"),
@@ -215,9 +237,24 @@ async def create_payment_reminders():
                             client_id=client["id"],
                             reminder_type=reminder_type,
                             scheduled_date=datetime.utcnow(),
-                            message=f"{message}. Amount: €{client.get('monthly_emi', 0):.2f}"
+                            message=f"{message}. Amount: €{client.get('monthly_emi', 0):.2f}",
+                            admin_id=client.get("admin_id")
                         )
                         await db.reminders.insert_one(reminder.dict())
+                        
+                        # Send Expo push notification if token available
+                        push_token = client.get("expo_push_token")
+                        if push_token:
+                            await send_expo_push_notification(
+                                push_token,
+                                "Payment Reminder",
+                                reminder.message,
+                                {
+                                    "client_id": client["id"],
+                                    "reminder_type": reminder_type,
+                                    "admin_id": client.get("admin_id")
+                                }
+                            )
                         logger.info(f"Created {reminder_type} reminder for client {client['id']}")
     
     except Exception as e:
@@ -323,6 +360,7 @@ class Reminder(BaseModel):
     sent: bool = False
     sent_at: Optional[datetime] = None
     message: str
+    admin_id: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class Client(BaseModel):
@@ -330,6 +368,7 @@ class Client(BaseModel):
     name: str
     phone: str
     email: str = ""  # Made optional with default empty string for backwards compatibility
+    admin_id: Optional[str] = None  # Tenant scoping
     device_id: str = ""
     device_model: str = ""
     device_make: str = ""  # Brand/Manufacturer
@@ -337,6 +376,7 @@ class Client(BaseModel):
     price_fetched_at: Optional[datetime] = None  # When price was last fetched
     lock_mode: str = "device_admin"  # "device_owner" or "device_admin"
     registration_code: str = Field(default_factory=lambda: secrets.token_hex(4).upper())
+    expo_push_token: Optional[str] = None  # Expo push notification token
     
     # Loan Management Fields
     loan_plan_id: Optional[str] = None  # Reference to loan plan
@@ -411,6 +451,7 @@ class ClientCreate(BaseModel):
     emi_amount: float = 0.0
     emi_due_date: Optional[str] = None
     lock_mode: str = "device_admin"  # "device_owner" or "device_admin"
+    admin_id: Optional[str] = None
     # Loan fields
     loan_amount: float = 0.0
     down_payment: float = 0.0
@@ -429,6 +470,7 @@ class ClientUpdate(BaseModel):
     device_make: Optional[str] = None
     device_model: Optional[str] = None
     used_price_eur: Optional[float] = None
+    admin_id: Optional[str] = None
 
 class DeviceRegistration(BaseModel):
     registration_code: str
@@ -439,6 +481,11 @@ class LocationUpdate(BaseModel):
     client_id: str
     latitude: float
     longitude: float
+
+class PushTokenUpdate(BaseModel):
+    client_id: str
+    push_token: str
+    admin_id: Optional[str] = None
 
 class ClientStatusResponse(BaseModel):
     id: str
@@ -635,13 +682,25 @@ async def delete_admin(admin_id: str, admin_token: str):
 # ===================== CLIENT MANAGEMENT ROUTES =====================
 
 @api_router.post("/clients", response_model=Client)
-async def create_client(client_data: ClientCreate):
-    client = Client(**client_data.dict())
+async def create_client(client_data: ClientCreate, admin_token: Optional[str] = None):
+    admin_id = client_data.admin_id
+    
+    if admin_token:
+        token_doc = await db.admin_tokens.find_one({"token": admin_token})
+        if not token_doc:
+            raise HTTPException(status_code=401, detail="Invalid admin token")
+        admin_id = token_doc["admin_id"]
+    
+    client_payload = client_data.dict()
+    if admin_id:
+        client_payload["admin_id"] = admin_id
+    
+    client = Client(**client_payload)
     await db.clients.insert_one(client.dict())
     return client
 
 @api_router.get("/clients")
-async def get_all_clients(skip: int = 0, limit: int = 100):
+async def get_all_clients(skip: int = 0, limit: int = 100, admin_id: Optional[str] = None):
     """Get all clients with pagination
     
     Args:
@@ -651,12 +710,16 @@ async def get_all_clients(skip: int = 0, limit: int = 100):
     # Cap limit at 500 to prevent excessive data transfer
     limit = min(limit, 500)
     
+    query = {}
+    if admin_id:
+        query["admin_id"] = admin_id
+    
     # Get total count for pagination metadata
-    total_count = await db.clients.count_documents({})
+    total_count = await db.clients.count_documents(query)
     
     # Fetch paginated clients - removed projection to avoid Pydantic validation errors
     # The Client model requires all fields, projection would cause missing field errors
-    clients = await db.clients.find().skip(skip).limit(limit).to_list(limit)
+    clients = await db.clients.find(query).skip(skip).limit(limit).to_list(limit)
     
     return {
         "clients": [Client(**c) for c in clients],
@@ -669,10 +732,13 @@ async def get_all_clients(skip: int = 0, limit: int = 100):
     }
 
 @api_router.get("/clients/{client_id}", response_model=Client)
-async def get_client(client_id: str):
+async def get_client(client_id: str, admin_id: Optional[str] = None):
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
+    if admin_id and client.get("admin_id") and client["admin_id"] != admin_id:
+        raise HTTPException(status_code=403, detail="Client not accessible for this admin")
     return Client(**client)
 
 @api_router.put("/clients/{client_id}", response_model=Client)
@@ -820,6 +886,25 @@ async def update_device_location(location: LocationUpdate):
         }}
     )
     return {"message": "Location updated successfully"}
+
+@api_router.post("/device/push-token")
+async def update_push_token(token_data: PushTokenUpdate):
+    client = await db.clients.find_one({"id": token_data.client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    update_fields = {
+        "expo_push_token": token_data.push_token
+    }
+    
+    if token_data.admin_id:
+        update_fields["admin_id"] = token_data.admin_id
+    
+    await db.clients.update_one(
+        {"id": token_data.client_id},
+        {"$set": update_fields}
+    )
+    return {"message": "Push token updated"}
 
 @api_router.post("/device/clear-warning/{client_id}")
 async def clear_warning(client_id: str):
@@ -1090,6 +1175,9 @@ async def record_payment(client_id: str, payment_data: PaymentCreate, admin_toke
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
+    if client.get("admin_id") and client["admin_id"] != admin["id"]:
+        raise HTTPException(status_code=403, detail="Client belongs to a different tenant")
+    
     # Create payment record
     payment = Payment(
         client_id=client_id,
@@ -1249,19 +1337,26 @@ async def get_client_late_fees(client_id: str):
     }
 
 @api_router.get("/reminders")
-async def get_reminders(sent: bool = None, limit: int = 100):
+async def get_reminders(sent: bool = None, limit: int = 100, admin_id: Optional[str] = None):
     """Get all reminders, optionally filtered by sent status"""
     query = {}
     if sent is not None:
         query["sent"] = sent
+    if admin_id:
+        query["admin_id"] = admin_id
     
     reminders = await db.reminders.find(query).sort("scheduled_date", -1).limit(limit).to_list(limit)
     return [Reminder(**r) for r in reminders]
 
 @api_router.get("/clients/{client_id}/reminders")
-async def get_client_reminders(client_id: str):
+async def get_client_reminders(client_id: str, admin_id: Optional[str] = None):
     """Get reminders for a specific client"""
-    reminders = await db.reminders.find({"client_id": client_id}).sort("scheduled_date", -1).to_list(50)
+    query = {"client_id": client_id}
+    
+    if admin_id:
+        query["admin_id"] = admin_id
+    
+    reminders = await db.reminders.find(query).sort("scheduled_date", -1).to_list(50)
     return [Reminder(**r) for r in reminders]
 
 @api_router.post("/reminders/create-all")

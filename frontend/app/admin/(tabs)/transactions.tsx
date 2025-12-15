@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../../src/context/LanguageContext';
 import API_URL from '../../../src/constants/api';
 
@@ -34,12 +35,15 @@ export default function TransactionsTab() {
   const fetchPayments = async () => {
     try {
       // Fetch all clients and extract their payments
-      const response = await fetch(`${API_URL}/api/clients?limit=500`);
+      const adminId = await AsyncStorage.getItem('admin_id');
+      const query = adminId ? `?limit=500&admin_id=${adminId}` : '?limit=500';
+      const response = await fetch(`${API_URL}/api/clients${query}`);
       const data = await response.json();
       const allPayments: Payment[] = [];
 
       // Extract payments from all clients
-      data.clients.forEach((client: any) => {
+      const clients = data.clients || data;
+      clients.forEach((client: any) => {
         if (client.payments_history && Array.isArray(client.payments_history)) {
           client.payments_history.forEach((payment: any) => {
             allPayments.push({

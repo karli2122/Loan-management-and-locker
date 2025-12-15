@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
 
@@ -54,10 +55,13 @@ export default function DeviceSetup() {
 
   const fetchClients = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/clients`);
+      const adminId = await AsyncStorage.getItem('admin_id');
+      const query = adminId ? `?admin_id=${adminId}` : '';
+      const response = await fetch(`${API_URL}/api/clients${query}`);
       const data = await response.json();
       // Only show unregistered clients
-      setClients(data.filter((c: any) => !c.is_registered));
+      const clientList = data.clients || data;
+      setClients(clientList.filter((c: any) => !c.is_registered));
     } catch (error) {
       console.error('Failed to fetch clients:', error);
     }
