@@ -3,7 +3,7 @@ const IS_ADMIN_APP = process.env.APP_MODE === 'admin';
 export default {
   expo: {
     name: IS_ADMIN_APP ? "EMI Admin" : "EMI Client",
-    slug: "loans",  // Fixed slug for EAS project consistency
+    slug: IS_ADMIN_APP ? "loans" : "client",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
@@ -75,7 +75,9 @@ export default {
       appMode: IS_ADMIN_APP ? "admin" : "client",
       backendUrl: process.env.EXPO_PUBLIC_BACKEND_URL || "https://deviceloan-1.preview.emergentagent.com/api",
       eas: {
-        projectId:"0cb46d92-e754-4a76-a24b-c69c70ccd850",
+        projectId: IS_ADMIN_APP
+          ? "7be3aec1-6fef-4200-9987-5868c4320a07"
+          : "0cb46d92-e754-4a76-a24b-c69c70ccd850",
         cli: {
           appVersionSource: "remote"
         }
