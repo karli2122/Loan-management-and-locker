@@ -20,6 +20,17 @@ import { useLanguage } from '../../src/context/LanguageContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
+// Helper function to build API endpoint URL
+const getApiUrl = (endpoint: string) => {
+  if (!API_URL) return '';
+  // Remove trailing slash from API_URL
+  const baseUrl = API_URL.replace(/\/$/, '');
+  // Remove leading slash from endpoint
+  const cleanEndpoint = endpoint.replace(/^\//, '');
+  // Return combined URL
+  return `${baseUrl}/${cleanEndpoint}`;
+};
+
 export default function ClientRegister() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
