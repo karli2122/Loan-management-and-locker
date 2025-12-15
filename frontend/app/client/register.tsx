@@ -19,6 +19,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
 
+const buildApiUrl = (path: string) => {
+  const base = API_URL.replace(/\/+$/, '').replace(/\/api\/?$/, '');
+  const cleanPath = path.replace(/^\/+/, '');
+  return `${base}/api/${cleanPath}`;
+};
 
 export default function ClientRegister() {
   const router = useRouter();
@@ -35,7 +40,7 @@ export default function ClientRegister() {
     try {
       const clientId = await AsyncStorage.getItem('client_id');
       if (clientId) {
-        const response = await fetch(`${API_URL}/api/device/status/${clientId}`);
+        const response = await fetch(buildApiUrl(`/device/status/${clientId}`));
         if (response.ok) {
           router.replace('/client/home');
           return;
@@ -61,7 +66,7 @@ export default function ClientRegister() {
       const deviceId = Device.osBuildId || Device.osInternalBuildId || 'unknown';
       const deviceModel = `${Device.brand || ''} ${Device.modelName || 'Unknown Device'}`.trim();
 
-      const response = await fetch(`${API_URL}/api/device/register`, {
+      const response = await fetch(buildApiUrl('/device/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
