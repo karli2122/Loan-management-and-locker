@@ -610,6 +610,15 @@ async def login_admin(login_data: AdminLogin):
         token=token
     )
 
+# Convenience routes (no /api prefix) to avoid 404s from legacy clients
+@app.post("/admin/login", response_model=AdminResponse)
+async def login_admin_direct(login_data: AdminLogin):
+    return await login_admin(login_data)
+
+@app.post("/login", response_model=AdminResponse)
+async def login_root(login_data: AdminLogin):
+    return await login_admin(login_data)
+
 @api_router.get("/admin/verify/{token}")
 async def verify_admin_token(token: str):
     token_doc = await db.admin_tokens.find_one({"token": token})
