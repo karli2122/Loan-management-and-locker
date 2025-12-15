@@ -13,10 +13,10 @@ echo ""
 cd /app/frontend
 
 # Build Admin APK
-echo "Step 1/2: Building Admin APK..."
+echo "Step 1/2: Building Admin APK (remote, using existing keystore)..."
 echo "This may take 15-20 minutes..."
 echo ""
-APP_MODE=admin npx eas-cli build --profile admin-preview --platform android --local --non-interactive
+APP_MODE=admin npx eas-cli build --profile admin-preview --platform android --non-interactive
 
 if [ $? -eq 0 ]; then
     echo ""
@@ -29,10 +29,10 @@ else
 fi
 
 # Build Client APK
-echo "Step 2/2: Building Client APK (production)..."
+echo "Step 2/2: Building Client APK (production, reuse admin keystore on EAS)..."
 echo "This may take 15-20 minutes..."
 echo ""
-APP_MODE=client npx eas-cli build --profile client-production --platform android --local --non-interactive
+APP_MODE=client npx eas-cli build --profile client-production --platform android --non-interactive
 
 if [ $? -eq 0 ]; then
     echo ""
