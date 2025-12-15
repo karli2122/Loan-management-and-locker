@@ -6,6 +6,7 @@
     "admin-development": {
       "developmentClient": true,
       "distribution": "internal",
+      "credentialsSource": "remote",
       "env": {
         "APP_MODE": "admin"
       },
@@ -17,6 +18,7 @@
     },
     "admin-preview": {
       "distribution": "internal",
+      "credentialsSource": "remote",
       "env": {
         "APP_MODE": "admin"
       },
@@ -29,6 +31,7 @@
     },
     "admin-production": {
       "distribution": "store",
+      "credentialsSource": "remote",
       "env": {
         "APP_MODE": "admin"
       },
@@ -42,6 +45,7 @@
     "client-development": {
       "developmentClient": true,
       "distribution": "internal",
+      "credentialsSource": "remote",
       "env": {
         "APP_MODE": "client"
       },
@@ -53,6 +57,7 @@
     },
     "client-preview": {
       "distribution": "internal",
+      "credentialsSource": "remote",
       "env": {
         "APP_MODE": "client"
       },
@@ -65,6 +70,7 @@
     },
     "client-production": {
       "distribution": "store",
+      "credentialsSource": "remote",
       "env": {
         "APP_MODE": "client"
       },
