@@ -74,7 +74,10 @@ export default function ClientRegister() {
       const deviceId = Device.osBuildId || Device.osInternalBuildId || 'unknown';
       const deviceModel = `${Device.brand || ''} ${Device.modelName || 'Unknown Device'}`.trim();
 
-      const response = await fetch(`${API_URL}/api/device/register`, {
+      const registerUrl = getApiUrl('api/device/register');
+      console.log('Registering device at:', registerUrl);
+
+      const response = await fetch(registerUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -84,6 +87,7 @@ export default function ClientRegister() {
         }),
       });
 
+      console.log('Registration response status:', response.status);
       const data = await response.json();
 
       if (!response.ok) {
