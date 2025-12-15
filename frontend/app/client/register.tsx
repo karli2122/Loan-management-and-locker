@@ -46,7 +46,9 @@ export default function ClientRegister() {
     try {
       const clientId = await AsyncStorage.getItem('client_id');
       if (clientId) {
-        const response = await fetch(`${API_URL}/api/device/status/${clientId}`);
+        const statusUrl = getApiUrl(`api/device/status/${clientId}`);
+        console.log('Checking device status:', statusUrl);
+        const response = await fetch(statusUrl);
         if (response.ok) {
           router.replace('/client/home');
           return;
