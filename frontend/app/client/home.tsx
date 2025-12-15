@@ -180,7 +180,7 @@ export default function ClientHome() {
 
       // Check if online
       if (OfflineSyncManager.isDeviceOnline()) {
-        await fetch(`${API_URL}/api/device/location`, {
+        await fetch(getApiUrl('api/device/location'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -297,7 +297,7 @@ export default function ClientHome() {
 
   const reportReboot = async (id: string) => {
     try {
-      const response = await fetch(`${API_URL}/api/clients/${id}/report-reboot`, {
+      const response = await fetch(getApiUrl(`api/clients/${id}/report-reboot`), {
         method: 'POST',
       });
       
@@ -319,7 +319,7 @@ export default function ClientHome() {
     if (!clientId) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/clients/${clientId}/report-tamper?tamper_type=${tamperType}`, {
+      const response = await fetch(getApiUrl(`api/clients/${clientId}/report-tamper?tamper_type=${tamperType}`), {
         method: 'POST',
       });
       
@@ -353,7 +353,7 @@ export default function ClientHome() {
   const handleClearWarning = async () => {
     if (!clientId) return;
     try {
-      await fetch(`${API_URL}/api/device/clear-warning/${clientId}`, {
+      await fetch(getApiUrl(`api/device/clear-warning/${clientId}`), {
         method: 'POST',
       });
       await fetchStatus(clientId);
