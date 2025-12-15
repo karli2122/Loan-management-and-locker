@@ -14,4 +14,13 @@ const raw =
 
 const API_URL = normalize(raw);
 
+/**
+ * Build a fully qualified API URL from a relative path.
+ * Trims leading/trailing slashes to avoid duplicate separators and supports empty paths.
+ */
+export const buildApiUrl = (path: string) => {
+  const cleanPath = path.replace(/^\/+|\/+$/g, '');
+  return cleanPath ? `${API_URL}/api/${cleanPath}` : `${API_URL}/api`;
+};
+
 export default API_URL;
