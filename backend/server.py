@@ -3,6 +3,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import ReturnDocument
 import os
 import logging
 from pathlib import Path
@@ -59,15 +60,27 @@ async def get_client_for_admin(client_id: str, admin: dict) -> dict:
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    if not admin.get("is_super_admin", False):
-        owner_id = client.get("owner_admin_id")
-        if owner_id and owner_id != admin["id"]:
+    if admin.get("is_super_admin", False):
+        return client
+
+    owner_id = client.get("owner_admin_id")
+    if owner_id:
+        if owner_id != admin["id"]:
             raise HTTPException(status_code=403, detail="Not authorized to access this client")
-        if not owner_id:
-            await db.clients.update_one({"id": client_id}, {"$set": {"owner_admin_id": admin["id"]}})
-            client["owner_admin_id"] = admin["id"]
+        return client
+
+    updated_client = await db.clients.find_one_and_update(
+        {"id": client_id, "owner_admin_id": None},
+        {"$set": {"owner_admin_id": admin["id"]}},
+        return_document=ReturnDocument.AFTER
+    )
+    if updated_client:
+        return updated_client
     
-    return client
+    latest_client = await db.clients.find_one({"id": client_id})
+    if latest_client and latest_client.get("owner_admin_id") == admin["id"]:
+        return latest_client
+    raise HTTPException(status_code=403, detail="Client is owned by another admin")
 
 def client_filter_for_admin(admin: dict) -> dict:
     """Build a MongoDB filter restricting results to the admin's clients"""
@@ -157,7 +170,7 @@ def calculate_late_fee(principal_due: float, late_fee_percent: float, days_overd
     
     return round(late_fee, 2)
 
-async def apply_late_fees_to_overdue_clients(owner_admin_id: Optional[str] = None):
+async def apply_late_fees_to_overdue_clients(admin_id: Optional[str] = None):
     """Background job to calculate and apply late fees to overdue clients"""
     try:
         # Get all clients with overdue payments
@@ -165,8 +178,8 @@ async def apply_late_fees_to_overdue_clients(owner_admin_id: Optional[str] = Non
             "next_payment_due": {"$lt": datetime.utcnow()},
             "outstanding_balance": {"$gt": 0}
         }
-        if owner_admin_id:
-            query["owner_admin_id"] = owner_admin_id
+        if admin_id:
+            query["owner_admin_id"] = admin_id
         
         clients = await db.clients.find(query).to_list(1000)
         
@@ -207,7 +220,7 @@ async def apply_late_fees_to_overdue_clients(owner_admin_id: Optional[str] = Non
     except Exception as e:
         logger.error(f"Late fee calculation error: {str(e)}")
 
-async def create_payment_reminders(owner_admin_id: Optional[str] = None):
+async def create_payment_reminders(admin_id: Optional[str] = None):
     """Background job to create payment reminders"""
     try:
         from dateutil.relativedelta import relativedelta
@@ -218,8 +231,8 @@ async def create_payment_reminders(owner_admin_id: Optional[str] = None):
             "payment_reminders_enabled": True,
             "next_payment_due": {"$exists": True}
         }
-        if owner_admin_id:
-            query["owner_admin_id"] = owner_admin_id
+        if admin_id:
+            query["owner_admin_id"] = admin_id
         
         clients = await db.clients.find(query).to_list(1000)
         
@@ -687,7 +700,7 @@ async def create_client(client_data: ClientCreate, admin_token: str):
     return client
 
 @api_router.get("/clients")
-async def get_all_clients(skip: int = 0, limit: int = 100, admin_token: str = None):
+async def get_all_clients(admin_token: str, skip: int = 0, limit: int = 100):
     """Get all clients with pagination
     
     Args:
@@ -757,8 +770,7 @@ async def allow_uninstall(client_id: str, admin_token: str):
 @api_router.delete("/clients/{client_id}")
 async def delete_client(client_id: str, admin_token: str):
     admin = await get_admin_from_token(admin_token)
-    await get_client_for_admin(client_id, admin)
-    client = await db.clients.find_one({"id": client_id})
+    client = await get_client_for_admin(client_id, admin)
     
     # Check if uninstall was allowed first
     if not client.get("uninstall_allowed", False):
@@ -777,7 +789,7 @@ async def delete_client(client_id: str, admin_token: str):
 # ===================== LOCK CONTROL ROUTES =====================
 
 @api_router.post("/clients/{client_id}/lock")
-async def lock_client_device(client_id: str, message: Optional[str] = None, admin_token: str = None):
+async def lock_client_device(client_id: str, admin_token: str, message: Optional[str] = None):
     admin = await get_admin_from_token(admin_token)
     await get_client_for_admin(client_id, admin)
     
@@ -789,7 +801,7 @@ async def lock_client_device(client_id: str, message: Optional[str] = None, admi
     return {"message": "Device locked successfully"}
 
 @api_router.post("/clients/{client_id}/unlock")
-async def unlock_client_device(client_id: str, admin_token: str = None):
+async def unlock_client_device(client_id: str, admin_token: str):
     admin = await get_admin_from_token(admin_token)
     await get_client_for_admin(client_id, admin)
     
@@ -797,7 +809,7 @@ async def unlock_client_device(client_id: str, admin_token: str = None):
     return {"message": "Device unlocked successfully"}
 
 @api_router.post("/clients/{client_id}/warning")
-async def send_warning(client_id: str, message: str, admin_token: str = None):
+async def send_warning(client_id: str, message: str, admin_token: str):
     admin = await get_admin_from_token(admin_token)
     await get_client_for_admin(client_id, admin)
     
@@ -929,8 +941,7 @@ async def report_reboot(client_id: str):
 @api_router.post("/loan-plans", response_model=LoanPlan)
 async def create_loan_plan(plan_data: LoanPlanCreate, admin_token: str):
     """Create a new loan plan"""
-    if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+    await get_admin_from_token(admin_token)
     
     plan = LoanPlan(**plan_data.dict())
     await db.loan_plans.insert_one(plan.dict())
@@ -956,8 +967,7 @@ async def get_loan_plan(plan_id: str):
 @api_router.put("/loan-plans/{plan_id}", response_model=LoanPlan)
 async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token: str):
     """Update a loan plan"""
-    if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+    await get_admin_from_token(admin_token)
     
     plan = await db.loan_plans.find_one({"id": plan_id})
     if not plan:
@@ -975,8 +985,7 @@ async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token:
 @api_router.delete("/loan-plans/{plan_id}")
 async def delete_loan_plan(plan_id: str, admin_token: str):
     """Delete (deactivate) a loan plan"""
-    if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+    await get_admin_from_token(admin_token)
     
     # Soft delete - just deactivate
     result = await db.loan_plans.update_one(
@@ -1279,14 +1288,12 @@ async def get_client_late_fees(client_id: str, admin_token: str):
     }
 
 @api_router.get("/reminders")
-async def get_reminders(sent: bool = None, limit: int = 100, admin_token: str = None):
+async def get_reminders(admin_token: str, sent: bool = None, limit: int = 100):
     """Get all reminders, optionally filtered by sent status"""
     admin = await get_admin_from_token(admin_token)
-    query = client_filter_for_admin(admin)
-    if query:
-        query = {"admin_id": query["owner_admin_id"]}
-    else:
-        query = {}
+    query = {}
+    if not admin.get("is_super_admin", False):
+        query["admin_id"] = admin["id"]
     if sent is not None:
         query["sent"] = sent
     
@@ -1319,11 +1326,8 @@ async def mark_reminder_sent(reminder_id: str, admin_token: str):
     
     if not admin.get("is_super_admin", False):
         reminder_admin = reminder.get("admin_id")
-        if reminder_admin and reminder_admin != admin["id"]:
+        if reminder_admin != admin["id"]:
             raise HTTPException(status_code=403, detail="Not authorized to modify this reminder")
-        if not reminder_admin and reminder.get("client_id"):
-            client = await get_client_for_admin(reminder["client_id"], admin)
-            await db.reminders.update_one({"id": reminder_id}, {"$set": {"admin_id": client.get("owner_admin_id")}})
     
     result = await db.reminders.update_one(
         {"id": reminder_id},
