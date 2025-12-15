@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -185,10 +185,10 @@ async def send_expo_push_notification(push_token: str, title: str, body: str, da
     }
     
     try:
-        async with httpx.AsyncClient(timeout=10) as client_session:
-            response = await client_session.post("https://exp.host/--/api/v2/push/send", json=payload)
-            if response.status_code >= 400:
-                logger.warning(f"Expo push send failed ({response.status_code}): {response.text}")
+        async with httpx.AsyncClient(timeout=10) as http_client:
+            response = await http_client.post("https://exp.host/--/api/v2/push/send", json=payload)
+            if response.status_code >= httpx.codes.BAD_REQUEST:
+                logger.warning(f"Expo push send failed ({response.status_code})")
                 return False
         return True
     except Exception as exc:
@@ -214,7 +214,7 @@ async def create_payment_reminders():
             
             days_until_due = (next_due - datetime.utcnow()).days
             
-            # Create reminders at specific intervals
+            # Create reminders for same-day due dates and 1/3/7-day overdue intervals
             reminder_configs = [
                 (0, "payment_due_today", "Payment due today"),
                 (-1, "payment_overdue_1day", "Payment overdue by 1 day"),
@@ -233,12 +233,18 @@ async def create_payment_reminders():
                     
                     if not existing:
                         # Create reminder
+                        admin_scope = client.get("admin_id")
+                        if admin_scope:
+                            admin_exists = await db.admins.find_one({"id": admin_scope})
+                            if not admin_exists:
+                                admin_scope = None
+                        
                         reminder = Reminder(
                             client_id=client["id"],
                             reminder_type=reminder_type,
                             scheduled_date=datetime.utcnow(),
                             message=f"{message}. Amount: €{client.get('monthly_emi', 0):.2f}",
-                            admin_id=client.get("admin_id")
+                            admin_id=admin_scope
                         )
                         await db.reminders.insert_one(reminder.dict())
                         
@@ -252,7 +258,7 @@ async def create_payment_reminders():
                                 {
                                     "client_id": client["id"],
                                     "reminder_type": reminder_type,
-                                    "admin_id": client.get("admin_id")
+                                    "admin_id": admin_scope
                                 }
                             )
                         logger.info(f"Created {reminder_type} reminder for client {client['id']}")
@@ -503,6 +509,15 @@ async def verify_admin_token_header(token: str) -> bool:
     token_doc = await db.admin_tokens.find_one({"token": token})
     return token_doc is not None
 
+async def enforce_client_scope(client: dict, admin_id: Optional[str]):
+    """Ensure the requested client belongs to the provided admin scope"""
+    if client.get("admin_id"):
+        if not admin_id or client["admin_id"] != admin_id:
+            raise HTTPException(status_code=403, detail="Client not accessible for this admin")
+    elif admin_id:
+        logger.warning(f"Admin {admin_id} attempted to access unassigned client {client['id']}")
+        raise HTTPException(status_code=403, detail="Client not assigned to this admin")
+
 @api_router.post("/admin/register", response_model=AdminResponse)
 async def register_admin(admin_data: AdminCreate, admin_token: str = None):
     # Validate password length
@@ -682,7 +697,7 @@ async def delete_admin(admin_id: str, admin_token: str):
 # ===================== CLIENT MANAGEMENT ROUTES =====================
 
 @api_router.post("/clients", response_model=Client)
-async def create_client(client_data: ClientCreate, admin_token: Optional[str] = None):
+async def create_client(client_data: ClientCreate, admin_token: Optional[str] = Query(default=None)):
     admin_id = client_data.admin_id
     
     if admin_token:
@@ -700,7 +715,7 @@ async def create_client(client_data: ClientCreate, admin_token: Optional[str] = 
     return client
 
 @api_router.get("/clients")
-async def get_all_clients(skip: int = 0, limit: int = 100, admin_id: Optional[str] = None):
+async def get_all_clients(skip: int = 0, limit: int = 100, admin_id: Optional[str] = Query(default=None)):
     """Get all clients with pagination
     
     Args:
@@ -710,9 +725,11 @@ async def get_all_clients(skip: int = 0, limit: int = 100, admin_id: Optional[st
     # Cap limit at 500 to prevent excessive data transfer
     limit = min(limit, 500)
     
-    query = {}
-    if admin_id:
-        query["admin_id"] = admin_id
+    if not admin_id:
+        logger.warning("admin_id not provided for client listing; rejecting request")
+        raise HTTPException(status_code=400, detail="admin_id is required for client listings")
+    
+    query = {"admin_id": admin_id}
     
     # Get total count for pagination metadata
     total_count = await db.clients.count_documents(query)
@@ -732,20 +749,20 @@ async def get_all_clients(skip: int = 0, limit: int = 100, admin_id: Optional[st
     }
 
 @api_router.get("/clients/{client_id}", response_model=Client)
-async def get_client(client_id: str, admin_id: Optional[str] = None):
+async def get_client(client_id: str, admin_id: Optional[str] = Query(default=None)):
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    if admin_id and client.get("admin_id") and client["admin_id"] != admin_id:
-        raise HTTPException(status_code=403, detail="Client not accessible for this admin")
+    await enforce_client_scope(client, admin_id)
     return Client(**client)
 
 @api_router.put("/clients/{client_id}", response_model=Client)
-async def update_client(client_id: str, update_data: ClientUpdate):
+async def update_client(client_id: str, update_data: ClientUpdate, admin_id: Optional[str] = Query(default=None)):
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await enforce_client_scope(client, admin_id)
     
     update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
     if update_dict:
@@ -755,11 +772,12 @@ async def update_client(client_id: str, update_data: ClientUpdate):
     return Client(**updated_client)
 
 @api_router.post("/clients/{client_id}/allow-uninstall")
-async def allow_uninstall(client_id: str):
+async def allow_uninstall(client_id: str, admin_id: Optional[str] = Query(default=None)):
     """Signal device to allow app uninstallation - must be called before deletion"""
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await enforce_client_scope(client, admin_id)
     
     # Mark client as ready for uninstall
     await db.clients.update_one(
@@ -775,10 +793,11 @@ async def allow_uninstall(client_id: str):
     }
 
 @api_router.delete("/clients/{client_id}")
-async def delete_client(client_id: str):
+async def delete_client(client_id: str, admin_id: Optional[str] = Query(default=None)):
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await enforce_client_scope(client, admin_id)
     
     # Check if uninstall was allowed first
     if not client.get("uninstall_allowed", False):
@@ -797,10 +816,11 @@ async def delete_client(client_id: str):
 # ===================== LOCK CONTROL ROUTES =====================
 
 @api_router.post("/clients/{client_id}/lock")
-async def lock_client_device(client_id: str, message: Optional[str] = None):
+async def lock_client_device(client_id: str, message: Optional[str] = None, admin_id: Optional[str] = Query(default=None)):
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await enforce_client_scope(client, admin_id)
     
     update_data = {"is_locked": True}
     if message:
@@ -810,19 +830,21 @@ async def lock_client_device(client_id: str, message: Optional[str] = None):
     return {"message": "Device locked successfully"}
 
 @api_router.post("/clients/{client_id}/unlock")
-async def unlock_client_device(client_id: str):
+async def unlock_client_device(client_id: str, admin_id: Optional[str] = Query(default=None)):
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await enforce_client_scope(client, admin_id)
     
     await db.clients.update_one({"id": client_id}, {"$set": {"is_locked": False, "warning_message": ""}})
     return {"message": "Device unlocked successfully"}
 
 @api_router.post("/clients/{client_id}/warning")
-async def send_warning(client_id: str, message: str):
+async def send_warning(client_id: str, message: str, admin_id: Optional[str] = Query(default=None)):
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await enforce_client_scope(client, admin_id)
     
     await db.clients.update_one({"id": client_id}, {"$set": {"warning_message": message}})
     return {"message": "Warning sent successfully"}
@@ -1174,9 +1196,7 @@ async def record_payment(client_id: str, payment_data: PaymentCreate, admin_toke
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
-    
-    if client.get("admin_id") and client["admin_id"] != admin["id"]:
-        raise HTTPException(status_code=403, detail="Client belongs to a different tenant")
+    await enforce_client_scope(client, admin["id"])
     
     # Create payment record
     payment = Payment(
@@ -1515,11 +1535,12 @@ async def get_financial_report():
 # ===================== PHONE PRICE LOOKUP =====================
 
 @api_router.get("/clients/{client_id}/fetch-price")
-async def fetch_phone_price(client_id: str):
+async def fetch_phone_price(client_id: str, admin_id: Optional[str] = Query(default=None)):
     """Fetch used phone price for a client's device"""
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await enforce_client_scope(client, admin_id)
     
     device_model = client.get("device_model", "")
     if not device_model or device_model == "Unknown Device":

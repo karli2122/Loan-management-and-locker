@@ -61,6 +61,7 @@ export default function LoanManagement() {
   const [loanDetails, setLoanDetails] = useState<LoanDetails | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [schedule, setSchedule] = useState<any[]>([]);
+  const [adminId, setAdminId] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -89,10 +90,22 @@ export default function LoanManagement() {
     fetchData();
   }, [id]);
 
+  const getAdminId = async () => {
+    if (adminId) return adminId;
+    const stored = await AsyncStorage.getItem('admin_id');
+    if (stored) {
+      setAdminId(stored);
+      return stored;
+    }
+    return null;
+  };
+
   const fetchData = async () => {
     try {
+      const scope = await getAdminId();
+      const adminQuery = scope ? `?admin_id=${scope}` : '';
       // Fetch client details
-      const clientRes = await fetch(`${API_URL}/api/clients/${id}`);
+      const clientRes = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`);
       const clientData = await clientRes.json();
       setClient(clientData);
       
@@ -232,8 +245,10 @@ export default function LoanManagement() {
   const handleLockUnlock = async (shouldLock: boolean) => {
     setActionLoading(true);
     try {
+      const scope = await getAdminId();
+      const adminQuery = scope ? `?admin_id=${scope}` : '';
       const endpoint = shouldLock ? 'lock' : 'unlock';
-      const response = await fetch(`${API_URL}/api/clients/${id}/${endpoint}`, {
+      const response = await fetch(`${API_URL}/api/clients/${id}/${endpoint}${adminQuery}`, {
         method: 'POST',
       });
 

@@ -52,6 +52,10 @@ export default function ClientHome() {
   const appState = useRef(AppState.currentState);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wasLocked = useRef(false);
+  const resolveProjectId = useCallback(
+    () => Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId,
+    []
+  );
   
   const getPushToken = useCallback(async () => {
     if (!Device.isDevice) return null;
@@ -64,12 +68,15 @@ export default function ClientHome() {
     }
     if (finalStatus !== 'granted') return null;
     
-    const projectId = Constants.easConfig?.projectId || Constants.expoConfig?.extra?.eas?.projectId;
+    const projectId = resolveProjectId();
+    if (!projectId) {
+      console.log('Expo project ID missing; requesting push token without project ID');
+    }
     const tokenResponse = projectId
       ? await Notifications.getExpoPushTokenAsync({ projectId })
       : await Notifications.getExpoPushTokenAsync();
     return tokenResponse.data;
-  }, []);
+  }, [resolveProjectId]);
   
   const registerPushToken = useCallback(async (id: string) => {
     if (!id) return;
@@ -82,11 +89,16 @@ export default function ClientHome() {
       if (stored === token) return;
       
       await AsyncStorage.setItem('push_token', token);
-      await fetch(`${API_URL}/api/device/push-token`, {
+      const response = await fetch(`${API_URL}/api/device/push-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ client_id: id, push_token: token })
       });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('Push token registration request failed', response.status, errorText);
+      }
     } catch (error) {
       console.log('Push token registration failed', error);
     }

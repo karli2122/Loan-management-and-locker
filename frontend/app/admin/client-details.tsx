@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
 
@@ -49,6 +50,7 @@ export default function ClientDetails() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { t } = useLanguage();
+  const [adminId, setAdminId] = useState<string | null>(null);
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -61,10 +63,27 @@ export default function ClientDetails() {
   const [editDeviceMake, setEditDeviceMake] = useState('');
   const [editDeviceModel, setEditDeviceModel] = useState('');
   const [editDevicePrice, setEditDevicePrice] = useState('');
+  
+  const getAdminScope = async () => {
+    if (adminId) return adminId;
+    const stored = await AsyncStorage.getItem('admin_id');
+    if (stored) {
+      setAdminId(stored);
+      return stored;
+    }
+    return null;
+  };
+
+  const buildAdminQuery = async (hasQuery = false) => {
+    const scope = await getAdminScope();
+    return scope ? `${hasQuery ? '&' : '?'}admin_id=${scope}` : '';
+  };
 
   const fetchClient = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/clients/${id}`);
+      const scope = await getAdminScope();
+      const adminQuery = scope ? `?admin_id=${scope}` : '';
+      const response = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`);
       if (!response.ok) throw new Error('Client not found');
       const data = await response.json();
       setClient(data);
@@ -84,7 +103,8 @@ export default function ClientDetails() {
   const handleLock = async () => {
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/clients/${id}/lock?message=${encodeURIComponent(lockMessage)}`, {
+      const adminQuery = await buildAdminQuery(true);
+      const response = await fetch(`${API_URL}/api/clients/${id}/lock?message=${encodeURIComponent(lockMessage)}${adminQuery}`, {
         method: 'POST',
       });
       if (!response.ok) throw new Error('Failed to lock device');
@@ -106,7 +126,8 @@ export default function ClientDetails() {
         onPress: async () => {
           setActionLoading(true);
           try {
-            const response = await fetch(`${API_URL}/api/clients/${id}/unlock`, {
+            const adminQuery = await buildAdminQuery();
+            const response = await fetch(`${API_URL}/api/clients/${id}/unlock${adminQuery}`, {
               method: 'POST',
             });
             if (!response.ok) throw new Error('Failed to unlock device');
@@ -129,8 +150,9 @@ export default function ClientDetails() {
     }
     setActionLoading(true);
     try {
+      const adminQuery = await buildAdminQuery(true);
       const response = await fetch(
-        `${API_URL}/api/clients/${id}/warning?message=${encodeURIComponent(warningMessage)}`,
+        `${API_URL}/api/clients/${id}/warning?message=${encodeURIComponent(warningMessage)}${adminQuery}`,
         { method: 'POST' }
       );
       if (!response.ok) throw new Error('Failed to send warning');
@@ -157,7 +179,8 @@ export default function ClientDetails() {
           onPress: async () => {
             setActionLoading(true);
             try {
-              const response = await fetch(`${API_URL}/api/clients/${id}/allow-uninstall`, {
+              const adminQuery = await buildAdminQuery();
+              const response = await fetch(`${API_URL}/api/clients/${id}/allow-uninstall${adminQuery}`, {
                 method: 'POST',
               });
               if (!response.ok) throw new Error('Failed to allow uninstall');
@@ -181,12 +204,13 @@ export default function ClientDetails() {
       {
         text: t('delete'),
         style: 'destructive',
-        onPress: async () => {
-          setActionLoading(true);
-          try {
-            const response = await fetch(`${API_URL}/api/clients/${id}`, {
-              method: 'DELETE',
-            });
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              const adminQuery = await buildAdminQuery();
+              const response = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`, {
+                method: 'DELETE',
+              });
             
             if (!response.ok) {
               const error = await response.json();
@@ -208,7 +232,8 @@ export default function ClientDetails() {
   const handleFetchPrice = async () => {
     setFetchingPrice(true);
     try {
-      const response = await fetch(`${API_URL}/api/clients/${id}/fetch-price`);
+      const adminQuery = await buildAdminQuery();
+      const response = await fetch(`${API_URL}/api/clients/${id}/fetch-price${adminQuery}`);
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.detail || 'Failed to fetch price');
@@ -249,7 +274,8 @@ export default function ClientDetails() {
         }
       }
 
-      const response = await fetch(`${API_URL}/api/clients/${id}`, {
+      const adminQuery = await buildAdminQuery();
+      const response = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData),

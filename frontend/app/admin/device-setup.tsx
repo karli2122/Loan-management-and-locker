@@ -60,7 +60,12 @@ export default function DeviceSetup() {
       const response = await fetch(`${API_URL}/api/clients${query}`);
       const data = await response.json();
       // Only show unregistered clients
-      const clientList = data.clients || data;
+      let clientList: any[] = [];
+      if (Array.isArray(data?.clients)) {
+        clientList = data.clients;
+      } else if (Array.isArray(data)) {
+        clientList = data;
+      }
       setClients(clientList.filter((c: any) => !c.is_registered));
     } catch (error) {
       console.error('Failed to fetch clients:', error);
