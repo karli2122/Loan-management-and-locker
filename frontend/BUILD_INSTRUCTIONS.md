@@ -44,6 +44,12 @@ APP_MODE=client eas build --profile client-preview --platform android
 APP_MODE=client eas build --profile client-production --platform android
 ```
 
+**Note**: The Client APK includes Device Admin native modules that enable:
+- Device Admin mode for basic device control
+- Device Owner mode for full device control (kiosk mode, uninstall protection)
+- Tamper detection service
+- Boot receiver for auto-start on device restart
+
 ---
 
 ## Device Owner Setup (CRITICAL for Client App)
