@@ -131,14 +131,8 @@ public class DeviceAdminModule extends Module {
                     return "error: " + e.getMessage();
                 }
             });
-        });
-    }
 
-    private Context getContext() {
-        return getAppContext().getReactContext();
-    }
-
-    builder.asyncFunction("allowUninstall", () -> {
+            builder.asyncFunction("allowUninstall", () -> {
                 try {
                     Context context = getContext();
                     // Set flag to allow uninstall
