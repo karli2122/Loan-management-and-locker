@@ -357,7 +357,7 @@ export default function LoanManagement() {
             <View style={styles.noLoanContainer}>
               <Ionicons name="information-circle" size={48} color="#64748B" />
               <Text style={styles.noLoanText}>No loan configured</Text>
-              <Text style={styles.noLoanSubtext}>Tap "Setup Loan" to get started</Text>
+              <Text style={styles.noLoanSubtext}>{'Tap "Setup Loan" to get started'}</Text>
             </View>
           )}
         </View>

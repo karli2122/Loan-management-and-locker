@@ -238,7 +238,7 @@ export default function Reports() {
               <View style={[styles.alertBox, { backgroundColor: '#EF444420', borderColor: '#EF4444' }]}>
                 <Ionicons name="warning" size={20} color="#EF4444" />
                 <Text style={[styles.alertText, { color: '#EF4444' }]}>
-                  {clientReport.details.defaulted.length} clients defaulted (>7 days)
+                  {clientReport.details.defaulted.length} clients defaulted (&gt;7 days)
                 </Text>
               </View>
             )}
