@@ -64,6 +64,15 @@ export default function AdminLogin() {
       const primaryUrl = buildApiUrl('admin/login');
       const fallbackUrl = `${API_URL}/admin/login`;
 
+      const extractValue = (data: any, keys: string[]): string | null => {
+        if (!data) return null;
+        for (const key of keys) {
+          if (data[key]) return data[key];
+        }
+        if (data.data) return extractValue(data.data, keys);
+        return null;
+      };
+
       const formatMessage = (
         status?: number,
         detail?: string | null,
@@ -118,11 +127,15 @@ export default function AdminLogin() {
         lastUrl = fallbackUrl;
       }
 
-      if (!parsed.data || !parsed.data.token) {
+      const token =
+        extractValue(parsed.data, ['token', 'access_token']) ||
+        extractValue(parsed.data?.data, ['token', 'access_token']);
+
+      if (!token) {
         throw new Error(formatMessage(response.status, parsed.data?.detail, parsed.text, lastUrl));
       }
 
-      await AsyncStorage.setItem('admin_token', parsed.data.token);
+      await AsyncStorage.setItem('admin_token', token);
       await AsyncStorage.setItem('admin_id', parsed.data.id);
       await AsyncStorage.setItem('admin_username', parsed.data.username);
       await AsyncStorage.setItem('admin_role', parsed.data.role || 'user');
