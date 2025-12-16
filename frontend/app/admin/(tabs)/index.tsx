@@ -27,6 +27,12 @@ interface LoanStats {
   collection_rate: number;
 }
 
+interface MonthStats {
+  revenue: number;
+  profit: number;
+  dueOutstanding: number;
+}
+
 export default function Dashboard() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
@@ -42,7 +48,13 @@ export default function Dashboard() {
   });
   const [refreshing, setRefreshing] = useState(false);
   const [username, setUsername] = useState('');
+  const [firstName, setFirstName] = useState('');
   const [userRole, setUserRole] = useState('user');
+  const [monthStats, setMonthStats] = useState<MonthStats>({
+    revenue: 0,
+    profit: 0,
+    dueOutstanding: 0,
+  });
 
   const fetchStats = async () => {
     try {
@@ -59,6 +71,11 @@ export default function Dashboard() {
         total_outstanding: data.financial.total_outstanding,
         collection_rate: data.financial.collection_rate,
       });
+      setMonthStats({
+        revenue: data.this_month?.total_collected ?? 0,
+        profit: data.this_month?.profit_collected ?? 0,
+        dueOutstanding: data.this_month?.due_outstanding ?? 0,
+      });
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     }
@@ -67,7 +84,9 @@ export default function Dashboard() {
   const loadUserData = async () => {
     const storedUsername = await AsyncStorage.getItem('admin_username');
     const role = await AsyncStorage.getItem('admin_role');
+    const storedFirst = await AsyncStorage.getItem('admin_first_name');
     if (storedUsername) setUsername(storedUsername);
+    if (storedFirst) setFirstName(storedFirst);
     if (role) setUserRole(role);
   };
 
@@ -87,7 +106,11 @@ export default function Dashboard() {
       <View style={styles.header}>
         <View style={{flex: 1}}>
           <Text style={styles.greeting}>{t('welcomeBack')}</Text>
-          <Text style={styles.username}>{username || 'Admin'}</Text>
+          <Text style={styles.username}>
+            {username === 'karli1987'
+              ? 'Admin'
+              : firstName || username || 'Admin'}
+          </Text>
         </View>
         <View style={styles.langSwitcher}>
           <TouchableOpacity
@@ -113,29 +136,41 @@ export default function Dashboard() {
         <Text style={styles.sectionTitle}>{language === 'et' ? 'Laenude ülevaade' : 'Loan Overview'}</Text>
 
         <View style={styles.statsGrid}>
-          <View style={[styles.statCard, { backgroundColor: '#1E3A5F' }]}>
+          <TouchableOpacity
+            style={[styles.statCard, { backgroundColor: '#1E3A5F' }]}
+            onPress={() => router.push('/admin/(tabs)/loans')}
+            activeOpacity={0.8}
+          >
             <View style={styles.statIcon}>
               <Ionicons name="trending-up" size={28} color="#3B82F6" />
             </View>
             <Text style={styles.statValue}>{loanStats.active_loans}</Text>
             <Text style={styles.statLabel}>{language === 'et' ? 'Aktiivsed laenud' : 'Active Loans'}</Text>
-          </View>
+          </TouchableOpacity>
 
-          <View style={[styles.statCard, { backgroundColor: '#3D1F1F' }]}>
+          <TouchableOpacity
+            style={[styles.statCard, { backgroundColor: '#3D1F1F' }]}
+            onPress={() => router.push('/admin/(tabs)/loans?filter=overdue')}
+            activeOpacity={0.8}
+          >
             <View style={styles.statIcon}>
               <Ionicons name="alert-circle" size={28} color="#EF4444" />
             </View>
             <Text style={styles.statValue}>{loanStats.overdue_clients}</Text>
             <Text style={styles.statLabel}>{language === 'et' ? 'Võlglased' : 'Overdue'}</Text>
-          </View>
+          </TouchableOpacity>
 
-          <View style={[styles.statCard, { backgroundColor: '#1F3D2E' }]}>
+          <TouchableOpacity
+            style={[styles.statCard, { backgroundColor: '#1F3D2E' }]}
+            onPress={() => router.push('/admin/(tabs)/loans?filter=paid')}
+            activeOpacity={0.8}
+          >
             <View style={styles.statIcon}>
               <Ionicons name="checkmark-circle" size={28} color="#10B981" />
             </View>
             <Text style={styles.statValue}>{loanStats.completed_loans}</Text>
             <Text style={styles.statLabel}>{language === 'et' ? 'Lõpetatud' : 'Completed'}</Text>
-          </View>
+          </TouchableOpacity>
 
           <View style={[styles.statCard, { backgroundColor: '#3D3D1F' }]}>
             <View style={styles.statIcon}>
@@ -159,6 +194,18 @@ export default function Dashboard() {
           <View style={styles.financialRow}>
             <Text style={styles.financialLabel}>{language === 'et' ? 'Võlgnevused' : 'Outstanding'}</Text>
             <Text style={[styles.financialValue, { color: '#F59E0B' }]}>€{loanStats.total_outstanding.toFixed(2)}</Text>
+          </View>
+          <View style={styles.financialRow}>
+            <Text style={styles.financialLabel}>{language === 'et' ? 'Käesoleva kuu tulu' : 'Revenue (This Month)'}</Text>
+            <Text style={[styles.financialValue, { color: '#10B981' }]}>€{monthStats.revenue.toFixed(2)}</Text>
+          </View>
+          <View style={styles.financialRow}>
+            <Text style={styles.financialLabel}>{language === 'et' ? 'Käesoleva kuu kasum' : 'Profit (This Month)'}</Text>
+            <Text style={[styles.financialValue, { color: '#4F46E5' }]}>€{monthStats.profit.toFixed(2)}</Text>
+          </View>
+          <View style={styles.financialRow}>
+            <Text style={styles.financialLabel}>{language === 'et' ? 'Selle kuu maksed tasuda' : 'Due This Month'}</Text>
+            <Text style={[styles.financialValue, { color: '#F59E0B' }]}>€{monthStats.dueOutstanding.toFixed(2)}</Text>
           </View>
         </View>
 
@@ -314,7 +361,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   contentContainer: {
-    paddingBottom: 96,
+    paddingBottom: 140,
   },
   sectionTitle: {
     fontSize: 18,

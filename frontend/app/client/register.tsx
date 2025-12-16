@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
-import { buildApiUrl } from '../../src/constants/api';
+import API_URL, { buildApiUrl } from '../../src/constants/api';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
 
 export default function ClientRegister() {
@@ -88,7 +88,8 @@ export default function ClientRegister() {
   };
 
   const handleRegister = async () => {
-    if (!registrationCode.trim()) {
+    const code = registrationCode.trim().toUpperCase();
+    if (!code) {
       Alert.alert(t('error'), t('fillAllFields'));
       return;
     }
@@ -98,15 +99,22 @@ export default function ClientRegister() {
       const deviceId = Device.osBuildId || Device.osInternalBuildId || 'unknown';
       const deviceModel = `${Device.brand || ''} ${Device.modelName || 'Unknown Device'}`.trim();
 
-      const response = await fetch(buildApiUrl('device/register'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          registration_code: registrationCode.toUpperCase(),
-          device_id: deviceId,
-          device_model: deviceModel,
-        }),
-      });
+      // Try primary /api path, then fallback to base without /api to avoid 404s from double/missing prefix
+      const attemptRegister = async (url: string) =>
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            registration_code: code,
+            device_id: deviceId,
+            device_model: deviceModel,
+          }),
+        });
+
+      let response = await attemptRegister(buildApiUrl('device/register'));
+      if (response.status === 404) {
+        response = await attemptRegister(`${API_URL}/device/register`);
+      }
 
       const text = await response.text();
       let data: any = null;
@@ -122,6 +130,9 @@ export default function ClientRegister() {
       }
 
       const clientId = data?.client_id;
+      if (!clientId) {
+        throw new Error(data?.detail || 'Registration failed: invalid code');
+      }
       if (clientId) {
         await AsyncStorage.setItem('client_id', clientId);
       }

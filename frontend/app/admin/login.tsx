@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,13 +10,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
-import API_URL from '../../src/constants/api';
+import API_URL, { buildApiUrl } from '../../src/constants/api';
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -25,43 +26,136 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [staySignedIn, setStaySignedIn] = useState(true);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+
+  useEffect(() => {
+    const hydrateSession = async () => {
+      const stay = await AsyncStorage.getItem('admin_stay_signed_in');
+      if (stay === 'true') {
+        const token = await AsyncStorage.getItem('admin_token');
+        if (token) {
+          router.replace('/admin/(tabs)');
+          return;
+        }
+      }
+    };
+    hydrateSession();
+  }, []);
 
   const handleSubmit = async () => {
     if (!username.trim() || !password.trim()) {
       Alert.alert(t('error'), t('fillAllFields'));
       return;
     }
+    const creds = { username: username.trim(), password: password.trim() };
+
+      const attemptLogin = async (url: string) => {
+        return fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(creds),
+        });
+      };
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/admin/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
+      const primaryUrl = buildApiUrl('admin/login');
+      const fallbackUrl = `${API_URL}/admin/login`;
 
-      const text = await response.text();
-      let data: any = null;
-      try {
-        data = text ? JSON.parse(text) : null;
-      } catch {
-        // Non-JSON response (e.g., HTML error page)
+      const extractValue = (data: any, keys: string[]): string | null => {
+        if (!data) return null;
+        for (const key of keys) {
+          if (data[key]) return data[key];
+        }
+        if (data.data) return extractValue(data.data, keys);
+        return null;
+      };
+
+      const formatMessage = (
+        status?: number,
+        detail?: string | null,
+        text?: string | null,
+        url?: string,
+      ) => {
+        const parts: string[] = [];
+        if (detail) parts.push(detail);
+        if (!detail && text) parts.push(text);
+        if (status) parts.push(`(status ${status})`);
+        if (url) parts.push(`at ${url}`);
+        return (
+          parts.join(' ') ||
+          `${t('auth_failed') || 'Authentication failed'}${status ? ` (status ${status})` : ''}`
+        );
+      };
+
+      const consumeResponse = async (resp: Response) => {
+        const text = await resp.text();
+        let data: any = null;
+        try {
+          data = text ? JSON.parse(text) : null;
+        } catch {
+          // Non-JSON response (e.g., HTML error page)
+        }
+        return { resp, text, data };
+      };
+
+      let response = await attemptLogin(primaryUrl);
+      let parsed = await consumeResponse(response);
+      let triedFallback = false;
+      let lastUrl = primaryUrl;
+
+      if (
+        !response.ok &&
+        (response.status === 404 || response.status === 401 || response.status === 403)
+      ) {
+        response = await attemptLogin(fallbackUrl);
+        parsed = await consumeResponse(response);
+        triedFallback = true;
+        lastUrl = fallbackUrl;
       }
 
       if (!response.ok) {
-        const message = data?.detail || text || 'Authentication failed';
-        throw new Error(message);
+        throw new Error(formatMessage(response.status, parsed.data?.detail, parsed.text, lastUrl));
       }
 
-      await AsyncStorage.setItem('admin_token', data.token);
-      await AsyncStorage.setItem('admin_id', data.id);
-      await AsyncStorage.setItem('admin_username', data.username);
-      await AsyncStorage.setItem('admin_role', data.role || 'user');
-      await AsyncStorage.setItem('is_super_admin', data.is_super_admin ? 'true' : 'false');
+      if ((!parsed.data || !parsed.data.token) && !triedFallback) {
+        response = await attemptLogin(fallbackUrl);
+        parsed = await consumeResponse(response);
+        triedFallback = true;
+        lastUrl = fallbackUrl;
+      }
+
+      const token =
+        extractValue(parsed.data, ['token', 'access_token']) ||
+        extractValue(parsed.data?.data, ['token', 'access_token']);
+
+      if (!token) {
+        throw new Error(formatMessage(response.status, parsed.data?.detail, parsed.text, lastUrl));
+      }
+
+      await AsyncStorage.setItem('admin_token', token);
+      await AsyncStorage.setItem('admin_id', parsed.data.id);
+      await AsyncStorage.setItem('admin_username', parsed.data.username);
+      await AsyncStorage.setItem('admin_role', parsed.data.role || 'user');
+      await AsyncStorage.setItem('is_super_admin', parsed.data.is_super_admin ? 'true' : 'false');
+      await AsyncStorage.setItem('admin_stay_signed_in', staySignedIn ? 'true' : 'false');
+      if (parsed.data.first_name) {
+        await AsyncStorage.setItem('admin_first_name', parsed.data.first_name);
+        setFirstName(parsed.data.first_name);
+      }
+      if (parsed.data.last_name) {
+        await AsyncStorage.setItem('admin_last_name', parsed.data.last_name);
+        setLastName(parsed.data.last_name);
+      }
 
       router.replace('/admin/(tabs)');
     } catch (error: any) {
-      Alert.alert(t('error'), error.message || 'Something went wrong');
+      const fallbackMessage =
+        (error?.message && error.message.toString()) ||
+        `${t('auth_failed') || 'Authentication failed'} (unexpected error)`;
+      Alert.alert(t('error'), fallbackMessage);
     } finally {
       setLoading(false);
     }
@@ -114,6 +208,16 @@ export default function AdminLogin() {
                   color="#64748B"
                 />
               </TouchableOpacity>
+            </View>
+
+            <View style={styles.rememberRow}>
+              <Switch
+                value={staySignedIn}
+                onValueChange={setStaySignedIn}
+                trackColor={{ false: '#334155', true: '#4F46E5' }}
+                thumbColor="#fff"
+              />
+              <Text style={styles.rememberText}>{t('staySignedIn') ?? 'Stay signed in'}</Text>
             </View>
 
             <TouchableOpacity
@@ -208,5 +312,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  rememberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    marginBottom: 12,
+    gap: 12,
+  },
+  rememberText: {
+    color: '#E2E8F0',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

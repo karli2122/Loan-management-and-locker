@@ -6,6 +6,16 @@ import { View } from 'react-native';
 import { LanguageProvider } from '../src/context/LanguageContext';
 
 export default function RootLayout() {
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return null;
+  }
+
   return (
     <SafeAreaProvider>
       <LanguageProvider>

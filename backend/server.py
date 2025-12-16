@@ -2,6 +2,7 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import Response, RedirectResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -1413,6 +1414,7 @@ async def get_collection_report():
     
     # Financial totals
     clients = await db.clients.find().to_list(1000)
+    clients_by_id = {c.get("id"): c for c in clients if c.get("id")}
     total_disbursed = sum(c.get("total_amount_due", 0) for c in clients)
     total_collected = sum(c.get("total_paid", 0) for c in clients)
     total_outstanding = sum(c.get("outstanding_balance", 0) for c in clients)
@@ -1427,8 +1429,36 @@ async def get_collection_report():
     # This month's collections
     from dateutil.relativedelta import relativedelta
     month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    month_end = month_start + relativedelta(months=1)
     month_payments = await db.payments.find({"payment_date": {"$gte": month_start}}).to_list(1000)
     month_collected = sum(p.get("amount", 0) for p in month_payments)
+    month_profit = 0
+    for payment in month_payments:
+        client = clients_by_id.get(payment.get("client_id"))
+        if not client:
+            continue
+        total_due = client.get("total_amount_due", 0)
+        if total_due <= 0:
+            continue
+        principal = client.get("loan_amount", 0)
+        if principal < 0 or principal > total_due:
+            continue
+        # principal may equal total_due for interest-free loans (margin becomes 0)
+        margin = (total_due - principal) / total_due
+        month_profit += payment.get("amount", 0) * margin
+    
+    # Amounts due this month (not yet rolled to next month)
+    month_due_total = 0
+    for client in clients:
+        next_due = client.get("next_payment_due")
+        if (
+            isinstance(next_due, datetime)
+            and month_start <= next_due < month_end
+            and client.get("outstanding_balance", 0) > 0
+        ):
+            monthly_due = client.get("monthly_emi", 0) or 0
+            outstanding = client.get("outstanding_balance", 0) or 0
+            month_due_total += min(monthly_due, outstanding)
     
     return {
         "overview": {
@@ -1446,7 +1476,9 @@ async def get_collection_report():
         },
         "this_month": {
             "total_collected": round(month_collected, 2),
-            "number_of_payments": len(month_payments)
+            "number_of_payments": len(month_payments),
+            "profit_collected": round(month_profit, 2),
+            "due_outstanding": round(month_due_total, 2)
         }
     }
 
@@ -1650,6 +1682,42 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def swallow_404_middleware(request, call_next):
+    """Discard body for 404 responses to reduce noise."""
+    response = await call_next(request)
+    if response.status_code == 404:
+        path = request.url.path
+        query = f"?{request.url.query}" if request.url.query else ""
+
+        # Fix double /api/api prefix
+        if path.startswith("/api/api"):
+            corrected = path.replace("/api/api", "/api", 1) + query
+            return RedirectResponse(url=corrected, status_code=307)
+
+        # Add missing /api prefix for common admin endpoints
+        missing_admin_api_targets = (
+            "/admin/login",
+            "/admin/register",
+            "/admin/list",
+            "/admin/change-password",
+        )
+        if path in missing_admin_api_targets:
+            corrected = f"/api{path}{query}"
+            return RedirectResponse(url=corrected, status_code=307)
+
+        # Add missing /api prefix for common client endpoints
+        missing_client_api_targets = (
+            "/device/register",
+            "/device/status",
+        )
+        if path in missing_client_api_targets:
+            corrected = f"/api{path}{query}"
+            return RedirectResponse(url=corrected, status_code=307)
+
+        return Response(status_code=404)
+    return response
 
 @app.on_event("startup")
 async def startup_db_client():
