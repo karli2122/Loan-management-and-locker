@@ -64,6 +64,17 @@ export default function AdminLogin() {
       const primaryUrl = buildApiUrl('admin/login');
       const fallbackUrl = `${API_URL}/admin/login`;
 
+      const formatMessage = (status?: number, detail?: string | null, text?: string | null) => {
+        const parts: string[] = [];
+        if (detail) parts.push(detail);
+        if (!detail && text) parts.push(text);
+        if (status) parts.push(`(status ${status})`);
+        return (
+          parts.join(' ') ||
+          `${t('auth_failed') || 'Authentication failed'}${status ? ` (status ${status})` : ''}`
+        );
+      };
+
       const consumeResponse = async (resp: Response) => {
         const text = await resp.text();
         let data: any = null;
@@ -87,19 +98,11 @@ export default function AdminLogin() {
       }
 
       if (!response.ok) {
-        const message =
-          parsed.data?.detail ||
-          parsed.text ||
-          `${t('auth_failed') || 'Authentication failed'} (status ${response.status})`;
-        throw new Error(message);
+        throw new Error(formatMessage(response.status, parsed.data?.detail, parsed.text));
       }
 
       if (!parsed.data || !parsed.data.token) {
-        const msg =
-          parsed.data?.detail ||
-          parsed.text ||
-          `${t('auth_failed') || 'Authentication failed'} (status ${response.status})`;
-        throw new Error(msg);
+        throw new Error(formatMessage(response.status, parsed.data?.detail, parsed.text));
       }
 
       await AsyncStorage.setItem('admin_token', parsed.data.token);
@@ -119,7 +122,10 @@ export default function AdminLogin() {
 
       router.replace('/admin/(tabs)');
     } catch (error: any) {
-      Alert.alert(t('error'), error.message || 'Something went wrong');
+      const fallbackMessage =
+        (error?.message && error.message.toString()) ||
+        `${t('auth_failed') || 'Authentication failed'} (unexpected error)`;
+      Alert.alert(t('error'), fallbackMessage);
     } finally {
       setLoading(false);
     }
