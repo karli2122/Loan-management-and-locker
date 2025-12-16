@@ -17,7 +17,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
-import API_URL from '../../src/constants/api';
+import API_URL, { buildApiUrl } from '../../src/constants/api';
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -48,13 +48,21 @@ export default function AdminLogin() {
       return;
     }
 
-    setLoading(true);
-    try {
-      const response = await fetch(`${API_URL}/api/admin/login`, {
+    const attemptLogin = async (url: string) => {
+      return fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
+    };
+
+    setLoading(true);
+    try {
+      let response = await attemptLogin(buildApiUrl('admin/login'));
+      if (response.status === 404) {
+        // Fallback in case backend URL already contains /api or uses a different prefix
+        response = await attemptLogin(`${API_URL}/admin/login`);
+      }
 
       const text = await response.text();
       let data: any = null;
