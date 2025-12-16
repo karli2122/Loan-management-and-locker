@@ -16,6 +16,10 @@ public class DeviceAdminModule extends Module {
     private static final String PREFS_NAME = "EMILockPrefs";
     private static final String KEY_ALLOW_UNINSTALL = "allow_uninstall";
 
+    private Context getContext() {
+        return getAppContext().getReactContext();
+    }
+
     @Override
     public ModuleDefinition definition() {
         return ModuleDefinition.create(builder -> {
@@ -178,10 +182,6 @@ public class DeviceAdminModule extends Module {
                 }
             });
         });
-    }
-
-    private Context getContext() {
-        return getAppContext().getReactContext();
     }
 
     // Inner class for Device Admin Receiver
