@@ -82,10 +82,6 @@ const translations: Translations = {
     et: 'Proovi uuesti',
     en: 'Retry',
   },
-  cancel: {
-    et: 'Tühista',
-    en: 'Cancel',
-  },
 
   // Dashboard
   welcomeBack: {
