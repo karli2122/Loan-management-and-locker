@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -25,6 +26,21 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [staySignedIn, setStaySignedIn] = useState(true);
+
+  useEffect(() => {
+    const hydrateSession = async () => {
+      const stay = await AsyncStorage.getItem('admin_stay_signed_in');
+      if (stay === 'true') {
+        const token = await AsyncStorage.getItem('admin_token');
+        if (token) {
+          router.replace('/admin/(tabs)');
+          return;
+        }
+      }
+    };
+    hydrateSession();
+  }, []);
 
   const handleSubmit = async () => {
     if (!username.trim() || !password.trim()) {
@@ -58,6 +74,7 @@ export default function AdminLogin() {
       await AsyncStorage.setItem('admin_username', data.username);
       await AsyncStorage.setItem('admin_role', data.role || 'user');
       await AsyncStorage.setItem('is_super_admin', data.is_super_admin ? 'true' : 'false');
+      await AsyncStorage.setItem('admin_stay_signed_in', staySignedIn ? 'true' : 'false');
 
       router.replace('/admin/(tabs)');
     } catch (error: any) {
@@ -114,6 +131,16 @@ export default function AdminLogin() {
                   color="#64748B"
                 />
               </TouchableOpacity>
+            </View>
+
+            <View style={styles.rememberRow}>
+              <Switch
+                value={staySignedIn}
+                onValueChange={setStaySignedIn}
+                trackColor={{ false: '#334155', true: '#4F46E5' }}
+                thumbColor="#fff"
+              />
+              <Text style={styles.rememberText}>{t('staySignedIn') ?? 'Stay signed in'}</Text>
             </View>
 
             <TouchableOpacity
@@ -208,5 +235,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  rememberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    marginBottom: 12,
+    gap: 12,
+  },
+  rememberText: {
+    color: '#E2E8F0',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
