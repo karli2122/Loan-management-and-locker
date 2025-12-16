@@ -1697,13 +1697,22 @@ async def swallow_404_middleware(request, call_next):
             return RedirectResponse(url=corrected, status_code=307)
 
         # Add missing /api prefix for common admin endpoints
-        missing_api_targets = (
+        missing_admin_api_targets = (
             "/admin/login",
             "/admin/register",
             "/admin/list",
             "/admin/change-password",
         )
-        if path in missing_api_targets:
+        if path in missing_admin_api_targets:
+            corrected = f"/api{path}{query}"
+            return RedirectResponse(url=corrected, status_code=307)
+
+        # Add missing /api prefix for common client endpoints
+        missing_client_api_targets = (
+            "/device/register",
+            "/device/status",
+        )
+        if path in missing_client_api_targets:
             corrected = f"/api{path}{query}"
             return RedirectResponse(url=corrected, status_code=307)
 
