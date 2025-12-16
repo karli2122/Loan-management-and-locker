@@ -44,6 +44,8 @@ export default function AdminSettings() {
   // Form states
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [newFirstName, setNewFirstName] = useState('');
+  const [newLastName, setNewLastName] = useState('');
   const [newUserRole, setNewUserRole] = useState('user'); // 'admin' or 'user'
   const [currentPassword, setCurrentPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -88,7 +90,7 @@ export default function AdminSettings() {
   };
 
   const handleAddAdmin = async () => {
-    if (!newUsername.trim() || !newPassword.trim()) {
+    if (!newUsername.trim() || !newPassword.trim() || !newFirstName.trim() || !newLastName.trim()) {
       Alert.alert(
         language === 'et' ? 'Viga' : 'Error',
         language === 'et' ? 'Palun täida kõik väljad' : 'Please fill all fields'
@@ -113,6 +115,8 @@ export default function AdminSettings() {
         body: JSON.stringify({ 
           username: newUsername, 
           password: newPassword,
+          first_name: newFirstName,
+          last_name: newLastName,
           role: newUserRole 
         }),
       });
@@ -133,6 +137,8 @@ export default function AdminSettings() {
       setNewUsername('');
       setNewPassword('');
       setNewUserRole('user');
+      setNewFirstName('');
+      setNewLastName('');
       await fetchAdmins(adminToken!);
     } catch (error: any) {
       Alert.alert(
@@ -410,6 +416,28 @@ export default function AdminSettings() {
               <Ionicons name="person" size={20} color="#64748B" />
               <TextInput
                 style={styles.input}
+                placeholder={language === 'et' ? 'Eesnimi' : 'First name'}
+                placeholderTextColor="#64748B"
+                value={newFirstName}
+                onChangeText={setNewFirstName}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="person" size={20} color="#64748B" />
+              <TextInput
+                style={styles.input}
+                placeholder={language === 'et' ? 'Perekonnanimi' : 'Last name'}
+                placeholderTextColor="#64748B"
+                value={newLastName}
+                onChangeText={setNewLastName}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="person" size={20} color="#64748B" />
+              <TextInput
+                style={styles.input}
                 placeholder={language === 'et' ? 'Kasutajanimi' : 'Username'}
                 placeholderTextColor="#64748B"
                 value={newUsername}
@@ -471,6 +499,9 @@ export default function AdminSettings() {
                   setShowAddAdmin(false);
                   setNewUsername('');
                   setNewPassword('');
+                  setNewFirstName('');
+                  setNewLastName('');
+                  setNewUserRole('user');
                 }}
               >
                 <Text style={styles.cancelButtonText}>

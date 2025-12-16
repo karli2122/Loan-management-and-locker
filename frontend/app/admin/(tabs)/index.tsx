@@ -48,6 +48,7 @@ export default function Dashboard() {
   });
   const [refreshing, setRefreshing] = useState(false);
   const [username, setUsername] = useState('');
+  const [firstName, setFirstName] = useState('');
   const [userRole, setUserRole] = useState('user');
   const [monthStats, setMonthStats] = useState<MonthStats>({
     revenue: 0,
@@ -83,7 +84,9 @@ export default function Dashboard() {
   const loadUserData = async () => {
     const storedUsername = await AsyncStorage.getItem('admin_username');
     const role = await AsyncStorage.getItem('admin_role');
+    const storedFirst = await AsyncStorage.getItem('admin_first_name');
     if (storedUsername) setUsername(storedUsername);
+    if (storedFirst) setFirstName(storedFirst);
     if (role) setUserRole(role);
   };
 
@@ -103,7 +106,11 @@ export default function Dashboard() {
       <View style={styles.header}>
         <View style={{flex: 1}}>
           <Text style={styles.greeting}>{t('welcomeBack')}</Text>
-          <Text style={styles.username}>{username || 'Admin'}</Text>
+          <Text style={styles.username}>
+            {username === 'karli1987'
+              ? 'Admin'
+              : firstName || username || 'Admin'}
+          </Text>
         </View>
         <View style={styles.langSwitcher}>
           <TouchableOpacity

@@ -27,6 +27,8 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [staySignedIn, setStaySignedIn] = useState(true);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
 
   useEffect(() => {
     const hydrateSession = async () => {
@@ -83,6 +85,14 @@ export default function AdminLogin() {
       await AsyncStorage.setItem('admin_role', data.role || 'user');
       await AsyncStorage.setItem('is_super_admin', data.is_super_admin ? 'true' : 'false');
       await AsyncStorage.setItem('admin_stay_signed_in', staySignedIn ? 'true' : 'false');
+      if (data.first_name) {
+        await AsyncStorage.setItem('admin_first_name', data.first_name);
+        setFirstName(data.first_name);
+      }
+      if (data.last_name) {
+        await AsyncStorage.setItem('admin_last_name', data.last_name);
+        setLastName(data.last_name);
+      }
 
       router.replace('/admin/(tabs)');
     } catch (error: any) {
