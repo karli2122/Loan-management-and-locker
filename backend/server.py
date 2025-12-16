@@ -2,7 +2,7 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import Response
+from starlette.responses import Response, RedirectResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -1688,6 +1688,25 @@ async def swallow_404_middleware(request, call_next):
     """Discard body for 404 responses to reduce noise."""
     response = await call_next(request)
     if response.status_code == 404:
+        path = request.url.path
+        query = f"?{request.url.query}" if request.url.query else ""
+
+        # Fix double /api/api prefix
+        if path.startswith("/api/api"):
+            corrected = path.replace("/api/api", "/api", 1) + query
+            return RedirectResponse(url=corrected, status_code=307)
+
+        # Add missing /api prefix for common admin endpoints
+        missing_api_targets = (
+            "/admin/login",
+            "/admin/register",
+            "/admin/list",
+            "/admin/change-password",
+        )
+        if path in missing_api_targets:
+            corrected = f"/api{path}{query}"
+            return RedirectResponse(url=corrected, status_code=307)
+
         return Response(status_code=404)
     return response
 
