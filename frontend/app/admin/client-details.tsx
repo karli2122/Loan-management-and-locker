@@ -10,8 +10,8 @@ import {
   TextInput,
   Modal,
   Linking,
+  Share,
 } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -349,8 +349,7 @@ export default function ClientDetails() {
           <TouchableOpacity
             style={styles.copyButton}
             onPress={async () => {
-              await Clipboard.setStringAsync(client.registration_code);
-              Alert.alert(t('success'), t('copied'));
+              await Share.share({ message: client.registration_code });
             }}
           >
             <Ionicons name="copy" size={18} color="#94A3B8" />
