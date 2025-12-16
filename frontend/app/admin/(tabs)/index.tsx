@@ -27,6 +27,12 @@ interface LoanStats {
   collection_rate: number;
 }
 
+interface MonthStats {
+  revenue: number;
+  profit: number;
+  dueOutstanding: number;
+}
+
 export default function Dashboard() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
@@ -43,6 +49,11 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [username, setUsername] = useState('');
   const [userRole, setUserRole] = useState('user');
+  const [monthStats, setMonthStats] = useState<MonthStats>({
+    revenue: 0,
+    profit: 0,
+    dueOutstanding: 0,
+  });
 
   const fetchStats = async () => {
     try {
@@ -58,6 +69,11 @@ export default function Dashboard() {
         total_collected: data.financial.total_collected,
         total_outstanding: data.financial.total_outstanding,
         collection_rate: data.financial.collection_rate,
+      });
+      setMonthStats({
+        revenue: data.this_month?.total_collected ?? 0,
+        profit: data.this_month?.profit_collected ?? data.this_month?.total_collected ?? 0,
+        dueOutstanding: data.this_month?.due_outstanding ?? 0,
       });
     } catch (error) {
       console.error('Failed to fetch stats:', error);
@@ -159,6 +175,18 @@ export default function Dashboard() {
           <View style={styles.financialRow}>
             <Text style={styles.financialLabel}>{language === 'et' ? 'Võlgnevused' : 'Outstanding'}</Text>
             <Text style={[styles.financialValue, { color: '#F59E0B' }]}>€{loanStats.total_outstanding.toFixed(2)}</Text>
+          </View>
+          <View style={styles.financialRow}>
+            <Text style={styles.financialLabel}>{language === 'et' ? 'Käesoleva kuu tulu' : 'Revenue (This Month)'}</Text>
+            <Text style={[styles.financialValue, { color: '#10B981' }]}>€{monthStats.revenue.toFixed(2)}</Text>
+          </View>
+          <View style={styles.financialRow}>
+            <Text style={styles.financialLabel}>{language === 'et' ? 'Käesoleva kuu kasum' : 'Profit (This Month)'}</Text>
+            <Text style={[styles.financialValue, { color: '#4F46E5' }]}>€{monthStats.profit.toFixed(2)}</Text>
+          </View>
+          <View style={styles.financialRow}>
+            <Text style={styles.financialLabel}>{language === 'et' ? 'Selle kuu maksed tasuda' : 'Due This Month'}</Text>
+            <Text style={[styles.financialValue, { color: '#F59E0B' }]}>€{monthStats.dueOutstanding.toFixed(2)}</Text>
           </View>
         </View>
 
