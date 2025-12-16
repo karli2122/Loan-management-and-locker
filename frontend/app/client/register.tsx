@@ -98,7 +98,22 @@ export default function ClientRegister() {
       const deviceId = Device.osBuildId || Device.osInternalBuildId || 'unknown';
       const deviceModel = `${Device.brand || ''} ${Device.modelName || 'Unknown Device'}`.trim();
 
-      const response = await fetch(buildApiUrl('device/register'), {
+      // Try primary /api path, then fallback to base without /api to avoid 404s from double/missing prefix
+      const attemptRegister = async (url: string) =>
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            registration_code: registrationCode.toUpperCase(),
+            device_id: deviceId,
+            device_model: deviceModel,
+          }),
+        });
+
+      let response = await attemptRegister(buildApiUrl('device/register'));
+      if (response.status === 404) {
+        response = await attemptRegister(`${API_URL}/device/register`);
+      }
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
