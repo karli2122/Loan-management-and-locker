@@ -285,7 +285,7 @@ eas build --profile client-preview --platform android
 ## 🌍 Deployment
 
 ### Current Setup
-- API URL: `https://deviceloan-1.preview.emergentagent.com`
+- API URL: `https://loantrack-23.preview.emergentagent.com`
 - Backend: Port 8001
 - Frontend: Port 3000
 - MongoDB: Connected
@@ -317,12 +317,12 @@ eas build --profile client-preview --platform android
 
 ### Backend Tests
 ```bash
-curl https://deviceloan-1.preview.emergentagent.com/api/health
+curl https://loantrack-23.preview.emergentagent.com/api/health
 ```
 
 ### Login Test
 ```bash
-curl -X POST https://deviceloan-1.preview.emergentagent.com/api/admin/login \
+curl -X POST https://loantrack-23.preview.emergentagent.com/api/admin/login \
   -H "Content-Type: application/json" \
   -d '{"username":"karli1987","password":"nasvakas123"}'
 ```
@@ -376,7 +376,7 @@ Proprietary - All rights reserved
 ## 📞 Support
 
 For issues or questions, refer to the API documentation at:
-`https://deviceloan-1.preview.emergentagent.com/api/`
+`https://loantrack-23.preview.emergentagent.com/api/`
 
 ---
 

@@ -22,11 +22,11 @@ import { useLanguage } from '../../src/context/LanguageContext';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
 import OfflineSyncManager from '../../src/services/OfflineSyncManager';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://deviceloan-1.preview.emergentagent.com';
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://loantrack-23.preview.emergentagent.com';
 
 // Helper function to build API endpoint URL
 const getApiUrl = (endpoint: string) => {
-  const baseUrl = (API_URL || 'https://deviceloan-1.preview.emergentagent.com').replace(/\/$/, '');
+  const baseUrl = (API_URL || 'https://loantrack-23.preview.emergentagent.com').replace(/\/$/, '');
   const cleanEndpoint = endpoint.replace(/^\//, '');
   return `${baseUrl}/${cleanEndpoint}`;
 };
