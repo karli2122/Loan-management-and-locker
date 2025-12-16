@@ -51,13 +51,13 @@ export default function AdminLogin() {
     }
     const creds = { username: username.trim(), password: password.trim() };
 
-    const attemptLogin = async (url: string) => {
-      return fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(creds),
-      });
-    };
+      const attemptLogin = async (url: string) => {
+        return fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(creds),
+        });
+      };
 
     setLoading(true);
     try {
@@ -88,6 +88,7 @@ export default function AdminLogin() {
 
       let response = await attemptLogin(primaryUrl);
       let parsed = await consumeResponse(response);
+      let triedFallback = false;
 
       if (
         !response.ok &&
@@ -95,10 +96,17 @@ export default function AdminLogin() {
       ) {
         response = await attemptLogin(fallbackUrl);
         parsed = await consumeResponse(response);
+        triedFallback = true;
       }
 
       if (!response.ok) {
         throw new Error(formatMessage(response.status, parsed.data?.detail, parsed.text));
+      }
+
+      if ((!parsed.data || !parsed.data.token) && !triedFallback) {
+        response = await attemptLogin(fallbackUrl);
+        parsed = await consumeResponse(response);
+        triedFallback = true;
       }
 
       if (!parsed.data || !parsed.data.token) {
