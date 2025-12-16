@@ -1413,13 +1413,11 @@ async def get_collection_report():
     
     # Financial totals
     clients = await db.clients.find().to_list(1000)
+    clients_by_id = {c.get("id"): c for c in clients if c.get("id")}
     total_disbursed = sum(c.get("total_amount_due", 0) for c in clients)
-    total_principal = sum(c.get("loan_amount", 0) or 0 for c in clients)
     total_collected = sum(c.get("total_paid", 0) for c in clients)
     total_outstanding = sum(c.get("outstanding_balance", 0) for c in clients)
     total_late_fees = sum(c.get("late_fees_accumulated", 0) for c in clients)
-    total_interest = max(0, total_disbursed - total_principal)
-    profit_margin = ((total_interest + total_late_fees) / total_disbursed) if total_disbursed > 0 else 0
     
     # Overdue clients
     overdue_clients = len([c for c in clients if c.get("days_overdue", 0) > 0])
@@ -1433,6 +1431,15 @@ async def get_collection_report():
     month_end = month_start + relativedelta(months=1)
     month_payments = await db.payments.find({"payment_date": {"$gte": month_start}}).to_list(1000)
     month_collected = sum(p.get("amount", 0) for p in month_payments)
+    month_profit = 0
+    for payment in month_payments:
+        client = clients_by_id.get(payment.get("client_id"))
+        if not client:
+            continue
+        total_due = client.get("total_amount_due", 0) or 0
+        principal = client.get("loan_amount", 0) or 0
+        margin = ((total_due - principal) / total_due) if total_due > 0 else 0
+        month_profit += payment.get("amount", 0) * max(0, margin)
     
     # Amounts due this month (not yet rolled to next month)
     month_due_total = 0

@@ -72,7 +72,7 @@ export default function Dashboard() {
       });
       setMonthStats({
         revenue: data.this_month?.total_collected ?? 0,
-        profit: data.this_month?.profit_collected ?? data.this_month?.total_collected ?? 0,
+        profit: data.this_month?.profit_collected ?? 0,
         dueOutstanding: data.this_month?.due_outstanding ?? 0,
       });
     } catch (error) {
