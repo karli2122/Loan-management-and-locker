@@ -95,7 +95,11 @@ export default function AdminLogin() {
       }
 
       if (!parsed.data || !parsed.data.token) {
-        throw new Error('Authentication failed');
+        const msg =
+          parsed.data?.detail ||
+          parsed.text ||
+          `${t('auth_failed') || 'Authentication failed'} (status ${response.status})`;
+        throw new Error(msg);
       }
 
       await AsyncStorage.setItem('admin_token', parsed.data.token);
