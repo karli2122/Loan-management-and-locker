@@ -78,13 +78,19 @@ export default function AdminLogin() {
       let response = await attemptLogin(primaryUrl);
       let parsed = await consumeResponse(response);
 
-      if (!response.ok && (response.status === 404 || response.status === 401)) {
+      if (
+        !response.ok &&
+        (response.status === 404 || response.status === 401 || response.status === 403)
+      ) {
         response = await attemptLogin(fallbackUrl);
         parsed = await consumeResponse(response);
       }
 
       if (!response.ok) {
-        const message = parsed.data?.detail || parsed.text || 'Authentication failed';
+        const message =
+          parsed.data?.detail ||
+          parsed.text ||
+          `${t('auth_failed') || 'Authentication failed'} (status ${response.status})`;
         throw new Error(message);
       }
 
