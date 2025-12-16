@@ -49,12 +49,13 @@ export default function AdminLogin() {
       Alert.alert(t('error'), t('fillAllFields'));
       return;
     }
+    const creds = { username: username.trim(), password: password.trim() };
 
     const attemptLogin = async (url: string) => {
       return fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify(creds),
       });
     };
 
@@ -77,6 +78,10 @@ export default function AdminLogin() {
       if (!response.ok) {
         const message = data?.detail || text || 'Authentication failed';
         throw new Error(message);
+      }
+
+      if (!data || !data.token) {
+        throw new Error('Authentication failed');
       }
 
       await AsyncStorage.setItem('admin_token', data.token);
