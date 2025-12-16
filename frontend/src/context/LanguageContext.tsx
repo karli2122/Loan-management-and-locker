@@ -112,6 +112,14 @@ const translations: Translations = {
     et: 'Kiirtoimingud',
     en: 'Quick Actions',
   },
+  copy: {
+    et: 'Kopeeri',
+    en: 'Copy',
+  },
+  copied: {
+    et: 'Kood kopeeritud',
+    en: 'Code copied',
+  },
   viewClients: {
     et: 'Vaata kliente',
     en: 'View Clients',
