@@ -2,7 +2,7 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import Response, RedirectResponse
+from starlette.responses import Response, RedirectResponse, JSONResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -1686,6 +1686,13 @@ app.add_middleware(
 @app.middleware("http")
 async def swallow_404_middleware(request, call_next):
     """Discard body for 404 responses to reduce noise."""
+    def json_redirect(corrected_path: str):
+        return JSONResponse(
+            status_code=307,
+            content={"redirect_to": corrected_path, "detail": "Use /api prefix"},
+            headers={"Location": corrected_path}
+        )
+
     response = await call_next(request)
     if response.status_code == 404:
         path = request.url.path
@@ -1694,7 +1701,7 @@ async def swallow_404_middleware(request, call_next):
         # Fix double /api/api prefix
         if path.startswith("/api/api"):
             corrected = path.replace("/api/api", "/api", 1) + query
-            return RedirectResponse(url=corrected, status_code=307)
+            return json_redirect(corrected)
 
         # Add missing /api prefix for common admin endpoints
         missing_admin_api_targets = (
@@ -1705,7 +1712,7 @@ async def swallow_404_middleware(request, call_next):
         )
         if path in missing_admin_api_targets:
             corrected = f"/api{path}{query}"
-            return RedirectResponse(url=corrected, status_code=307)
+            return json_redirect(corrected)
 
         # Add missing /api prefix for common client endpoints
         missing_client_api_targets = (
@@ -1714,7 +1721,7 @@ async def swallow_404_middleware(request, call_next):
         )
         if path in missing_client_api_targets:
             corrected = f"/api{path}{query}"
-            return RedirectResponse(url=corrected, status_code=307)
+            return json_redirect(corrected)
 
         return Response(status_code=404)
     return response
