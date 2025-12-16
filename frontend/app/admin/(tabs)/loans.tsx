@@ -40,6 +40,7 @@ export default function LoansTab() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string | undefined>(undefined);
+  const [tab, setTab] = useState<'given' | 'settled'>('given');
 
   const fetchClients = async () => {
     try {
@@ -61,7 +62,11 @@ export default function LoansTab() {
 
   useEffect(() => {
     if (params?.filter) {
-      setFilter(params.filter.toString().toLowerCase());
+      const f = params.filter.toString().toLowerCase();
+      setFilter(f);
+      if (f === 'paid') {
+        setTab('settled');
+      }
     } else {
       setFilter(undefined);
     }
@@ -85,12 +90,22 @@ export default function LoansTab() {
       );
     }
 
+    if (tab === 'given') {
+      list = list.filter(
+        (c) => (c.outstanding_balance ?? c.total_amount_due ?? 0) > 0
+      );
+    } else if (tab === 'settled') {
+      list = list.filter(
+        (c) => (c.outstanding_balance ?? c.total_amount_due ?? 0) === 0
+      );
+    }
+
     return list.filter(
       (client) =>
         client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         client.phone.includes(searchQuery)
     );
-  }, [clients, filter, searchQuery]);
+  }, [clients, filter, searchQuery, tab]);
 
   const renderClient = ({ item }: { item: Client }) => (
     <TouchableOpacity
@@ -167,6 +182,25 @@ export default function LoansTab() {
         </View>
       )}
 
+      <View style={styles.tabRow}>
+        <TouchableOpacity
+          style={[styles.tabButton, tab === 'given' && styles.tabButtonActive]}
+          onPress={() => setTab('given')}
+        >
+          <Text style={[styles.tabText, tab === 'given' && styles.tabTextActive]}>
+            {language === 'et' ? 'Antud' : 'Given'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, tab === 'settled' && styles.tabButtonActive]}
+          onPress={() => setTab('settled')}
+        >
+          <Text style={[styles.tabText, tab === 'settled' && styles.tabTextActive]}>
+            {language === 'et' ? 'Tasutu' : 'Settled'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#64748B" />
         <TextInput
@@ -241,6 +275,32 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     paddingVertical: 12,
+  },
+  tabRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 12,
+  },
+  tabButton: {
+    flex: 1,
+    backgroundColor: '#1E293B',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  tabButtonActive: {
+    backgroundColor: '#4F46E5',
+    borderColor: '#4F46E5',
+  },
+  tabText: {
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  tabTextActive: {
+    color: '#fff',
   },
   listContainer: {
     padding: 16,
