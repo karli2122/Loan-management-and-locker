@@ -88,7 +88,8 @@ export default function ClientRegister() {
   };
 
   const handleRegister = async () => {
-    if (!registrationCode.trim()) {
+    const code = registrationCode.trim().toUpperCase();
+    if (!code) {
       Alert.alert(t('error'), t('fillAllFields'));
       return;
     }
@@ -104,7 +105,7 @@ export default function ClientRegister() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            registration_code: registrationCode.toUpperCase(),
+            registration_code: code,
             device_id: deviceId,
             device_model: deviceModel,
           }),
