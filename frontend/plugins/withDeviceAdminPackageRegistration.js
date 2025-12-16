@@ -5,12 +5,12 @@ const PACKAGE_INSTANCE = 'new DeviceAdminPackage()';
 
 function addImport(contents) {
   if (contents.includes(IMPORT_LINE)) return contents;
-  const packageDeclMatch = contents.match(/package [^;]+;\s*/);
+  const packageDeclMatch = contents.match(/package\s+[^\n;]+[^\n]*\n/);
   if (packageDeclMatch) {
     const insertPos = packageDeclMatch.index + packageDeclMatch[0].length;
     return (
       contents.slice(0, insertPos) +
-      `\n${IMPORT_LINE}\n` +
+      `${IMPORT_LINE}\n` +
       contents.slice(insertPos)
     );
   }
