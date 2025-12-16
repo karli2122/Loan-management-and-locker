@@ -61,42 +61,50 @@ export default function AdminLogin() {
 
     setLoading(true);
     try {
-      let response = await attemptLogin(buildApiUrl('admin/login'));
-      if (response.status === 404) {
-        // Fallback in case backend URL already contains /api or uses a different prefix
-        response = await attemptLogin(`${API_URL}/admin/login`);
-      }
+      const primaryUrl = buildApiUrl('admin/login');
+      const fallbackUrl = `${API_URL}/admin/login`;
 
-      const text = await response.text();
-      let data: any = null;
-      try {
-        data = text ? JSON.parse(text) : null;
-      } catch {
-        // Non-JSON response (e.g., HTML error page)
+      const consumeResponse = async (resp: Response) => {
+        const text = await resp.text();
+        let data: any = null;
+        try {
+          data = text ? JSON.parse(text) : null;
+        } catch {
+          // Non-JSON response (e.g., HTML error page)
+        }
+        return { resp, text, data };
+      };
+
+      let response = await attemptLogin(primaryUrl);
+      let parsed = await consumeResponse(response);
+
+      if (!response.ok && (response.status === 404 || response.status === 401)) {
+        response = await attemptLogin(fallbackUrl);
+        parsed = await consumeResponse(response);
       }
 
       if (!response.ok) {
-        const message = data?.detail || text || 'Authentication failed';
+        const message = parsed.data?.detail || parsed.text || 'Authentication failed';
         throw new Error(message);
       }
 
-      if (!data || !data.token) {
+      if (!parsed.data || !parsed.data.token) {
         throw new Error('Authentication failed');
       }
 
-      await AsyncStorage.setItem('admin_token', data.token);
-      await AsyncStorage.setItem('admin_id', data.id);
-      await AsyncStorage.setItem('admin_username', data.username);
-      await AsyncStorage.setItem('admin_role', data.role || 'user');
-      await AsyncStorage.setItem('is_super_admin', data.is_super_admin ? 'true' : 'false');
+      await AsyncStorage.setItem('admin_token', parsed.data.token);
+      await AsyncStorage.setItem('admin_id', parsed.data.id);
+      await AsyncStorage.setItem('admin_username', parsed.data.username);
+      await AsyncStorage.setItem('admin_role', parsed.data.role || 'user');
+      await AsyncStorage.setItem('is_super_admin', parsed.data.is_super_admin ? 'true' : 'false');
       await AsyncStorage.setItem('admin_stay_signed_in', staySignedIn ? 'true' : 'false');
-      if (data.first_name) {
-        await AsyncStorage.setItem('admin_first_name', data.first_name);
-        setFirstName(data.first_name);
+      if (parsed.data.first_name) {
+        await AsyncStorage.setItem('admin_first_name', parsed.data.first_name);
+        setFirstName(parsed.data.first_name);
       }
-      if (data.last_name) {
-        await AsyncStorage.setItem('admin_last_name', data.last_name);
-        setLastName(data.last_name);
+      if (parsed.data.last_name) {
+        await AsyncStorage.setItem('admin_last_name', parsed.data.last_name);
+        setLastName(parsed.data.last_name);
       }
 
       router.replace('/admin/(tabs)');
