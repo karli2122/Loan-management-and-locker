@@ -1436,25 +1436,28 @@ async def get_collection_report():
         client = clients_by_id.get(payment.get("client_id"))
         if not client:
             continue
-        total_due = client.get("total_amount_due", 0) or 0
-        principal = client.get("loan_amount", 0) or 0
-        margin = ((total_due - principal) / total_due) if total_due > 0 else 0
-        month_profit += payment.get("amount", 0) * max(0, margin)
+        total_due = client.get("total_amount_due", 0)
+        if total_due <= 0:
+            continue
+        principal = client.get("loan_amount", 0)
+        if principal < 0 or principal > total_due:
+            continue
+        # principal may equal total_due for interest-free loans (margin becomes 0)
+        margin = (total_due - principal) / total_due
+        month_profit += payment.get("amount", 0) * margin
     
     # Amounts due this month (not yet rolled to next month)
     month_due_total = 0
     for client in clients:
         next_due = client.get("next_payment_due")
         if (
-            next_due
+            isinstance(next_due, datetime)
             and month_start <= next_due < month_end
             and client.get("outstanding_balance", 0) > 0
         ):
             monthly_due = client.get("monthly_emi", 0) or 0
             outstanding = client.get("outstanding_balance", 0) or 0
             month_due_total += min(monthly_due, outstanding)
-    
-    month_profit = month_collected * profit_margin
     
     return {
         "overview": {
