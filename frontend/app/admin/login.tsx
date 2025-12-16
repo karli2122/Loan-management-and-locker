@@ -64,11 +64,17 @@ export default function AdminLogin() {
       const primaryUrl = buildApiUrl('admin/login');
       const fallbackUrl = `${API_URL}/admin/login`;
 
-      const formatMessage = (status?: number, detail?: string | null, text?: string | null) => {
+      const formatMessage = (
+        status?: number,
+        detail?: string | null,
+        text?: string | null,
+        url?: string,
+      ) => {
         const parts: string[] = [];
         if (detail) parts.push(detail);
         if (!detail && text) parts.push(text);
         if (status) parts.push(`(status ${status})`);
+        if (url) parts.push(`at ${url}`);
         return (
           parts.join(' ') ||
           `${t('auth_failed') || 'Authentication failed'}${status ? ` (status ${status})` : ''}`
@@ -89,6 +95,7 @@ export default function AdminLogin() {
       let response = await attemptLogin(primaryUrl);
       let parsed = await consumeResponse(response);
       let triedFallback = false;
+      let lastUrl = primaryUrl;
 
       if (
         !response.ok &&
@@ -97,20 +104,22 @@ export default function AdminLogin() {
         response = await attemptLogin(fallbackUrl);
         parsed = await consumeResponse(response);
         triedFallback = true;
+        lastUrl = fallbackUrl;
       }
 
       if (!response.ok) {
-        throw new Error(formatMessage(response.status, parsed.data?.detail, parsed.text));
+        throw new Error(formatMessage(response.status, parsed.data?.detail, parsed.text, lastUrl));
       }
 
       if ((!parsed.data || !parsed.data.token) && !triedFallback) {
         response = await attemptLogin(fallbackUrl);
         parsed = await consumeResponse(response);
         triedFallback = true;
+        lastUrl = fallbackUrl;
       }
 
       if (!parsed.data || !parsed.data.token) {
-        throw new Error(formatMessage(response.status, parsed.data?.detail, parsed.text));
+        throw new Error(formatMessage(response.status, parsed.data?.detail, parsed.text, lastUrl));
       }
 
       await AsyncStorage.setItem('admin_token', parsed.data.token);
