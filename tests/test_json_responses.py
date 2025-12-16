@@ -10,7 +10,7 @@ def test_admin_login_missing_prefix_returns_json():
     response = client.post(
         "/admin/login",
         json={"username": "user", "password": "pass"},
-        allow_redirects=False,
+        follow_redirects=False,
     )
 
     assert response.status_code == 307
@@ -22,7 +22,7 @@ def test_client_registration_double_prefix_returns_json():
     response = client.post(
         "/api/api/clients",
         json={"name": "John", "phone": "+123", "email": "john@example.com"},
-        allow_redirects=False,
+        follow_redirects=False,
     )
 
     assert response.status_code == 307
