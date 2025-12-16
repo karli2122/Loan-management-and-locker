@@ -1527,6 +1527,26 @@ async def health_check():
 # Include the router in the main app
 app.include_router(api_router)
 
+# Add middleware to handle duplicate /api/ paths
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import RedirectResponse
+
+class FixDuplicateAPIMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # Check if path has duplicate /api/api/
+        if request.url.path.startswith("/api/api/"):
+            # Fix the path by removing duplicate /api/
+            fixed_path = request.url.path.replace("/api/api/", "/api/", 1)
+            logger.warning(f"Fixed duplicate API path: {request.url.path} -> {fixed_path}")
+            # Redirect to correct path
+            return RedirectResponse(url=fixed_path, status_code=307)
+        
+        response = await call_next(request)
+        return response
+
+app.add_middleware(FixDuplicateAPIMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
