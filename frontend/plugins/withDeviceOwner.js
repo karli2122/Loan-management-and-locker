@@ -4,7 +4,7 @@ const path = require('path');
 
 function withDeviceOwner(config) {
   // Add Device Admin Receiver to AndroidManifest.xml
-  config = withAndroidManifest(config, async (config) => {
+  config = withAndroidManifest(config, (config) => {
     const manifest = config.modResults.manifest;
     
     // Get the application node
@@ -17,7 +17,7 @@ function withDeviceOwner(config) {
     
     // Check if already added
     const hasReceiver = application.receiver.some(
-      r => r.$['android:name'] === '.DeviceAdminReceiver'
+      r => r.$?.['android:name'] === '.DeviceAdminReceiver'
     );
     
     if (!hasReceiver) {
@@ -56,7 +56,7 @@ function withDeviceOwner(config) {
     
     permissions.forEach(perm => {
       const exists = manifest['uses-permission'].some(
-        p => p.$['android:name'] === perm
+        p => p.$?.['android:name'] === perm
       );
       if (!exists) {
         manifest['uses-permission'].push({
@@ -67,7 +67,7 @@ function withDeviceOwner(config) {
     
     // Add boot receiver
     const hasBootReceiver = application.receiver.some(
-      r => r.$['android:name'] === '.BootReceiver'
+      r => r.$?.['android:name'] === '.BootReceiver'
     );
     
     if (!hasBootReceiver) {
@@ -89,20 +89,22 @@ function withDeviceOwner(config) {
   });
   
   // Add native Java files and resources
-  config = withDangerousMod(config, ['android', async (config) => {
-    const projectRoot = config.modRequest.projectRoot;
-    const packageName = config.android?.package || 'com.emi.client';
-    const packagePath = packageName.replace(/\./g, '/');
-    
-    // Create directories
-    const javaDir = path.join(projectRoot, 'android', 'app', 'src', 'main', 'java', ...packagePath.split('/'));
-    const resDir = path.join(projectRoot, 'android', 'app', 'src', 'main', 'res', 'xml');
-    
-    fs.mkdirSync(javaDir, { recursive: true });
-    fs.mkdirSync(resDir, { recursive: true });
-    
-    // Write device_admin.xml
-    const deviceAdminXml = `<?xml version="1.0" encoding="utf-8"?>
+  config = withDangerousMod(config, [
+    'android',
+    (config) => {
+      const projectRoot = config.modRequest.projectRoot;
+      const packageName = config.android?.package || 'com.emi.client';
+      const packagePath = packageName.replace(/\./g, '/');
+      
+      // Create directories
+      const javaDir = path.join(projectRoot, 'android', 'app', 'src', 'main', 'java', ...packagePath.split('/'));
+      const resDir = path.join(projectRoot, 'android', 'app', 'src', 'main', 'res', 'xml');
+      
+      fs.mkdirSync(javaDir, { recursive: true });
+      fs.mkdirSync(resDir, { recursive: true });
+      
+      // Write device_admin.xml
+      const deviceAdminXml = `<?xml version="1.0" encoding="utf-8"?>
 <device-admin xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-policies>
         <limit-password />
@@ -114,11 +116,11 @@ function withDeviceOwner(config) {
         <disable-keyguard-features />
     </uses-policies>
 </device-admin>`;
-    
-    fs.writeFileSync(path.join(resDir, 'device_admin.xml'), deviceAdminXml);
-    
-    // Write DeviceAdminReceiver.java
-    const deviceAdminReceiver = `package ${packageName};
+      
+      fs.writeFileSync(path.join(resDir, 'device_admin.xml'), deviceAdminXml);
+      
+      // Write DeviceAdminReceiver.java
+      const deviceAdminReceiver = `package ${packageName};
 
 import android.app.admin.DeviceAdminReceiver;
 import android.content.Context;
@@ -141,11 +143,11 @@ public class DeviceAdminReceiver extends android.app.admin.DeviceAdminReceiver {
         return "EMI kaitse on aktiivne. Desaktiveerimine pole lubatud.";
     }
 }`;
-    
-    fs.writeFileSync(path.join(javaDir, 'DeviceAdminReceiver.java'), deviceAdminReceiver);
-    
-    // Write BootReceiver.java
-    const bootReceiver = `package ${packageName};
+      
+      fs.writeFileSync(path.join(javaDir, 'DeviceAdminReceiver.java'), deviceAdminReceiver);
+      
+      // Write BootReceiver.java
+      const bootReceiver = `package ${packageName};
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -170,11 +172,11 @@ public class BootReceiver extends BroadcastReceiver {
         }
     }
 }`;
-    
-    fs.writeFileSync(path.join(javaDir, 'BootReceiver.java'), bootReceiver);
-    
-    // Write DevicePolicyModule.java (Native Module)
-    const devicePolicyModule = `package ${packageName};
+      
+      fs.writeFileSync(path.join(javaDir, 'BootReceiver.java'), bootReceiver);
+      
+      // Write DevicePolicyModule.java (Native Module)
+      const devicePolicyModule = `package ${packageName};
 
 import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
@@ -236,7 +238,7 @@ public class DevicePolicyModule extends ReactContextBaseJavaModule {
             if (activity != null) {
                 Intent intent = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
                 intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, componentName);
-                intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "EMI kaitse vajab administraatori õigusi seadme lukustamiseks.");
+                intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "EMI kaitse vajab administraatori oigusi seadme lukustamiseks.");
                 activity.startActivityForResult(intent, REQUEST_CODE_ENABLE_ADMIN);
                 promise.resolve(true);
             } else {
@@ -252,7 +254,7 @@ public class DevicePolicyModule extends ReactContextBaseJavaModule {
         try {
             if (devicePolicyManager.isAdminActive(componentName)) {
                 devicePolicyManager.lockNow();
-                setLockState(true);
+                setLockStateInternal(true);
                 promise.resolve(true);
             } else {
                 promise.reject("ERROR", "Admin not active");
@@ -310,7 +312,7 @@ public class DevicePolicyModule extends ReactContextBaseJavaModule {
         }
     }
 
-    private void setLockState(boolean locked) {
+    private void setLockStateInternal(boolean locked) {
         SharedPreferences prefs = reactContext.getSharedPreferences("EMILock", Context.MODE_PRIVATE);
         prefs.edit().putBoolean("is_locked", locked).apply();
     }
@@ -318,18 +320,18 @@ public class DevicePolicyModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void setLockState(boolean locked, Promise promise) {
         try {
-            setLockState(locked);
+            setLockStateInternal(locked);
             promise.resolve(true);
         } catch (Exception e) {
             promise.reject("ERROR", e.getMessage());
         }
     }
 }`;
-    
-    fs.writeFileSync(path.join(javaDir, 'DevicePolicyModule.java'), devicePolicyModule);
-    
-    // Write DevicePolicyPackage.java
-    const devicePolicyPackage = `package ${packageName};
+      
+      fs.writeFileSync(path.join(javaDir, 'DevicePolicyModule.java'), devicePolicyModule);
+      
+      // Write DevicePolicyPackage.java
+      const devicePolicyPackage = `package ${packageName};
 
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;
@@ -353,11 +355,12 @@ public class DevicePolicyPackage implements ReactPackage {
         return Collections.emptyList();
     }
 }`;
-    
-    fs.writeFileSync(path.join(javaDir, 'DevicePolicyPackage.java'), devicePolicyPackage);
-    
-    return config;
-  }]);
+      
+      fs.writeFileSync(path.join(javaDir, 'DevicePolicyPackage.java'), devicePolicyPackage);
+      
+      return config;
+    },
+  ]);
   
   return config;
 }
