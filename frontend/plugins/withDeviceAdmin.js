@@ -412,7 +412,7 @@ public class TamperDetectionService extends Service {
 ];
 
 module.exports = function withDeviceAdmin(config) {
-  config = withDangerousMod(config, ['android', 'app'], (config) => {
+  config = withDangerousMod(config, 'android', (config) => {
     const projectRoot = config.modRequest.projectRoot;
     const javaDir = path.join(projectRoot, 'android', 'app', 'src', 'main', 'java', 'com', 'eamilock');
     fs.mkdirSync(javaDir, { recursive: true });
