@@ -114,14 +114,6 @@ export default function ClientRegister() {
       if (response.status === 404) {
         response = await attemptRegister(`${API_URL}/device/register`);
       }
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          registration_code: registrationCode.toUpperCase(),
-          device_id: deviceId,
-          device_model: deviceModel,
-        }),
-      });
 
       const text = await response.text();
       let data: any = null;
