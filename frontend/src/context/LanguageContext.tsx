@@ -74,6 +74,18 @@ const translations: Translations = {
     et: 'Palun täida kõik väljad',
     en: 'Please fill in all fields',
   },
+  ok: {
+    et: 'OK',
+    en: 'OK',
+  },
+  retry: {
+    et: 'Proovi uuesti',
+    en: 'Retry',
+  },
+  cancel: {
+    et: 'Tühista',
+    en: 'Cancel',
+  },
 
   // Dashboard
   welcomeBack: {
@@ -360,9 +372,21 @@ const translations: Translations = {
     et: 'Seade registreeritud edukalt!',
     en: 'Device registered successfully!',
   },
+  deviceAdminPermissionPrompt: {
+    et: 'Seade registreeritud! Palun anna järgmises vaates Device Admin õigused, et seadistus lõpule viia.',
+    en: 'Device registered! Please grant Device Admin permission in the next screen to complete setup.',
+  },
   checkingRegistration: {
     et: 'Kontrollin registreerimist...',
     en: 'Checking registration...',
+  },
+  deviceOwnerSetupRequired: {
+    et: 'Seade peab olema seadistatud Device Owner režiimi. Palun tee seadistus QR/provisioning vooga ja proovi uuesti.',
+    en: 'Device Owner setup is required. Please provision the device with the owner QR/setup flow and try again.',
+  },
+  deviceOwnerVerificationFailed: {
+    et: 'Device Owner staatust ei õnnestunud kontrollida. Palun proovi uuesti.',
+    en: 'Unable to verify Device Owner status. Please try again.',
   },
 
   // Client Home

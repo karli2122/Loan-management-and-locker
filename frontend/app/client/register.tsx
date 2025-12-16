@@ -18,6 +18,7 @@ import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { buildApiUrl } from '../../src/constants/api';
+import { devicePolicy } from '../../src/utils/DevicePolicy';
 
 export default function ClientRegister() {
   const router = useRouter();
@@ -47,6 +48,43 @@ export default function ClientRegister() {
     } finally {
       setCheckingRegistration(false);
     }
+  };
+
+  const verifyDeviceOwner = async () => {
+    let attempts = 0;
+
+    const attempt = async () => {
+      attempts += 1;
+      const cancelButton = { text: t('cancel'), style: 'cancel' as const };
+      const retryButtons =
+        attempts < 3
+          ? [{ text: t('retry'), onPress: attempt }, cancelButton]
+          : [cancelButton];
+
+      try {
+        const isOwner = await devicePolicy.isDeviceOwner();
+        if (isOwner) {
+          try {
+            await devicePolicy.disableUninstall(true);
+          } catch (err) {
+            console.error(
+              'Unable to enforce uninstall protection for Device Owner:',
+              (err as any)?.message || err
+            );
+          }
+          Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
+            { text: t('ok'), onPress: () => router.replace('/client/home') },
+          ]);
+        } else {
+          Alert.alert(t('error'), t('deviceOwnerSetupRequired'), retryButtons);
+        }
+      } catch (err) {
+        console.error('Device Owner verification failed:', (err as any)?.message || err);
+        Alert.alert(t('error'), t('deviceOwnerVerificationFailed'), retryButtons);
+      }
+    };
+
+    await attempt();
   };
 
   const handleRegister = async () => {
@@ -107,24 +145,26 @@ export default function ClientRegister() {
             // Show message that permissions are needed
             Alert.alert(
               t('success'), 
-              'Device registered! Please grant Device Admin permission in the next screen to complete setup.',
-              [{ text: 'OK', onPress: () => router.replace('/client/home') }]
+              t('deviceAdminPermissionPrompt'),
+              [{ text: t('ok'), onPress: () => router.replace('/client/home') }]
             );
           } else {
             Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
-              { text: 'OK', onPress: () => router.replace('/client/home') },
+              { text: t('ok'), onPress: () => router.replace('/client/home') },
             ]);
           }
         } catch (err) {
           console.log('Device Admin not available:', err);
           Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
-            { text: 'OK', onPress: () => router.replace('/client/home') },
+            { text: t('ok'), onPress: () => router.replace('/client/home') },
           ]);
         }
+      } else if (clientData?.lock_mode === 'device_owner') {
+        // Device Owner mode - verify owner status and enable protections
+        await verifyDeviceOwner();
       } else {
-        // Device Owner mode - registration complete
         Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
-          { text: 'OK', onPress: () => router.replace('/client/home') },
+          { text: t('ok'), onPress: () => router.replace('/client/home') },
         ]);
       }
     } catch (error: any) {
