@@ -11,10 +11,6 @@ export default function Index() {
   const { language, setLanguage, t } = useLanguage();
   const rootNavigationState = useRootNavigationState();
 
-  if (!rootNavigationState?.key) {
-    return null;
-  }
-
   // Get app mode from config
   const appMode = Constants.expoConfig?.extra?.appMode;
 
@@ -28,6 +24,16 @@ export default function Index() {
       InteractionManager.runAfterInteractions(() => router.replace('/client/register'));
     }
   }, [appMode, rootNavigationState?.key, router]);
+
+  if (!rootNavigationState?.key) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Ionicons name="shield-checkmark" size={80} color="#4F46E5" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // If app mode is set, show loading while redirecting
   if (appMode === 'admin' || appMode === 'client') {

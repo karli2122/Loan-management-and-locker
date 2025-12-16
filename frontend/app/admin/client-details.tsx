@@ -11,6 +11,7 @@ import {
   Modal,
   Linking,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -333,18 +334,30 @@ export default function ClientDetails() {
             <Text style={styles.avatarText}>{client.name.charAt(0).toUpperCase()}</Text>
           </View>
           <Text style={styles.clientName}>{client.name}</Text>
-          <View style={[styles.statusBadge, client.is_locked ? styles.lockedBadge : styles.unlockedBadge]}>
-            <Ionicons
-              name={client.is_locked ? 'lock-closed' : 'lock-open'}
-              size={14}
-              color={client.is_locked ? '#EF4444' : '#10B981'}
-            />
-            <Text style={[styles.statusText, client.is_locked ? styles.lockedText : styles.unlockedText]}>
-              {client.is_locked ? t('locked') : t('unlocked')}
-            </Text>
-          </View>
-          <Text style={styles.regCode}>{t('registrationCode')}: {client.registration_code}</Text>
+        <View style={[styles.statusBadge, client.is_locked ? styles.lockedBadge : styles.unlockedBadge]}>
+          <Ionicons
+            name={client.is_locked ? 'lock-closed' : 'lock-open'}
+            size={14}
+            color={client.is_locked ? '#EF4444' : '#10B981'}
+          />
+          <Text style={[styles.statusText, client.is_locked ? styles.lockedText : styles.unlockedText]}>
+            {client.is_locked ? t('locked') : t('unlocked')}
+          </Text>
         </View>
+        <View style={styles.regCodeRow}>
+          <Text style={styles.regCode}>{t('registrationCode')}: {client.registration_code}</Text>
+          <TouchableOpacity
+            style={styles.copyButton}
+            onPress={async () => {
+              await Clipboard.setStringAsync(client.registration_code);
+              Alert.alert(t('success'), t('copied'));
+            }}
+          >
+            <Ionicons name="copy" size={18} color="#94A3B8" />
+            <Text style={styles.copyText}>{t('copy')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
         {/* Contact Info */}
         <View style={styles.section}>
@@ -731,9 +744,31 @@ const styles = StyleSheet.create({
   unlockedText: {
     color: '#10B981',
   },
+  regCodeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
   regCode: {
     fontSize: 14,
     color: '#64748B',
+  },
+  copyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+    gap: 6,
+  },
+  copyText: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '600',
   },
   section: {
     marginBottom: 20,

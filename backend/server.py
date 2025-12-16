@@ -1674,6 +1674,9 @@ async def startup_db_client():
         await db.admin_tokens.create_index("admin_id")
         await db.admin_tokens.create_index("token", unique=True)
         
+        # Ensure default loan plan exists
+        await ensure_default_loan_plan()
+
         logger.info("Database indexes created successfully")
     except Exception as e:
         logger.warning(f"Could not create indexes: {e}")
@@ -1683,3 +1686,23 @@ async def shutdown_db_client():
     """Close database connection on shutdown"""
     logger.info("Closing database connection...")
     client.close()
+
+
+async def ensure_default_loan_plan():
+    """Seed required default loan plan if missing."""
+    default_name = "One-Time Simple 50% Monthly"
+    existing = await db.loan_plans.find_one({"name": default_name})
+    if existing:
+        return
+
+    plan = LoanPlan(
+        name=default_name,
+        interest_rate=50.0,  # 50% per month, simple interest
+        min_tenure_months=1,
+        max_tenure_months=1,
+        processing_fee_percent=0.0,
+        late_fee_percent=0.0,
+        description="One-time loan, simple interest at 50% per month."
+    )
+    await db.loan_plans.insert_one(plan.dict())
+    logger.info(f"Seeded default loan plan: {default_name}")

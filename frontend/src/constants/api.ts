@@ -15,3 +15,10 @@ const raw =
 const API_URL = normalize(raw);
 
 export default API_URL;
+
+/**
+ * Build an API endpoint URL under the /api prefix using the normalized backend base.
+ * Accepts paths with or without a leading slash.
+ */
+export const buildApiUrl = (path: string) =>
+  `${API_URL}/api/${path.replace(/^\/+/, '')}`;

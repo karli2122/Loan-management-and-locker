@@ -17,8 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
-import API_URL from '../../src/constants/api';
-
+import { buildApiUrl } from '../../src/constants/api';
+import { devicePolicy } from '../../src/utils/DevicePolicy';
 
 export default function ClientRegister() {
   const router = useRouter();
@@ -35,7 +35,7 @@ export default function ClientRegister() {
     try {
       const clientId = await AsyncStorage.getItem('client_id');
       if (clientId) {
-        const response = await fetch(`${API_URL}/api/device/status/${clientId}`);
+        const response = await fetch(buildApiUrl(`device/status/${clientId}`));
         if (response.ok) {
           router.replace('/client/home');
           return;
@@ -50,6 +50,43 @@ export default function ClientRegister() {
     }
   };
 
+  const verifyDeviceOwner = async () => {
+    let attempts = 0;
+
+    const attempt = async () => {
+      attempts += 1;
+      const cancelButton = { text: t('cancel'), style: 'cancel' as const };
+      const retryButtons =
+        attempts < 3
+          ? [{ text: t('retry'), onPress: attempt }, cancelButton]
+          : [cancelButton];
+
+      try {
+        const isOwner = await devicePolicy.isDeviceOwner();
+        if (isOwner) {
+          try {
+            await devicePolicy.disableUninstall(true);
+          } catch (err) {
+            console.error(
+              'Unable to enforce uninstall protection for Device Owner:',
+              (err as any)?.message || err
+            );
+          }
+          Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
+            { text: t('ok'), onPress: () => router.replace('/client/home') },
+          ]);
+        } else {
+          Alert.alert(t('error'), t('deviceOwnerSetupRequired'), retryButtons);
+        }
+      } catch (err) {
+        console.error('Device Owner verification failed:', (err as any)?.message || err);
+        Alert.alert(t('error'), t('deviceOwnerVerificationFailed'), retryButtons);
+      }
+    };
+
+    await attempt();
+  };
+
   const handleRegister = async () => {
     if (!registrationCode.trim()) {
       Alert.alert(t('error'), t('fillAllFields'));
@@ -61,7 +98,7 @@ export default function ClientRegister() {
       const deviceId = Device.osBuildId || Device.osInternalBuildId || 'unknown';
       const deviceModel = `${Device.brand || ''} ${Device.modelName || 'Unknown Device'}`.trim();
 
-      const response = await fetch(`${API_URL}/api/device/register`, {
+      const response = await fetch(buildApiUrl('device/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -108,24 +145,26 @@ export default function ClientRegister() {
             // Show message that permissions are needed
             Alert.alert(
               t('success'), 
-              'Device registered! Please grant Device Admin permission in the next screen to complete setup.',
-              [{ text: 'OK', onPress: () => router.replace('/client/home') }]
+              t('deviceAdminPermissionPrompt'),
+              [{ text: t('ok'), onPress: () => router.replace('/client/home') }]
             );
           } else {
             Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
-              { text: 'OK', onPress: () => router.replace('/client/home') },
+              { text: t('ok'), onPress: () => router.replace('/client/home') },
             ]);
           }
         } catch (err) {
           console.log('Device Admin not available:', err);
           Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
-            { text: 'OK', onPress: () => router.replace('/client/home') },
+            { text: t('ok'), onPress: () => router.replace('/client/home') },
           ]);
         }
+      } else if (clientData?.lock_mode === 'device_owner') {
+        // Device Owner mode - verify owner status and enable protections
+        await verifyDeviceOwner();
       } else {
-        // Device Owner mode - registration complete
         Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
-          { text: 'OK', onPress: () => router.replace('/client/home') },
+          { text: t('ok'), onPress: () => router.replace('/client/home') },
         ]);
       }
     } catch (error: any) {
@@ -148,15 +187,12 @@ export default function ClientRegister() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.keyboardView}
+          >
+            <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.topBar}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
             <View style={styles.langSwitcher}>
               <TouchableOpacity
                 style={[styles.langButton, language === 'et' && styles.langButtonActive]}
@@ -260,14 +296,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#1E293B',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   langSwitcher: {
     flexDirection: 'row',
