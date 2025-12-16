@@ -129,29 +129,41 @@ export default function Dashboard() {
         <Text style={styles.sectionTitle}>{language === 'et' ? 'Laenude ülevaade' : 'Loan Overview'}</Text>
 
         <View style={styles.statsGrid}>
-          <View style={[styles.statCard, { backgroundColor: '#1E3A5F' }]}>
+          <TouchableOpacity
+            style={[styles.statCard, { backgroundColor: '#1E3A5F' }]}
+            onPress={() => router.push('/admin/(tabs)/loans')}
+            activeOpacity={0.8}
+          >
             <View style={styles.statIcon}>
               <Ionicons name="trending-up" size={28} color="#3B82F6" />
             </View>
             <Text style={styles.statValue}>{loanStats.active_loans}</Text>
             <Text style={styles.statLabel}>{language === 'et' ? 'Aktiivsed laenud' : 'Active Loans'}</Text>
-          </View>
+          </TouchableOpacity>
 
-          <View style={[styles.statCard, { backgroundColor: '#3D1F1F' }]}>
+          <TouchableOpacity
+            style={[styles.statCard, { backgroundColor: '#3D1F1F' }]}
+            onPress={() => router.push('/admin/(tabs)/loans?filter=overdue')}
+            activeOpacity={0.8}
+          >
             <View style={styles.statIcon}>
               <Ionicons name="alert-circle" size={28} color="#EF4444" />
             </View>
             <Text style={styles.statValue}>{loanStats.overdue_clients}</Text>
             <Text style={styles.statLabel}>{language === 'et' ? 'Võlglased' : 'Overdue'}</Text>
-          </View>
+          </TouchableOpacity>
 
-          <View style={[styles.statCard, { backgroundColor: '#1F3D2E' }]}>
+          <TouchableOpacity
+            style={[styles.statCard, { backgroundColor: '#1F3D2E' }]}
+            onPress={() => router.push('/admin/(tabs)/loans?filter=paid')}
+            activeOpacity={0.8}
+          >
             <View style={styles.statIcon}>
               <Ionicons name="checkmark-circle" size={28} color="#10B981" />
             </View>
             <Text style={styles.statValue}>{loanStats.completed_loans}</Text>
             <Text style={styles.statLabel}>{language === 'et' ? 'Lõpetatud' : 'Completed'}</Text>
-          </View>
+          </TouchableOpacity>
 
           <View style={[styles.statCard, { backgroundColor: '#3D3D1F' }]}>
             <View style={styles.statIcon}>

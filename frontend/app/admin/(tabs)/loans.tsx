@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../../src/context/LanguageContext';
@@ -26,15 +26,20 @@ interface Client {
   principal_amount?: number;
   total_amount_due?: number;
   next_payment_due?: string;
+  outstanding_balance?: number;
+  days_overdue?: number;
+  total_paid?: number;
 }
 
 export default function LoansTab() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ filter?: string }>();
   const { language } = useLanguage();
   const [clients, setClients] = useState<Client[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<string | undefined>(undefined);
 
   const fetchClients = async () => {
     try {
@@ -54,17 +59,38 @@ export default function LoansTab() {
     fetchClients();
   }, []);
 
+  useEffect(() => {
+    if (params?.filter) {
+      setFilter(params.filter.toString().toLowerCase());
+    } else {
+      setFilter(undefined);
+    }
+  }, [params]);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchClients();
     setRefreshing(false);
   };
 
-  const filteredClients = clients.filter(
-    (client) =>
-      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.phone.includes(searchQuery)
-  );
+  const filteredClients = useMemo(() => {
+    let list = clients;
+    if (filter === 'overdue') {
+      list = list.filter(
+        (c) => (c.outstanding_balance ?? 0) > 0 && (c.days_overdue ?? 0) > 0
+      );
+    } else if (filter === 'paid') {
+      list = list.filter(
+        (c) => (c.outstanding_balance ?? c.total_amount_due ?? 0) === 0 && (c.total_paid ?? 0) > 0
+      );
+    }
+
+    return list.filter(
+      (client) =>
+        client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.phone.includes(searchQuery)
+    );
+  }, [clients, filter, searchQuery]);
 
   const renderClient = ({ item }: { item: Client }) => (
     <TouchableOpacity
@@ -123,6 +149,23 @@ export default function LoansTab() {
           <Ionicons name="add" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
+
+      {filter && (
+        <View style={styles.filterBanner}>
+          <Text style={styles.filterText}>
+            {filter === 'overdue'
+              ? language === 'et'
+                ? 'Filtreeritud: võlglased'
+                : 'Filter: Overdue'
+              : language === 'et'
+              ? 'Filtreeritud: tasutud'
+              : 'Filter: Paid'}
+          </Text>
+          <TouchableOpacity onPress={() => setFilter(undefined)}>
+            <Ionicons name="close-circle" size={20} color="#E2E8F0" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#64748B" />
@@ -285,5 +328,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#64748B',
     marginTop: 16,
+  },
+  filterBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  filterText: {
+    color: '#E2E8F0',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
