@@ -52,7 +52,9 @@ export default {
     web: {
       bundler: "metro",
       output: "single",
-      favicon: "./assets/images/favicon.png"
+      favicon: "./assets/images/favicon.png",
+      // Avoid caching 404s via service workers
+      registerServiceWorker: false
     },
     plugins: [
       "expo-router",
