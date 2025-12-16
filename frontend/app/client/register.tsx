@@ -129,6 +129,9 @@ export default function ClientRegister() {
       }
 
       const clientId = data?.client_id;
+      if (!clientId) {
+        throw new Error(data?.detail || 'Registration failed: invalid code');
+      }
       if (clientId) {
         await AsyncStorage.setItem('client_id', clientId);
       }
