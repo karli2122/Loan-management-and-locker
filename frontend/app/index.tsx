@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,18 +9,31 @@ import { useLanguage } from '../src/context/LanguageContext';
 export default function Index() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
+  const [isMounted, setIsMounted] = useState(false);
   
   // Get app mode from config
   const appMode = Constants.expoConfig?.extra?.appMode;
 
+  // Set mounted flag after first render
   useEffect(() => {
-    // Auto-redirect based on app mode
-    if (appMode === 'admin') {
-      router.replace('/admin/login');
-    } else if (appMode === 'client') {
-      router.replace('/client/register');
-    }
-  }, [appMode]);
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    // Only navigate after layout is mounted
+    if (!isMounted) return;
+    
+    // Auto-redirect based on app mode with a small delay to ensure layout is ready
+    const timer = setTimeout(() => {
+      if (appMode === 'admin') {
+        router.replace('/admin/login');
+      } else if (appMode === 'client') {
+        router.replace('/client/register');
+      }
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [appMode, isMounted]);
 
   // If app mode is set, show loading while redirecting
   if (appMode === 'admin' || appMode === 'client') {
