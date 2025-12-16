@@ -2,6 +2,7 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import Response
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -1681,6 +1682,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def swallow_404_middleware(request, call_next):
+    """Discard body for 404 responses to reduce noise."""
+    response = await call_next(request)
+    if response.status_code == 404:
+        return Response(status_code=404)
+    return response
 
 @app.on_event("startup")
 async def startup_db_client():
