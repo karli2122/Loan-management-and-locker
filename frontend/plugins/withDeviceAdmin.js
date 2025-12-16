@@ -1,10 +1,10 @@
-const { withAndroidManifest, withMainApplication, withDangerousMod } = require('@expo/config-plugins');
+const { withAndroidManifest, withDangerousMod } = require('@expo/config-plugins');
 const fs = require('fs');
 const path = require('path');
 
 function withDeviceAdmin(config) {
   // Add Device Admin Receiver to AndroidManifest.xml
-  config = withAndroidManifest(config, async (config) => {
+  config = withAndroidManifest(config, (config) => {
     const androidManifest = config.modResults.manifest;
 
     // Add Device Admin Receiver
@@ -123,15 +123,17 @@ function withDeviceAdmin(config) {
     return config;
   });
 
-  // Add native files and device_admin.xml resource
-  config = withDangerousMod(config, ['android', async (config) => {
-    const projectRoot = config.modRequest.projectRoot;
-    
-    // Create res/xml directory and device_admin.xml
-    const resXmlDir = path.join(projectRoot, 'android', 'app', 'src', 'main', 'res', 'xml');
-    fs.mkdirSync(resXmlDir, { recursive: true });
-    
-    const deviceAdminXml = `<?xml version="1.0" encoding="utf-8"?>
+  // Add native files and device_admin.xml resource using withDangerousMod
+  config = withDangerousMod(config, [
+    'android',
+    (config) => {
+      const projectRoot = config.modRequest.projectRoot;
+      
+      // Create res/xml directory and device_admin.xml
+      const resXmlDir = path.join(projectRoot, 'android', 'app', 'src', 'main', 'res', 'xml');
+      fs.mkdirSync(resXmlDir, { recursive: true });
+      
+      const deviceAdminXml = `<?xml version="1.0" encoding="utf-8"?>
 <device-admin xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-policies>
         <limit-password />
@@ -144,15 +146,15 @@ function withDeviceAdmin(config) {
         <disable-camera />
     </uses-policies>
 </device-admin>`;
-    
-    fs.writeFileSync(path.join(resXmlDir, 'device_admin.xml'), deviceAdminXml);
+      
+      fs.writeFileSync(path.join(resXmlDir, 'device_admin.xml'), deviceAdminXml);
 
-    // Create java directory for native modules
-    const javaDir = path.join(projectRoot, 'android', 'app', 'src', 'main', 'java', 'com', 'eamilock');
-    fs.mkdirSync(javaDir, { recursive: true });
+      // Create java directory for native modules
+      const javaDir = path.join(projectRoot, 'android', 'app', 'src', 'main', 'java', 'com', 'eamilock');
+      fs.mkdirSync(javaDir, { recursive: true });
 
-    // Write DeviceAdminModule.java
-    const deviceAdminModule = `package com.eamilock;
+      // Write DeviceAdminModule.java
+      const deviceAdminModule = `package com.eamilock;
 
 import android.app.admin.DeviceAdminReceiver;
 import android.app.admin.DevicePolicyManager;
@@ -349,11 +351,11 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
         }
     }
 }`;
-    
-    fs.writeFileSync(path.join(javaDir, 'DeviceAdminModule.java'), deviceAdminModule);
+      
+      fs.writeFileSync(path.join(javaDir, 'DeviceAdminModule.java'), deviceAdminModule);
 
-    // Write DeviceAdminPackage.java
-    const deviceAdminPackage = `package com.eamilock;
+      // Write DeviceAdminPackage.java
+      const deviceAdminPackage = `package com.eamilock;
 
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;
@@ -377,11 +379,11 @@ public class DeviceAdminPackage implements ReactPackage {
         return Collections.emptyList();
     }
 }`;
-    
-    fs.writeFileSync(path.join(javaDir, 'DeviceAdminPackage.java'), deviceAdminPackage);
+      
+      fs.writeFileSync(path.join(javaDir, 'DeviceAdminPackage.java'), deviceAdminPackage);
 
-    // Write TamperDetectionService.java
-    const tamperService = `package com.eamilock;
+      // Write TamperDetectionService.java
+      const tamperService = `package com.eamilock;
 
 import android.app.Service;
 import android.content.BroadcastReceiver;
@@ -466,11 +468,12 @@ public class TamperDetectionService extends Service {
         }
     }
 }`;
-    
-    fs.writeFileSync(path.join(javaDir, 'TamperDetectionService.java'), tamperService);
+      
+      fs.writeFileSync(path.join(javaDir, 'TamperDetectionService.java'), tamperService);
 
-    return config;
-  }]);
+      return config;
+    },
+  ]);
 
   return config;
 }
