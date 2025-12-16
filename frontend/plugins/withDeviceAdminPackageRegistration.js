@@ -4,7 +4,7 @@ const { withMainApplication } = require('@expo/config-plugins');
  * This plugin adds the DeviceAdminPackage to the MainApplication's getPackages() method.
  */
 function withDeviceAdminPackageRegistration(config) {
-  return withMainApplication(config, async (config) => {
+  return withMainApplication(config, (config) => {
     const mainApplication = config.modResults;
     
     // Add import for DeviceAdminPackage
@@ -15,10 +15,12 @@ function withDeviceAdminPackageRegistration(config) {
       const importIndex = mainApplication.contents.lastIndexOf('import ');
       const importEndIndex = mainApplication.contents.indexOf(';', importIndex);
       
-      mainApplication.contents = 
-        mainApplication.contents.substring(0, importEndIndex + 1) + 
-        '\n' + importStatement +
-        mainApplication.contents.substring(importEndIndex + 1);
+      if (importIndex !== -1 && importEndIndex !== -1) {
+        mainApplication.contents = 
+          mainApplication.contents.substring(0, importEndIndex + 1) + 
+          '\n' + importStatement +
+          mainApplication.contents.substring(importEndIndex + 1);
+      }
     }
     
     // Add DeviceAdminPackage to getPackages()
@@ -38,14 +40,6 @@ function withDeviceAdminPackageRegistration(config) {
           matchText.substring(insertPoint);
         
         mainApplication.contents = mainApplication.contents.replace(matchText, newMatchText);
-      } else {
-        // Alternative: Look for PackageList and add directly
-        const packageListMatch = mainApplication.contents.match(/new\s+PackageList\(this\)\.getPackages\(\)/);
-        if (packageListMatch) {
-          // For newer React Native, packages are returned directly
-          // We need to wrap and add
-          console.log('PackageList found, adding DeviceAdminPackage via alternative method');
-        }
       }
     }
     
