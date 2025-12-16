@@ -20,6 +20,16 @@ function addImport(contents) {
 function addPackage(contents) {
   if (contents.includes(PACKAGE_INSTANCE)) return contents;
 
+  // Kotlin: val packages = PackageList(this).packages
+  const kotlinPackagesPattern =
+    /val\s+packages\s*=\s*PackageList\(this\)\.packages/;
+  if (kotlinPackagesPattern.test(contents)) {
+    return contents.replace(
+      kotlinPackagesPattern,
+      'val packages = PackageList(this).packages.toMutableList()\n        packages.add(DeviceAdminPackage())'
+    );
+  }
+
   const packageListPattern =
     /List<ReactPackage>\s+packages\s*=\s*new PackageList\(this\)\.getPackages\(\);\s*/;
 
