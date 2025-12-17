@@ -181,8 +181,10 @@ function stripLegacyPackages(config) {
     contents = contents.replace(/^import .*DevicePolicyPackage.*\n/gm, '');
     contents = contents.replace(/^import .*DeviceAdminPackage.*\n/gm, '');
     // Remove legacy package additions (Kotlin/Java)
-    contents = contents.replace(/^\s*add\(DevicePolicyPackage\(\)\);\s*\n/gm, '');
-    contents = contents.replace(/^\s*add\(DeviceAdminPackage\(\)\);\s*\n/gm, '');
+    contents = contents.replace(/^\s*add\(DevicePolicyPackage\(\)\);\s*$/gm, '');
+    contents = contents.replace(/^\s*add\(DeviceAdminPackage\(\)\);\s*$/gm, '');
+    contents = contents.replace(/^\s*packages\.add\(DevicePolicyPackage\(\)\);?\s*$/gm, '');
+    contents = contents.replace(/^\s*packages\.add\(DeviceAdminPackage\(\)\);?\s*$/gm, '');
     contents = contents.replace(/packages\.add\(new DevicePolicyPackage\(\)\);\s*\n/gm, '');
     contents = contents.replace(/packages\.add\(new DeviceAdminPackage\(\)\);\s*\n/gm, '');
     config.modResults.contents = contents;
