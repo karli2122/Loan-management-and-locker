@@ -90,7 +90,7 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <View style={{flex: 1}}>
           <Text style={styles.greeting}>{t('welcomeBack')}</Text>
