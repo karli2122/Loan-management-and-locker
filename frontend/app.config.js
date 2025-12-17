@@ -42,12 +42,9 @@ export default {
           backgroundColor: "#0F172A"
         }
       ],
-      // Device Owner and Device Admin plugins for Client app only
+      // Device Admin plugin for Client app only - handles native module and MainApplication registration
       ...(IS_ADMIN_APP ? [] : [
-        "./plugins/withDeviceOwner", 
-        "./plugins/withDeviceAdmin",
-        "./plugins/withDeviceAdminPackageRegistration",
-        "./plugins/withDevicePolicyPackageRegistration"
+        "./plugins/withDeviceAdmin"
       ])
     ],
     experiments: {
