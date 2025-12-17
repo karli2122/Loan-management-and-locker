@@ -84,23 +84,35 @@ export default function AdminLogin() {
         throw new Error(data.detail || 'Authentication failed');
       }
 
+      // Save authentication data
       await AsyncStorage.setItem('admin_token', data.token);
       await AsyncStorage.setItem('admin_id', data.id);
       await AsyncStorage.setItem('admin_username', data.username);
       await AsyncStorage.setItem('admin_role', data.role || 'user');
       await AsyncStorage.setItem('is_super_admin', data.is_super_admin ? 'true' : 'false');
 
-      router.replace('/admin/(tabs)');
+      console.log('Login successful, navigating to dashboard...');
+      
+      // Navigate to dashboard - small delay to ensure storage is complete
+      setTimeout(() => {
+        router.replace('/admin/(tabs)');
+      }, 100);
+      
     } catch (error: any) {
       console.error('Login error:', error);
+      console.error('Error stack:', error.stack);
       
       let errorMessage = error.message || 'Something went wrong';
       
-      // Check for network errors
+      // Check for specific error types
       if (error.message && error.message.includes('Network request failed')) {
         errorMessage = 'Network connection error. Please check your internet connection and try again.';
       } else if (error.message && error.message.includes('Failed to fetch')) {
         errorMessage = 'Unable to connect to server. Please check your connection.';
+      } else if (error.message && error.message.includes('status')) {
+        // This might be the issue - log the full error
+        console.error('Status-related error detected:', error);
+        errorMessage = 'Login failed. Please try again.';
       } else if (!API_URL) {
         errorMessage = 'API configuration error. Please restart the app.';
       }
