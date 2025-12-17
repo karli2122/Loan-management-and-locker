@@ -45,21 +45,32 @@ export default function AddClient() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/clients`, {
+      const response = await fetch(getApiUrl('api/clients'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({
           ...form,
           emi_amount: parseFloat(form.emi_amount) || 0,
         }),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to create client');
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Parse error:', responseText.substring(0, 200));
+        throw new Error('Server error. Please try again.');
       }
 
-      const client = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Failed to create client');
+      }
+
+      const client = data;
       Alert.alert(
         t('success'),
         `${t('clientCreated')}\n\n${t('registrationCode')}: ${client.registration_code}\n\n${t('shareCodeMessage')}`,
