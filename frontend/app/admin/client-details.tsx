@@ -14,9 +14,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { getApiUrl, API_BASE_URL } from '../../src/utils/api';
 import { useLanguage } from '../../src/context/LanguageContext';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://loantrack-23.preview.emergentagent.com';
 
 interface Client {
   id: string;
@@ -64,7 +64,7 @@ export default function ClientDetails() {
 
   const fetchClient = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/clients/${id}`);
+      const response = await fetch(`${API_BASE_URL}/api/clients/${id}`);
       if (!response.ok) throw new Error('Client not found');
       const data = await response.json();
       setClient(data);
@@ -84,7 +84,7 @@ export default function ClientDetails() {
   const handleLock = async () => {
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/clients/${id}/lock?message=${encodeURIComponent(lockMessage)}`, {
+      const response = await fetch(`${API_BASE_URL}/api/clients/${id}/lock?message=${encodeURIComponent(lockMessage)}`, {
         method: 'POST',
       });
       if (!response.ok) throw new Error('Failed to lock device');
@@ -106,7 +106,7 @@ export default function ClientDetails() {
         onPress: async () => {
           setActionLoading(true);
           try {
-            const response = await fetch(`${API_URL}/api/clients/${id}/unlock`, {
+            const response = await fetch(`${API_BASE_URL}/api/clients/${id}/unlock`, {
               method: 'POST',
             });
             if (!response.ok) throw new Error('Failed to unlock device');
@@ -130,7 +130,7 @@ export default function ClientDetails() {
     setActionLoading(true);
     try {
       const response = await fetch(
-        `${API_URL}/api/clients/${id}/warning?message=${encodeURIComponent(warningMessage)}`,
+        `${API_BASE_URL}/api/clients/${id}/warning?message=${encodeURIComponent(warningMessage)}`,
         { method: 'POST' }
       );
       if (!response.ok) throw new Error('Failed to send warning');
@@ -157,7 +157,7 @@ export default function ClientDetails() {
           onPress: async () => {
             setActionLoading(true);
             try {
-              const response = await fetch(`${API_URL}/api/clients/${id}/allow-uninstall`, {
+              const response = await fetch(`${API_BASE_URL}/api/clients/${id}/allow-uninstall`, {
                 method: 'POST',
               });
               if (!response.ok) throw new Error('Failed to allow uninstall');
@@ -184,7 +184,7 @@ export default function ClientDetails() {
         onPress: async () => {
           setActionLoading(true);
           try {
-            const response = await fetch(`${API_URL}/api/clients/${id}`, {
+            const response = await fetch(`${API_BASE_URL}/api/clients/${id}`, {
               method: 'DELETE',
             });
             
@@ -208,7 +208,7 @@ export default function ClientDetails() {
   const handleFetchPrice = async () => {
     setFetchingPrice(true);
     try {
-      const response = await fetch(`${API_URL}/api/clients/${id}/fetch-price`);
+      const response = await fetch(`${API_BASE_URL}/api/clients/${id}/fetch-price`);
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.detail || 'Failed to fetch price');
@@ -249,7 +249,7 @@ export default function ClientDetails() {
         }
       }
 
-      const response = await fetch(`${API_URL}/api/clients/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/clients/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData),

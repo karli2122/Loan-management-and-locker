@@ -14,9 +14,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { getApiUrl, API_BASE_URL } from '../../src/utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://loantrack-23.preview.emergentagent.com';
 
 interface LoanPlan {
   id: string;
@@ -54,7 +54,7 @@ export default function LoanPlans() {
 
   const fetchPlans = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/loan-plans`);
+      const response = await fetch(`${API_BASE_URL}/api/loan-plans`);
       const data = await response.json();
       setPlans(data);
     } catch (error) {
@@ -109,8 +109,8 @@ export default function LoanPlans() {
       };
 
       const url = editingPlan
-        ? `${API_URL}/api/loan-plans/${editingPlan.id}?admin_token=${token}`
-        : `${API_URL}/api/loan-plans?admin_token=${token}`;
+        ? `${API_BASE_URL}/api/loan-plans/${editingPlan.id}?admin_token=${token}`
+        : `${API_BASE_URL}/api/loan-plans?admin_token=${token}`;
 
       const response = await fetch(url, {
         method: editingPlan ? 'PUT' : 'POST',
@@ -136,13 +136,13 @@ export default function LoanPlans() {
       
       if (plan.is_active) {
         // Deactivate
-        const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${token}`, {
+        const response = await fetch(`${API_BASE_URL}/api/loan-plans/${plan.id}?admin_token=${token}`, {
           method: 'DELETE',
         });
         if (!response.ok) throw new Error('Failed to deactivate plan');
       } else {
         // Reactivate by updating
-        const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${token}`, {
+        const response = await fetch(`${API_BASE_URL}/api/loan-plans/${plan.id}?admin_token=${token}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...plan, is_active: true }),

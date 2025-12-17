@@ -13,10 +13,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { getApiUrl, API_BASE_URL } from '../../src/utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://loantrack-23.preview.emergentagent.com';
 
 interface Admin {
   id: string;
@@ -77,7 +77,7 @@ export default function AdminSettings() {
 
   const fetchAdmins = async (token: string) => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/list?admin_token=${token}`);
+      const response = await fetch(`${API_BASE_URL}/api/admin/list?admin_token=${token}`);
       if (response.ok) {
         const data = await response.json();
         setAdmins(data);
@@ -107,7 +107,7 @@ export default function AdminSettings() {
     setActionLoading(true);
     try {
       // Send admin_token as query parameter, not in the body
-      const response = await fetch(`${API_URL}/api/admin/register?admin_token=${adminToken}`, {
+      const response = await fetch(`${API_BASE_URL}/api/admin/register?admin_token=${adminToken}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -171,7 +171,7 @@ export default function AdminSettings() {
 
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/admin/change-password?admin_token=${adminToken}`, {
+      const response = await fetch(`${API_BASE_URL}/api/admin/change-password?admin_token=${adminToken}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -227,7 +227,7 @@ export default function AdminSettings() {
           onPress: async () => {
             try {
               const response = await fetch(
-                `${API_URL}/api/admin/${admin.id}?admin_token=${adminToken}`,
+                `${API_BASE_URL}/api/admin/${admin.id}?admin_token=${adminToken}`,
                 { method: 'DELETE' }
               );
 

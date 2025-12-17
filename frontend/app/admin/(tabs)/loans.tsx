@@ -11,9 +11,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { getApiUrl, API_BASE_URL } from '../../../src/utils/api';
 import { useLanguage } from '../../../src/context/LanguageContext';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://loantrack-23.preview.emergentagent.com';
 
 interface Client {
   id: string;
@@ -37,7 +37,7 @@ export default function LoansTab() {
 
   const fetchClients = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/clients?limit=500`);
+      const response = await fetch(`${API_BASE_URL}/api/clients?limit=500`);
       const data = await response.json();
       setClients(data.clients || []);
     } catch (error) {

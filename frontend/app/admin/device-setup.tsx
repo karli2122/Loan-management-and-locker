@@ -12,16 +12,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { getApiUrl, API_BASE_URL } from '../../src/utils/api';
 import QRCode from 'react-native-qrcode-svg';
 import { useLanguage } from '../../src/context/LanguageContext';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://loantrack-23.preview.emergentagent.com';
 
 // Android Enterprise provisioning QR code data
 const generateProvisioningData = (clientRegCode: string) => {
   const data = {
     "android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME": "com.emi.client/.DeviceAdminReceiver",
-    "android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION": `${API_URL}/downloads/emi-client.apk`,
+    "android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION": `${API_BASE_URL}/downloads/emi-client.apk`,
     "android.app.extra.PROVISIONING_SKIP_ENCRYPTION": true,
     "android.app.extra.PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED": true,
     "android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE": {
@@ -54,7 +54,7 @@ export default function DeviceSetup() {
 
   const fetchClients = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/clients`);
+      const response = await fetch(`${API_BASE_URL}/api/clients`);
       const data = await response.json();
       // Only show unregistered clients
       setClients(data.filter((c: any) => !c.is_registered));

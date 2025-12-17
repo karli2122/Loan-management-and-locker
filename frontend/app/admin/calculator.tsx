@@ -11,8 +11,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { getApiUrl, API_BASE_URL } from '../../src/utils/api';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://loantrack-23.preview.emergentagent.com';
 
 export default function Calculator() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function Calculator() {
     setLoading(true);
     try {
       const response = await fetch(
-        `${API_URL}/api/calculator/compare?principal=${principal}&annual_rate=${rate}&months=${months}`
+        `${API_BASE_URL}/api/calculator/compare?principal=${principal}&annual_rate=${rate}&months=${months}`
       );
       const data = await response.json();
       setResults(data);

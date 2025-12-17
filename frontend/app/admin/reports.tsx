@@ -12,10 +12,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { getApiUrl, API_BASE_URL } from '../../src/utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LineChart, PieChart } from 'react-native-chart-kit';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://loantrack-23.preview.emergentagent.com';
 const screenWidth = Dimensions.get('window').width;
 
 export default function Reports() {
@@ -35,9 +35,9 @@ export default function Reports() {
   const fetchReports = async () => {
     try {
       const [collection, clients, financial] = await Promise.all([
-        fetch(`${API_URL}/api/reports/collection`).then(r => r.json()),
-        fetch(`${API_URL}/api/reports/clients`).then(r => r.json()),
-        fetch(`${API_URL}/api/reports/financial`).then(r => r.json()),
+        fetch(`${API_BASE_URL}/api/reports/collection`).then(r => r.json()),
+        fetch(`${API_BASE_URL}/api/reports/clients`).then(r => r.json()),
+        fetch(`${API_BASE_URL}/api/reports/financial`).then(r => r.json()),
       ]);
       
       setCollectionReport(collection);
@@ -59,7 +59,7 @@ export default function Reports() {
   const handleCalculateLateFees = async () => {
     try {
       const token = await AsyncStorage.getItem('admin_token');
-      await fetch(`${API_URL}/api/late-fees/calculate-all?admin_token=${token}`, {
+      await fetch(`${API_BASE_URL}/api/late-fees/calculate-all?admin_token=${token}`, {
         method: 'POST',
       });
       fetchReports(); // Refresh data

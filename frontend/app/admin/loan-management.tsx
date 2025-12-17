@@ -13,10 +13,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { getApiUrl, API_BASE_URL } from '../../src/utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://loantrack-23.preview.emergentagent.com';
 
 interface LoanDetails {
   loan_amount: number;
@@ -92,7 +92,7 @@ export default function LoanManagement() {
   const fetchData = async () => {
     try {
       // Fetch client details
-      const clientRes = await fetch(`${API_URL}/api/clients/${id}`);
+      const clientRes = await fetch(`${API_BASE_URL}/api/clients/${id}`);
       const clientData = await clientRes.json();
       setClient(clientData);
       
@@ -119,12 +119,12 @@ export default function LoanManagement() {
       
       // Fetch payment history
       if (clientData.loan_start_date) {
-        const paymentsRes = await fetch(`${API_URL}/api/loans/${id}/payments`);
+        const paymentsRes = await fetch(`${API_BASE_URL}/api/loans/${id}/payments`);
         const paymentsData = await paymentsRes.json();
         setPayments(paymentsData.payments || []);
         
         // Fetch payment schedule
-        const scheduleRes = await fetch(`${API_URL}/api/loans/${id}/schedule`);
+        const scheduleRes = await fetch(`${API_BASE_URL}/api/loans/${id}/schedule`);
         const scheduleData = await scheduleRes.json();
         setSchedule(scheduleData.schedule || []);
       }
@@ -144,7 +144,7 @@ export default function LoanManagement() {
 
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/loans/${id}/setup`, {
+      const response = await fetch(`${API_BASE_URL}/api/loans/${id}/setup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -177,7 +177,7 @@ export default function LoanManagement() {
     setActionLoading(true);
     try {
       const token = await AsyncStorage.getItem('admin_token');
-      const response = await fetch(`${API_URL}/api/loans/${id}/payments?admin_token=${token}`, {
+      const response = await fetch(`${API_BASE_URL}/api/loans/${id}/payments?admin_token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -208,7 +208,7 @@ export default function LoanManagement() {
   const handleUpdateSettings = async () => {
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/loans/${id}/settings`, {
+      const response = await fetch(`${API_BASE_URL}/api/loans/${id}/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -233,7 +233,7 @@ export default function LoanManagement() {
     setActionLoading(true);
     try {
       const endpoint = shouldLock ? 'lock' : 'unlock';
-      const response = await fetch(`${API_URL}/api/clients/${id}/${endpoint}`, {
+      const response = await fetch(`${API_BASE_URL}/api/clients/${id}/${endpoint}`, {
         method: 'POST',
       });
 
