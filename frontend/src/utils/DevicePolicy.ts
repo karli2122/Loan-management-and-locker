@@ -1,6 +1,6 @@
 import { NativeModules, Platform } from 'react-native';
 
-const { DevicePolicyModule } = NativeModules;
+const { EMIDeviceAdmin, DevicePolicyModule } = NativeModules;
 
 export interface DeviceInfo {
   isDeviceOwner: boolean;
@@ -15,7 +15,7 @@ class DevicePolicyManager {
   async isDeviceOwner(): Promise<boolean> {
     if (Platform.OS !== 'android') return false;
     try {
-      return await DevicePolicyModule?.isDeviceOwner() || false;
+      return (await (EMIDeviceAdmin?.isDeviceOwner?.() ?? DevicePolicyModule?.isDeviceOwner?.())) || false;
     } catch (error) {
       console.log('DevicePolicy not available:', error);
       return false;
@@ -28,7 +28,7 @@ class DevicePolicyManager {
   async isAdminActive(): Promise<boolean> {
     if (Platform.OS !== 'android') return false;
     try {
-      return await DevicePolicyModule?.isAdminActive() || false;
+      return (await (EMIDeviceAdmin?.isAdminActive?.() ?? DevicePolicyModule?.isAdminActive?.())) || false;
     } catch (error) {
       console.log('DevicePolicy not available:', error);
       return false;
@@ -41,7 +41,7 @@ class DevicePolicyManager {
   async requestAdmin(): Promise<boolean> {
     if (Platform.OS !== 'android') return false;
     try {
-      return await DevicePolicyModule?.requestAdmin() || false;
+      return (await (EMIDeviceAdmin?.requestAdmin?.() ?? DevicePolicyModule?.requestAdmin?.())) || false;
     } catch (error) {
       console.log('Failed to request admin:', error);
       return false;
@@ -54,7 +54,7 @@ class DevicePolicyManager {
   async lockDevice(): Promise<boolean> {
     if (Platform.OS !== 'android') return false;
     try {
-      return await DevicePolicyModule?.lockDevice() || false;
+      return (await (EMIDeviceAdmin?.lockDevice?.() ?? DevicePolicyModule?.lockDevice?.())) || false;
     } catch (error) {
       console.log('Failed to lock device:', error);
       return false;
@@ -68,7 +68,7 @@ class DevicePolicyManager {
   async setKioskMode(enable: boolean): Promise<boolean> {
     if (Platform.OS !== 'android') return false;
     try {
-      return await DevicePolicyModule?.setKioskMode(enable) || false;
+      return (await (EMIDeviceAdmin?.setKioskMode?.(enable) ?? DevicePolicyModule?.setKioskMode?.(enable))) || false;
     } catch (error) {
       console.log('Failed to set kiosk mode:', error);
       return false;
@@ -82,7 +82,9 @@ class DevicePolicyManager {
   async disableUninstall(disable: boolean): Promise<boolean> {
     if (Platform.OS !== 'android') return false;
     try {
-      return await DevicePolicyModule?.disableUninstall(disable) || false;
+      return (
+        await (EMIDeviceAdmin?.disableUninstall?.(disable) ?? DevicePolicyModule?.disableUninstall?.(disable))
+      ) || false;
     } catch (error) {
       console.log('Failed to set uninstall block:', error);
       return false;
@@ -95,7 +97,7 @@ class DevicePolicyManager {
   async getDeviceInfo(): Promise<DeviceInfo | null> {
     if (Platform.OS !== 'android') return null;
     try {
-      return await DevicePolicyModule?.getDeviceInfo() || null;
+      return (await (EMIDeviceAdmin?.getDeviceInfo?.() ?? DevicePolicyModule?.getDeviceInfo?.())) || null;
     } catch (error) {
       console.log('Failed to get device info:', error);
       return null;
@@ -108,7 +110,7 @@ class DevicePolicyManager {
   async setLockState(locked: boolean): Promise<boolean> {
     if (Platform.OS !== 'android') return false;
     try {
-      return await DevicePolicyModule?.setLockState(locked) || false;
+      return (await (EMIDeviceAdmin?.setLockState?.(locked) ?? DevicePolicyModule?.setLockState?.(locked))) || false;
     } catch (error) {
       console.log('Failed to set lock state:', error);
       return false;
