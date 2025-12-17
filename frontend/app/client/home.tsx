@@ -51,7 +51,13 @@ export default function ClientHome() {
 
   // Check and setup Device Owner/Admin
   const checkAndSetupDeviceProtection = async () => {
-    if (Platform.OS !== 'android') return;
+    if (Platform.OS !== 'android') {
+      console.log('Device protection: Not Android, skipping');
+      return;
+    }
+    
+    console.log('Starting device protection check...');
+    console.log('Native module available:', devicePolicy.isNativeModuleAvailable());
     
     try {
       // Check Device Owner status
@@ -71,29 +77,54 @@ export default function ClientHome() {
         console.log('Device Owner mode active - full protection enabled');
       } else if (!admin) {
         // If not admin, show alert and request admin permissions
-        console.log('Requesting Device Admin permissions...');
+        console.log('Device Admin not active, requesting permissions...');
+        
+        // Check if native module is available
+        if (!devicePolicy.isNativeModuleAvailable()) {
+          console.log('Native module NOT available - showing info alert');
+          Alert.alert(
+            'Setup Information',
+            'Device Admin features require a production APK build. If you are using a development build, please build with:\n\nAPP_MODE=client eas build --profile client-production --platform android',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
         
         Alert.alert(
           'Device Protection Required',
-          'This app requires Device Admin permissions to protect your device. Please tap "Activate" on the next screen.',
+          'This app requires Device Admin permissions to protect your device and enable EMI payment features.\n\nPlease tap "Enable Now" and then "Activate" on the next screen.',
           [
             {
               text: 'Enable Now',
               onPress: async () => {
+                console.log('User pressed Enable Now');
                 try {
                   const result = await devicePolicy.requestAdmin();
-                  console.log('Admin request result:', result);
+                  console.log('Admin request completed, result:', result);
+                  if (result) {
+                    Alert.alert('Success', 'Device Admin permissions granted!');
+                    setIsAdminActive(true);
+                    setSetupComplete(true);
+                  }
                 } catch (e) {
-                  console.log('Admin request failed:', e);
+                  console.log('Admin request error:', e);
+                  Alert.alert('Error', `Failed to enable Device Admin: ${e}`);
                 }
+              }
+            },
+            {
+              text: 'Later',
+              style: 'cancel',
+              onPress: () => {
+                console.log('User postponed Device Admin setup');
               }
             }
           ],
-          { cancelable: false }
+          { cancelable: true }
         );
       } else {
         setSetupComplete(true);
-        console.log('Device Admin active - basic protection enabled');
+        console.log('Device Admin already active - basic protection enabled');
       }
     } catch (error) {
       console.error('Device protection setup error:', error);
