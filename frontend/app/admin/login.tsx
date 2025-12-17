@@ -54,7 +54,7 @@ export default function AdminLogin() {
       const attemptLogin = async (url: string) => {
         return fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           body: JSON.stringify(creds),
         });
       };
@@ -157,6 +157,18 @@ export default function AdminLogin() {
           formatMessage(
             response.status,
             parsed.data?.detail,
+            parsed.text,
+            parsed.url,
+            getRedirect(parsed.data)
+          )
+        );
+      }
+
+      if (response.ok && !parsed.data) {
+        throw new Error(
+          formatMessage(
+            response.status,
+            'Unexpected non-JSON response. Verify backend URL and prefix.',
             parsed.text,
             parsed.url,
             getRedirect(parsed.data)
