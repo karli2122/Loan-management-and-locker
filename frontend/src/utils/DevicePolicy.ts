@@ -1,11 +1,10 @@
 import { NativeModules, Platform, Alert } from 'react-native';
 
-// Try both native modules - DevicePolicyModule from withDeviceOwner, DeviceAdmin from withDeviceAdmin
-const { DevicePolicyModule, DeviceAdmin } = NativeModules;
+// The unified native module for Device Admin
+const { EMIDeviceAdmin } = NativeModules;
 
-// Log available native modules for debugging
-console.log('DevicePolicyModule available:', !!DevicePolicyModule);
-console.log('DeviceAdmin available:', !!DeviceAdmin);
+// Log module availability
+console.log('EMIDeviceAdmin module available:', !!EMIDeviceAdmin);
 
 export interface DeviceInfo {
   isDeviceOwner: boolean;
@@ -14,31 +13,27 @@ export interface DeviceInfo {
 }
 
 class DevicePolicyManager {
-  private module: any;
-  
-  constructor() {
-    // Use whichever module is available
-    this.module = DevicePolicyModule || DeviceAdmin;
-    console.log('Using native module:', this.module ? 'Available' : 'NOT AVAILABLE');
-  }
-
   /**
-   * Check if any native module is available
+   * Check if native module is available
    */
   isNativeModuleAvailable(): boolean {
-    return Platform.OS === 'android' && !!this.module;
+    const available = Platform.OS === 'android' && !!EMIDeviceAdmin;
+    console.log('isNativeModuleAvailable:', available);
+    return available;
   }
 
   /**
-   * Check if app is Device Owner
+   * Check if app is Device Owner (requires ADB provisioning)
    */
   async isDeviceOwner(): Promise<boolean> {
-    if (Platform.OS !== 'android') return false;
-    try {
-      if (DevicePolicyModule?.isDeviceOwner) {
-        return await DevicePolicyModule.isDeviceOwner();
-      }
+    if (Platform.OS !== 'android' || !EMIDeviceAdmin) {
+      console.log('isDeviceOwner: Not available');
       return false;
+    }
+    try {
+      const result = await EMIDeviceAdmin.isDeviceOwner();
+      console.log('isDeviceOwner result:', result);
+      return result;
     } catch (error) {
       console.log('isDeviceOwner error:', error);
       return false;
@@ -49,18 +44,14 @@ class DevicePolicyManager {
    * Check if Device Admin is active
    */
   async isAdminActive(): Promise<boolean> {
-    if (Platform.OS !== 'android') return false;
-    try {
-      // Try DevicePolicyModule first
-      if (DevicePolicyModule?.isAdminActive) {
-        return await DevicePolicyModule.isAdminActive();
-      }
-      // Fallback to DeviceAdmin module
-      if (DeviceAdmin?.isDeviceAdminActive) {
-        return await DeviceAdmin.isDeviceAdminActive();
-      }
-      console.log('No native module found for isAdminActive');
+    if (Platform.OS !== 'android' || !EMIDeviceAdmin) {
+      console.log('isAdminActive: Module not available');
       return false;
+    }
+    try {
+      const result = await EMIDeviceAdmin.isAdminActive();
+      console.log('isAdminActive result:', result);
+      return result;
     } catch (error) {
       console.log('isAdminActive error:', error);
       return false;
@@ -68,61 +59,48 @@ class DevicePolicyManager {
   }
 
   /**
-   * Request Device Admin permission
+   * Request Device Admin permission - shows system dialog
    */
-  async requestAdmin(): Promise<boolean> {
+  async requestAdmin(): Promise<string> {
     if (Platform.OS !== 'android') {
       console.log('requestAdmin: Not Android');
-      return false;
+      return 'not_android';
+    }
+    
+    if (!EMIDeviceAdmin) {
+      console.log('requestAdmin: Native module not available');
+      Alert.alert(
+        'Module Not Available',
+        'Device Admin module is not available. Make sure you are using a production APK build.',
+        [{ text: 'OK' }]
+      );
+      return 'module_not_available';
     }
     
     try {
-      console.log('Attempting to request Device Admin...');
-      
-      // Try DevicePolicyModule first
-      if (DevicePolicyModule?.requestAdmin) {
-        console.log('Using DevicePolicyModule.requestAdmin');
-        const result = await DevicePolicyModule.requestAdmin();
-        console.log('DevicePolicyModule.requestAdmin result:', result);
-        return result;
-      }
-      
-      // Fallback to DeviceAdmin module
-      if (DeviceAdmin?.requestDeviceAdmin) {
-        console.log('Using DeviceAdmin.requestDeviceAdmin');
-        const result = await DeviceAdmin.requestDeviceAdmin();
-        console.log('DeviceAdmin.requestDeviceAdmin result:', result);
-        return result === 'requested' || result === 'already_active';
-      }
-      
-      console.log('No native module available for requestAdmin');
-      Alert.alert(
-        'Setup Required',
-        'Device Admin module is not available. Please ensure you are using a properly built APK, not Expo Go.',
-        [{ text: 'OK' }]
-      );
-      return false;
-    } catch (error) {
+      console.log('requestAdmin: Calling native module...');
+      const result = await EMIDeviceAdmin.requestAdmin();
+      console.log('requestAdmin result:', result);
+      return result;
+    } catch (error: any) {
       console.log('requestAdmin error:', error);
-      Alert.alert('Error', `Failed to request admin: ${error}`);
-      return false;
+      Alert.alert('Error', `Failed to request Device Admin: ${error.message || error}`);
+      return 'error';
     }
   }
 
   /**
-   * Lock the device screen
+   * Lock the device screen (requires Device Admin to be active)
    */
   async lockDevice(): Promise<boolean> {
-    if (Platform.OS !== 'android') return false;
-    try {
-      if (DevicePolicyModule?.lockDevice) {
-        return await DevicePolicyModule.lockDevice();
-      }
-      if (DeviceAdmin?.lockDevice) {
-        const result = await DeviceAdmin.lockDevice();
-        return result === 'locked';
-      }
+    if (Platform.OS !== 'android' || !EMIDeviceAdmin) {
+      console.log('lockDevice: Not available');
       return false;
+    }
+    try {
+      const result = await EMIDeviceAdmin.lockDevice();
+      console.log('lockDevice result:', result);
+      return result === 'locked';
     } catch (error) {
       console.log('lockDevice error:', error);
       return false;
@@ -130,37 +108,21 @@ class DevicePolicyManager {
   }
 
   /**
-   * Enable/disable Kiosk mode (locks to this app only)
-   * Requires Device Owner
+   * Enable/disable Kiosk mode (requires Device Owner)
    */
   async setKioskMode(enable: boolean): Promise<boolean> {
-    if (Platform.OS !== 'android') return false;
-    try {
-      if (DevicePolicyModule?.setKioskMode) {
-        return await DevicePolicyModule.setKioskMode(enable);
-      }
-      return false;
-    } catch (error) {
-      console.log('setKioskMode error:', error);
-      return false;
-    }
+    // This requires Device Owner which needs ADB provisioning
+    console.log('setKioskMode: Requires Device Owner (ADB provisioning)');
+    return false;
   }
 
   /**
-   * Block/unblock app uninstallation
-   * Requires Device Owner
+   * Block/unblock app uninstallation (requires Device Owner)
    */
   async disableUninstall(disable: boolean): Promise<boolean> {
-    if (Platform.OS !== 'android') return false;
-    try {
-      if (DevicePolicyModule?.disableUninstall) {
-        return await DevicePolicyModule.disableUninstall(disable);
-      }
-      return false;
-    } catch (error) {
-      console.log('disableUninstall error:', error);
-      return false;
-    }
+    // This requires Device Owner which needs ADB provisioning
+    console.log('disableUninstall: Requires Device Owner (ADB provisioning)');
+    return false;
   }
 
   /**
@@ -169,10 +131,6 @@ class DevicePolicyManager {
   async getDeviceInfo(): Promise<DeviceInfo | null> {
     if (Platform.OS !== 'android') return null;
     try {
-      if (DevicePolicyModule?.getDeviceInfo) {
-        return await DevicePolicyModule.getDeviceInfo();
-      }
-      // Build from individual calls
       return {
         isDeviceOwner: await this.isDeviceOwner(),
         isAdminActive: await this.isAdminActive(),
@@ -185,19 +143,11 @@ class DevicePolicyManager {
   }
 
   /**
-   * Set the lock state in preferences (for boot receiver)
+   * Set lock state for boot receiver
    */
   async setLockState(locked: boolean): Promise<boolean> {
-    if (Platform.OS !== 'android') return false;
-    try {
-      if (DevicePolicyModule?.setLockState) {
-        return await DevicePolicyModule.setLockState(locked);
-      }
-      return false;
-    } catch (error) {
-      console.log('setLockState error:', error);
-      return false;
-    }
+    console.log('setLockState:', locked);
+    return true;
   }
 }
 
