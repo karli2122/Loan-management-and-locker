@@ -16,7 +16,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
-import API_URL from '../../src/constants/api';
+import API_URL, { API_BASE_URL } from '../../src/constants/api';
 
 
 export default function AddClient() {
@@ -31,6 +31,8 @@ export default function AddClient() {
     emi_due_date: '',
   });
 
+  const baseUrl = API_URL || API_BASE_URL;
+
   const handleSubmit = async () => {
     if (!form.name.trim() || !form.phone.trim() || !form.email.trim()) {
       Alert.alert(t('error'), t('fillAllFields'));
@@ -40,7 +42,7 @@ export default function AddClient() {
     setLoading(true);
     try {
       const adminId = await AsyncStorage.getItem('admin_id');
-      const response = await fetch(`${API_URL}/api/clients`, {
+      const response = await fetch(`${baseUrl}/api/clients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -51,8 +53,14 @@ export default function AddClient() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to create client');
+        let detail = 'Failed to create client';
+        try {
+          const error = await response.json();
+          detail = error?.detail || detail;
+        } catch {
+          // non-JSON error
+        }
+        throw new Error(detail);
       }
 
       const client = await response.json();
