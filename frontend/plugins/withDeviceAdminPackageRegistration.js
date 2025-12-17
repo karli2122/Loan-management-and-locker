@@ -2,15 +2,17 @@ const { withMainApplication } = require('@expo/config-plugins');
 
 /**
  * This plugin adds the DeviceAdminPackage to the MainApplication's getPackages() method.
+ * It uses the app's package name dynamically.
  */
 function withDeviceAdminPackageRegistration(config) {
   return withMainApplication(config, (config) => {
     const mainApplication = config.modResults;
+    const packageName = config.android?.package || 'com.emi.client';
     
-    // Add import for DeviceAdminPackage
-    const importStatement = 'import com.eamilock.DeviceAdminPackage;';
+    // Add import for DeviceAdminPackage using the app's package name
+    const importStatement = `import ${packageName}.DeviceAdminPackage;`;
     
-    if (!mainApplication.contents.includes(importStatement)) {
+    if (!mainApplication.contents.includes(importStatement) && !mainApplication.contents.includes('DeviceAdminPackage')) {
       // Find the last import statement and add our import after it
       const importIndex = mainApplication.contents.lastIndexOf('import ');
       const importEndIndex = mainApplication.contents.indexOf(';', importIndex);
