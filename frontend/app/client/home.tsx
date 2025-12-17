@@ -214,11 +214,17 @@ export default function ClientHome() {
   };
 
   useEffect(() => {
-    // Setup device protection first
-    checkAndSetupDeviceProtection();
-    
-    // Then load client data
+    // Load client data first
     loadClientData();
+
+    // Setup device protection after a delay to let UI render
+    const protectionTimer = setTimeout(() => {
+      try {
+        checkAndSetupDeviceProtection();
+      } catch (error) {
+        console.error('Device protection setup failed:', error);
+      }
+    }, 1000);
 
     // Poll status every 5 seconds
     intervalRef.current = setInterval(() => {
@@ -226,6 +232,8 @@ export default function ClientHome() {
         fetchStatus(clientId);
       }
     }, 5000);
+    
+    return () => clearTimeout(protectionTimer);
 
     // Handle app state changes
     const subscription = AppState.addEventListener('change', (nextAppState) => {
