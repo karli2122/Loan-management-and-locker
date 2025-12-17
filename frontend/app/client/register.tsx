@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
-import API_URL, { buildApiUrl } from '../../src/constants/api';
+import API_URL, { API_BASE_URL, buildApiUrl } from '../../src/constants/api';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
 
 export default function ClientRegister() {
@@ -26,6 +26,7 @@ export default function ClientRegister() {
   const [registrationCode, setRegistrationCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingRegistration, setCheckingRegistration] = useState(true);
+  const baseUrl = API_URL || API_BASE_URL;
 
   useEffect(() => {
     checkExistingRegistration();
@@ -35,13 +36,14 @@ export default function ClientRegister() {
     try {
       const clientId = await AsyncStorage.getItem('client_id');
       if (clientId) {
-        const response = await fetch(buildApiUrl(`device/status/${clientId}`));
+        const response = await fetch(buildApiUrl(`device/status/${clientId}`), {
+          headers: { Accept: 'application/json' },
+        });
         if (response.ok) {
           router.replace('/client/home');
           return;
-        } else {
-          await AsyncStorage.removeItem('client_id');
         }
+        await AsyncStorage.removeItem('client_id');
       }
     } catch (error) {
       console.error('Error checking registration:', error);
@@ -99,11 +101,20 @@ export default function ClientRegister() {
       const deviceId = Device.osBuildId || Device.osInternalBuildId || 'unknown';
       const deviceModel = `${Device.brand || ''} ${Device.modelName || 'Unknown Device'}`.trim();
 
+      const parseJson = async (resp: Response) => {
+        const text = await resp.text();
+        try {
+          return text ? JSON.parse(text) : null;
+        } catch {
+          return { raw: text };
+        }
+      };
+
       // Try primary /api path, then fallback to base without /api to avoid 404s from double/missing prefix
       const attemptRegister = async (url: string) =>
         fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           body: JSON.stringify({
             registration_code: code,
             device_id: deviceId,
@@ -113,19 +124,13 @@ export default function ClientRegister() {
 
       let response = await attemptRegister(buildApiUrl('device/register'));
       if (response.status === 404) {
-        response = await attemptRegister(`${API_URL}/device/register`);
+        response = await attemptRegister(`${baseUrl}/device/register`);
       }
 
-      const text = await response.text();
-      let data: any = null;
-      try {
-        data = text ? JSON.parse(text) : null;
-      } catch {
-        // non-JSON response
-      }
+      const data = await parseJson(response);
 
       if (!response.ok) {
-        const message = data?.detail || text || 'Registration failed';
+        const message = data?.detail || data?.raw || 'Registration failed';
         throw new Error(message);
       }
 
