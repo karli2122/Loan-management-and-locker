@@ -119,12 +119,59 @@ export default function ClientRegister() {
         await AsyncStorage.setItem('client_data', JSON.stringify(data.client));
       }
       
-      // Show success and navigate
-      Alert.alert(
-        t('success'), 
-        t('deviceRegisteredSuccess'), 
-        [{ text: 'OK', onPress: navigateToHome }]
-      );
+      // Request Device Admin permissions on Android
+      if (Platform.OS === 'android') {
+        const { NativeModules } = require('react-native');
+        const { DevicePolicyModule, DeviceAdmin } = NativeModules;
+        
+        console.log('Checking for native modules...');
+        console.log('DevicePolicyModule:', !!DevicePolicyModule);
+        console.log('DeviceAdmin:', !!DeviceAdmin);
+        
+        const nativeModule = DevicePolicyModule || DeviceAdmin;
+        
+        if (nativeModule) {
+          // Show success and then request admin
+          Alert.alert(
+            t('success'),
+            'Device registered successfully!\n\nNext, we need to enable Device Admin to protect your device.',
+            [
+              {
+                text: 'Enable Protection',
+                onPress: async () => {
+                  try {
+                    console.log('Requesting Device Admin...');
+                    if (DevicePolicyModule?.requestAdmin) {
+                      await DevicePolicyModule.requestAdmin();
+                    } else if (DeviceAdmin?.requestDeviceAdmin) {
+                      await DeviceAdmin.requestDeviceAdmin();
+                    }
+                    console.log('Device Admin request completed');
+                  } catch (e) {
+                    console.log('Device Admin request error:', e);
+                  }
+                  navigateToHome();
+                }
+              }
+            ],
+            { cancelable: false }
+          );
+        } else {
+          console.log('No native module available');
+          Alert.alert(
+            t('success'), 
+            t('deviceRegisteredSuccess'), 
+            [{ text: 'OK', onPress: navigateToHome }]
+          );
+        }
+      } else {
+        // Non-Android platform
+        Alert.alert(
+          t('success'), 
+          t('deviceRegisteredSuccess'), 
+          [{ text: 'OK', onPress: navigateToHome }]
+        );
+      }
       
     } catch (error: any) {
       console.error('Registration error:', error);
