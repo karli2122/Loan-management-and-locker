@@ -255,6 +255,7 @@ export default function ClientHome() {
     });
 
     return () => {
+      clearTimeout(protectionTimer);
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
