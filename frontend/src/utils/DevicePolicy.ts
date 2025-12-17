@@ -1,6 +1,11 @@
-import { NativeModules, Platform } from 'react-native';
+import { NativeModules, Platform, Alert } from 'react-native';
 
-const { DevicePolicyModule } = NativeModules;
+// Try both native modules - DevicePolicyModule from withDeviceOwner, DeviceAdmin from withDeviceAdmin
+const { DevicePolicyModule, DeviceAdmin } = NativeModules;
+
+// Log available native modules for debugging
+console.log('DevicePolicyModule available:', !!DevicePolicyModule);
+console.log('DeviceAdmin available:', !!DeviceAdmin);
 
 export interface DeviceInfo {
   isDeviceOwner: boolean;
@@ -9,15 +14,33 @@ export interface DeviceInfo {
 }
 
 class DevicePolicyManager {
+  private module: any;
+  
+  constructor() {
+    // Use whichever module is available
+    this.module = DevicePolicyModule || DeviceAdmin;
+    console.log('Using native module:', this.module ? 'Available' : 'NOT AVAILABLE');
+  }
+
+  /**
+   * Check if any native module is available
+   */
+  isNativeModuleAvailable(): boolean {
+    return Platform.OS === 'android' && !!this.module;
+  }
+
   /**
    * Check if app is Device Owner
    */
   async isDeviceOwner(): Promise<boolean> {
     if (Platform.OS !== 'android') return false;
     try {
-      return await DevicePolicyModule?.isDeviceOwner() || false;
+      if (DevicePolicyModule?.isDeviceOwner) {
+        return await DevicePolicyModule.isDeviceOwner();
+      }
+      return false;
     } catch (error) {
-      console.log('DevicePolicy not available:', error);
+      console.log('isDeviceOwner error:', error);
       return false;
     }
   }
@@ -28,9 +51,18 @@ class DevicePolicyManager {
   async isAdminActive(): Promise<boolean> {
     if (Platform.OS !== 'android') return false;
     try {
-      return await DevicePolicyModule?.isAdminActive() || false;
+      // Try DevicePolicyModule first
+      if (DevicePolicyModule?.isAdminActive) {
+        return await DevicePolicyModule.isAdminActive();
+      }
+      // Fallback to DeviceAdmin module
+      if (DeviceAdmin?.isDeviceAdminActive) {
+        return await DeviceAdmin.isDeviceAdminActive();
+      }
+      console.log('No native module found for isAdminActive');
+      return false;
     } catch (error) {
-      console.log('DevicePolicy not available:', error);
+      console.log('isAdminActive error:', error);
       return false;
     }
   }
@@ -39,11 +71,40 @@ class DevicePolicyManager {
    * Request Device Admin permission
    */
   async requestAdmin(): Promise<boolean> {
-    if (Platform.OS !== 'android') return false;
+    if (Platform.OS !== 'android') {
+      console.log('requestAdmin: Not Android');
+      return false;
+    }
+    
     try {
-      return await DevicePolicyModule?.requestAdmin() || false;
+      console.log('Attempting to request Device Admin...');
+      
+      // Try DevicePolicyModule first
+      if (DevicePolicyModule?.requestAdmin) {
+        console.log('Using DevicePolicyModule.requestAdmin');
+        const result = await DevicePolicyModule.requestAdmin();
+        console.log('DevicePolicyModule.requestAdmin result:', result);
+        return result;
+      }
+      
+      // Fallback to DeviceAdmin module
+      if (DeviceAdmin?.requestDeviceAdmin) {
+        console.log('Using DeviceAdmin.requestDeviceAdmin');
+        const result = await DeviceAdmin.requestDeviceAdmin();
+        console.log('DeviceAdmin.requestDeviceAdmin result:', result);
+        return result === 'requested' || result === 'already_active';
+      }
+      
+      console.log('No native module available for requestAdmin');
+      Alert.alert(
+        'Setup Required',
+        'Device Admin module is not available. Please ensure you are using a properly built APK, not Expo Go.',
+        [{ text: 'OK' }]
+      );
+      return false;
     } catch (error) {
-      console.log('Failed to request admin:', error);
+      console.log('requestAdmin error:', error);
+      Alert.alert('Error', `Failed to request admin: ${error}`);
       return false;
     }
   }
@@ -54,9 +115,16 @@ class DevicePolicyManager {
   async lockDevice(): Promise<boolean> {
     if (Platform.OS !== 'android') return false;
     try {
-      return await DevicePolicyModule?.lockDevice() || false;
+      if (DevicePolicyModule?.lockDevice) {
+        return await DevicePolicyModule.lockDevice();
+      }
+      if (DeviceAdmin?.lockDevice) {
+        const result = await DeviceAdmin.lockDevice();
+        return result === 'locked';
+      }
+      return false;
     } catch (error) {
-      console.log('Failed to lock device:', error);
+      console.log('lockDevice error:', error);
       return false;
     }
   }
@@ -68,9 +136,12 @@ class DevicePolicyManager {
   async setKioskMode(enable: boolean): Promise<boolean> {
     if (Platform.OS !== 'android') return false;
     try {
-      return await DevicePolicyModule?.setKioskMode(enable) || false;
+      if (DevicePolicyModule?.setKioskMode) {
+        return await DevicePolicyModule.setKioskMode(enable);
+      }
+      return false;
     } catch (error) {
-      console.log('Failed to set kiosk mode:', error);
+      console.log('setKioskMode error:', error);
       return false;
     }
   }
@@ -82,9 +153,12 @@ class DevicePolicyManager {
   async disableUninstall(disable: boolean): Promise<boolean> {
     if (Platform.OS !== 'android') return false;
     try {
-      return await DevicePolicyModule?.disableUninstall(disable) || false;
+      if (DevicePolicyModule?.disableUninstall) {
+        return await DevicePolicyModule.disableUninstall(disable);
+      }
+      return false;
     } catch (error) {
-      console.log('Failed to set uninstall block:', error);
+      console.log('disableUninstall error:', error);
       return false;
     }
   }
@@ -95,9 +169,17 @@ class DevicePolicyManager {
   async getDeviceInfo(): Promise<DeviceInfo | null> {
     if (Platform.OS !== 'android') return null;
     try {
-      return await DevicePolicyModule?.getDeviceInfo() || null;
+      if (DevicePolicyModule?.getDeviceInfo) {
+        return await DevicePolicyModule.getDeviceInfo();
+      }
+      // Build from individual calls
+      return {
+        isDeviceOwner: await this.isDeviceOwner(),
+        isAdminActive: await this.isAdminActive(),
+        packageName: 'com.emi.client'
+      };
     } catch (error) {
-      console.log('Failed to get device info:', error);
+      console.log('getDeviceInfo error:', error);
       return null;
     }
   }
@@ -108,9 +190,12 @@ class DevicePolicyManager {
   async setLockState(locked: boolean): Promise<boolean> {
     if (Platform.OS !== 'android') return false;
     try {
-      return await DevicePolicyModule?.setLockState(locked) || false;
+      if (DevicePolicyModule?.setLockState) {
+        return await DevicePolicyModule.setLockState(locked);
+      }
+      return false;
     } catch (error) {
-      console.log('Failed to set lock state:', error);
+      console.log('setLockState error:', error);
       return false;
     }
   }
