@@ -59,6 +59,11 @@ export default function ClientRegister() {
     }
   };
 
+  const navigateToHome = () => {
+    console.log('Navigating to home...');
+    router.replace('/client/home');
+  };
+
   const handleRegister = async () => {
     if (!registrationCode.trim()) {
       Alert.alert(t('error'), t('fillAllFields'));
@@ -67,7 +72,7 @@ export default function ClientRegister() {
 
     setLoading(true);
     try {
-      const deviceId = Device.osBuildId || Device.osInternalBuildId || 'unknown';
+      const deviceId = Device.osBuildId || Device.osInternalBuildId || `device_${Date.now()}`;
       const deviceModel = `${Device.brand || ''} ${Device.modelName || 'Unknown Device'}`.trim();
 
       const registerUrl = getApiUrl('api/device/register');
@@ -75,7 +80,10 @@ export default function ClientRegister() {
 
       const response = await fetch(registerUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({
           registration_code: registrationCode.toUpperCase(),
           device_id: deviceId,
@@ -84,52 +92,50 @@ export default function ClientRegister() {
       });
 
       console.log('Registration response status:', response.status);
-      const data = await response.json();
+      
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Parse error:', responseText.substring(0, 200));
+        throw new Error('Server error. Please try again.');
+      }
 
       if (!response.ok) {
+        // If already registered, try to navigate to home
+        if (data.detail && data.detail.includes('already registered')) {
+          const existingClientId = await AsyncStorage.getItem('client_id');
+          if (existingClientId) {
+            Alert.alert(
+              t('success'), 
+              'Device already registered!',
+              [{ text: 'OK', onPress: navigateToHome }]
+            );
+            return;
+          }
+        }
         throw new Error(data.detail || 'Registration failed');
       }
 
+      // Save client ID
       await AsyncStorage.setItem('client_id', data.client_id);
+      console.log('Client ID saved:', data.client_id);
       
       // Store client data including lock_mode
-      const clientData = data.client;
-      await AsyncStorage.setItem('client_data', JSON.stringify(clientData));
-      
-      // Handle Device Admin mode setup automatically
-      if (clientData?.lock_mode === 'device_admin') {
-        // Dynamic import to avoid crashes on non-Android
-        try {
-          const DeviceAdmin = (await import('../../src/components/DeviceAdmin')).default;
-          const isActive = await DeviceAdmin.isDeviceAdminActive();
-          
-          if (!isActive) {
-            // Request Device Admin permissions
-            await DeviceAdmin.requestDeviceAdmin();
-            // Show message that permissions are needed
-            Alert.alert(
-              t('success'), 
-              'Device registered! Please grant Device Admin permission in the next screen to complete setup.',
-              [{ text: 'OK', onPress: () => router.replace('/client/home') }]
-            );
-          } else {
-            Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
-              { text: 'OK', onPress: () => router.replace('/client/home') },
-            ]);
-          }
-        } catch (err) {
-          console.log('Device Admin not available:', err);
-          Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
-            { text: 'OK', onPress: () => router.replace('/client/home') },
-          ]);
-        }
-      } else {
-        // Device Owner mode - registration complete
-        Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
-          { text: 'OK', onPress: () => router.replace('/client/home') },
-        ]);
+      if (data.client) {
+        await AsyncStorage.setItem('client_data', JSON.stringify(data.client));
       }
+      
+      // Show success and navigate
+      Alert.alert(
+        t('success'), 
+        t('deviceRegisteredSuccess'), 
+        [{ text: 'OK', onPress: navigateToHome }]
+      );
+      
     } catch (error: any) {
+      console.error('Registration error:', error);
       Alert.alert(t('error'), error.message || 'Registration failed');
     } finally {
       setLoading(false);
