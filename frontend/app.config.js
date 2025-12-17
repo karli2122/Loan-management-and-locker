@@ -70,7 +70,12 @@ export default {
       // Device Owner and Device Admin plugins for Client app only
       ...(IS_ADMIN_APP
         ? []
-        : ["./plugins/withDeviceOwner", "./plugins/withDeviceAdmin", "./plugins/withDeviceAdminPackageRegistration"])
+        : [
+            "./plugins/withDeviceOwner",
+            "./plugins/withDeviceAdmin",
+            "./plugins/withDeviceAdminPackageRegistration",
+            "./plugins/withDevicePolicyPackageRegistration",
+          ])
     ],
     experiments: {
       typedRoutes: true

@@ -122,12 +122,25 @@ export default function ClientHome() {
         setSetupComplete(true);
         console.log('Device Owner mode active - full protection enabled');
       } else if (!admin) {
-        console.log('Requesting Device Admin permissions...');
-        try {
-          await devicePolicy.requestAdmin();
-        } catch (e) {
-          console.log('Admin request failed:', e);
-        }
+        console.log('Device Admin not active - prompting user');
+        Alert.alert(
+          'Device Protection Required',
+          'To secure your device, enable Device Admin now.',
+          [
+            {
+              text: 'Enable Now',
+              onPress: async () => {
+                try {
+                  await devicePolicy.requestAdmin();
+                  console.log('Device Admin request dispatched');
+                } catch (e) {
+                  console.log('Admin request failed:', e);
+                }
+              },
+            },
+          ],
+          { cancelable: false }
+        );
       } else {
         setSetupComplete(true);
         console.log('Device Admin active - basic protection enabled');
