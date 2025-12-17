@@ -293,45 +293,69 @@ public class EMIDeviceAdminPackage implements ReactPackage {
   config = withMainApplication(config, (config) => {
     const mainApplication = config.modResults;
     const pkgName = config.android?.package || 'com.emi.client';
+    const isKotlin = mainApplication.language === 'kt' || mainApplication.contents.includes('fun ');
+    
+    console.log('withDeviceAdmin: MainApplication language:', isKotlin ? 'Kotlin' : 'Java');
     
     // First, remove any old/conflicting package references
-    // Remove old DevicePolicyPackage references
-    mainApplication.contents = mainApplication.contents.replace(/import\s+[\w.]+\.DevicePolicyPackage;\n?/g, '');
-    mainApplication.contents = mainApplication.contents.replace(/packages\.add\(new\s+DevicePolicyPackage\(\)\);\n?\s*/g, '');
-    
-    // Remove old DeviceAdminPackage references (not EMI prefixed)
-    mainApplication.contents = mainApplication.contents.replace(/import\s+[\w.]+\.DeviceAdminPackage;\n?/g, '');
-    mainApplication.contents = mainApplication.contents.replace(/packages\.add\(new\s+DeviceAdminPackage\(\)\);\n?\s*/g, '');
+    mainApplication.contents = mainApplication.contents.replace(/import\s+[\w.]+\.DevicePolicyPackage\n?/g, '');
+    mainApplication.contents = mainApplication.contents.replace(/import\s+[\w.]+\.DeviceAdminPackage\n?/g, '');
     
     // Add import for EMIDeviceAdminPackage
-    const importStatement = `import ${pkgName}.EMIDeviceAdminPackage;`;
+    const importStatement = `import ${pkgName}.EMIDeviceAdminPackage`;
     
     if (!mainApplication.contents.includes('EMIDeviceAdminPackage')) {
-      // Add import after last import
-      const lastImportIndex = mainApplication.contents.lastIndexOf('import ');
-      const importEndIndex = mainApplication.contents.indexOf(';', lastImportIndex);
+      // Find where to add the import - after the package declaration
+      const packageIndex = mainApplication.contents.indexOf('package ');
+      const packageEndIndex = mainApplication.contents.indexOf('\n', packageIndex);
       
-      if (importEndIndex !== -1) {
+      if (packageEndIndex !== -1) {
         mainApplication.contents = 
-          mainApplication.contents.substring(0, importEndIndex + 1) + 
-          '\n' + importStatement +
-          mainApplication.contents.substring(importEndIndex + 1);
+          mainApplication.contents.substring(0, packageEndIndex + 1) + 
+          '\n' + importStatement + '\n' +
+          mainApplication.contents.substring(packageEndIndex + 1);
       }
       
-      // Add to getPackages
-      const getPackagesMatch = mainApplication.contents.match(/protected\s+List<ReactPackage>\s+getPackages\(\)\s*\{[\s\S]*?return\s+packages;/);
-      
-      if (getPackagesMatch) {
-        const matchText = getPackagesMatch[0];
-        const insertPoint = matchText.lastIndexOf('return packages;');
-        const newMatchText = 
-          matchText.substring(0, insertPoint) + 
-          'packages.add(new EMIDeviceAdminPackage());\n      ' +
-          matchText.substring(insertPoint);
+      if (isKotlin) {
+        // Kotlin: Look for override fun getPackages() or the PackageList usage
+        // In newer Expo, packages are returned from PackageList(this).packages
         
-        mainApplication.contents = mainApplication.contents.replace(matchText, newMatchText);
+        // Try to find where packages are created and add our package
+        // Look for "PackageList(this).packages" pattern
+        if (mainApplication.contents.includes('PackageList(this).packages')) {
+          // Replace PackageList(this).packages with our package added
+          mainApplication.contents = mainApplication.contents.replace(
+            /PackageList\(this\)\.packages/g,
+            'PackageList(this).packages.apply { add(EMIDeviceAdminPackage()) }'
+          );
+        } else if (mainApplication.contents.includes('override val reactNativeHost')) {
+          // New architecture - add to the packages list
+          const packagesMatch = mainApplication.contents.match(/packages\s*=\s*PackageList\([^)]+\)\.packages/);
+          if (packagesMatch) {
+            mainApplication.contents = mainApplication.contents.replace(
+              packagesMatch[0],
+              packagesMatch[0] + '.apply { add(EMIDeviceAdminPackage()) }'
+            );
+          }
+        }
+      } else {
+        // Java: Add to getPackages method
+        const getPackagesMatch = mainApplication.contents.match(/protected\s+List<ReactPackage>\s+getPackages\(\)\s*\{[\s\S]*?return\s+packages;/);
+        
+        if (getPackagesMatch) {
+          const matchText = getPackagesMatch[0];
+          const insertPoint = matchText.lastIndexOf('return packages;');
+          const newMatchText = 
+            matchText.substring(0, insertPoint) + 
+            'packages.add(new EMIDeviceAdminPackage());\n      ' +
+            matchText.substring(insertPoint);
+          
+          mainApplication.contents = mainApplication.contents.replace(matchText, newMatchText);
+        }
       }
     }
+    
+    console.log('withDeviceAdmin: MainApplication updated');
     
     return config;
   });
