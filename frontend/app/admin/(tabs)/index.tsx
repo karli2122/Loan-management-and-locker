@@ -53,7 +53,7 @@ export default function Dashboard() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/reports/collection`);
+      const response = await fetch(getApiUrl('api/reports/collection'));
       const data = await response.json();
       
       setLoanStats({
