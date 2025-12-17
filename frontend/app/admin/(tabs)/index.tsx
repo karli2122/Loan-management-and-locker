@@ -57,8 +57,9 @@ export default function Dashboard() {
   });
 
   const fetchStats = async () => {
+    const baseUrl = API_URL || 'https://deviceloan-1.preview.emergentagent.com';
     try {
-      const response = await fetch(`${API_URL}/api/reports/collection`);
+      const response = await fetch(`${baseUrl}/api/reports/collection`);
       const data = await response.json();
       
       setLoanStats({
