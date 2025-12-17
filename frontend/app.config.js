@@ -46,7 +46,8 @@ export default {
       ...(IS_ADMIN_APP ? [] : [
         "./plugins/withDeviceOwner", 
         "./plugins/withDeviceAdmin",
-        "./plugins/withDeviceAdminPackageRegistration"
+        "./plugins/withDeviceAdminPackageRegistration",
+        "./plugins/withDevicePolicyPackageRegistration"
       ])
     ],
     experiments: {
