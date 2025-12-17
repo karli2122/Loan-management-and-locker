@@ -1,7 +1,8 @@
 const { withMainApplication } = require('@expo/config-plugins');
 
 const IMPORT_LINE = 'import com.eamilock.DeviceAdminPackage;';
-const PACKAGE_INSTANCE = 'new DeviceAdminPackage()';
+const PACKAGE_INSTANCE_JAVA = 'new DeviceAdminPackage()';
+const PACKAGE_INSTANCE_KOTLIN = 'DeviceAdminPackage()';
 
 function addImport(contents) {
   if (contents.includes(IMPORT_LINE)) return contents;
@@ -18,7 +19,20 @@ function addImport(contents) {
 }
 
 function addPackage(contents) {
-  if (contents.includes(PACKAGE_INSTANCE)) return contents;
+  if (
+    contents.includes(PACKAGE_INSTANCE_JAVA) ||
+    contents.includes(PACKAGE_INSTANCE_KOTLIN)
+  )
+    return contents;
+
+  const kotlinApplyPattern =
+    /^(\s*)PackageList\(this\)\.packages\.apply\s*\{\s*$/m;
+  if (kotlinApplyPattern.test(contents)) {
+    return contents.replace(
+      kotlinApplyPattern,
+      (fullLine, indent) => `${fullLine}\n${indent}  add(DeviceAdminPackage())`
+    );
+  }
 
   // Kotlin: val packages = PackageList(this).packages
   const kotlinPackagesPattern =

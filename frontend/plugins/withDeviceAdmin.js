@@ -411,23 +411,36 @@ public class TamperDetectionService extends Service {
   },
 ];
 
+function ensureNativeFiles(projectRoot) {
+  const javaDir = path.join(
+    projectRoot,
+    'android',
+    'app',
+    'src',
+    'main',
+    'java',
+    'com',
+    'eamilock'
+  );
+  fs.mkdirSync(javaDir, { recursive: true });
+
+  FILES.forEach(({ name, content }) => {
+    const target = path.join(javaDir, name);
+    if (!fs.existsSync(target)) {
+      fs.writeFileSync(target, content);
+    }
+  });
+}
+
 module.exports = function withDeviceAdmin(config) {
   config = withDangerousMod(config, 'android', (config) => {
-    const projectRoot = config.modRequest.projectRoot;
-    const javaDir = path.join(projectRoot, 'android', 'app', 'src', 'main', 'java', 'com', 'eamilock');
-    fs.mkdirSync(javaDir, { recursive: true });
-
-    FILES.forEach(({ name, content }) => {
-      const target = path.join(javaDir, name);
-      if (!fs.existsSync(target)) {
-        fs.writeFileSync(target, content);
-      }
-    });
-
+    ensureNativeFiles(config.modRequest.projectRoot);
     return config;
   });
 
   return withAndroidManifest(config, (config) => {
+    ensureNativeFiles(config.modRequest.projectRoot);
+
     const androidManifest = config.modResults.manifest;
 
     if (!androidManifest.application) {
