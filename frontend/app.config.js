@@ -68,7 +68,7 @@ export default {
         }
       ],
       // Device Owner and Device Admin plugins for Client app only
-      ...(IS_ADMIN_APP ? [] : ["./plugins/withDeviceAdmin"])
+      ...(IS_ADMIN_APP ? [] : ["emi-device-admin"])
     ],
     experiments: {
       typedRoutes: true

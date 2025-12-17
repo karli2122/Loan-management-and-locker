@@ -1,6 +1,7 @@
 import { NativeModules, Platform } from 'react-native';
+import * as EMIDeviceAdmin from 'emi-device-admin';
 
-const { EMIDeviceAdmin, DevicePolicyModule } = NativeModules;
+const { DevicePolicyModule } = NativeModules;
 
 export interface DeviceInfo {
   isDeviceOwner: boolean;

@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL, { API_BASE_URL, buildApiUrl } from '../../src/constants/api';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
+import * as EMIDeviceAdmin from 'emi-device-admin';
 
 export default function ClientRegister() {
   const router = useRouter();
@@ -150,17 +151,13 @@ export default function ClientRegister() {
       
       // Handle Device Admin mode setup automatically
       if (clientData?.lock_mode === 'device_admin') {
-        // Dynamic import to avoid crashes on non-Android
         try {
-          const DeviceAdmin = (await import('../../src/components/DeviceAdmin')).default;
-          const isActive = await DeviceAdmin.isDeviceAdminActive();
-          
+          const isActive = (await EMIDeviceAdmin?.isDeviceAdminActive?.()) ?? false;
+
           if (!isActive) {
-            // Request Device Admin permissions
-            await DeviceAdmin.requestDeviceAdmin();
-            // Show message that permissions are needed
+            await EMIDeviceAdmin?.requestDeviceAdmin?.();
             Alert.alert(
-              t('success'), 
+              t('success'),
               t('deviceAdminPermissionPrompt'),
               [{ text: t('ok'), onPress: () => router.replace('/client/home') }]
             );
