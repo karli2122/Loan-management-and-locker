@@ -15,5 +15,5 @@ export const getApiUrl = (endpoint: string): string => {
   return `${baseUrl}/${cleanEndpoint}`;
 };
 
-// For use in fetch calls
-export const API_BASE_URL = getBaseUrl();
+// For use in template literals - always use the fallback if env var is not set
+export const API_BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL?.replace(/\/$/, '') || FALLBACK_URL;
