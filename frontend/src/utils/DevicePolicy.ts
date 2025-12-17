@@ -1,10 +1,5 @@
-import { NativeModules, Platform, Alert } from 'react-native';
-
-// The unified native module for Device Admin
-const { EMIDeviceAdmin } = NativeModules;
-
-// Log module availability
-console.log('EMIDeviceAdmin module available:', !!EMIDeviceAdmin);
+import { Platform, Alert } from 'react-native';
+import * as EMIDeviceAdmin from 'emi-device-admin';
 
 export interface DeviceInfo {
   isDeviceOwner: boolean;
@@ -17,8 +12,9 @@ class DevicePolicyManager {
    * Check if native module is available
    */
   isNativeModuleAvailable(): boolean {
-    const available = Platform.OS === 'android' && !!EMIDeviceAdmin;
-    console.log('isNativeModuleAvailable:', available);
+    if (Platform.OS !== 'android') return false;
+    const available = EMIDeviceAdmin.isModuleAvailable();
+    console.log('EMIDeviceAdmin.isModuleAvailable:', available);
     return available;
   }
 
@@ -26,13 +22,10 @@ class DevicePolicyManager {
    * Check if app is Device Owner (requires ADB provisioning)
    */
   async isDeviceOwner(): Promise<boolean> {
-    if (Platform.OS !== 'android' || !EMIDeviceAdmin) {
-      console.log('isDeviceOwner: Not available');
-      return false;
-    }
+    if (Platform.OS !== 'android') return false;
     try {
       const result = await EMIDeviceAdmin.isDeviceOwner();
-      console.log('isDeviceOwner result:', result);
+      console.log('isDeviceOwner:', result);
       return result;
     } catch (error) {
       console.log('isDeviceOwner error:', error);
@@ -44,13 +37,10 @@ class DevicePolicyManager {
    * Check if Device Admin is active
    */
   async isAdminActive(): Promise<boolean> {
-    if (Platform.OS !== 'android' || !EMIDeviceAdmin) {
-      console.log('isAdminActive: Module not available');
-      return false;
-    }
+    if (Platform.OS !== 'android') return false;
     try {
       const result = await EMIDeviceAdmin.isAdminActive();
-      console.log('isAdminActive result:', result);
+      console.log('isAdminActive:', result);
       return result;
     } catch (error) {
       console.log('isAdminActive error:', error);
@@ -67,18 +57,18 @@ class DevicePolicyManager {
       return 'not_android';
     }
     
-    if (!EMIDeviceAdmin) {
-      console.log('requestAdmin: Native module not available');
+    if (!EMIDeviceAdmin.isModuleAvailable()) {
+      console.log('requestAdmin: Module not available');
       Alert.alert(
         'Module Not Available',
-        'Device Admin module is not available. Make sure you are using a production APK build.',
+        'Device Admin module is not available. Make sure you are using a production APK build with the EMI Device Admin module.',
         [{ text: 'OK' }]
       );
       return 'module_not_available';
     }
     
     try {
-      console.log('requestAdmin: Calling native module...');
+      console.log('Calling EMIDeviceAdmin.requestAdmin()...');
       const result = await EMIDeviceAdmin.requestAdmin();
       console.log('requestAdmin result:', result);
       return result;
@@ -93,10 +83,7 @@ class DevicePolicyManager {
    * Lock the device screen (requires Device Admin to be active)
    */
   async lockDevice(): Promise<boolean> {
-    if (Platform.OS !== 'android' || !EMIDeviceAdmin) {
-      console.log('lockDevice: Not available');
-      return false;
-    }
+    if (Platform.OS !== 'android') return false;
     try {
       const result = await EMIDeviceAdmin.lockDevice();
       console.log('lockDevice result:', result);
@@ -111,7 +98,6 @@ class DevicePolicyManager {
    * Enable/disable Kiosk mode (requires Device Owner)
    */
   async setKioskMode(enable: boolean): Promise<boolean> {
-    // This requires Device Owner which needs ADB provisioning
     console.log('setKioskMode: Requires Device Owner (ADB provisioning)');
     return false;
   }
@@ -120,7 +106,6 @@ class DevicePolicyManager {
    * Block/unblock app uninstallation (requires Device Owner)
    */
   async disableUninstall(disable: boolean): Promise<boolean> {
-    // This requires Device Owner which needs ADB provisioning
     console.log('disableUninstall: Requires Device Owner (ADB provisioning)');
     return false;
   }
