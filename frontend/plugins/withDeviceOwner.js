@@ -3,6 +3,9 @@ const fs = require('fs');
 const path = require('path');
 
 function withDeviceOwner(config) {
+  // Get package name from config
+  const packageName = config.android?.package || 'com.emi.client';
+  
   // Add Device Admin Receiver to AndroidManifest.xml
   config = withAndroidManifest(config, (config) => {
     const manifest = config.modResults.manifest;
@@ -93,11 +96,11 @@ function withDeviceOwner(config) {
     'android',
     (config) => {
       const projectRoot = config.modRequest.projectRoot;
-      const packageName = config.android?.package || 'com.emi.client';
-      const packagePath = packageName.replace(/\./g, '/');
+      const pkgName = config.android?.package || 'com.emi.client';
+      const pkgPath = pkgName.replace(/\./g, '/');
       
       // Create directories
-      const javaDir = path.join(projectRoot, 'android', 'app', 'src', 'main', 'java', ...packagePath.split('/'));
+      const javaDir = path.join(projectRoot, 'android', 'app', 'src', 'main', 'java', ...pkgPath.split('/'));
       const resDir = path.join(projectRoot, 'android', 'app', 'src', 'main', 'res', 'xml');
       
       fs.mkdirSync(javaDir, { recursive: true });
@@ -119,13 +122,12 @@ function withDeviceOwner(config) {
       
       fs.writeFileSync(path.join(resDir, 'device_admin.xml'), deviceAdminXml);
       
-      // Write DeviceAdminReceiver.java
-      const deviceAdminReceiver = `package ${packageName};
+      // Write DeviceAdminReceiver.java with the correct package name
+      const deviceAdminReceiver = `package ${pkgName};
 
 import android.app.admin.DeviceAdminReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.widget.Toast;
 
 public class DeviceAdminReceiver extends android.app.admin.DeviceAdminReceiver {
     @Override
@@ -146,8 +148,8 @@ public class DeviceAdminReceiver extends android.app.admin.DeviceAdminReceiver {
       
       fs.writeFileSync(path.join(javaDir, 'DeviceAdminReceiver.java'), deviceAdminReceiver);
       
-      // Write BootReceiver.java
-      const bootReceiver = `package ${packageName};
+      // Write BootReceiver.java with the correct package name
+      const bootReceiver = `package ${pkgName};
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -175,15 +177,14 @@ public class BootReceiver extends BroadcastReceiver {
       
       fs.writeFileSync(path.join(javaDir, 'BootReceiver.java'), bootReceiver);
       
-      // Write DevicePolicyModule.java (Native Module)
-      const devicePolicyModule = `package ${packageName};
+      // Write DevicePolicyModule.java with the correct package name
+      const devicePolicyModule = `package ${pkgName};
 
 import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.Build;
 import android.app.Activity;
 
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -270,7 +271,6 @@ public class DevicePolicyModule extends ReactContextBaseJavaModule {
             Activity activity = getCurrentActivity();
             if (activity != null && devicePolicyManager.isDeviceOwnerApp(reactContext.getPackageName())) {
                 if (enable) {
-                    // Set as lock task package
                     devicePolicyManager.setLockTaskPackages(componentName, new String[]{reactContext.getPackageName()});
                     activity.startLockTask();
                 } else {
@@ -330,8 +330,8 @@ public class DevicePolicyModule extends ReactContextBaseJavaModule {
       
       fs.writeFileSync(path.join(javaDir, 'DevicePolicyModule.java'), devicePolicyModule);
       
-      // Write DevicePolicyPackage.java
-      const devicePolicyPackage = `package ${packageName};
+      // Write DevicePolicyPackage.java with the correct package name
+      const devicePolicyPackage = `package ${pkgName};
 
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;
