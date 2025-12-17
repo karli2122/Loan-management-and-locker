@@ -174,61 +174,17 @@ public class BootReceiver extends BroadcastReceiver {
   }]);
 }
 
-function addImport(contents, importLine) {
-  if (contents.includes(importLine)) return contents;
-  const packageDeclMatch = contents.match(/package\s+[^\n;]+[^\n]*\n/);
-  if (packageDeclMatch) {
-    const insertPos = packageDeclMatch.index + packageDeclMatch[0].length;
-    return contents.slice(0, insertPos) + `${importLine}\n` + contents.slice(insertPos);
-  }
-  return `${importLine}\n${contents}`;
-}
-
-function addPackage(contents, { kotlinInstance, javaInstance }) {
-  if (contents.includes(javaInstance) || contents.includes(kotlinInstance)) return contents;
-
-  const kotlinApplyPattern = /^(\s*)PackageList\(this\)\.packages\.apply\s*\{\s*$/m;
-  if (kotlinApplyPattern.test(contents)) {
-    return contents.replace(
-      kotlinApplyPattern,
-      (fullLine, indent) => `${fullLine}\n${indent}  add(${kotlinInstance})`
-    );
-  }
-
-  const kotlinPackagesPattern = /val\s+packages\s*=\s*PackageList\(this\)\.packages/;
-  if (kotlinPackagesPattern.test(contents)) {
-    return contents.replace(
-      kotlinPackagesPattern,
-      `val packages = PackageList(this).packages.toMutableList()\n        packages.add(${kotlinInstance})`
-    );
-  }
-
-  const packageListPattern =
-    /List<ReactPackage>\s+packages\s*=\s*new PackageList\(this\)\.getPackages\(\);\s*/;
-
-  if (packageListPattern.test(contents)) {
-    return contents.replace(packageListPattern, (match) => `${match}    packages.add(${javaInstance});\n    `);
-  }
-
-  const returnPattern = /return\s+packages;/;
-  if (returnPattern.test(contents)) {
-    return contents.replace(returnPattern, `packages.add(${javaInstance});\n        return packages;`);
-  }
-
-  return contents;
-}
-
-function withDeviceAdminPackageRegistration(config) {
-  const packageName = getPackageName(config);
-  const importLine = `import ${packageName}.DevicePolicyPackage;`;
-  const instances = {
-    javaInstance: 'new DevicePolicyPackage()',
-    kotlinInstance: 'DevicePolicyPackage()',
-  };
+function stripLegacyPackages(config) {
   return withMainApplication(config, (config) => {
     let contents = config.modResults.contents;
-    contents = addImport(contents, importLine);
-    contents = addPackage(contents, instances);
+    // Remove legacy imports
+    contents = contents.replace(/^import .*DevicePolicyPackage.*\n/gm, '');
+    contents = contents.replace(/^import .*DeviceAdminPackage.*\n/gm, '');
+    // Remove legacy package additions (Kotlin/Java)
+    contents = contents.replace(/^\s*add\(DevicePolicyPackage\(\)\);\s*\n/gm, '');
+    contents = contents.replace(/^\s*add\(DeviceAdminPackage\(\)\);\s*\n/gm, '');
+    contents = contents.replace(/packages\.add\(new DevicePolicyPackage\(\)\);\s*\n/gm, '');
+    contents = contents.replace(/packages\.add\(new DeviceAdminPackage\(\)\);\s*\n/gm, '');
     config.modResults.contents = contents;
     return config;
   });
@@ -237,6 +193,6 @@ function withDeviceAdminPackageRegistration(config) {
 module.exports = function withDeviceAdmin(config) {
   config = withDeviceAdminManifest(config);
   config = writeNativeFiles(config);
-  config = withDeviceAdminPackageRegistration(config);
+  config = stripLegacyPackages(config);
   return config;
 };
