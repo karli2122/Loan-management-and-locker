@@ -17,7 +17,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
-import API_URL, { buildApiUrl } from '../../src/constants/api';
+import API_URL, { API_BASE_URL, buildApiUrl } from '../../src/constants/api';
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -61,8 +61,9 @@ export default function AdminLogin() {
 
     setLoading(true);
     try {
+      const baseUrl = API_URL || API_BASE_URL;
       const primaryUrl = buildApiUrl('admin/login');
-      const fallbackUrl = `${API_URL}/admin/login`;
+      const fallbackUrl = `${baseUrl}/admin/login`;
       const REDIRECT_FIELDS = ['redirect_to', 'redirectTo'];
 
       const extractValue = (data: any, keys: string[]): string | null => {
@@ -168,7 +169,7 @@ export default function AdminLogin() {
         throw new Error(
           formatMessage(
             response.status,
-            'Unexpected non-JSON response. Verify backend URL and prefix.',
+            `Unexpected non-JSON response. Verify backend URL (${baseUrl}) and that /api prefix is used.`,
             parsed.text,
             parsed.url,
             getRedirect(parsed.data)
