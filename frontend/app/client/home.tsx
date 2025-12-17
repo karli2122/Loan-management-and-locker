@@ -104,35 +104,30 @@ export default function ClientHome() {
     }
   }, [getPushToken]);
 
+  const protectionTimeout = useRef<NodeJS.Timeout | null>(null);
+
   // Check and setup Device Owner/Admin
   const checkAndSetupDeviceProtection = async () => {
     if (Platform.OS !== 'android') return;
-    
+
     try {
-      // Check Device Owner status
       const owner = await devicePolicy.isDeviceOwner();
       setIsDeviceOwner(owner);
-      
-      // Check Admin status
+
       const admin = await devicePolicy.isAdminActive();
       setIsAdminActive(admin);
-      
+
       if (owner) {
-        // If device owner, enable uninstall protection
         await devicePolicy.disableUninstall(true);
         setSetupComplete(true);
         console.log('Device Owner mode active - full protection enabled');
       } else if (!admin) {
-        // If not admin, request admin permissions automatically
         console.log('Requesting Device Admin permissions...');
-        // Small delay to let UI load first
-        setTimeout(async () => {
-          try {
-            await devicePolicy.requestAdmin();
-          } catch (e) {
-            console.log('Admin request failed:', e);
-          }
-        }, 2000);
+        try {
+          await devicePolicy.requestAdmin();
+        } catch (e) {
+          console.log('Admin request failed:', e);
+        }
       } else {
         setSetupComplete(true);
         console.log('Device Admin active - basic protection enabled');
@@ -140,6 +135,18 @@ export default function ClientHome() {
     } catch (error) {
       console.error('Device protection setup error:', error);
     }
+  };
+
+  const scheduleDeviceProtectionCheck = () => {
+    if (Platform.OS !== 'android') return;
+    if (protectionTimeout.current) {
+      clearTimeout(protectionTimeout.current);
+    }
+    protectionTimeout.current = setTimeout(() => {
+      checkAndSetupDeviceProtection().catch((err) =>
+        console.error('Deferred device protection setup error:', err)
+      );
+    }, 500);
   };
 
   // Enable/Disable Kiosk mode based on lock status
@@ -262,8 +269,8 @@ export default function ClientHome() {
   };
 
   useEffect(() => {
-    // Setup device protection first
-    checkAndSetupDeviceProtection();
+    // Setup device protection first (deferred for safety)
+    scheduleDeviceProtectionCheck();
     
     // Then load client data
     loadClientData();
@@ -283,7 +290,7 @@ export default function ClientHome() {
           updateLocation(clientId);
         }
         // Re-check protection on app resume
-        checkAndSetupDeviceProtection();
+        scheduleDeviceProtectionCheck();
       }
       appState.current = nextAppState;
     });
@@ -299,6 +306,9 @@ export default function ClientHome() {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+      }
+      if (protectionTimeout.current) {
+        clearTimeout(protectionTimeout.current);
       }
       subscription.remove();
       backHandler.remove();
