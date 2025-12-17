@@ -65,10 +65,12 @@ export default function ClientHome() {
       // Check Device Owner status
       const owner = await devicePolicy.isDeviceOwner();
       setIsDeviceOwner(owner);
+      console.log('Device Owner status:', owner);
       
       // Check Admin status
       const admin = await devicePolicy.isAdminActive();
       setIsAdminActive(admin);
+      console.log('Device Admin status:', admin);
       
       if (owner) {
         // If device owner, enable uninstall protection
@@ -76,16 +78,27 @@ export default function ClientHome() {
         setSetupComplete(true);
         console.log('Device Owner mode active - full protection enabled');
       } else if (!admin) {
-        // If not admin, request admin permissions automatically
+        // If not admin, show alert and request admin permissions
         console.log('Requesting Device Admin permissions...');
-        // Small delay to let UI load first
-        setTimeout(async () => {
-          try {
-            await devicePolicy.requestAdmin();
-          } catch (e) {
-            console.log('Admin request failed:', e);
-          }
-        }, 2000);
+        
+        Alert.alert(
+          'Device Protection Required',
+          'This app requires Device Admin permissions to protect your device. Please tap "Activate" on the next screen.',
+          [
+            {
+              text: 'Enable Now',
+              onPress: async () => {
+                try {
+                  const result = await devicePolicy.requestAdmin();
+                  console.log('Admin request result:', result);
+                } catch (e) {
+                  console.log('Admin request failed:', e);
+                }
+              }
+            }
+          ],
+          { cancelable: false }
+        );
       } else {
         setSetupComplete(true);
         console.log('Device Admin active - basic protection enabled');
