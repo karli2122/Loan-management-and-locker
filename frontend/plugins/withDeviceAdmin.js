@@ -3,6 +3,9 @@ const fs = require('fs');
 const path = require('path');
 
 function withDeviceAdmin(config) {
+  // Get the package name from config
+  const packageName = config.android?.package || 'com.emi.client';
+  
   // Add Device Admin Receiver to AndroidManifest.xml
   config = withAndroidManifest(config, (config) => {
     const androidManifest = config.modResults.manifest;
@@ -20,13 +23,13 @@ function withDeviceAdmin(config) {
 
     // Check if receiver already exists
     const receiverExists = application.receiver.some(
-      receiver => receiver.$?.['android:name'] === 'com.eamilock.DeviceAdminModule$MyDeviceAdminReceiver'
+      receiver => receiver.$?.['android:name'] === '.DeviceAdminModule$MyDeviceAdminReceiver'
     );
 
     if (!receiverExists) {
       application.receiver.push({
         $: {
-          'android:name': 'com.eamilock.DeviceAdminModule$MyDeviceAdminReceiver',
+          'android:name': '.DeviceAdminModule$MyDeviceAdminReceiver',
           'android:label': '@string/app_name',
           'android:description': '@string/app_name',
           'android:permission': 'android.permission.BIND_DEVICE_ADMIN',
@@ -60,13 +63,13 @@ function withDeviceAdmin(config) {
     }
     
     const serviceExists = application.service.some(
-      service => service.$?.['android:name'] === 'com.eamilock.TamperDetectionService'
+      service => service.$?.['android:name'] === '.TamperDetectionService'
     );
     
     if (!serviceExists) {
       application.service.push({
         $: {
-          'android:name': 'com.eamilock.TamperDetectionService',
+          'android:name': '.TamperDetectionService',
           'android:enabled': 'true',
           'android:exported': 'false',
         },
@@ -75,13 +78,13 @@ function withDeviceAdmin(config) {
 
     // Add Boot Receiver for TamperDetectionService
     const bootReceiverExists = application.receiver.some(
-      receiver => receiver.$?.['android:name'] === 'com.eamilock.TamperDetectionService$BootReceiver'
+      receiver => receiver.$?.['android:name'] === '.TamperDetectionService$BootReceiver'
     );
 
     if (!bootReceiverExists) {
       application.receiver.push({
         $: {
-          'android:name': 'com.eamilock.TamperDetectionService$BootReceiver',
+          'android:name': '.TamperDetectionService$BootReceiver',
           'android:enabled': 'true',
           'android:exported': 'true',
         },
@@ -128,6 +131,8 @@ function withDeviceAdmin(config) {
     'android',
     (config) => {
       const projectRoot = config.modRequest.projectRoot;
+      const pkgName = config.android?.package || 'com.emi.client';
+      const pkgPath = pkgName.replace(/\./g, '/');
       
       // Create res/xml directory and device_admin.xml
       const resXmlDir = path.join(projectRoot, 'android', 'app', 'src', 'main', 'res', 'xml');
@@ -149,12 +154,12 @@ function withDeviceAdmin(config) {
       
       fs.writeFileSync(path.join(resXmlDir, 'device_admin.xml'), deviceAdminXml);
 
-      // Create java directory for native modules
-      const javaDir = path.join(projectRoot, 'android', 'app', 'src', 'main', 'java', 'com', 'eamilock');
+      // Create java directory for native modules using the app's package name
+      const javaDir = path.join(projectRoot, 'android', 'app', 'src', 'main', 'java', ...pkgPath.split('/'));
       fs.mkdirSync(javaDir, { recursive: true });
 
-      // Write DeviceAdminModule.java
-      const deviceAdminModule = `package com.eamilock;
+      // Write DeviceAdminModule.java with the correct package name
+      const deviceAdminModule = `package ${pkgName};
 
 import android.app.admin.DeviceAdminReceiver;
 import android.app.admin.DevicePolicyManager;
@@ -354,8 +359,8 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
       
       fs.writeFileSync(path.join(javaDir, 'DeviceAdminModule.java'), deviceAdminModule);
 
-      // Write DeviceAdminPackage.java
-      const deviceAdminPackage = `package com.eamilock;
+      // Write DeviceAdminPackage.java with the correct package name
+      const deviceAdminPackage = `package ${pkgName};
 
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;
@@ -382,8 +387,8 @@ public class DeviceAdminPackage implements ReactPackage {
       
       fs.writeFileSync(path.join(javaDir, 'DeviceAdminPackage.java'), deviceAdminPackage);
 
-      // Write TamperDetectionService.java
-      const tamperService = `package com.eamilock;
+      // Write TamperDetectionService.java with the correct package name
+      const tamperService = `package ${pkgName};
 
 import android.app.Service;
 import android.content.BroadcastReceiver;
@@ -431,7 +436,7 @@ public class TamperDetectionService extends Service {
     }
 
     private void sendEventToReactNative(String eventType) {
-        Intent intent = new Intent("com.eamilock.TAMPER_EVENT");
+        Intent intent = new Intent("com.emi.TAMPER_EVENT");
         intent.putExtra("eventType", eventType);
         intent.putExtra("timestamp", System.currentTimeMillis());
         sendBroadcast(intent);
