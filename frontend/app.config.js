@@ -41,11 +41,8 @@ export default {
           resizeMode: "contain",
           backgroundColor: "#0F172A"
         }
-      ],
-      // Device Admin plugin for Client app only - handles native module and MainApplication registration
-      ...(IS_ADMIN_APP ? [] : [
-        "./plugins/withDeviceAdmin"
-      ])
+      ]
+      // Note: emi-device-admin is a local Expo module that is auto-linked during prebuild
     ],
     experiments: {
       typedRoutes: true
