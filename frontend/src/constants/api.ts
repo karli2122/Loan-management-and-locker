@@ -10,7 +10,7 @@ function normalize(url: string) {
 const raw =
   process.env.EXPO_PUBLIC_BACKEND_URL ||
   (Constants.expoConfig?.extra as any)?.backendUrl ||
-  'https://deviceloan-1.preview.emergentagent.com';
+  'https://loantrack-23.preview.emergentagent.com';
 
 const API_URL = normalize(raw);
 

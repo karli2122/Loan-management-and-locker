@@ -77,7 +77,7 @@ export default {
     },
     extra: {
       appMode: IS_ADMIN_APP ? "admin" : "client",
-      backendUrl: process.env.EXPO_PUBLIC_BACKEND_URL || "https://deviceloan-1.preview.emergentagent.com",
+      backendUrl: process.env.EXPO_PUBLIC_BACKEND_URL || "https://loantrack-23.preview.emergentagent.com",
       eas: {
         projectId: IS_ADMIN_APP
           ? "7be3aec1-6fef-4200-9987-5868c4320a07"
