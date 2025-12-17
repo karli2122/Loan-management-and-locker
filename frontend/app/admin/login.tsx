@@ -42,79 +42,69 @@ export default function AdminLogin() {
 
     setLoading(true);
     try {
-      console.log('API_URL:', API_URL);
       const loginUrl = getApiUrl('api/admin/login');
-      console.log('Login URL:', loginUrl);
-      
-      if (!API_URL) {
-        throw new Error('API URL is not configured. Please check .env file.');
-      }
+      console.log('Attempting login to:', loginUrl);
 
       const response = await fetch(loginUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({ username, password }),
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response content-type:', response.headers.get('content-type'));
-
-      // Read response as text first to handle both JSON and non-JSON
+      // Get response text
       const responseText = await response.text();
-      console.log('Response preview:', responseText.substring(0, 100));
+      console.log('Response received, status:', response.status);
 
-      // Check if response is JSON by content-type
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        console.error('Non-JSON response received');
-        throw new Error('Server returned invalid response. Please try again.');
-      }
-
-      // Try to parse as JSON
+      // Parse JSON
       let data;
       try {
         data = JSON.parse(responseText);
-      } catch (parseError: any) {
-        console.error('JSON parse error:', parseError.message);
-        console.error('Response text:', responseText.substring(0, 200));
-        throw new Error('Failed to parse server response. Please try again.');
+      } catch (e) {
+        console.error('Parse error, response was:', responseText.substring(0, 200));
+        throw new Error('Invalid server response');
       }
 
+      // Check if login was successful
       if (!response.ok) {
-        throw new Error(data.detail || 'Authentication failed');
+        throw new Error(data.detail || data.message || 'Login failed');
+      }
+
+      // Validate response has required fields
+      if (!data.token || !data.id) {
+        console.error('Missing required fields in response:', data);
+        throw new Error('Invalid login response');
       }
 
       // Save authentication data
-      await AsyncStorage.setItem('admin_token', data.token);
-      await AsyncStorage.setItem('admin_id', data.id);
-      await AsyncStorage.setItem('admin_username', data.username);
-      await AsyncStorage.setItem('admin_role', data.role || 'user');
-      await AsyncStorage.setItem('is_super_admin', data.is_super_admin ? 'true' : 'false');
+      await AsyncStorage.multiSet([
+        ['admin_token', data.token],
+        ['admin_id', data.id],
+        ['admin_username', data.username || username],
+        ['admin_role', data.role || 'user'],
+        ['is_super_admin', data.is_super_admin ? 'true' : 'false']
+      ]);
 
-      console.log('Login successful, navigating to dashboard...');
+      console.log('Login successful, navigating...');
       
-      // Navigate to dashboard - small delay to ensure storage is complete
-      setTimeout(() => {
-        router.replace('/admin/(tabs)');
-      }, 100);
+      // Navigate to dashboard
+      router.replace('/admin/(tabs)');
       
     } catch (error: any) {
-      console.error('Login error:', error);
-      console.error('Error stack:', error.stack);
+      console.error('Login error:', error.message);
       
-      let errorMessage = error.message || 'Something went wrong';
+      let errorMessage = 'Login failed. Please try again.';
       
-      // Check for specific error types
-      if (error.message && error.message.includes('Network request failed')) {
-        errorMessage = 'Network connection error. Please check your internet connection and try again.';
-      } else if (error.message && error.message.includes('Failed to fetch')) {
-        errorMessage = 'Unable to connect to server. Please check your connection.';
-      } else if (error.message && error.message.includes('status')) {
-        // This might be the issue - log the full error
-        console.error('Status-related error detected:', error);
-        errorMessage = 'Login failed. Please try again.';
-      } else if (!API_URL) {
-        errorMessage = 'API configuration error. Please restart the app.';
+      if (error.message) {
+        if (error.message.includes('Network') || error.message.includes('fetch')) {
+          errorMessage = 'Connection error. Check your internet.';
+        } else if (error.message.includes('Invalid') || error.message.includes('parse')) {
+          errorMessage = 'Server error. Please try again.';
+        } else if (error.message !== 'Login failed') {
+          errorMessage = error.message;
+        }
       }
       
       Alert.alert(t('error'), errorMessage);
