@@ -1,27 +1,32 @@
 const { withMainApplication } = require('@expo/config-plugins');
 
-const IMPORT_LINE = 'import com.eamilock.DeviceAdminPackage;';
-const PACKAGE_INSTANCE_JAVA = 'new DeviceAdminPackage()';
-const PACKAGE_INSTANCE_KOTLIN = 'DeviceAdminPackage()';
+function getPackageName(config) {
+  return (
+    config?.android?.package ||
+    config?.expo?.android?.package ||
+    config?.modResults?.android?.package ||
+    'com.eamilock'
+  );
+}
 
-function addImport(contents) {
-  if (contents.includes(IMPORT_LINE)) return contents;
+function addImport(contents, importLine) {
+  if (contents.includes(importLine)) return contents;
   const packageDeclMatch = contents.match(/package\s+[^\n;]+[^\n]*\n/);
   if (packageDeclMatch) {
     const insertPos = packageDeclMatch.index + packageDeclMatch[0].length;
     return (
       contents.slice(0, insertPos) +
-      `${IMPORT_LINE}\n` +
+      `${importLine}\n` +
       contents.slice(insertPos)
     );
   }
-  return `${IMPORT_LINE}\n${contents}`;
+  return `${importLine}\n${contents}`;
 }
 
-function addPackage(contents) {
+function addPackage(contents, { kotlinInstance, javaInstance }) {
   if (
-    contents.includes(PACKAGE_INSTANCE_JAVA) ||
-    contents.includes(PACKAGE_INSTANCE_KOTLIN)
+    contents.includes(javaInstance) ||
+    contents.includes(kotlinInstance)
   )
     return contents;
 
@@ -30,7 +35,7 @@ function addPackage(contents) {
   if (kotlinApplyPattern.test(contents)) {
     return contents.replace(
       kotlinApplyPattern,
-      (fullLine, indent) => `${fullLine}\n${indent}  add(DeviceAdminPackage())`
+      (fullLine, indent) => `${fullLine}\n${indent}  add(${kotlinInstance})`
     );
   }
 
@@ -40,7 +45,7 @@ function addPackage(contents) {
   if (kotlinPackagesPattern.test(contents)) {
     return contents.replace(
       kotlinPackagesPattern,
-      'val packages = PackageList(this).packages.toMutableList()\n        packages.add(DeviceAdminPackage())'
+      `val packages = PackageList(this).packages.toMutableList()\n        packages.add(${kotlinInstance})`
     );
   }
 
@@ -50,7 +55,7 @@ function addPackage(contents) {
   if (packageListPattern.test(contents)) {
     return contents.replace(
       packageListPattern,
-      (match) => `${match}    packages.add(new DeviceAdminPackage());\n    `
+      (match) => `${match}    packages.add(${javaInstance});\n    `
     );
   }
 
@@ -59,7 +64,7 @@ function addPackage(contents) {
   if (returnPattern.test(contents)) {
     return contents.replace(
       returnPattern,
-      'packages.add(new DeviceAdminPackage());\n        return packages;'
+      `packages.add(${javaInstance});\n        return packages;`
     );
   }
 
@@ -67,10 +72,16 @@ function addPackage(contents) {
 }
 
 module.exports = function withDeviceAdminPackageRegistration(config) {
+  const packageName = getPackageName(config);
+  const importLine = `import ${packageName}.DeviceAdminPackage;`;
+  const instances = {
+    javaInstance: 'new DeviceAdminPackage()',
+    kotlinInstance: 'DeviceAdminPackage()',
+  };
   return withMainApplication(config, (config) => {
     let contents = config.modResults.contents;
-    contents = addImport(contents);
-    contents = addPackage(contents);
+    contents = addImport(contents, importLine);
+    contents = addPackage(contents, instances);
     config.modResults.contents = contents;
     return config;
   });

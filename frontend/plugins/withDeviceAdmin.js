@@ -411,7 +411,18 @@ public class TamperDetectionService extends Service {
   },
 ];
 
-function ensureNativeFiles(projectRoot) {
+function getPackageName(config) {
+  return (
+    config?.android?.package ||
+    config?.expo?.android?.package ||
+    config?.modResults?.android?.package ||
+    'com.eamilock'
+  );
+}
+
+function ensureNativeFiles(config) {
+  const projectRoot = config.modRequest.projectRoot;
+  const packageName = getPackageName(config);
   const javaDir = path.join(
     projectRoot,
     'android',
@@ -419,27 +430,28 @@ function ensureNativeFiles(projectRoot) {
     'src',
     'main',
     'java',
-    'com',
-    'eamilock'
+    ...packageName.split('.')
   );
   fs.mkdirSync(javaDir, { recursive: true });
 
   FILES.forEach(({ name, content }) => {
     const target = path.join(javaDir, name);
     if (!fs.existsSync(target)) {
-      fs.writeFileSync(target, content);
+      const patchedContent = content.replace(/com\.eamilock/g, packageName);
+      fs.writeFileSync(target, patchedContent);
     }
   });
 }
 
 module.exports = function withDeviceAdmin(config) {
   config = withDangerousMod(config, 'android', (config) => {
-    ensureNativeFiles(config.modRequest.projectRoot);
+    ensureNativeFiles(config);
     return config;
   });
 
   return withAndroidManifest(config, (config) => {
-    ensureNativeFiles(config.modRequest.projectRoot);
+    const packageName = getPackageName(config);
+    ensureNativeFiles(config);
 
     const androidManifest = config.modResults.manifest;
 
@@ -455,9 +467,9 @@ module.exports = function withDeviceAdmin(config) {
     ensurePermission(androidManifest, 'android.permission.RECEIVE_BOOT_COMPLETED');
     ensurePermission(androidManifest, 'android.permission.FOREGROUND_SERVICE');
 
-    ensureComponent(application.receiver, 'com.eamilock.DeviceAdminModule$MyDeviceAdminReceiver', () => ({
+    ensureComponent(application.receiver, `${packageName}.DeviceAdminModule$MyDeviceAdminReceiver`, () => ({
       $: {
-        'android:name': 'com.eamilock.DeviceAdminModule$MyDeviceAdminReceiver',
+        'android:name': `${packageName}.DeviceAdminModule$MyDeviceAdminReceiver`,
         'android:label': '@string/app_name',
         'android:description': '@string/app_name',
         'android:permission': 'android.permission.BIND_DEVICE_ADMIN',
@@ -484,16 +496,16 @@ module.exports = function withDeviceAdmin(config) {
       ],
     }));
 
-    ensureComponent(application.service, 'com.eamilock.TamperDetectionService', () => ({
+    ensureComponent(application.service, `${packageName}.TamperDetectionService`, () => ({
       $: {
-        'android:name': 'com.eamilock.TamperDetectionService',
+        'android:name': `${packageName}.TamperDetectionService`,
         'android:exported': 'false',
       },
     }));
 
-    ensureComponent(application.receiver, 'com.eamilock.TamperDetectionService$BootReceiver', () => ({
+    ensureComponent(application.receiver, `${packageName}.TamperDetectionService$BootReceiver`, () => ({
       $: {
-        'android:name': 'com.eamilock.TamperDetectionService$BootReceiver',
+        'android:name': `${packageName}.TamperDetectionService$BootReceiver`,
         'android:exported': 'true',
         'android:enabled': 'true',
       },
