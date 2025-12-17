@@ -7,10 +7,14 @@ function normalize(url: string) {
   return clean;
 }
 
-const raw =
+const FALLBACK_BACKEND = 'https://loantrack-23.preview.emergentagent.com';
+
+const rawCandidate =
   process.env.EXPO_PUBLIC_BACKEND_URL ||
   (Constants.expoConfig?.extra as any)?.backendUrl ||
-  'https://loantrack-23.preview.emergentagent.com';
+  FALLBACK_BACKEND;
+
+const raw = rawCandidate && rawCandidate.trim() ? rawCandidate : FALLBACK_BACKEND;
 
 const API_URL = normalize(raw);
 
