@@ -294,7 +294,16 @@ public class EMIDeviceAdminPackage implements ReactPackage {
     const mainApplication = config.modResults;
     const pkgName = config.android?.package || 'com.emi.client';
     
-    // Add import
+    // First, remove any old/conflicting package references
+    // Remove old DevicePolicyPackage references
+    mainApplication.contents = mainApplication.contents.replace(/import\s+[\w.]+\.DevicePolicyPackage;\n?/g, '');
+    mainApplication.contents = mainApplication.contents.replace(/packages\.add\(new\s+DevicePolicyPackage\(\)\);\n?\s*/g, '');
+    
+    // Remove old DeviceAdminPackage references (not EMI prefixed)
+    mainApplication.contents = mainApplication.contents.replace(/import\s+[\w.]+\.DeviceAdminPackage;\n?/g, '');
+    mainApplication.contents = mainApplication.contents.replace(/packages\.add\(new\s+DeviceAdminPackage\(\)\);\n?\s*/g, '');
+    
+    // Add import for EMIDeviceAdminPackage
     const importStatement = `import ${pkgName}.EMIDeviceAdminPackage;`;
     
     if (!mainApplication.contents.includes('EMIDeviceAdminPackage')) {
