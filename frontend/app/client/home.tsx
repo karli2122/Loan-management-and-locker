@@ -233,8 +233,6 @@ export default function ClientHome() {
       }
     }, 5000);
     
-    return () => clearTimeout(protectionTimer);
-
     // Handle app state changes
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
