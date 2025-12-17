@@ -63,6 +63,7 @@ export default function AdminLogin() {
     try {
       const primaryUrl = buildApiUrl('admin/login');
       const fallbackUrl = `${API_URL}/admin/login`;
+      const REDIRECT_FIELDS = ['redirect_to', 'redirectTo'];
 
       const extractValue = (data: any, keys: string[]): string | null => {
         if (!data) return null;
@@ -78,10 +79,12 @@ export default function AdminLogin() {
         detail?: string | null,
         text?: string | null,
         url?: string,
+        redirectTo?: string | null,
       ) => {
         const parts: string[] = [];
         if (detail) parts.push(detail);
         if (!detail && text) parts.push(text);
+        if (redirectTo) parts.push(`Suggested endpoint: ${redirectTo}`);
         if (status) parts.push(`(status ${status})`);
         if (url) parts.push(`at ${url}`);
         return (
@@ -90,7 +93,7 @@ export default function AdminLogin() {
         );
       };
 
-      const consumeResponse = async (resp: Response) => {
+      const consumeResponse = async (resp: Response, url: string) => {
         const text = await resp.text();
         let data: any = null;
         try {
@@ -98,33 +101,77 @@ export default function AdminLogin() {
         } catch {
           // Non-JSON response (e.g., HTML error page)
         }
-        return { resp, text, data };
+        return { resp, text, data, url };
       };
 
-      let response = await attemptLogin(primaryUrl);
-      let parsed = await consumeResponse(response);
+      const networkError = (err: unknown) => {
+        const defaultMsg = 'Request failed.';
+        const networkMsg =
+          err instanceof Error
+            ? err.message
+            : typeof err === 'string'
+              ? err
+              : defaultMsg;
+        const prefix = `${defaultMsg} If you are offline, please check your connection.`;
+        if (networkMsg === defaultMsg) {
+          return new Error(prefix);
+        }
+        return new Error(`${prefix} Details: ${networkMsg}`);
+      };
+
+      const getRedirect = (data: any) => {
+        if (!data) return null;
+        // Body fields we expect from the API (not HTTP headers).
+        for (const key of REDIRECT_FIELDS) {
+          if (data[key] && typeof data[key] === 'string') return data[key];
+        }
+        return null;
+      };
+
+      let response: Response | null = null;
+      let parsed: Awaited<ReturnType<typeof consumeResponse>> | null = null;
       let triedFallback = false;
-      let lastUrl = primaryUrl;
+
+      try {
+        response = await attemptLogin(primaryUrl);
+      } catch (err: unknown) {
+        throw networkError(err);
+      }
+      parsed = await consumeResponse(response, primaryUrl);
 
       if (
         !response.ok &&
         (response.status === 404 || response.status === 401 || response.status === 403)
       ) {
-        response = await attemptLogin(fallbackUrl);
-        parsed = await consumeResponse(response);
-        triedFallback = true;
-        lastUrl = fallbackUrl;
+        try {
+          response = await attemptLogin(fallbackUrl);
+          parsed = await consumeResponse(response, fallbackUrl);
+          triedFallback = true;
+        } catch (err: unknown) {
+          throw networkError(err);
+        }
       }
 
       if (!response.ok) {
-        throw new Error(formatMessage(response.status, parsed.data?.detail, parsed.text, lastUrl));
+        throw new Error(
+          formatMessage(
+            response.status,
+            parsed.data?.detail,
+            parsed.text,
+            parsed.url,
+            getRedirect(parsed.data)
+          )
+        );
       }
 
       if ((!parsed.data || !parsed.data.token) && !triedFallback) {
-        response = await attemptLogin(fallbackUrl);
-        parsed = await consumeResponse(response);
-        triedFallback = true;
-        lastUrl = fallbackUrl;
+        try {
+          response = await attemptLogin(fallbackUrl);
+          parsed = await consumeResponse(response, fallbackUrl);
+          triedFallback = true;
+        } catch (err: unknown) {
+          throw networkError(err);
+        }
       }
 
       const token =
@@ -132,7 +179,15 @@ export default function AdminLogin() {
         extractValue(parsed.data?.data, ['token', 'access_token']);
 
       if (!token) {
-        throw new Error(formatMessage(response.status, parsed.data?.detail, parsed.text, lastUrl));
+        throw new Error(
+          formatMessage(
+            response.status,
+            parsed.data?.detail,
+            parsed.text,
+            parsed.url,
+            getRedirect(parsed.data)
+          )
+        );
       }
 
       await AsyncStorage.setItem('admin_token', token);
