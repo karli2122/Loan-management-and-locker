@@ -147,10 +147,16 @@ export default function AdminSettings() {
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.detail || 'Failed to create user');
+        // Try to parse error as JSON, fallback to text
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          throw new Error(data.detail || 'Failed to create user');
+        } else {
+          const text = await response.text();
+          throw new Error(text || 'Failed to create user');
+        }
       }
 
       const roleText = newUserRole === 'admin' ? (language === 'et' ? 'administraator' : 'admin') : (language === 'et' ? 'kasutaja' : 'user');
@@ -686,7 +692,7 @@ export default function AdminSettings() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
-              {language === 'et' ? 'Lisa administraator' : 'Add Administrator'}
+              {language === 'et' ? 'Lisa kasutaja' : 'Add User'}
             </Text>
             
             <View style={styles.inputContainer}>
