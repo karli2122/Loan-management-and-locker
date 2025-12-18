@@ -196,7 +196,6 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
         }
     }
 
-    // Inner class for Device Admin Receiver
     public static class MyDeviceAdminReceiver extends DeviceAdminReceiver {
         @Override
         public void onEnabled(Context context, Intent intent) {

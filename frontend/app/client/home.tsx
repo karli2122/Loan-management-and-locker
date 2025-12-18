@@ -49,6 +49,7 @@ export default function ClientHome() {
   const [kioskActive, setKioskActive] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [setupComplete, setSetupComplete] = useState(false);
+  const isMounted = useRef(false);
   const appState = useRef(AppState.currentState);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wasLocked = useRef(false);
@@ -270,9 +271,12 @@ export default function ClientHome() {
   };
 
   const loadClientData = async () => {
+    if (!isMounted.current) return;
     const id = await AsyncStorage.getItem('client_id');
     if (!id) {
-      router.replace('/client/register');
+      if (isMounted.current) {
+        router.replace('/client/register');
+      }
       return;
     }
     setClientId(id);
@@ -282,6 +286,7 @@ export default function ClientHome() {
   };
 
   useEffect(() => {
+    isMounted.current = true;
     // Setup device protection first (deferred for safety)
     scheduleDeviceProtectionCheck();
     
@@ -325,6 +330,7 @@ export default function ClientHome() {
       }
       subscription.remove();
       backHandler.remove();
+      isMounted.current = false;
     };
   }, [clientId, status?.is_locked]);
 
