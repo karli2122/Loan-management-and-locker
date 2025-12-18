@@ -65,6 +65,8 @@ export default function AdminLogin() {
       const primaryUrl = buildApiUrl('admin/login');
       const fallbackUrl = `${baseUrl}/admin/login`;
       const REDIRECT_FIELDS = ['redirect_to', 'redirectTo'];
+      
+      console.log('[AdminLogin] Attempting login with URLs:', { baseUrl, primaryUrl, fallbackUrl });
 
       const extractValue = (data: any, keys: string[]): string | null => {
         if (!data) return null;
@@ -134,21 +136,27 @@ export default function AdminLogin() {
       let triedFallback = false;
 
       try {
+        console.log('[AdminLogin] Trying primary URL:', primaryUrl);
         response = await attemptLogin(primaryUrl);
       } catch (err: unknown) {
+        console.error('[AdminLogin] Primary URL failed:', err);
         throw networkError(err);
       }
       parsed = await consumeResponse(response, primaryUrl);
+      console.log('[AdminLogin] Primary response:', { status: response.status, hasData: !!parsed.data, textPreview: parsed.text?.substring(0, 100) });
 
       if (
         !response.ok &&
         (response.status === 404 || response.status === 401 || response.status === 403)
       ) {
         try {
+          console.log('[AdminLogin] Trying fallback URL:', fallbackUrl);
           response = await attemptLogin(fallbackUrl);
           parsed = await consumeResponse(response, fallbackUrl);
           triedFallback = true;
+          console.log('[AdminLogin] Fallback response:', { status: response.status, hasData: !!parsed.data });
         } catch (err: unknown) {
+          console.error('[AdminLogin] Fallback URL failed:', err);
           throw networkError(err);
         }
       }
@@ -166,14 +174,15 @@ export default function AdminLogin() {
       }
 
       if (response.ok && !parsed.data) {
+        // Check if we received HTML (likely a proxy/server error page)
+        const isHtmlResponse = parsed.text?.toLowerCase()?.includes('<!doctype') || 
+                               parsed.text?.toLowerCase()?.includes('<html');
+        const truncatedText = parsed.text?.substring(0, 100) || '(empty response)';
         throw new Error(
-          formatMessage(
-            response.status,
-            `Unexpected non-JSON response. Verify backend URL (${baseUrl}) and that /api prefix is used.`,
-            parsed.text,
-            parsed.url,
-            getRedirect(parsed.data)
-          )
+          `${isHtmlResponse ? 'Received HTML instead of JSON' : 'Non-JSON response'}. ` +
+          `Check that backend URL (${baseUrl}) points to the API server. ` +
+          `Tried: ${parsed.url}. Status: ${response.status}. ` +
+          `Response preview: ${truncatedText}${parsed.text?.length > 100 ? '...' : ''}`
         );
       }
 
