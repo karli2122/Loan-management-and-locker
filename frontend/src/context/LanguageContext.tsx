@@ -213,16 +213,16 @@ const translations: Translations = {
     en: 'Enter email address',
   },
   emiAmount: {
-    et: 'EMI summa',
-    en: 'EMI Amount',
+    et: 'Laenusumma',
+    en: 'Loan Amount',
   },
   enterEmiAmount: {
-    et: 'Sisesta EMI summa',
-    en: 'Enter EMI amount',
+    et: 'Sisesta laenusumma',
+    en: 'Enter loan amount',
   },
   emiDueDate: {
-    et: 'EMI tähtaeg',
-    en: 'EMI Due Date',
+    et: 'Laenu tähtaeg',
+    en: 'Loan Due Date',
   },
   createClient: {
     et: 'Loo klient',

@@ -138,11 +138,25 @@ export default function LoanPlans() {
       const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${token}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...plan, is_active: newActiveState }),
+        body: JSON.stringify({ 
+          name: plan.name,
+          interest_rate: plan.interest_rate,
+          min_tenure_months: plan.min_tenure_months,
+          max_tenure_months: plan.max_tenure_months,
+          processing_fee_percent: plan.processing_fee_percent,
+          late_fee_percent: plan.late_fee_percent,
+          description: plan.description,
+          is_active: newActiveState 
+        }),
       });
-      if (!response.ok) throw new Error('Failed to update plan');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Toggle error:', errorText);
+        throw new Error('Failed to update plan');
+      }
 
-      fetchPlans();
+      // Update local state immediately for better UX
+      setPlans(plans.map(p => p.id === plan.id ? { ...p, is_active: newActiveState } : p));
     } catch (error: any) {
       Alert.alert('Error', error.message);
     }
@@ -162,10 +176,16 @@ export default function LoanPlans() {
               const token = await AsyncStorage.getItem('admin_token');
               const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${token}`, {
                 method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
               });
-              if (!response.ok) throw new Error('Failed to delete plan');
+              if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Delete error:', response.status, errorText);
+                throw new Error(`Failed to delete plan (${response.status})`);
+              }
+              // Update local state immediately
+              setPlans(plans.filter(p => p.id !== plan.id));
               Alert.alert('Success', 'Plan deleted successfully');
-              fetchPlans();
             } catch (error: any) {
               Alert.alert('Error', error.message);
             }
