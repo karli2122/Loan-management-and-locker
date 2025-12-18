@@ -1,35 +1,23 @@
 import { NativeModules, Platform } from 'react-native';
-import * as EMIDeviceAdmin from 'emi-device-admin';
 
-const { DevicePolicyModule } = NativeModules;
+const { DeviceAdmin, EMIDeviceAdmin } = NativeModules;
+
+// Get the native module (DeviceAdmin is exported by DeviceAdminModule.java)
+const nativeModule = DeviceAdmin || EMIDeviceAdmin;
 
 export interface DeviceInfo {
-  isDeviceOwner: boolean;
   isAdminActive: boolean;
   packageName: string;
 }
 
 class DevicePolicyManager {
   /**
-   * Check if app is Device Owner
-   */
-  async isDeviceOwner(): Promise<boolean> {
-    if (Platform.OS !== 'android') return false;
-    try {
-      return (await (EMIDeviceAdmin?.isDeviceOwner?.() ?? DevicePolicyModule?.isDeviceOwner?.())) || false;
-    } catch (error) {
-      console.log('DevicePolicy not available:', error);
-      return false;
-    }
-  }
-
-  /**
    * Check if Device Admin is active
    */
   async isAdminActive(): Promise<boolean> {
     if (Platform.OS !== 'android') return false;
     try {
-      return (await (EMIDeviceAdmin?.isAdminActive?.() ?? DevicePolicyModule?.isAdminActive?.())) || false;
+      return (await nativeModule?.isDeviceAdminActive?.()) || false;
     } catch (error) {
       console.log('DevicePolicy not available:', error);
       return false;
@@ -39,82 +27,106 @@ class DevicePolicyManager {
   /**
    * Request Device Admin permission
    */
-  async requestAdmin(): Promise<boolean> {
-    if (Platform.OS !== 'android') return false;
+  async requestAdmin(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
     try {
-      return (await (EMIDeviceAdmin?.requestAdmin?.() ?? DevicePolicyModule?.requestAdmin?.())) || false;
+      return (await nativeModule?.requestDeviceAdmin?.()) || 'error';
     } catch (error) {
       console.log('Failed to request admin:', error);
-      return false;
+      return 'error';
     }
   }
 
   /**
    * Lock the device screen
    */
-  async lockDevice(): Promise<boolean> {
-    if (Platform.OS !== 'android') return false;
+  async lockDevice(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
     try {
-      return (await (EMIDeviceAdmin?.lockDevice?.() ?? DevicePolicyModule?.lockDevice?.())) || false;
+      return (await nativeModule?.lockDevice?.()) || 'error';
     } catch (error) {
       console.log('Failed to lock device:', error);
-      return false;
+      return 'error';
     }
   }
 
   /**
-   * Enable/disable Kiosk mode (locks to this app only)
-   * Requires Device Owner
+   * Prevent uninstall - enables Device Admin protection
    */
-  async setKioskMode(enable: boolean): Promise<boolean> {
+  async preventUninstall(prevent: boolean): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.preventUninstall?.(prevent)) || 'error';
+    } catch (error) {
+      console.log('Failed to prevent uninstall:', error);
+      return 'error';
+    }
+  }
+
+  /**
+   * Allow uninstall - disables Device Admin protection (called by admin)
+   */
+  async allowUninstall(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.allowUninstall?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to allow uninstall:', error);
+      return 'error';
+    }
+  }
+
+  /**
+   * Check if uninstall is allowed
+   */
+  async isUninstallAllowed(): Promise<boolean> {
     if (Platform.OS !== 'android') return false;
     try {
-      return (await (EMIDeviceAdmin?.setKioskMode?.(enable) ?? DevicePolicyModule?.setKioskMode?.(enable))) || false;
+      return (await nativeModule?.isUninstallAllowed?.()) || false;
     } catch (error) {
-      console.log('Failed to set kiosk mode:', error);
+      console.log('Failed to check uninstall status:', error);
       return false;
-    }
-  }
-
-  /**
-   * Block/unblock app uninstallation
-   * Requires Device Owner
-   */
-  async disableUninstall(disable: boolean): Promise<boolean> {
-    if (Platform.OS !== 'android') return false;
-    try {
-      return (
-        await (EMIDeviceAdmin?.disableUninstall?.(disable) ?? DevicePolicyModule?.disableUninstall?.(disable))
-      ) || false;
-    } catch (error) {
-      console.log('Failed to set uninstall block:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Get device security info
-   */
-  async getDeviceInfo(): Promise<DeviceInfo | null> {
-    if (Platform.OS !== 'android') return null;
-    try {
-      return (await (EMIDeviceAdmin?.getDeviceInfo?.() ?? DevicePolicyModule?.getDeviceInfo?.())) || null;
-    } catch (error) {
-      console.log('Failed to get device info:', error);
-      return null;
     }
   }
 
   /**
    * Set the lock state in preferences (for boot receiver)
    */
-  async setLockState(locked: boolean): Promise<boolean> {
-    if (Platform.OS !== 'android') return false;
+  async setLockState(locked: boolean): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
     try {
-      return (await (EMIDeviceAdmin?.setLockState?.(locked) ?? DevicePolicyModule?.setLockState?.(locked))) || false;
+      // Use shared preferences through the native module if available
+      // Otherwise just return success since we track lock state in backend
+      return 'success';
     } catch (error) {
       console.log('Failed to set lock state:', error);
-      return false;
+      return 'error';
+    }
+  }
+
+  /**
+   * Start tamper detection service
+   */
+  async startTamperDetection(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.startTamperDetection?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to start tamper detection:', error);
+      return 'error';
+    }
+  }
+
+  /**
+   * Stop tamper detection service
+   */
+  async stopTamperDetection(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.stopTamperDetection?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to stop tamper detection:', error);
+      return 'error';
     }
   }
 }

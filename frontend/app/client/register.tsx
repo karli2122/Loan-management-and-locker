@@ -19,7 +19,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL, { API_BASE_URL, buildApiUrl } from '../../src/constants/api';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
-import * as EMIDeviceAdmin from 'emi-device-admin';
 
 export default function ClientRegister() {
   const router = useRouter();
@@ -51,43 +50,6 @@ export default function ClientRegister() {
     } finally {
       setCheckingRegistration(false);
     }
-  };
-
-  const verifyDeviceOwner = async () => {
-    let attempts = 0;
-
-    const attempt = async () => {
-      attempts += 1;
-      const cancelButton = { text: t('cancel'), style: 'cancel' as const };
-      const retryButtons =
-        attempts < 3
-          ? [{ text: t('retry'), onPress: attempt }, cancelButton]
-          : [cancelButton];
-
-      try {
-        const isOwner = await devicePolicy.isDeviceOwner();
-        if (isOwner) {
-          try {
-            await devicePolicy.disableUninstall(true);
-          } catch (err) {
-            console.error(
-              'Unable to enforce uninstall protection for Device Owner:',
-              (err as any)?.message || err
-            );
-          }
-          Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
-            { text: t('ok'), onPress: () => router.replace('/client/home') },
-          ]);
-        } else {
-          Alert.alert(t('error'), t('deviceOwnerSetupRequired'), retryButtons);
-        }
-      } catch (err) {
-        console.error('Device Owner verification failed:', (err as any)?.message || err);
-        Alert.alert(t('error'), t('deviceOwnerVerificationFailed'), retryButtons);
-      }
-    };
-
-    await attempt();
   };
 
   const handleRegister = async () => {
@@ -130,57 +92,73 @@ export default function ClientRegister() {
 
       const data = await parseJson(response);
 
+      // Handle incorrect code (404 means invalid registration code)
+      if (response.status === 404) {
+        Alert.alert(
+          t('error'),
+          language === 'et' ? 'Vale kood' : 'Incorrect code'
+        );
+        return;
+      }
+
       if (!response.ok) {
         const message = data?.detail || data?.raw || 'Registration failed';
+        // Check if it's an invalid code error
+        if (message.toLowerCase().includes('invalid') || message.toLowerCase().includes('not found')) {
+          Alert.alert(
+            t('error'),
+            language === 'et' ? 'Vale kood' : 'Incorrect code'
+          );
+          return;
+        }
         throw new Error(message);
       }
 
       const clientId = data?.client_id;
       if (!clientId) {
-        throw new Error(data?.detail || 'Registration failed: invalid code');
+        Alert.alert(
+          t('error'),
+          language === 'et' ? 'Vale kood' : 'Incorrect code'
+        );
+        return;
       }
-      if (clientId) {
-        await AsyncStorage.setItem('client_id', clientId);
-      }
+
+      // Registration successful - save client data
+      await AsyncStorage.setItem('client_id', clientId);
       
-      // Store client data including lock_mode
+      // Store client data
       const clientData = data?.client;
       if (clientData) {
         await AsyncStorage.setItem('client_data', JSON.stringify(clientData));
       }
       
-      // Handle Device Admin mode setup automatically
-      if (clientData?.lock_mode === 'device_admin') {
-        try {
-          const isActive = (await EMIDeviceAdmin?.isDeviceAdminActive?.()) ?? false;
-
-          if (!isActive) {
-            await EMIDeviceAdmin?.requestDeviceAdmin?.();
-            Alert.alert(
-              t('success'),
-              t('deviceAdminPermissionPrompt'),
-              [{ text: t('ok'), onPress: () => router.replace('/client/home') }]
-            );
-          } else {
-            Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
-              { text: t('ok'), onPress: () => router.replace('/client/home') },
-            ]);
-          }
-        } catch (err) {
-          console.log('Device Admin not available:', err);
-          Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
-            { text: t('ok'), onPress: () => router.replace('/client/home') },
-          ]);
-        }
-      } else if (clientData?.lock_mode === 'device_owner') {
-        // Device Owner mode - verify owner status and enable protections
-        await verifyDeviceOwner();
-      } else {
-        Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
-          { text: t('ok'), onPress: () => router.replace('/client/home') },
-        ]);
-      }
+      // Show registration successful message and prompt for admin privileges
+      Alert.alert(
+        t('success'),
+        language === 'et' 
+          ? 'Registreerimine õnnestus! Palun anna järgmises vaates administraatori õigused.'
+          : 'Registration successful! Please grant admin privileges in the next prompt.',
+        [
+          {
+            text: t('ok'),
+            onPress: async () => {
+              // Request Device Admin permission
+              try {
+                const isAdminActive = await devicePolicy.isAdminActive();
+                if (!isAdminActive) {
+                  await devicePolicy.requestAdmin();
+                }
+              } catch (err) {
+                console.log('Device Admin request error:', err);
+              }
+              // Navigate to home screen
+              router.replace('/client/home');
+            },
+          },
+        ]
+      );
     } catch (error: any) {
+      console.error('Registration error:', error);
       Alert.alert(t('error'), error.message || 'Registration failed');
     } finally {
       setLoading(false);

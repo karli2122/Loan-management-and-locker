@@ -27,7 +27,7 @@ export default {
       package: IS_ADMIN_APP ? "com.emi.admin" : "com.emi.client",
       versionCode: 1,
       // Permissions: Admin app needs basic location/network, 
-      // Client app needs elevated permissions for Device Owner protection
+      // Client app needs elevated permissions for Device Admin protection
       permissions: IS_ADMIN_APP 
         ? [
             "ACCESS_FINE_LOCATION",
@@ -41,11 +41,10 @@ export default {
             "ACCESS_COARSE_LOCATION",
             "INTERNET",
             "ACCESS_NETWORK_STATE",
-            // Device Owner and security permissions (required for EMI protection)
-            "BIND_DEVICE_ADMIN",          // Device Owner management
+            // Device Admin and security permissions (required for EMI protection)
+            "BIND_DEVICE_ADMIN",          // Device Admin management
             "RECEIVE_BOOT_COMPLETED",     // Auto-start on device boot
             "SYSTEM_ALERT_WINDOW",        // Lock screen overlay
-            "DISABLE_KEYGUARD",           // Control lock screen
             "WAKE_LOCK"                   // Prevent device sleep during lock
           ]
     },
@@ -67,7 +66,7 @@ export default {
           backgroundColor: "#0F172A"
         }
       ],
-      // Device Owner and Device Admin plugins for Client app only
+      // Device Admin plugin for Client app only
       ...(IS_ADMIN_APP ? [] : ["emi-device-admin"])
     ],
     experiments: {

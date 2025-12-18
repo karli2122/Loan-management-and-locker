@@ -35,6 +35,7 @@ interface ClientStatus {
   warning_message: string;
   emi_amount: number;
   emi_due_date: string | null;
+  uninstall_allowed?: boolean;
 }
 
 export default function ClientHome() {
@@ -44,9 +45,7 @@ export default function ClientHome() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
-  const [isDeviceOwner, setIsDeviceOwner] = useState(false);
   const [isAdminActive, setIsAdminActive] = useState(false);
-  const [kioskActive, setKioskActive] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [setupComplete, setSetupComplete] = useState(false);
   const isMounted = useRef(false);
@@ -107,33 +106,38 @@ export default function ClientHome() {
 
   const protectionTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // Check and setup Device Owner/Admin
+  // Check and setup Device Admin
   const checkAndSetupDeviceProtection = async () => {
     if (Platform.OS !== 'android') return;
 
     try {
-      const owner = await devicePolicy.isDeviceOwner();
-      setIsDeviceOwner(owner);
-
       const admin = await devicePolicy.isAdminActive();
       setIsAdminActive(admin);
 
-      if (owner) {
-        await devicePolicy.disableUninstall(true);
-        setSetupComplete(true);
-        console.log('Device Owner mode active - full protection enabled');
-      } else if (!admin) {
+      if (!admin) {
         console.log('Device Admin not active - prompting user');
         Alert.alert(
-          'Device Protection Required',
-          'To secure your device, enable Device Admin now.',
+          language === 'et' ? 'Seadme kaitse vajalik' : 'Device Protection Required',
+          language === 'et' 
+            ? 'Seadme turvaliseks kasutamiseks luba administraatori õigused.'
+            : 'To secure your device, please enable Device Admin permissions.',
           [
             {
-              text: 'Enable Now',
+              text: language === 'et' ? 'Luba kohe' : 'Enable Now',
               onPress: async () => {
                 try {
                   await devicePolicy.requestAdmin();
                   console.log('Device Admin request dispatched');
+                  // Re-check admin status after request
+                  setTimeout(async () => {
+                    const newAdmin = await devicePolicy.isAdminActive();
+                    setIsAdminActive(newAdmin);
+                    if (newAdmin) {
+                      setSetupComplete(true);
+                      // Enable uninstall protection
+                      await devicePolicy.preventUninstall(true);
+                    }
+                  }, 1000);
                 } catch (e) {
                   console.log('Admin request failed:', e);
                 }
@@ -144,7 +148,9 @@ export default function ClientHome() {
         );
       } else {
         setSetupComplete(true);
-        console.log('Device Admin active - basic protection enabled');
+        // Ensure uninstall protection is enabled
+        await devicePolicy.preventUninstall(true);
+        console.log('Device Admin active - protection enabled');
       }
     } catch (error) {
       console.error('Device protection setup error:', error);
@@ -163,29 +169,16 @@ export default function ClientHome() {
     }, 500);
   };
 
-  // Enable/Disable Kiosk mode based on lock status
-  const updateKioskMode = async (locked: boolean) => {
+  // Handle lock state change
+  const updateLockState = async (locked: boolean) => {
     if (Platform.OS !== 'android') return;
     
     try {
       // Save lock state for boot receiver
       await devicePolicy.setLockState(locked);
-      
-      if (isDeviceOwner) {
-        if (locked && !kioskActive) {
-          await devicePolicy.setKioskMode(true);
-          setKioskActive(true);
-          console.log('Kiosk mode enabled');
-        } else if (!locked && kioskActive) {
-          await devicePolicy.setKioskMode(false);
-          setKioskActive(false);
-          console.log('Kiosk mode disabled');
-        }
-      }
-      
       wasLocked.current = locked;
     } catch (error) {
-      console.error('Kiosk mode error:', error);
+      console.error('Lock state error:', error);
     }
   };
 
@@ -204,9 +197,9 @@ export default function ClientHome() {
         handleUninstallSignal();
       }
       
-      // Update kiosk mode based on lock status change
+      // Update lock state if changed
       if (data.is_locked !== wasLocked.current) {
-        updateKioskMode(data.is_locked);
+        updateLockState(data.is_locked);
       }
     } catch (error) {
       console.error('Error fetching status:', error);
@@ -218,18 +211,18 @@ export default function ClientHome() {
 
   const handleUninstallSignal = async () => {
     try {
-      const DeviceAdmin = (await import('../../src/components/DeviceAdmin')).default;
-      
       // Allow app to be uninstalled
-      await DeviceAdmin.allowUninstall();
+      await devicePolicy.allowUninstall();
       
       console.log('App uninstall protection disabled by admin');
       
       // Show alert to user
       Alert.alert(
-        'Account Removed',
-        'Your account has been removed by the administrator. You can now uninstall this app.',
-        [{ text: 'OK' }]
+        language === 'et' ? 'Konto eemaldatud' : 'Account Removed',
+        language === 'et' 
+          ? 'Teie konto on administraatori poolt eemaldatud. Saate nüüd rakenduse desinstallida.'
+          : 'Your account has been removed by the administrator. You can now uninstall this app.',
+        [{ text: t('ok') }]
       );
     } catch (error) {
       console.log('Error handling uninstall signal:', error);
@@ -356,12 +349,11 @@ export default function ClientHome() {
         await AsyncStorage.setItem('last_app_start', now.toString());
 
         // Start tamper detection service
-        const DeviceAdmin = (await import('../../src/components/DeviceAdmin')).default;
-        const result = await DeviceAdmin.startTamperDetection();
+        const result = await devicePolicy.startTamperDetection();
         console.log('Tamper detection:', result);
         
         // Enable uninstall protection
-        await DeviceAdmin.preventUninstall(true);
+        await devicePolicy.preventUninstall(true);
         
       } catch (error) {
         console.log('Tamper protection setup error:', error);
@@ -381,9 +373,9 @@ export default function ClientHome() {
         const data = await response.json();
         console.log('Reboot reported:', data);
         
-        // If device should be locked, ensure it's locked
+        // If device should be locked, update lock state
         if (data.should_lock && status) {
-          await updateKioskMode(true);
+          await updateLockState(true);
         }
       }
     } catch (error) {
@@ -405,11 +397,11 @@ export default function ClientHome() {
         
         // Force immediate lock on tamper attempt
         if (status) {
-          await updateKioskMode(true);
+          await updateLockState(true);
           Alert.alert(
-            'Security Alert',
-            'Tampering detected. Device has been locked.',
-            [{ text: 'OK' }]
+            language === 'et' ? 'Turvahoiatus' : 'Security Alert',
+            language === 'et' ? 'Tuvastati manipulatsioon. Seade on lukustatud.' : 'Tampering detected. Device has been locked.',
+            [{ text: t('ok') }]
           );
         }
       }
@@ -520,14 +512,14 @@ export default function ClientHome() {
           {/* Protection Status */}
           <View style={styles.protectionStatus}>
             <Ionicons 
-              name={isDeviceOwner ? "shield-checkmark" : "shield"} 
+              name={isAdminActive ? "shield-checkmark" : "shield"} 
               size={16} 
-              color={isDeviceOwner ? "#10B981" : "#F59E0B"} 
+              color={isAdminActive ? "#10B981" : "#F59E0B"} 
             />
             <Text style={styles.protectionText}>
-              {isDeviceOwner 
-                ? (language === 'et' ? 'Täielik kaitse aktiivne' : 'Full protection active')
-                : (language === 'et' ? 'Põhikaitse aktiivne' : 'Basic protection active')}
+              {isAdminActive 
+                ? (language === 'et' ? 'Seadme kaitse aktiivne' : 'Device protection active')
+                : (language === 'et' ? 'Kaitse pole aktiivne' : 'Protection not active')}
             </Text>
           </View>
         </View>
@@ -570,24 +562,34 @@ export default function ClientHome() {
         }
       >
         {/* Protection Status Banner */}
-        <View style={[styles.protectionBanner, isDeviceOwner ? styles.protectionFull : styles.protectionBasic]}>
+        <View style={[styles.protectionBanner, isAdminActive ? styles.protectionFull : styles.protectionBasic]}>
           <Ionicons 
-            name={isDeviceOwner ? "shield-checkmark" : "shield"} 
+            name={isAdminActive ? "shield-checkmark" : "shield"} 
             size={24} 
-            color={isDeviceOwner ? "#10B981" : "#F59E0B"} 
+            color={isAdminActive ? "#10B981" : "#F59E0B"} 
           />
           <View style={styles.protectionBannerContent}>
             <Text style={styles.protectionBannerTitle}>
-              {isDeviceOwner 
-                ? (language === 'et' ? 'Täielik kaitse' : 'Full Protection')
-                : (language === 'et' ? 'Põhikaitse' : 'Basic Protection')}
+              {isAdminActive 
+                ? (language === 'et' ? 'Seadme kaitse' : 'Device Protection')
+                : (language === 'et' ? 'Kaitse pole aktiivne' : 'Protection Not Active')}
             </Text>
             <Text style={styles.protectionBannerText}>
-              {isDeviceOwner 
-                ? (language === 'et' ? 'Seade on täielikult kaitstud' : 'Device is fully protected')
-                : (language === 'et' ? 'Administraatori õigused aktiivsed' : 'Admin permissions active')}
+              {isAdminActive 
+                ? (language === 'et' ? 'Administraatori õigused aktiivsed' : 'Admin permissions active')
+                : (language === 'et' ? 'Palun lubage administraatori õigused' : 'Please enable admin permissions')}
             </Text>
           </View>
+          {!isAdminActive && (
+            <TouchableOpacity 
+              style={styles.enableProtectionButton}
+              onPress={() => devicePolicy.requestAdmin()}
+            >
+              <Text style={styles.enableProtectionText}>
+                {language === 'et' ? 'Luba' : 'Enable'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Warning Banner */}
@@ -774,6 +776,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#94A3B8',
     marginTop: 2,
+  },
+  enableProtectionButton: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  enableProtectionText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   warningBanner: {
     flexDirection: 'row',

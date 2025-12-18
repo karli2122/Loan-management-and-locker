@@ -502,6 +502,7 @@ class ClientStatusResponse(BaseModel):
     warning_message: str
     emi_amount: float
     emi_due_date: Optional[str]
+    uninstall_allowed: bool = False
 
 # ===================== ADMIN ROUTES =====================
 
@@ -891,7 +892,8 @@ async def get_device_status(client_id: str):
         lock_message=client["lock_message"],
         warning_message=client.get("warning_message", ""),
         emi_amount=client["emi_amount"],
-        emi_due_date=client.get("emi_due_date")
+        emi_due_date=client.get("emi_due_date"),
+        uninstall_allowed=client.get("uninstall_allowed", False)
     )
 
 @api_router.post("/device/location")

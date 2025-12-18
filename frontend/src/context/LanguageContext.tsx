@@ -384,14 +384,6 @@ const translations: Translations = {
     et: 'Kontrollin registreerimist...',
     en: 'Checking registration...',
   },
-  deviceOwnerSetupRequired: {
-    et: 'Seade peab olema seadistatud Device Owner režiimi. Palun tee seadistus QR/provisioning vooga ja proovi uuesti.',
-    en: 'Device Owner setup is required. Please provision the device with the owner QR/setup flow and try again.',
-  },
-  deviceOwnerVerificationFailed: {
-    et: 'Device Owner staatust ei õnnestunud kontrollida. Palun proovi uuesti.',
-    en: 'Unable to verify Device Owner status. Please try again.',
-  },
 
   // Client Home
   welcome: {
