@@ -430,6 +430,7 @@ class Client(BaseModel):
     tamper_attempts: int = 0  # Count of tampering attempts
     last_tamper_attempt: Optional[datetime] = None  # Last tamper attempt timestamp
     last_reboot: Optional[datetime] = None  # Last device reboot timestamp
+    admin_mode_active: bool = False  # Device Admin mode active on device
 
 class Payment(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -974,6 +975,20 @@ async def clear_warning(client_id: str):
     
     await db.clients.update_one({"id": client_id}, {"$set": {"warning_message": ""}})
     return {"message": "Warning cleared"}
+
+@api_router.post("/device/report-admin-status")
+async def report_admin_status(client_id: str, admin_active: bool):
+    """Report admin mode status from client device"""
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {"admin_mode_active": admin_active}}
+    )
+    
+    return {"message": "Admin mode status updated", "admin_active": admin_active}
 
 # ===================== TAMPER DETECTION =====================
 

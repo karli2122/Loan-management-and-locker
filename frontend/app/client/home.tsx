@@ -455,6 +455,11 @@ export default function ClientHome() {
         if (isAdmin) {
           await devicePolicy.preventUninstall(true);
           console.log('Uninstall protection enabled');
+          // Report admin mode status to backend
+          await reportAdminStatus(clientId, true);
+        } else {
+          // Report admin mode not active
+          await reportAdminStatus(clientId, false);
         }
         
       } catch (error) {
@@ -464,6 +469,18 @@ export default function ClientHome() {
 
     initializeProtection();
   }, [clientId]);
+
+  const reportAdminStatus = async (id: string, adminActive: boolean) => {
+    if (!id) return;
+    try {
+      await fetch(`${API_URL}/api/device/report-admin-status?client_id=${id}&admin_active=${adminActive}`, {
+        method: 'POST',
+      });
+      console.log(`Admin mode status reported: ${adminActive}`);
+    } catch (error) {
+      console.log('Admin status report failed:', error);
+    }
+  };
 
   const reportReboot = async (id: string) => {
     try {

@@ -55,6 +55,8 @@ interface Client {
   tamper_attempts: number;
   last_tamper_attempt: string | null;
   last_reboot: string | null;
+  admin_mode_active?: boolean;
+  uninstall_allowed?: boolean;
   // Loan fields
   loan_amount?: number;
   total_amount_due?: number;
@@ -406,6 +408,21 @@ export default function ClientDetails() {
             {client.is_locked ? t('locked') : t('unlocked')}
           </Text>
         </View>
+        {/* Admin Mode Status Badge */}
+        {client.is_registered && (
+          <View style={[styles.statusBadge, client.admin_mode_active ? styles.adminModeBadge : styles.adminModeOffBadge]}>
+            <Ionicons
+              name={client.admin_mode_active ? 'shield-checkmark' : 'shield'}
+              size={14}
+              color={client.admin_mode_active ? '#3B82F6' : '#F59E0B'}
+            />
+            <Text style={[styles.statusText, client.admin_mode_active ? styles.adminModeText : styles.adminModeOffText]}>
+              {client.admin_mode_active 
+                ? (language === 'et' ? 'Admin režiim SEES' : 'Admin mode ON')
+                : (language === 'et' ? 'Admin režiim VÄLJAS' : 'Admin mode OFF')}
+            </Text>
+          </View>
+        )}
         <View style={styles.regCodeRow}>
           <Text style={styles.regCode}>{t('registrationCode')}: {client.registration_code}</Text>
           <TouchableOpacity
@@ -948,6 +965,14 @@ const styles = StyleSheet.create({
   unlockedBadge: {
     backgroundColor: 'rgba(16, 185, 129, 0.2)',
   },
+  adminModeBadge: {
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    marginTop: 6,
+  },
+  adminModeOffBadge: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    marginTop: 6,
+  },
   statusText: {
     fontSize: 14,
     fontWeight: '600',
@@ -957,6 +982,12 @@ const styles = StyleSheet.create({
   },
   unlockedText: {
     color: '#10B981',
+  },
+  adminModeText: {
+    color: '#3B82F6',
+  },
+  adminModeOffText: {
+    color: '#F59E0B',
   },
   regCodeRow: {
     flexDirection: 'row',
