@@ -116,7 +116,7 @@ export default function TransactionsTab() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={[]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
           {language === 'et' ? 'Tehingud' : 'Transactions'}

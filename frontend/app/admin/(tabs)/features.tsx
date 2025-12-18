@@ -46,7 +46,7 @@ export default function FeaturesTab() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={[]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
           {language === 'et' ? 'Funktsioonid' : 'Features'}
