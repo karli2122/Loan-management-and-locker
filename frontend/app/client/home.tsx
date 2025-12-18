@@ -424,9 +424,9 @@ export default function ClientHome() {
     };
   }, [clientId, status?.is_locked]);
 
-  // Initialize tamper detection and check for reboot
+  // Initialize protection and check for reboot (tamper detection disabled to prevent crashes)
   useEffect(() => {
-    const initializeTamperProtection = async () => {
+    const initializeProtection = async () => {
       if (!clientId || Platform.OS !== 'android') return;
 
       try {
@@ -445,19 +445,24 @@ export default function ClientHome() {
         
         await AsyncStorage.setItem('last_app_start', now.toString());
 
-        // Start tamper detection service
-        const result = await devicePolicy.startTamperDetection();
-        console.log('Tamper detection:', result);
+        // NOTE: Tamper detection service disabled to prevent chat head overlay crashes
+        // The service was causing blinking overlay and app crash issues
+        // const result = await devicePolicy.startTamperDetection();
+        // console.log('Tamper detection:', result);
         
-        // Enable uninstall protection
-        await devicePolicy.preventUninstall(true);
+        // Enable uninstall protection if admin is active
+        const isAdmin = await devicePolicy.isAdminActive();
+        if (isAdmin) {
+          await devicePolicy.preventUninstall(true);
+          console.log('Uninstall protection enabled');
+        }
         
       } catch (error) {
-        console.log('Tamper protection setup error:', error);
+        console.log('Protection setup error:', error);
       }
     };
 
-    initializeTamperProtection();
+    initializeProtection();
   }, [clientId]);
 
   const reportReboot = async (id: string) => {
@@ -525,6 +530,50 @@ export default function ClientHome() {
     } catch (error) {
       console.error('Error clearing warning:', error);
     }
+  };
+
+  const handleSettings = () => {
+    Alert.alert(
+      language === 'et' ? 'Seaded' : 'Settings',
+      language === 'et' ? 'Valige toiming' : 'Choose an action',
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: language === 'et' ? 'Võta ühendust' : 'Contact Support',
+          onPress: handleContactSupport,
+        },
+        {
+          text: language === 'et' ? 'Tühista registreerimine' : 'Unregister Device',
+          style: 'destructive',
+          onPress: () => {
+            // Don't allow unregister if device is locked
+            if (status?.is_locked) {
+              Alert.alert(
+                language === 'et' ? 'Keelatud' : 'Not Allowed',
+                language === 'et' ? 'Seade on lukustatud. Registreerimist ei saa tühistada.' : 'Device is locked. Cannot unregister.'
+              );
+              return;
+            }
+            
+            Alert.alert(
+              t('unregisterDevice'),
+              t('unregisterConfirm'),
+              [
+                { text: t('cancel'), style: 'cancel' },
+                {
+                  text: t('unregister'),
+                  style: 'destructive',
+                  onPress: async () => {
+                    await AsyncStorage.removeItem('client_id');
+                    router.replace('/');
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
   };
 
   const handleUnregister = () => {
@@ -646,7 +695,7 @@ export default function ClientHome() {
               <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>EN</Text>
             </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.settingsButton} onPress={handleUnregister}>
+          <TouchableOpacity style={styles.settingsButton} onPress={handleSettings}>
             <Ionicons name="settings-outline" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
