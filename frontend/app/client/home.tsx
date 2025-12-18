@@ -232,27 +232,33 @@ export default function ClientHome() {
       // Update offline indicator
       setIsOffline(data.offline || false);
       
+      // Create a copy of data for potential modifications (avoid mutating original)
+      let statusToSet = { ...data };
+      
       // If offline, also check cached lock state to ensure enforcement
       if (data.offline) {
         const cachedState = await devicePolicy.getCachedLockState();
         if (cachedState.isLocked && !data.is_locked) {
-          // Enforce cached lock state when offline
-          data.is_locked = true;
-          data.lock_message = cachedState.lockMessage;
+          // Enforce cached lock state when offline - create new object to avoid mutation
+          statusToSet = {
+            ...data,
+            is_locked: true,
+            lock_message: cachedState.lockMessage,
+          };
           console.log('[Offline] Enforcing cached lock state');
         }
       }
       
-      setStatus(data);
+      setStatus(statusToSet);
       
       // Check if admin has allowed uninstall
-      if (data.uninstall_allowed && Platform.OS === 'android') {
+      if (statusToSet.uninstall_allowed && Platform.OS === 'android') {
         handleUninstallSignal();
       }
       
       // Update lock state if changed - save message for offline use
-      if (data.is_locked !== wasLocked.current) {
-        updateLockState(data.is_locked, data.lock_message);
+      if (statusToSet.is_locked !== wasLocked.current) {
+        updateLockState(statusToSet.is_locked, statusToSet.lock_message);
       }
     } catch (error) {
       console.error('Error fetching status:', error);

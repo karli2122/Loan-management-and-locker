@@ -92,13 +92,10 @@ export default function ClientRegister() {
 
       const data = await parseJson(response);
 
-      // Check for incorrect code based on HTTP status codes
-      // 404 = code not found, 400 = bad request (could be invalid code format)
-      const detailMessage = typeof data?.detail === 'string' ? data.detail.toLowerCase() : '';
-      const isInvalidCode = response.status === 404 || 
-        (response.status === 400 && detailMessage.includes('registration'));
-      
-      if (isInvalidCode) {
+      // Check for incorrect code based on HTTP status codes only
+      // 404 = code not found (invalid registration code)
+      // 400 = bad request (invalid format or already registered)
+      if (response.status === 404 || response.status === 400) {
         Alert.alert(
           t('error'),
           language === 'et' ? 'Vale kood' : 'Incorrect code'

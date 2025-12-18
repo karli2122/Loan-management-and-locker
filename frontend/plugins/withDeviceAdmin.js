@@ -2,6 +2,9 @@ const { withAndroidManifest, withDangerousMod, withMainApplication } = require('
 const fs = require('fs');
 const path = require('path');
 
+// Shared preferences name - must match DeviceAdminModule.java PREFS_NAME
+const PREFS_NAME = 'EMILockPrefs';
+
 function getPackageName(config) {
   return (
     config?.android?.package ||
@@ -152,6 +155,8 @@ import android.util.Log;
 
 public class BootReceiver extends BroadcastReceiver {
     private static final String TAG = "EMIBootReceiver";
+    // Must match PREFS_NAME in DeviceAdminModule.java
+    private static final String PREFS_NAME = "${PREFS_NAME}";
     
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -159,7 +164,7 @@ public class BootReceiver extends BroadcastReceiver {
             Log.d(TAG, "Boot completed - checking if app should autostart");
             
             // Check if device is registered (has client_id stored)
-            SharedPreferences prefs = context.getSharedPreferences("EMILockPrefs", Context.MODE_PRIVATE);
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
             boolean isRegistered = prefs.getBoolean("is_registered", false);
             
             // Always start the app on boot if registered - this ensures:

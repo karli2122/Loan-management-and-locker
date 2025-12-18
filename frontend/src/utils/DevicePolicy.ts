@@ -107,9 +107,9 @@ class DevicePolicyManager {
   async setLockState(locked: boolean, message?: string): Promise<string> {
     try {
       await AsyncStorage.setItem(LOCK_STATE_KEY, locked ? 'locked' : 'unlocked');
-      if (message) {
-        await AsyncStorage.setItem(LOCK_MESSAGE_KEY, message);
-      }
+      // Always store message to avoid stale data - use default if not provided
+      const messageToStore = message || (locked ? 'Device locked due to pending payment.' : '');
+      await AsyncStorage.setItem(LOCK_MESSAGE_KEY, messageToStore);
       return 'success';
     } catch (error) {
       console.log('Failed to set lock state:', error);
