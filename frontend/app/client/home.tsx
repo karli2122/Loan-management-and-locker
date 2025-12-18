@@ -330,9 +330,6 @@ export default function ClientHome() {
   const loadClientData = async () => {
     if (!isMounted.current) return;
     
-    // First, check cached lock state for offline enforcement on startup
-    await checkCachedLockStateOnStartup();
-    
     const id = await AsyncStorage.getItem('client_id');
     if (!id) {
       if (isMounted.current) {
