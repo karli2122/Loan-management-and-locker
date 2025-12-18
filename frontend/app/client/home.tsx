@@ -670,7 +670,13 @@ export default function ClientHome() {
           {!isAdminActive && (
             <TouchableOpacity 
               style={styles.enableProtectionButton}
-              onPress={() => devicePolicy.requestAdmin()}
+              onPress={async () => {
+                console.log('Enable button pressed - requesting Device Admin');
+                const result = await devicePolicy.requestAdmin();
+                console.log('Device Admin request result:', result);
+                // Re-check admin status after request
+                await checkAdminStatusWithRetry();
+              }}
             >
               <Text style={styles.enableProtectionText}>
                 {language === 'et' ? 'Luba' : 'Enable'}

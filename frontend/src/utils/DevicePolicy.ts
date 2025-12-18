@@ -37,13 +37,25 @@ class DevicePolicyManager {
 
   /**
    * Request Device Admin permission
+   * Opens the system dialog to grant Device Admin permissions
    */
   async requestAdmin(): Promise<string> {
     if (Platform.OS !== 'android') return 'not_supported';
     try {
-      return (await nativeModule?.requestDeviceAdmin?.()) || 'error';
+      console.log('DevicePolicy: Requesting Device Admin permission...');
+      console.log('DevicePolicy: Native module available:', !!nativeModule);
+      console.log('DevicePolicy: requestDeviceAdmin method available:', !!nativeModule?.requestDeviceAdmin);
+      
+      if (!nativeModule || !nativeModule.requestDeviceAdmin) {
+        console.log('DevicePolicy: Native module or method not available');
+        return 'error_module_not_available';
+      }
+      
+      const result = await nativeModule.requestDeviceAdmin();
+      console.log('DevicePolicy: requestDeviceAdmin result:', result);
+      return result || 'error';
     } catch (error) {
-      console.log('Failed to request admin:', error);
+      console.log('DevicePolicy: Failed to request admin:', error);
       return 'error';
     }
   }
