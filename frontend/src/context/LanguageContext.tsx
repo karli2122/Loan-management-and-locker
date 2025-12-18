@@ -66,6 +66,10 @@ const translations: Translations = {
     et: 'Logi sisse',
     en: 'Sign In',
   },
+  login: {
+    et: 'Logi sisse',
+    en: 'Login',
+  },
   error: {
     et: 'Viga',
     en: 'Error',

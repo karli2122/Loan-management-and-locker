@@ -17,6 +17,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LineChart, PieChart } from 'react-native-chart-kit';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
 
@@ -146,50 +148,217 @@ export default function Reports() {
         ? `${months[selectedMonth]} ${selectedYear}`
         : `${selectedYear}`;
       
-      // Create a text-based report that can be shared
-      let reportContent = `
-========================================
-${language === 'et' ? 'KASUMIARUANNE' : 'PROFIT REPORT'}
-${periodLabel}
-========================================
-
-${language === 'et' ? 'KOKKUVÕTE' : 'SUMMARY'}
-----------------------------------------
-${language === 'et' ? 'Kogutulu' : 'Total Revenue'}: €${summary.totalRevenue.toFixed(2)}
-${language === 'et' ? 'Teenitud intress' : 'Interest Earned'}: €${summary.interestEarned.toFixed(2)}
-${language === 'et' ? 'Maksete arv' : 'Number of Payments'}: ${summary.totalPayments}
-${language === 'et' ? 'Kasum' : 'Profit'}: €${summary.profit.toFixed(2)}
-
-${language === 'et' ? 'IGAKUINE JAOTUS' : 'MONTHLY BREAKDOWN'}
-----------------------------------------
-`;
-
+      // Build monthly breakdown HTML
+      let monthlyBreakdownHtml = '';
       filteredData.forEach((m: MonthData) => {
-        reportContent += `${m.month}: €${m.revenue.toFixed(2)} (${m.payments_count} ${language === 'et' ? 'makset' : 'payments'})\n`;
+        monthlyBreakdownHtml += `
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${m.month}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">€${m.revenue.toFixed(2)}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: center;">${m.payments_count}</td>
+          </tr>
+        `;
       });
 
-      if (financialReport?.totals) {
-        reportContent += `
-${language === 'et' ? 'FINANTSÜLEVAADE' : 'FINANCIAL OVERVIEW'}
-----------------------------------------
-${language === 'et' ? 'Väljastatud põhiosa' : 'Principal Disbursed'}: €${financialReport.totals.principal_disbursed.toFixed(2)}
-${language === 'et' ? 'Teenitud intress' : 'Interest Earned'}: €${financialReport.totals.interest_earned.toFixed(2)}
-${language === 'et' ? 'Töötlustasud' : 'Processing Fees'}: €${financialReport.totals.processing_fees.toFixed(2)}
-${language === 'et' ? 'Viivised' : 'Late Fees'}: €${financialReport.totals.late_fees.toFixed(2)}
-${language === 'et' ? 'Kogutulu' : 'Total Revenue'}: €${financialReport.totals.total_revenue.toFixed(2)}
-`;
+      // Create HTML content for PDF
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>${language === 'et' ? 'Kasumiaruanne' : 'Profit Report'}</title>
+            <style>
+              body {
+                font-family: 'Helvetica', 'Arial', sans-serif;
+                padding: 40px;
+                color: #1e293b;
+              }
+              .header {
+                text-align: center;
+                margin-bottom: 40px;
+                border-bottom: 2px solid #4F46E5;
+                padding-bottom: 20px;
+              }
+              .header h1 {
+                color: #4F46E5;
+                margin: 0;
+                font-size: 28px;
+              }
+              .header p {
+                color: #64748b;
+                margin: 10px 0 0 0;
+                font-size: 16px;
+              }
+              .summary-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                margin-bottom: 40px;
+              }
+              .summary-card {
+                background: #f8fafc;
+                padding: 20px;
+                border-radius: 8px;
+                border-left: 4px solid #4F46E5;
+              }
+              .summary-card.profit {
+                border-left-color: #10B981;
+              }
+              .summary-card h3 {
+                margin: 0 0 8px 0;
+                color: #64748b;
+                font-size: 14px;
+                font-weight: 500;
+              }
+              .summary-card .value {
+                font-size: 24px;
+                font-weight: bold;
+                color: #1e293b;
+              }
+              .summary-card.profit .value {
+                color: #10B981;
+              }
+              .section {
+                margin-bottom: 30px;
+              }
+              .section h2 {
+                color: #1e293b;
+                font-size: 18px;
+                margin-bottom: 16px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 8px;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+              }
+              th {
+                background: #4F46E5;
+                color: white;
+                padding: 12px 8px;
+                text-align: left;
+              }
+              th:nth-child(2), th:nth-child(3) {
+                text-align: right;
+              }
+              th:nth-child(3) {
+                text-align: center;
+              }
+              .footer {
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 1px solid #e2e8f0;
+                text-align: center;
+                color: #94a3b8;
+                font-size: 12px;
+              }
+              .totals-row {
+                background: #f8fafc;
+              }
+              .totals-row td {
+                font-weight: bold;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>${language === 'et' ? 'KASUMIARUANNE' : 'PROFIT REPORT'}</h1>
+              <p>${periodLabel}</p>
+            </div>
+
+            <div class="summary-grid">
+              <div class="summary-card">
+                <h3>${language === 'et' ? 'Kogutulu' : 'Total Revenue'}</h3>
+                <div class="value">€${summary.totalRevenue.toFixed(2)}</div>
+              </div>
+              <div class="summary-card profit">
+                <h3>${language === 'et' ? 'Kasum (intress)' : 'Profit (Interest)'}</h3>
+                <div class="value">€${summary.profit.toFixed(2)}</div>
+              </div>
+              <div class="summary-card">
+                <h3>${language === 'et' ? 'Teenitud intress' : 'Interest Earned'}</h3>
+                <div class="value">€${summary.interestEarned.toFixed(2)}</div>
+              </div>
+              <div class="summary-card">
+                <h3>${language === 'et' ? 'Maksete arv' : 'Number of Payments'}</h3>
+                <div class="value">${summary.totalPayments}</div>
+              </div>
+            </div>
+
+            ${filteredData.length > 0 ? `
+              <div class="section">
+                <h2>${language === 'et' ? 'Igakuine jaotus' : 'Monthly Breakdown'}</h2>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>${language === 'et' ? 'Kuu' : 'Month'}</th>
+                      <th style="text-align: right;">${language === 'et' ? 'Tulu' : 'Revenue'}</th>
+                      <th style="text-align: center;">${language === 'et' ? 'Maksed' : 'Payments'}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${monthlyBreakdownHtml}
+                  </tbody>
+                </table>
+              </div>
+            ` : ''}
+
+            ${financialReport?.totals ? `
+              <div class="section">
+                <h2>${language === 'et' ? 'Finantsülevaade' : 'Financial Overview'}</h2>
+                <table>
+                  <tbody>
+                    <tr>
+                      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${language === 'et' ? 'Väljastatud põhiosa' : 'Principal Disbursed'}</td>
+                      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">€${financialReport.totals.principal_disbursed.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${language === 'et' ? 'Teenitud intress' : 'Interest Earned'}</td>
+                      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right; color: #10B981;">€${financialReport.totals.interest_earned.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${language === 'et' ? 'Töötlustasud' : 'Processing Fees'}</td>
+                      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">€${financialReport.totals.processing_fees.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${language === 'et' ? 'Viivised' : 'Late Fees'}</td>
+                      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">€${financialReport.totals.late_fees.toFixed(2)}</td>
+                    </tr>
+                    <tr class="totals-row">
+                      <td style="padding: 12px 8px;">${language === 'et' ? 'Kogutulu' : 'Total Revenue'}</td>
+                      <td style="padding: 12px 8px; text-align: right; color: #4F46E5; font-size: 18px;">€${financialReport.totals.total_revenue.toFixed(2)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ` : ''}
+
+            <div class="footer">
+              ${language === 'et' ? 'Aruanne koostatud' : 'Report Generated'}: ${new Date().toLocaleString(language === 'et' ? 'et-EE' : 'en-US')}
+            </div>
+          </body>
+        </html>
+      `;
+
+      // Generate PDF file
+      const { uri } = await Print.printToFileAsync({
+        html: htmlContent,
+        base64: false,
+      });
+
+      // Share the PDF file
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `${language === 'et' ? 'Kasumiaruanne' : 'Profit Report'} - ${periodLabel}`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert(
+          language === 'et' ? 'Valmis' : 'Ready',
+          language === 'et' ? `PDF salvestatud: ${uri}` : `PDF saved: ${uri}`
+        );
       }
-
-      reportContent += `
-----------------------------------------
-${language === 'et' ? 'Aruanne koostatud' : 'Report Generated'}: ${new Date().toLocaleString(language === 'et' ? 'et-EE' : 'en-US')}
-========================================
-`;
-
-      await Share.share({
-        message: reportContent,
-        title: `${language === 'et' ? 'Kasumiaruanne' : 'Profit Report'} - ${periodLabel}`,
-      });
 
     } catch (error) {
       console.error('Error generating report:', error);

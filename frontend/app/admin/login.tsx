@@ -296,7 +296,7 @@ export default function AdminLogin() {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.buttonText}>{t('signIn')}</Text>
+                <Text style={styles.buttonText}>{t('login')}</Text>
               )}
             </TouchableOpacity>
           </View>
