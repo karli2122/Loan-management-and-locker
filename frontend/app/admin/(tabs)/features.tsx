@@ -130,7 +130,7 @@ export default function FeaturesTab() {
           </View>
           <View style={styles.featureInfo}>
             <Text style={styles.featureTitle}>
-              {language === 'et' ? 'EMI kalkulaator' : 'EMI Calculator'}
+              {language === 'et' ? 'Laenukalkulaator' : 'Loan Calculator'}
             </Text>
             <Text style={styles.featureDescription}>
               {language === 'et' ? 'Arvuta laenumaksed' : 'Calculate loan payments'}

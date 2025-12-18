@@ -532,77 +532,6 @@ export default function ClientHome() {
     }
   };
 
-  const handleSettings = () => {
-    Alert.alert(
-      language === 'et' ? 'Seaded' : 'Settings',
-      language === 'et' ? 'Valige toiming' : 'Choose an action',
-      [
-        { text: t('cancel'), style: 'cancel' },
-        {
-          text: language === 'et' ? 'Võta ühendust' : 'Contact Support',
-          onPress: handleContactSupport,
-        },
-        {
-          text: language === 'et' ? 'Tühista registreerimine' : 'Unregister Device',
-          style: 'destructive',
-          onPress: () => {
-            // Don't allow unregister if device is locked
-            if (status?.is_locked) {
-              Alert.alert(
-                language === 'et' ? 'Keelatud' : 'Not Allowed',
-                language === 'et' ? 'Seade on lukustatud. Registreerimist ei saa tühistada.' : 'Device is locked. Cannot unregister.'
-              );
-              return;
-            }
-            
-            Alert.alert(
-              t('unregisterDevice'),
-              t('unregisterConfirm'),
-              [
-                { text: t('cancel'), style: 'cancel' },
-                {
-                  text: t('unregister'),
-                  style: 'destructive',
-                  onPress: async () => {
-                    await AsyncStorage.removeItem('client_id');
-                    router.replace('/');
-                  },
-                },
-              ]
-            );
-          },
-        },
-      ]
-    );
-  };
-
-  const handleUnregister = () => {
-    // Don't allow unregister if device is locked
-    if (status?.is_locked) {
-      Alert.alert(
-        language === 'et' ? 'Keelatud' : 'Not Allowed',
-        language === 'et' ? 'Seade on lukustatud. Registreerimist ei saa tühistada.' : 'Device is locked. Cannot unregister.'
-      );
-      return;
-    }
-    
-    Alert.alert(
-      t('unregisterDevice'),
-      t('unregisterConfirm'),
-      [
-        { text: t('cancel'), style: 'cancel' },
-        {
-          text: t('unregister'),
-          style: 'destructive',
-          onPress: async () => {
-            await AsyncStorage.removeItem('client_id');
-            router.replace('/');
-          },
-        },
-      ]
-    );
-  };
-
   const handleContactSupport = () => {
     Alert.alert(t('contactSupport'), t('howToContact'), [
       { text: t('cancel'), style: 'cancel' },
@@ -695,9 +624,6 @@ export default function ClientHome() {
               <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>EN</Text>
             </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.settingsButton} onPress={handleSettings}>
-            <Ionicons name="settings-outline" size={24} color="#fff" />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -781,12 +707,12 @@ export default function ClientHome() {
           <Text style={styles.statusInfo}>{t('deviceActiveNormal')}</Text>
         </View>
 
-        {/* EMI Card */}
+        {/* Loan Card */}
         <View style={styles.emiCard}>
-          <Text style={styles.emiCardTitle}>{t('emiDetails')}</Text>
+          <Text style={styles.emiCardTitle}>{language === 'et' ? 'Laenu andmed' : 'Loan Details'}</Text>
           <View style={styles.emiDetails}>
             <View style={styles.emiDetailItem}>
-              <Text style={styles.emiDetailLabel}>{t('monthlyEmi')}</Text>
+              <Text style={styles.emiDetailLabel}>{language === 'et' ? 'Laenusumma' : 'Loan Amount'}</Text>
               <Text style={styles.emiDetailValue}>€{(status?.emi_amount ?? 0).toLocaleString()}</Text>
             </View>
             <View style={styles.emiDetailDivider} />

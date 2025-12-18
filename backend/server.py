@@ -1041,21 +1041,18 @@ async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token:
 
 @api_router.delete("/loan-plans/{plan_id}")
 async def delete_loan_plan(plan_id: str, admin_token: str):
-    """Delete (deactivate) a loan plan"""
+    """Delete a loan plan permanently"""
     if not await verify_admin_token_header(admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
     
-    # Soft delete - just deactivate
-    result = await db.loan_plans.update_one(
-        {"id": plan_id},
-        {"$set": {"is_active": False}}
-    )
+    # Hard delete - remove from database
+    result = await db.loan_plans.delete_one({"id": plan_id})
     
-    if result.modified_count == 0:
+    if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Loan plan not found")
     
-    logger.info(f"Loan plan deactivated: {plan_id}")
-    return {"message": "Loan plan deactivated successfully"}
+    logger.info(f"Loan plan deleted: {plan_id}")
+    return {"message": "Loan plan deleted successfully"}
 
 # ===================== EMI CALCULATOR =====================
 

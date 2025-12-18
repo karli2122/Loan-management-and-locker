@@ -51,7 +51,7 @@ export default function Calculator() {
       
       <View style={styles.methodDetails}>
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Monthly EMI</Text>
+          <Text style={styles.detailLabel}>Monthly Payment</Text>
           <Text style={styles.detailValue}>€{method.monthly_emi}</Text>
         </View>
         <View style={styles.detailRow}>
