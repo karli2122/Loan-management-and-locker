@@ -1,22 +1,25 @@
-import { NativeModule, requireNativeModule } from 'expo-modules-core';
+import { Platform } from 'react-native';
 
-declare class EMIDeviceAdminModuleType extends NativeModule {
-  isAdminActive(): Promise<boolean>;
-  requestAdmin(): Promise<string>;
-  lockDevice(): Promise<string>;
-  isDeviceOwner(): Promise<boolean>;
+let EMIDeviceAdminModule: any = null;
+
+// Only try to load native module on Android
+if (Platform.OS === 'android') {
+  try {
+    const { requireNativeModule } = require('expo-modules-core');
+    EMIDeviceAdminModule = requireNativeModule('EMIDeviceAdmin');
+    console.log('EMIDeviceAdmin module loaded successfully');
+  } catch (e) {
+    console.log('EMIDeviceAdmin module not available (expected in dev builds):', e);
+    EMIDeviceAdminModule = null;
+  }
 }
 
-let EMIDeviceAdminModule: EMIDeviceAdminModuleType | null = null;
-
-try {
-  EMIDeviceAdminModule = requireNativeModule('EMIDeviceAdmin');
-} catch (e) {
-  console.log('EMIDeviceAdmin module not available:', e);
+export function isModuleAvailable(): boolean {
+  return Platform.OS === 'android' && EMIDeviceAdminModule !== null;
 }
 
 export async function isAdminActive(): Promise<boolean> {
-  if (!EMIDeviceAdminModule) return false;
+  if (!isModuleAvailable()) return false;
   try {
     return await EMIDeviceAdminModule.isAdminActive();
   } catch (e) {
@@ -26,7 +29,7 @@ export async function isAdminActive(): Promise<boolean> {
 }
 
 export async function requestAdmin(): Promise<string> {
-  if (!EMIDeviceAdminModule) return 'module_not_available';
+  if (!isModuleAvailable()) return 'module_not_available';
   try {
     return await EMIDeviceAdminModule.requestAdmin();
   } catch (e) {
@@ -36,7 +39,7 @@ export async function requestAdmin(): Promise<string> {
 }
 
 export async function lockDevice(): Promise<string> {
-  if (!EMIDeviceAdminModule) return 'module_not_available';
+  if (!isModuleAvailable()) return 'module_not_available';
   try {
     return await EMIDeviceAdminModule.lockDevice();
   } catch (e) {
@@ -46,15 +49,11 @@ export async function lockDevice(): Promise<string> {
 }
 
 export async function isDeviceOwner(): Promise<boolean> {
-  if (!EMIDeviceAdminModule) return false;
+  if (!isModuleAvailable()) return false;
   try {
     return await EMIDeviceAdminModule.isDeviceOwner();
   } catch (e) {
     console.log('isDeviceOwner error:', e);
     return false;
   }
-}
-
-export function isModuleAvailable(): boolean {
-  return EMIDeviceAdminModule !== null;
 }
