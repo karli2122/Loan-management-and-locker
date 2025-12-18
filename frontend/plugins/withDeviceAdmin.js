@@ -156,21 +156,46 @@ function writeNativeFiles(config) {
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.util.Log;
 
 public class EmiDeviceAdminReceiver extends android.app.admin.DeviceAdminReceiver {
+    private static final String TAG = "EmiDeviceAdminReceiver";
+    private static final String PREFS_NAME = "${PREFS_NAME}";
+    private static final String KEY_ALLOW_UNINSTALL = "allow_uninstall";
+    
     @Override
     public void onEnabled(Context context, Intent intent) {
         super.onEnabled(context, intent);
+        Log.d(TAG, "Device Admin enabled");
+        // When admin is enabled, block uninstall by default
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(KEY_ALLOW_UNINSTALL, false)
+                .apply();
     }
 
     @Override
     public void onDisabled(Context context, Intent intent) {
         super.onDisabled(context, intent);
+        Log.d(TAG, "Device Admin disabled");
     }
 
     @Override
     public CharSequence onDisableRequested(Context context, Intent intent) {
-        return "Device protection is active. Deactivation is not allowed.";
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        boolean allowed = prefs.getBoolean(KEY_ALLOW_UNINSTALL, false);
+        
+        Log.d(TAG, "onDisableRequested - allow_uninstall: " + allowed);
+        
+        if (allowed) {
+            return "Device admin will be disabled.";
+        } else {
+            return "❌ CANNOT DISABLE\\n\\n" +
+                    "This device is protected by EMI payment system.\\n\\n" +
+                    "To uninstall this app, contact your administrator.\\n\\n" +
+                    "Administrator must remove this device from the admin panel first.";
+        }
     }
 }`;
     fs.writeFileSync(path.join(javaDir, 'EmiDeviceAdminReceiver.java'), adminReceiver);

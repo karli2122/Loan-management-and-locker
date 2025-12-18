@@ -36,30 +36,50 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
     
     /**
      * Get the DeviceAdminReceiver ComponentName dynamically based on package
+     * Tries multiple possible receiver classes and returns the first valid one
      */
     private ComponentName getAdminComponent() {
         Context context = getContext();
         String packageName = context.getPackageName();
+        DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
+        
         // Try multiple possible receiver class names for compatibility
         String[] receiverClasses = {
             packageName + ".EmiDeviceAdminReceiver",
-            "com.eamilock.DeviceAdminModule$MyDeviceAdminReceiver"
+            "com.eamilock.DeviceAdminModule$MyDeviceAdminReceiver",
+            "com.eamilock.MyDeviceAdminReceiver"
         };
         
-        DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
-        
+        // First, check if any component is already active as admin
         for (String className : receiverClasses) {
             try {
-                ComponentName component = new ComponentName(context.getPackageName(), className);
-                // Check if this component is a valid admin receiver
-                Log.d(TAG, "Checking admin component: " + className);
-                return component;
+                ComponentName component = new ComponentName(packageName, className);
+                if (dpm.isAdminActive(component)) {
+                    Log.d(TAG, "Found active admin component: " + className);
+                    return component;
+                }
             } catch (Exception e) {
-                Log.d(TAG, "Component not found: " + className);
+                // Continue trying other classes
             }
         }
         
-        // Fallback to inner class
+        // If none active, try to find the first valid one
+        for (String className : receiverClasses) {
+            try {
+                // Try to load the class to verify it exists
+                Class<?> clazz = Class.forName(className);
+                ComponentName component = new ComponentName(packageName, className);
+                Log.d(TAG, "Found valid admin component class: " + className);
+                return component;
+            } catch (ClassNotFoundException e) {
+                Log.d(TAG, "Class not found: " + className);
+            } catch (Exception e) {
+                Log.d(TAG, "Error checking class: " + className + " - " + e.getMessage());
+            }
+        }
+        
+        // Fallback to inner class (always available)
+        Log.d(TAG, "Using fallback inner class admin component");
         return new ComponentName(context, MyDeviceAdminReceiver.class);
     }
 

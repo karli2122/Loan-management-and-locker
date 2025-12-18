@@ -139,17 +139,24 @@ export default function ClientRegister() {
           {
             text: t('ok'),
             onPress: async () => {
-              // Request Device Admin permission
-              try {
-                const isAdminActive = await devicePolicy.isAdminActive();
-                if (!isAdminActive) {
-                  await devicePolicy.requestAdmin();
-                }
-              } catch (err) {
-                console.log('Device Admin request error:', err);
-              }
-              // Navigate to home screen
+              // Navigate to home screen first
               router.replace('/client/home');
+              
+              // Request Device Admin permission with a small delay to ensure navigation completes
+              setTimeout(async () => {
+                try {
+                  console.log('Requesting Device Admin after registration...');
+                  const isAdminActive = await devicePolicy.isAdminActive();
+                  console.log('isAdminActive:', isAdminActive);
+                  if (!isAdminActive) {
+                    console.log('Calling requestAdmin...');
+                    const result = await devicePolicy.requestAdmin();
+                    console.log('requestAdmin result:', result);
+                  }
+                } catch (err) {
+                  console.log('Device Admin request error:', err);
+                }
+              }, 500);
             },
           },
         ]
