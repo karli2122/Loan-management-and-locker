@@ -35,12 +35,21 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[db_name]
 
 # Create the main app
-app = FastAPI(title="EMI Phone Lock API", version="1.0.0")
+app = FastAPI(title="Loan Phone Lock API", version="1.0.0")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
 security = HTTPBasic()
+
+# Global exception handler to prevent server crashes
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    logger.error(f"Unhandled exception: {str(exc)}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "error": str(exc)}
+    )
 
 # ===================== HELPER FUNCTIONS =====================
 
