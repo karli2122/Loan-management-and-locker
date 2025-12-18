@@ -47,10 +47,18 @@ export default function LoansTab() {
       const adminId = await AsyncStorage.getItem('admin_id');
       const query = adminId ? `?limit=500&admin_id=${adminId}` : '?limit=500';
       const response = await fetch(`${API_URL}/api/clients${query}`);
+      if (!response.ok) {
+        console.error('API error:', response.status);
+        setClients([]);
+        return;
+      }
       const data = await response.json();
-      setClients(data.clients || data || []);
+      // Handle various API response formats
+      const clientList = data?.clients || (Array.isArray(data) ? data : []);
+      setClients(clientList);
     } catch (error) {
       console.error('Error fetching clients:', error);
+      setClients([]);
     } finally {
       setLoading(false);
     }
@@ -196,7 +204,7 @@ export default function LoansTab() {
           onPress={() => setTab('settled')}
         >
           <Text style={[styles.tabText, tab === 'settled' && styles.tabTextActive]}>
-            {language === 'et' ? 'Tasutu' : 'Settled'}
+            {language === 'et' ? 'Tasutud' : 'Settled'}
           </Text>
         </TouchableOpacity>
       </View>

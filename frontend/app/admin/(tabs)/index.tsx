@@ -60,22 +60,27 @@ export default function Dashboard() {
     const baseUrl = API_URL || 'https://loantrack-23.preview.emergentagent.com';
     try {
       const response = await fetch(`${baseUrl}/api/reports/collection`);
+      if (!response.ok) {
+        console.error('API error:', response.status);
+        return;
+      }
       const data = await response.json();
       
+      // Safe access with fallbacks
       setLoanStats({
-        total_clients: data.overview.total_clients,
-        active_loans: data.overview.active_loans,
-        completed_loans: data.overview.completed_loans,
-        overdue_clients: data.overview.overdue_clients,
-        total_disbursed: data.financial.total_disbursed,
-        total_collected: data.financial.total_collected,
-        total_outstanding: data.financial.total_outstanding,
-        collection_rate: data.financial.collection_rate,
+        total_clients: data?.overview?.total_clients ?? 0,
+        active_loans: data?.overview?.active_loans ?? 0,
+        completed_loans: data?.overview?.completed_loans ?? 0,
+        overdue_clients: data?.overview?.overdue_clients ?? 0,
+        total_disbursed: data?.financial?.total_disbursed ?? 0,
+        total_collected: data?.financial?.total_collected ?? 0,
+        total_outstanding: data?.financial?.total_outstanding ?? 0,
+        collection_rate: data?.financial?.collection_rate ?? 0,
       });
       setMonthStats({
-        revenue: data.this_month?.total_collected ?? 0,
-        profit: data.this_month?.profit_collected ?? 0,
-        dueOutstanding: data.this_month?.due_outstanding ?? 0,
+        revenue: data?.this_month?.total_collected ?? 0,
+        profit: data?.this_month?.profit_collected ?? 0,
+        dueOutstanding: data?.this_month?.due_outstanding ?? 0,
       });
     } catch (error) {
       console.error('Failed to fetch stats:', error);
@@ -143,7 +148,7 @@ export default function Dashboard() {
             activeOpacity={0.8}
           >
             <View style={styles.statIcon}>
-              <Ionicons name="trending-up" size={28} color="#3B82F6" />
+              <Ionicons name="trending-up" size={20} color="#3B82F6" />
             </View>
             <Text style={styles.statValue}>{loanStats.active_loans}</Text>
             <Text style={styles.statLabel}>{language === 'et' ? 'Aktiivsed laenud' : 'Active Loans'}</Text>
@@ -155,7 +160,7 @@ export default function Dashboard() {
             activeOpacity={0.8}
           >
             <View style={styles.statIcon}>
-              <Ionicons name="alert-circle" size={28} color="#EF4444" />
+              <Ionicons name="alert-circle" size={20} color="#EF4444" />
             </View>
             <Text style={styles.statValue}>{loanStats.overdue_clients}</Text>
             <Text style={styles.statLabel}>{language === 'et' ? 'Võlglased' : 'Overdue'}</Text>
@@ -167,7 +172,7 @@ export default function Dashboard() {
             activeOpacity={0.8}
           >
             <View style={styles.statIcon}>
-              <Ionicons name="checkmark-circle" size={28} color="#10B981" />
+              <Ionicons name="checkmark-circle" size={20} color="#10B981" />
             </View>
             <Text style={styles.statValue}>{loanStats.completed_loans}</Text>
             <Text style={styles.statLabel}>{language === 'et' ? 'Lõpetatud' : 'Completed'}</Text>
@@ -175,7 +180,7 @@ export default function Dashboard() {
 
           <View style={[styles.statCard, { backgroundColor: '#3D3D1F' }]}>
             <View style={styles.statIcon}>
-              <Ionicons name="cash" size={28} color="#F59E0B" />
+              <Ionicons name="cash" size={20} color="#F59E0B" />
             </View>
             <Text style={styles.statValue}>€{loanStats.total_collected.toFixed(0)}</Text>
             <Text style={styles.statLabel}>{language === 'et' ? 'Kogutud' : 'Collected'}</Text>
@@ -210,17 +215,6 @@ export default function Dashboard() {
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
-
-        <Text style={styles.sectionTitle}>{language === 'et' ? 'Kasuta vahekaarte allpool' : 'Use tabs below to navigate'}</Text>
-        <View style={styles.infoCard}>
-          <Ionicons name="information-circle" size={24} color="#4F46E5" />
-          <Text style={styles.infoText}>
-            {language === 'et' 
-              ? 'Kasuta allpool olevaid vahelehti: Laenud klientide haldamiseks, Tehingud maksete vaatamiseks ja Funktsioonid täpsemateks võimalusteks.'
-              : 'Use the tabs below: Loans to manage clients, Transactions to view payments, and Features for advanced options.'}
-          </Text>
-        </View>
         <View style={styles.actionsContainer}>
           <TouchableOpacity
             style={styles.actionCard}
@@ -378,22 +372,22 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '48%',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 11,
+    padding: 11,
+    marginBottom: 8,
   },
   statIcon: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   statValue: {
-    fontSize: 32,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#fff',
   },
   statLabel: {
-    fontSize: 13,
+    fontSize: 10,
     color: '#94A3B8',
-    marginTop: 4,
+    marginTop: 3,
   },
   actionsContainer: {
     gap: 12,
