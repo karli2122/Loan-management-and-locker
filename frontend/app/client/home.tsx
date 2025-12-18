@@ -106,6 +106,24 @@ export default function ClientHome() {
 
   const protectionTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  // Retry mechanism for checking admin status after request
+  const checkAdminStatusWithRetry = async (maxAttempts = 5, delayMs = 500) => {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+      const isActive = await devicePolicy.isAdminActive();
+      if (isActive) {
+        setIsAdminActive(true);
+        setSetupComplete(true);
+        await devicePolicy.preventUninstall(true);
+        console.log(`Device Admin confirmed active on attempt ${attempt}`);
+        return true;
+      }
+      console.log(`Admin check attempt ${attempt}/${maxAttempts} - not active yet`);
+    }
+    console.log('Admin status check timed out');
+    return false;
+  };
+
   // Check and setup Device Admin
   const checkAndSetupDeviceProtection = async () => {
     if (Platform.OS !== 'android') return;
@@ -128,16 +146,8 @@ export default function ClientHome() {
                 try {
                   await devicePolicy.requestAdmin();
                   console.log('Device Admin request dispatched');
-                  // Re-check admin status after request
-                  setTimeout(async () => {
-                    const newAdmin = await devicePolicy.isAdminActive();
-                    setIsAdminActive(newAdmin);
-                    if (newAdmin) {
-                      setSetupComplete(true);
-                      // Enable uninstall protection
-                      await devicePolicy.preventUninstall(true);
-                    }
-                  }, 1000);
+                  // Use retry mechanism to check admin status
+                  await checkAdminStatusWithRetry();
                 } catch (e) {
                   console.log('Admin request failed:', e);
                 }

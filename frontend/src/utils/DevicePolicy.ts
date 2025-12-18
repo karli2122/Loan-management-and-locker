@@ -1,4 +1,5 @@
 import { NativeModules, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { DeviceAdmin, EMIDeviceAdmin } = NativeModules;
 
@@ -91,12 +92,13 @@ class DevicePolicyManager {
 
   /**
    * Set the lock state in preferences (for boot receiver)
+   * Stores locally in AsyncStorage and is used for offline state tracking
    */
   async setLockState(locked: boolean): Promise<string> {
     if (Platform.OS !== 'android') return 'not_supported';
     try {
-      // Use shared preferences through the native module if available
-      // Otherwise just return success since we track lock state in backend
+      // Store lock state in AsyncStorage for persistence across app restarts
+      await AsyncStorage.setItem('device_lock_state', locked ? 'locked' : 'unlocked');
       return 'success';
     } catch (error) {
       console.log('Failed to set lock state:', error);
