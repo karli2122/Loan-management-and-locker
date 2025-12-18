@@ -127,7 +127,11 @@ export default function Reports() {
     
     // Calculate interest earned from financial report
     const interestEarned = financialReport?.totals?.interest_earned || 0;
+    const principalDisbursed = financialReport?.totals?.principal_disbursed || 0;
     const principalCollected = totalRevenue - (interestEarned * (filteredData.length / 6)); // Approximate
+    
+    // Calculate ROI (Return on Investment) = (Profit / Investment) * 100
+    const roi = principalDisbursed > 0 ? ((interestEarned / principalDisbursed) * 100) : 0;
     
     return {
       totalRevenue,
@@ -135,6 +139,44 @@ export default function Reports() {
       interestEarned: interestEarned * (filteredData.length / 6),
       principalCollected,
       profit: interestEarned * (filteredData.length / 6), // Interest is profit
+      roi,
+    };
+  };
+
+  // Calculate advanced metrics
+  const getAdvancedMetrics = () => {
+    const totalClients = collectionReport?.overview?.total_clients || 0;
+    const activeLoans = collectionReport?.overview?.active_loans || 0;
+    const completedLoans = collectionReport?.overview?.completed_loans || 0;
+    const overdueClients = collectionReport?.overview?.overdue_clients || 0;
+    const defaultedClients = clientReport?.summary?.defaulted_clients || 0;
+    
+    // Strike rate = (Completed loans / Total loans given) * 100
+    const totalLoansGiven = activeLoans + completedLoans;
+    const strikeRate = totalLoansGiven > 0 ? ((completedLoans / totalLoansGiven) * 100) : 0;
+    
+    // Bad loans = defaulted clients (overdue > 7 days)
+    const badLoansCount = defaultedClients;
+    const badLoansAmount = clientReport?.details?.defaulted?.reduce(
+      (sum: number, c: any) => sum + (c.outstanding_balance || 0), 0
+    ) || 0;
+    
+    // New loans/customers this month
+    const newCustomersThisMonth = clientReport?.summary?.new_clients_this_month || 0;
+    const newLoansThisMonth = collectionReport?.this_month?.new_loans || 0;
+    
+    // Repeat customers = customers with more than 1 loan / total customers
+    const repeatCustomers = clientReport?.summary?.repeat_customers || 0;
+    const repeatRate = totalClients > 0 ? ((repeatCustomers / totalClients) * 100) : 0;
+    
+    return {
+      strikeRate,
+      badLoansCount,
+      badLoansAmount,
+      newCustomersThisMonth,
+      newLoansThisMonth,
+      repeatCustomers,
+      repeatRate,
     };
   };
 
@@ -382,6 +424,7 @@ export default function Reports() {
   }
 
   const profitSummary = getProfitSummary();
+  const advancedMetrics = getAdvancedMetrics();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -469,6 +512,76 @@ export default function Reports() {
               <View style={styles.profitDetailItem}>
                 <Text style={styles.profitDetailLabel}>{language === 'et' ? 'Intress teenitud' : 'Interest Earned'}</Text>
                 <Text style={styles.profitDetailValue}>€{profitSummary.interestEarned.toFixed(2)}</Text>
+              </View>
+              <View style={styles.profitDetailItem}>
+                <Text style={styles.profitDetailLabel}>{language === 'et' ? 'ROI' : 'ROI'}</Text>
+                <Text style={[styles.profitDetailValue, { color: '#10B981' }]}>{profitSummary.roi.toFixed(1)}%</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Advanced Metrics Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            {language === 'et' ? 'Täiendavad näitajad' : 'Advanced Metrics'}
+          </Text>
+          <View style={styles.metricsGrid}>
+            {/* Strike Rate */}
+            <View style={[styles.metricCard, { backgroundColor: '#10B98120' }]}>
+              <View style={styles.metricHeader}>
+                <Ionicons name="checkmark-done-circle" size={24} color="#10B981" />
+                <Text style={[styles.metricValue, { color: '#10B981' }]}>{advancedMetrics.strikeRate.toFixed(1)}%</Text>
+              </View>
+              <Text style={styles.metricLabel}>{language === 'et' ? 'Edukusmäär' : 'Strike Rate'}</Text>
+            </View>
+
+            {/* Repeat Customers */}
+            <View style={[styles.metricCard, { backgroundColor: '#4F46E520' }]}>
+              <View style={styles.metricHeader}>
+                <Ionicons name="people" size={24} color="#4F46E5" />
+                <Text style={[styles.metricValue, { color: '#4F46E5' }]}>{advancedMetrics.repeatRate.toFixed(1)}%</Text>
+              </View>
+              <Text style={styles.metricLabel}>{language === 'et' ? 'Korduvkliendid' : 'Repeat Customers'}</Text>
+              <Text style={styles.metricSubLabel}>({advancedMetrics.repeatCustomers})</Text>
+            </View>
+
+            {/* New Customers This Month */}
+            <View style={[styles.metricCard, { backgroundColor: '#F59E0B20' }]}>
+              <View style={styles.metricHeader}>
+                <Ionicons name="person-add" size={24} color="#F59E0B" />
+                <Text style={[styles.metricValue, { color: '#F59E0B' }]}>{advancedMetrics.newCustomersThisMonth}</Text>
+              </View>
+              <Text style={styles.metricLabel}>{language === 'et' ? 'Uued kliendid' : 'New Customers'}</Text>
+              <Text style={styles.metricSubLabel}>{language === 'et' ? '(sel kuul)' : '(this month)'}</Text>
+            </View>
+
+            {/* New Loans This Month */}
+            <View style={[styles.metricCard, { backgroundColor: '#6366F120' }]}>
+              <View style={styles.metricHeader}>
+                <Ionicons name="document-text" size={24} color="#6366F1" />
+                <Text style={[styles.metricValue, { color: '#6366F1' }]}>{advancedMetrics.newLoansThisMonth}</Text>
+              </View>
+              <Text style={styles.metricLabel}>{language === 'et' ? 'Uued laenud' : 'New Loans'}</Text>
+              <Text style={styles.metricSubLabel}>{language === 'et' ? '(sel kuul)' : '(this month)'}</Text>
+            </View>
+          </View>
+
+          {/* Bad Loans Section */}
+          <View style={styles.badLoansCard}>
+            <View style={styles.badLoansHeader}>
+              <Ionicons name="warning" size={24} color="#EF4444" />
+              <Text style={styles.badLoansTitle}>{language === 'et' ? 'Halvad laenud' : 'Bad Loans'}</Text>
+            </View>
+            <View style={styles.badLoansDetails}>
+              <View style={styles.badLoansItem}>
+                <Text style={styles.badLoansLabel}>{language === 'et' ? 'Arv' : 'Count'}</Text>
+                <Text style={styles.badLoansValue}>{advancedMetrics.badLoansCount}</Text>
+              </View>
+              <View style={styles.badLoansDivider} />
+              <View style={styles.badLoansItem}>
+                <Text style={styles.badLoansLabel}>{language === 'et' ? 'Summa' : 'Amount'}</Text>
+                <Text style={[styles.badLoansValue, { color: '#EF4444' }]}>€{advancedMetrics.badLoansAmount.toFixed(2)}</Text>
               </View>
             </View>
           </View>
@@ -1108,6 +1221,81 @@ const styles = StyleSheet.create({
   profitDetailValue: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#fff',
+  },
+  // Advanced Metrics styles
+  metricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 16,
+  },
+  metricCard: {
+    flex: 1,
+    minWidth: '45%',
+    padding: 16,
+    borderRadius: 12,
+  },
+  metricHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  metricValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  metricLabel: {
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  metricSubLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  badLoansCard: {
+    backgroundColor: '#EF444420',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  badLoansHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  badLoansTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  badLoansDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badLoansItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  badLoansDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#EF444440',
+  },
+  badLoansLabel: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginBottom: 4,
+  },
+  badLoansValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
     color: '#fff',
   },
   // Modal styles

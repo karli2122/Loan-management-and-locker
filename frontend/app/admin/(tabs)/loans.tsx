@@ -41,6 +41,7 @@ export default function LoansTab() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string | undefined>(undefined);
   const [tab, setTab] = useState<'given' | 'settled'>('given');
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'today' | 'tomorrow' | 'next3days'>('all');
 
   const fetchClients = async () => {
     try {
@@ -86,6 +87,24 @@ export default function LoansTab() {
     setRefreshing(false);
   };
 
+  // Helper function to check if date matches filter
+  const matchesPaymentFilter = (client: Client, filterType: string): boolean => {
+    if (filterType === 'all') return true;
+    if (!client.next_payment_due) return false;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const paymentDate = new Date(client.next_payment_due);
+    paymentDate.setHours(0, 0, 0, 0);
+    
+    const diffDays = Math.ceil((paymentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (filterType === 'today') return diffDays === 0;
+    if (filterType === 'tomorrow') return diffDays === 1;
+    if (filterType === 'next3days') return diffDays >= 0 && diffDays <= 3;
+    return true;
+  };
+
   const filteredClients = useMemo(() => {
     let list = clients;
     if (filter === 'overdue') {
@@ -108,56 +127,125 @@ export default function LoansTab() {
       );
     }
 
+    // Apply payment date filter
+    list = list.filter((c) => matchesPaymentFilter(c, paymentFilter));
+
     return list.filter(
       (client) =>
         client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         client.phone.includes(searchQuery)
     );
-  }, [clients, filter, searchQuery, tab]);
+  }, [clients, filter, searchQuery, tab, paymentFilter]);
 
-  const renderClient = ({ item }: { item: Client }) => (
-    <TouchableOpacity
-      style={styles.clientCard}
-      onPress={() => router.push(`/admin/client-details?id=${item.id}`)}
-    >
-      <View style={styles.clientHeader}>
-        <View style={styles.clientAvatar}>
-          <Text style={styles.clientAvatarText}>{item.name.charAt(0).toUpperCase()}</Text>
-        </View>
-        <View style={styles.clientInfo}>
-          <Text style={styles.clientName}>{item.name}</Text>
-          <Text style={styles.clientPhone}>{item.phone}</Text>
-        </View>
-        <View style={[styles.statusBadge, item.is_locked ? styles.statusLocked : styles.statusUnlocked]}>
-          <Ionicons
-            name={item.is_locked ? 'lock-closed' : 'lock-open'}
-            size={14}
-            color="#fff"
-          />
-        </View>
-      </View>
-      {item.principal_amount && (
-        <View style={styles.loanInfo}>
-          <View style={styles.loanInfoRow}>
-            <Text style={styles.loanInfoLabel}>
-              {language === 'et' ? 'Laenusumma' : 'Loan Amount'}
-            </Text>
-            <Text style={styles.loanInfoValue}>€{item.principal_amount.toFixed(2)}</Text>
+  const renderClient = ({ item }: { item: Client }) => {
+    // Calculate payment progress
+    const totalLoan = item.total_amount_due || item.principal_amount || 0;
+    const paid = item.total_paid || 0;
+    const outstanding = item.outstanding_balance ?? totalLoan;
+    const progressPercent = totalLoan > 0 ? Math.min((paid / totalLoan) * 100, 100) : 0;
+    
+    // Format next payment date
+    const formatPaymentDate = (dateStr?: string) => {
+      if (!dateStr) return null;
+      const date = new Date(dateStr);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const paymentDate = new Date(dateStr);
+      paymentDate.setHours(0, 0, 0, 0);
+      const diffDays = Math.ceil((paymentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 0) return language === 'et' ? 'Täna' : 'Today';
+      if (diffDays === 1) return language === 'et' ? 'Homme' : 'Tomorrow';
+      if (diffDays < 0) return `${Math.abs(diffDays)} ${language === 'et' ? 'päeva üle tähtaja' : 'days overdue'}`;
+      return date.toLocaleDateString(language === 'et' ? 'et-EE' : 'en-US', { 
+        day: 'numeric', 
+        month: 'short' 
+      });
+    };
+
+    return (
+      <TouchableOpacity
+        style={styles.clientCard}
+        onPress={() => router.push(`/admin/client-details?id=${item.id}`)}
+      >
+        <View style={styles.clientHeader}>
+          <View style={styles.clientAvatar}>
+            <Text style={styles.clientAvatarText}>{item.name.charAt(0).toUpperCase()}</Text>
           </View>
-          {item.total_amount_due && (
-            <View style={styles.loanInfoRow}>
-              <Text style={styles.loanInfoLabel}>
-                {language === 'et' ? 'Võlgnevus' : 'Amount Due'}
-              </Text>
-              <Text style={[styles.loanInfoValue, { color: '#F59E0B' }]}>
-                €{item.total_amount_due.toFixed(2)}
-              </Text>
-            </View>
-          )}
+          <View style={styles.clientInfo}>
+            <Text style={styles.clientName}>{item.name}</Text>
+            <Text style={styles.clientPhone}>{item.phone}</Text>
+          </View>
+          <View style={[styles.statusBadge, item.is_locked ? styles.statusLocked : styles.statusUnlocked]}>
+            <Ionicons
+              name={item.is_locked ? 'lock-closed' : 'lock-open'}
+              size={14}
+              color="#fff"
+            />
+          </View>
         </View>
-      )}
-    </TouchableOpacity>
-  );
+        
+        {item.principal_amount && (
+          <View style={styles.loanInfo}>
+            {/* Progress Bar */}
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
+              </View>
+              <Text style={styles.progressText}>{progressPercent.toFixed(0)}%</Text>
+            </View>
+            
+            {/* Loan Details Grid */}
+            <View style={styles.loanDetailsGrid}>
+              <View style={styles.loanDetailItem}>
+                <Text style={styles.loanDetailLabel}>
+                  {language === 'et' ? 'Laen' : 'Loan'}
+                </Text>
+                <Text style={styles.loanDetailValue}>€{item.principal_amount.toFixed(0)}</Text>
+              </View>
+              
+              <View style={styles.loanDetailItem}>
+                <Text style={styles.loanDetailLabel}>
+                  {language === 'et' ? 'Makstud' : 'Paid'}
+                </Text>
+                <Text style={[styles.loanDetailValue, { color: '#10B981' }]}>€{paid.toFixed(0)}</Text>
+              </View>
+              
+              <View style={styles.loanDetailItem}>
+                <Text style={styles.loanDetailLabel}>
+                  {language === 'et' ? 'Võlg' : 'Due'}
+                </Text>
+                <Text style={[styles.loanDetailValue, { color: outstanding > 0 ? '#F59E0B' : '#10B981' }]}>
+                  €{outstanding.toFixed(0)}
+                </Text>
+              </View>
+            </View>
+            
+            {/* Next Payment & Overdue Info */}
+            <View style={styles.paymentInfoRow}>
+              {item.next_payment_due && (
+                <View style={styles.nextPaymentBadge}>
+                  <Ionicons name="calendar" size={12} color="#4F46E5" />
+                  <Text style={styles.nextPaymentText}>
+                    {formatPaymentDate(item.next_payment_due)}
+                  </Text>
+                </View>
+              )}
+              
+              {(item.days_overdue ?? 0) > 0 && (
+                <View style={styles.overdueBadge}>
+                  <Ionicons name="alert-circle" size={12} color="#EF4444" />
+                  <Text style={styles.overdueText}>
+                    {item.days_overdue} {language === 'et' ? 'päeva' : 'days'}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
@@ -208,6 +296,65 @@ export default function LoansTab() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Payment Date Filter */}
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={styles.paymentFilterContainer}
+        contentContainerStyle={styles.paymentFilterContent}
+      >
+        <TouchableOpacity
+          style={[styles.paymentFilterButton, paymentFilter === 'all' && styles.paymentFilterButtonActive]}
+          onPress={() => setPaymentFilter('all')}
+        >
+          <Text style={[styles.paymentFilterText, paymentFilter === 'all' && styles.paymentFilterTextActive]}>
+            {language === 'et' ? 'Kõik' : 'All'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.paymentFilterButton, paymentFilter === 'today' && styles.paymentFilterButtonActive]}
+          onPress={() => setPaymentFilter('today')}
+        >
+          <Ionicons 
+            name="today" 
+            size={14} 
+            color={paymentFilter === 'today' ? '#fff' : '#94A3B8'} 
+            style={{ marginRight: 4 }} 
+          />
+          <Text style={[styles.paymentFilterText, paymentFilter === 'today' && styles.paymentFilterTextActive]}>
+            {language === 'et' ? 'Täna' : 'Today'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.paymentFilterButton, paymentFilter === 'tomorrow' && styles.paymentFilterButtonActive]}
+          onPress={() => setPaymentFilter('tomorrow')}
+        >
+          <Ionicons 
+            name="calendar" 
+            size={14} 
+            color={paymentFilter === 'tomorrow' ? '#fff' : '#94A3B8'} 
+            style={{ marginRight: 4 }} 
+          />
+          <Text style={[styles.paymentFilterText, paymentFilter === 'tomorrow' && styles.paymentFilterTextActive]}>
+            {language === 'et' ? 'Homme' : 'Tomorrow'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.paymentFilterButton, paymentFilter === 'next3days' && styles.paymentFilterButtonActive]}
+          onPress={() => setPaymentFilter('next3days')}
+        >
+          <Ionicons 
+            name="calendar-outline" 
+            size={14} 
+            color={paymentFilter === 'next3days' ? '#fff' : '#94A3B8'} 
+            style={{ marginRight: 4 }} 
+          />
+          <Text style={[styles.paymentFilterText, paymentFilter === 'next3days' && styles.paymentFilterTextActive]}>
+            {language === 'et' ? '3 päeva' : 'Next 3 days'}
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
 
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#64748B" />
@@ -372,7 +519,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#334155',
-    gap: 8,
+    gap: 10,
   },
   loanInfoRow: {
     flexDirection: 'row',
@@ -386,6 +533,84 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
+  },
+  // Progress bar styles
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  progressBarBg: {
+    flex: 1,
+    height: 6,
+    backgroundColor: '#334155',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#10B981',
+    borderRadius: 3,
+  },
+  progressText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#10B981',
+    width: 36,
+    textAlign: 'right',
+  },
+  // Loan details grid
+  loanDetailsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  loanDetailItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  loanDetailLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    marginBottom: 2,
+  },
+  loanDetailValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  // Payment info row
+  paymentInfoRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  nextPaymentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#4F46E520',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  nextPaymentText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#4F46E5',
+  },
+  overdueBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EF444420',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  overdueText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#EF4444',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -414,5 +639,35 @@ const styles = StyleSheet.create({
     color: '#E2E8F0',
     fontSize: 13,
     fontWeight: '600',
+  },
+  paymentFilterContainer: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    maxHeight: 40,
+  },
+  paymentFilterContent: {
+    gap: 8,
+  },
+  paymentFilterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E293B',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  paymentFilterButtonActive: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  paymentFilterText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  paymentFilterTextActive: {
+    color: '#fff',
   },
 });

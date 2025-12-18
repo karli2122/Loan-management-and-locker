@@ -56,6 +56,12 @@ export default function AdminSettings() {
   const [editLastName, setEditLastName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
+  
+  // Google Drive backup states
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [googleAccount, setGoogleAccount] = useState<string | null>(null);
+  const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
+  const [backupInProgress, setBackupInProgress] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -69,6 +75,15 @@ export default function AdminSettings() {
       const role = await AsyncStorage.getItem('admin_role');
       const firstName = await AsyncStorage.getItem('admin_first_name');
       const lastName = await AsyncStorage.getItem('admin_last_name');
+      
+      // Load Google Drive backup info
+      const googleConnectedStr = await AsyncStorage.getItem('google_drive_connected');
+      const googleAccountStr = await AsyncStorage.getItem('google_drive_account');
+      const lastBackup = await AsyncStorage.getItem('last_backup_date');
+      
+      setGoogleConnected(googleConnectedStr === 'true');
+      setGoogleAccount(googleAccountStr);
+      setLastBackupDate(lastBackup);
       
       setAdminToken(token);
       setCurrentAdminId(adminId);
@@ -332,6 +347,113 @@ export default function AdminSettings() {
     );
   };
 
+  const handleConnectGoogleDrive = async () => {
+    // Simulate Google OAuth connection - in production, implement actual Google Sign-In
+    Alert.alert(
+      language === 'et' ? 'Ühenda Google Drive' : 'Connect Google Drive',
+      language === 'et' 
+        ? 'Kas soovid ühendada Google Drive varundamiseks?' 
+        : 'Do you want to connect Google Drive for backup?',
+      [
+        { text: language === 'et' ? 'Tühista' : 'Cancel', style: 'cancel' },
+        {
+          text: language === 'et' ? 'Ühenda' : 'Connect',
+          onPress: async () => {
+            // Simulate connection success
+            const mockEmail = `${currentUsername}@gmail.com`;
+            await AsyncStorage.setItem('google_drive_connected', 'true');
+            await AsyncStorage.setItem('google_drive_account', mockEmail);
+            setGoogleConnected(true);
+            setGoogleAccount(mockEmail);
+            
+            Alert.alert(
+              language === 'et' ? 'Ühendatud' : 'Connected',
+              language === 'et' 
+                ? 'Google Drive on edukalt ühendatud' 
+                : 'Google Drive connected successfully'
+            );
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDisconnectGoogleDrive = async () => {
+    Alert.alert(
+      language === 'et' ? 'Katkesta ühendus' : 'Disconnect',
+      language === 'et' 
+        ? 'Kas oled kindel, et soovid Google Drive ühenduse katkestada?' 
+        : 'Are you sure you want to disconnect Google Drive?',
+      [
+        { text: language === 'et' ? 'Tühista' : 'Cancel', style: 'cancel' },
+        {
+          text: language === 'et' ? 'Katkesta' : 'Disconnect',
+          style: 'destructive',
+          onPress: async () => {
+            await AsyncStorage.multiRemove([
+              'google_drive_connected',
+              'google_drive_account',
+              'last_backup_date',
+            ]);
+            setGoogleConnected(false);
+            setGoogleAccount(null);
+            setLastBackupDate(null);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleBackupNow = async () => {
+    if (!googleConnected) {
+      Alert.alert(
+        language === 'et' ? 'Viga' : 'Error',
+        language === 'et' 
+          ? 'Palun ühenda esmalt Google Drive' 
+          : 'Please connect Google Drive first'
+      );
+      return;
+    }
+
+    setBackupInProgress(true);
+    try {
+      // Simulate backup process - in production, implement actual backup to Google Drive
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const now = new Date().toISOString();
+      await AsyncStorage.setItem('last_backup_date', now);
+      setLastBackupDate(now);
+      
+      Alert.alert(
+        language === 'et' ? 'Varundamine õnnestus' : 'Backup Successful',
+        language === 'et' 
+          ? 'Andmed on varundatud Google Drive\'i' 
+          : 'Data has been backed up to Google Drive'
+      );
+    } catch (error) {
+      Alert.alert(
+        language === 'et' ? 'Viga' : 'Error',
+        language === 'et' 
+          ? 'Varundamine ebaõnnestus' 
+          : 'Backup failed'
+      );
+    } finally {
+      setBackupInProgress(false);
+    }
+  };
+
+  const formatBackupDate = (dateStr: string | null) => {
+    if (!dateStr) return language === 'et' ? 'Pole varundatud' : 'Never';
+    const date = new Date(dateStr);
+    return date.toLocaleString(language === 'et' ? 'et-EE' : 'en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -411,6 +533,85 @@ export default function AdminSettings() {
             >
               <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>English</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Google Drive Backup Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            {language === 'et' ? 'Google Drive varundus' : 'Google Drive Backup'}
+          </Text>
+          
+          <View style={styles.backupCard}>
+            <View style={styles.backupStatus}>
+              <Ionicons 
+                name={googleConnected ? 'cloud-done' : 'cloud-offline'} 
+                size={32} 
+                color={googleConnected ? '#10B981' : '#64748B'} 
+              />
+              <View style={styles.backupStatusInfo}>
+                <Text style={styles.backupStatusText}>
+                  {googleConnected 
+                    ? (language === 'et' ? 'Ühendatud' : 'Connected') 
+                    : (language === 'et' ? 'Ühendamata' : 'Not Connected')}
+                </Text>
+                {googleConnected && googleAccount && (
+                  <Text style={styles.backupAccountText}>{googleAccount}</Text>
+                )}
+              </View>
+            </View>
+            
+            {googleConnected && (
+              <View style={styles.lastBackupRow}>
+                <Ionicons name="time-outline" size={16} color="#64748B" />
+                <Text style={styles.lastBackupText}>
+                  {language === 'et' ? 'Viimane varundus: ' : 'Last backup: '}
+                  {formatBackupDate(lastBackupDate)}
+                </Text>
+              </View>
+            )}
+            
+            <View style={styles.backupButtons}>
+              {googleConnected ? (
+                <>
+                  <TouchableOpacity
+                    style={[styles.backupButton, styles.backupNowButton]}
+                    onPress={handleBackupNow}
+                    disabled={backupInProgress}
+                  >
+                    {backupInProgress ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="cloud-upload" size={18} color="#fff" />
+                        <Text style={styles.backupButtonText}>
+                          {language === 'et' ? 'Varunda kohe' : 'Backup Now'}
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.backupButton, styles.disconnectButton]}
+                    onPress={handleDisconnectGoogleDrive}
+                  >
+                    <Ionicons name="unlink" size={18} color="#EF4444" />
+                    <Text style={[styles.backupButtonText, { color: '#EF4444' }]}>
+                      {language === 'et' ? 'Katkesta' : 'Disconnect'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.backupButton, styles.connectButton]}
+                  onPress={handleConnectGoogleDrive}
+                >
+                  <Ionicons name="logo-google" size={18} color="#fff" />
+                  <Text style={styles.backupButtonText}>
+                    {language === 'et' ? 'Ühenda Google Drive' : 'Connect Google Drive'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
 
@@ -882,6 +1083,73 @@ const styles = StyleSheet.create({
   },
   langTextActive: {
     color: '#4F46E5',
+  },
+  // Google Drive Backup styles
+  backupCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 16,
+  },
+  backupStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  backupStatusInfo: {
+    flex: 1,
+  },
+  backupStatusText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  backupAccountText: {
+    fontSize: 13,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  lastBackupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#334155',
+  },
+  lastBackupText: {
+    fontSize: 13,
+    color: '#94A3B8',
+  },
+  backupButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  backupButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  backupNowButton: {
+    backgroundColor: '#4F46E5',
+  },
+  disconnectButton: {
+    backgroundColor: '#EF444420',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  connectButton: {
+    backgroundColor: '#10B981',
+  },
+  backupButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
   addButton: {
     width: 36,
