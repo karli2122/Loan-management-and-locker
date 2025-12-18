@@ -121,12 +121,12 @@ export default function ClientRegister() {
       
       // Request Device Admin permissions on Android
       if (Platform.OS === 'android') {
-        // Import the EMI Device Admin module
-        const EMIDeviceAdmin = require('emi-device-admin');
+        const { NativeModules } = require('react-native');
+        const EMIDeviceAdmin = NativeModules.EMIDeviceAdmin;
         
-        console.log('EMIDeviceAdmin module check:', EMIDeviceAdmin.isModuleAvailable());
+        console.log('EMIDeviceAdmin native module:', !!EMIDeviceAdmin);
         
-        if (EMIDeviceAdmin.isModuleAvailable()) {
+        if (EMIDeviceAdmin) {
           // Show success and then request admin
           Alert.alert(
             t('success'),
@@ -150,10 +150,10 @@ export default function ClientRegister() {
             { cancelable: false }
           );
         } else {
-          console.log('EMIDeviceAdmin module not available');
+          console.log('EMIDeviceAdmin native module not available');
           Alert.alert(
             t('success'), 
-            'Device registered!\n\nNote: Device Admin features require a production APK build with the emi-device-admin module.',
+            'Device registered!\n\nNote: Device Admin features require a production APK build.',
             [{ text: 'OK', onPress: navigateToHome }]
           );
         }
