@@ -364,14 +364,24 @@ export default function ClientHome() {
   useEffect(() => {
     isMounted.current = true;
     
-    // Check cached lock state immediately on startup for offline enforcement
-    checkCachedLockStateOnStartup();
+    // Wrap initialization in try-catch to prevent crashes
+    const initialize = async () => {
+      try {
+        // Check cached lock state immediately on startup for offline enforcement
+        await checkCachedLockStateOnStartup();
+        
+        // Setup device protection first (deferred for safety)
+        scheduleDeviceProtectionCheck();
+        
+        // Then load client data
+        await loadClientData();
+      } catch (error) {
+        console.error('Initialization error:', error);
+        setLoading(false);
+      }
+    };
     
-    // Setup device protection first (deferred for safety)
-    scheduleDeviceProtectionCheck();
-    
-    // Then load client data
-    loadClientData();
+    initialize();
 
     // Poll status every 5 seconds
     intervalRef.current = setInterval(() => {
@@ -577,7 +587,7 @@ export default function ClientHome() {
           <View style={styles.lockEmiInfo}>
             <View style={styles.lockEmiItem}>
               <Text style={styles.lockEmiLabel}>{t('pendingAmount')}</Text>
-              <Text style={styles.lockEmiValue}>€{status.emi_amount.toLocaleString()}</Text>
+              <Text style={styles.lockEmiValue}>€{(status.emi_amount ?? 0).toLocaleString()}</Text>
             </View>
             {status.emi_due_date && (
               <View style={styles.lockEmiItem}>
@@ -728,7 +738,7 @@ export default function ClientHome() {
           <View style={styles.emiDetails}>
             <View style={styles.emiDetailItem}>
               <Text style={styles.emiDetailLabel}>{t('monthlyEmi')}</Text>
-              <Text style={styles.emiDetailValue}>€{status?.emi_amount.toLocaleString() || '0'}</Text>
+              <Text style={styles.emiDetailValue}>€{(status?.emi_amount ?? 0).toLocaleString()}</Text>
             </View>
             <View style={styles.emiDetailDivider} />
             <View style={styles.emiDetailItem}>

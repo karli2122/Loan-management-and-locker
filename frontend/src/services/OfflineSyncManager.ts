@@ -22,25 +22,35 @@ class OfflineSyncManager {
   private syncInterval: NodeJS.Timeout | null = null;
   private isOnline: boolean = true;
   private onStatusUpdateCallback: ((status: any) => void) | null = null;
+  private initialized: boolean = false;
 
   constructor() {
-    this.initializeNetworkListener();
+    // Defer network listener initialization to avoid crashes during module loading
+    setTimeout(() => this.initializeNetworkListener(), 100);
   }
 
   private initializeNetworkListener() {
-    // Monitor network status
-    NetInfo.addEventListener(state => {
-      const wasOffline = !this.isOnline;
-      this.isOnline = state.isConnected ?? false;
-      
-      console.log('[OfflineSync] Network status:', this.isOnline ? 'ONLINE' : 'OFFLINE');
-      
-      // If we just came online, sync immediately
-      if (wasOffline && this.isOnline) {
-        console.log('[OfflineSync] Connection restored - syncing...');
-        this.syncAll();
-      }
-    });
+    try {
+      // Monitor network status
+      NetInfo.addEventListener(state => {
+        const wasOffline = !this.isOnline;
+        this.isOnline = state.isConnected ?? false;
+        
+        console.log('[OfflineSync] Network status:', this.isOnline ? 'ONLINE' : 'OFFLINE');
+        
+        // If we just came online, sync immediately
+        if (wasOffline && this.isOnline) {
+          console.log('[OfflineSync] Connection restored - syncing...');
+          this.syncAll();
+        }
+      });
+      this.initialized = true;
+    } catch (error) {
+      console.log('[OfflineSync] Failed to initialize network listener:', error);
+      // Default to online mode if listener fails
+      this.isOnline = true;
+      this.initialized = true;
+    }
   }
 
   async getCachedStatus(clientId: string): Promise<CachedStatus | null> {
