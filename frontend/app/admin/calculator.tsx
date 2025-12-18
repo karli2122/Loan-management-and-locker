@@ -82,7 +82,7 @@ export default function Calculator() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>EMI Calculator</Text>
+        <Text style={styles.headerTitle}>Loan Calculator</Text>
         <View style={{ width: 40 }} />
       </View>
 

@@ -297,7 +297,7 @@ export default function Dashboard() {
             <View style={[styles.actionIcon, { backgroundColor: '#14B8A6' }]}>
               <Ionicons name="calculator" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>{language === 'et' ? 'EMI kalkulaator' : 'EMI Calculator'}</Text>
+            <Text style={styles.actionTitle}>{language === 'et' ? 'Laenukalkulaator' : 'Loan Calculator'}</Text>
             <Text style={styles.actionDescription}>{language === 'et' ? 'Arvuta laenumaksed' : 'Calculate loan payments'}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>

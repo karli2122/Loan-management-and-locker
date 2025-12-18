@@ -285,7 +285,7 @@ export default function AdminLogin() {
                 trackColor={{ false: '#334155', true: '#4F46E5' }}
                 thumbColor="#fff"
               />
-              <Text style={styles.rememberText}>{t('staySignedIn') ?? 'Stay signed in'}</Text>
+              <Text style={styles.rememberText}>{t('staySignedIn')}</Text>
             </View>
 
             <TouchableOpacity

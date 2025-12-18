@@ -487,6 +487,12 @@ const translations: Translations = {
     en: 'Your device has been locked due to pending EMI payment.',
   },
 
+  // Stay signed in
+  staySignedIn: {
+    et: 'Hoia sisse logitud',
+    en: 'Stay signed in',
+  },
+
   // Settings Screen
   settings: {
     et: 'Seaded',

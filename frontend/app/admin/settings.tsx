@@ -39,6 +39,7 @@ export default function AdminSettings() {
   // Modal states
   const [showAddAdmin, setShowAddAdmin] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   
   // Form states
@@ -49,6 +50,12 @@ export default function AdminSettings() {
   const [newUserRole, setNewUserRole] = useState('user'); // 'admin' or 'user'
   const [currentPassword, setCurrentPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // Profile edit states
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
 
   useEffect(() => {
     loadData();
@@ -60,11 +67,15 @@ export default function AdminSettings() {
       const adminId = await AsyncStorage.getItem('admin_id');
       const username = await AsyncStorage.getItem('admin_username');
       const role = await AsyncStorage.getItem('admin_role');
+      const firstName = await AsyncStorage.getItem('admin_first_name');
+      const lastName = await AsyncStorage.getItem('admin_last_name');
       
       setAdminToken(token);
       setCurrentAdminId(adminId);
       setCurrentUsername(username || '');
       setCurrentUserRole(role || 'user');
+      setEditFirstName(firstName || '');
+      setEditLastName(lastName || '');
       
       // Only fetch admin list if user is an admin
       if (token && role === 'admin') {
@@ -255,6 +266,54 @@ export default function AdminSettings() {
     );
   };
 
+  const handleUpdateProfile = async () => {
+    if (!editFirstName.trim() || !editLastName.trim()) {
+      Alert.alert(
+        language === 'et' ? 'Viga' : 'Error',
+        language === 'et' ? 'Palun sisesta nimi' : 'Please enter your name'
+      );
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/admin/update-profile?admin_token=${adminToken}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          first_name: editFirstName.trim(),
+          last_name: editLastName.trim(),
+          email: editEmail.trim() || null,
+          phone: editPhone.trim() || null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || 'Failed to update profile');
+      }
+
+      // Update local storage
+      await AsyncStorage.setItem('admin_first_name', editFirstName.trim());
+      await AsyncStorage.setItem('admin_last_name', editLastName.trim());
+
+      Alert.alert(
+        language === 'et' ? 'Õnnestus' : 'Success',
+        language === 'et' ? 'Profiil uuendatud' : 'Profile updated successfully'
+      );
+      
+      setShowEditProfile(false);
+    } catch (error: any) {
+      Alert.alert(
+        language === 'et' ? 'Viga' : 'Error',
+        error.message
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleLogout = async () => {
     Alert.alert(
       language === 'et' ? 'Logi välja' : 'Logout',
@@ -306,13 +365,24 @@ export default function AdminSettings() {
               <Text style={styles.avatarText}>{currentUsername.charAt(0).toUpperCase()}</Text>
             </View>
             <View style={styles.userInfo}>
-              <Text style={styles.userName}>{currentUsername}</Text>
+              <Text style={styles.userName}>{editFirstName} {editLastName}</Text>
               <Text style={styles.userRole}>{language === 'et' ? 'Administraator' : 'Administrator'}</Text>
             </View>
           </View>
 
           <TouchableOpacity
             style={styles.actionButton}
+            onPress={() => setShowEditProfile(true)}
+          >
+            <Ionicons name="person" size={20} color="#4F46E5" />
+            <Text style={styles.actionButtonText}>
+              {language === 'et' ? 'Muuda profiili' : 'Edit Profile'}
+            </Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, { marginTop: 8 }]}
             onPress={() => setShowChangePassword(true)}
           >
             <Ionicons name="key" size={20} color="#4F46E5" />
@@ -594,6 +664,88 @@ export default function AdminSettings() {
                 ) : (
                   <Text style={styles.confirmButtonText}>
                     {language === 'et' ? 'Muuda' : 'Change'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit Profile Modal */}
+      <Modal visible={showEditProfile} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              {language === 'et' ? 'Muuda profiili' : 'Edit Profile'}
+            </Text>
+            
+            <View style={styles.inputContainer}>
+              <Ionicons name="person" size={20} color="#64748B" />
+              <TextInput
+                style={styles.input}
+                placeholder={language === 'et' ? 'Eesnimi' : 'First name'}
+                placeholderTextColor="#64748B"
+                value={editFirstName}
+                onChangeText={setEditFirstName}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="person" size={20} color="#64748B" />
+              <TextInput
+                style={styles.input}
+                placeholder={language === 'et' ? 'Perekonnanimi' : 'Last name'}
+                placeholderTextColor="#64748B"
+                value={editLastName}
+                onChangeText={setEditLastName}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="mail" size={20} color="#64748B" />
+              <TextInput
+                style={styles.input}
+                placeholder={language === 'et' ? 'E-posti aadress' : 'Email address'}
+                placeholderTextColor="#64748B"
+                value={editEmail}
+                onChangeText={setEditEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="call" size={20} color="#64748B" />
+              <TextInput
+                style={styles.input}
+                placeholder={language === 'et' ? 'Telefoninumber' : 'Phone number'}
+                placeholderTextColor="#64748B"
+                value={editPhone}
+                onChangeText={setEditPhone}
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowEditProfile(false)}
+              >
+                <Text style={styles.cancelButtonText}>
+                  {language === 'et' ? 'Tühista' : 'Cancel'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleUpdateProfile}
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.confirmButtonText}>
+                    {language === 'et' ? 'Salvesta' : 'Save'}
                   </Text>
                 )}
               </TouchableOpacity>

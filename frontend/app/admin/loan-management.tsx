@@ -20,7 +20,6 @@ import API_URL from '../../src/constants/api';
 
 interface LoanDetails {
   loan_amount: number;
-  down_payment: number;
   interest_rate: number;
   loan_tenure_months: number;
   monthly_emi: number;
@@ -73,7 +72,6 @@ export default function LoanManagement() {
   
   // Loan setup form
   const [loanAmount, setLoanAmount] = useState('');
-  const [downPayment, setDownPayment] = useState('');
   const [interestRate, setInterestRate] = useState('10');
   const [tenure, setTenure] = useState('12');
   
@@ -112,7 +110,6 @@ export default function LoanManagement() {
       // Extract loan details from client
       setLoanDetails({
         loan_amount: clientData.loan_amount || 0,
-        down_payment: clientData.down_payment || 0,
         interest_rate: clientData.interest_rate || 10,
         loan_tenure_months: clientData.loan_tenure_months || 12,
         monthly_emi: clientData.monthly_emi || 0,
@@ -150,7 +147,7 @@ export default function LoanManagement() {
   };
 
   const handleSetupLoan = async () => {
-    if (!loanAmount || !downPayment) {
+    if (!loanAmount) {
       Alert.alert(t('error'), t('fillAllFields'));
       return;
     }
@@ -162,7 +159,6 @@ export default function LoanManagement() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           loan_amount: parseFloat(loanAmount),
-          down_payment: parseFloat(downPayment),
           interest_rate: parseFloat(interestRate),
           loan_tenure_months: parseInt(tenure),
         }),
@@ -463,19 +459,7 @@ export default function LoanManagement() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Down Payment (€)</Text>
-              <TextInput
-                style={styles.input}
-                value={downPayment}
-                onChangeText={setDownPayment}
-                placeholder="200"
-                keyboardType="decimal-pad"
-                placeholderTextColor="#64748B"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Interest Rate (%)</Text>
+              <Text style={styles.inputLabel}>Monthly Interest Rate (%)</Text>
               <TextInput
                 style={styles.input}
                 value={interestRate}
