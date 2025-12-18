@@ -303,10 +303,16 @@ export default function AdminSettings() {
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.detail || 'Failed to update profile');
+        // Try to parse error as JSON, fallback to text
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          throw new Error(data.detail || 'Failed to update profile');
+        } else {
+          const text = await response.text();
+          throw new Error(text || 'Failed to update profile');
+        }
       }
 
       // Update local storage
