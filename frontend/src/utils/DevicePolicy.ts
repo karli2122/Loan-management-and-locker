@@ -1,5 +1,10 @@
-import { Platform, Alert } from 'react-native';
-import * as EMIDeviceAdmin from 'emi-device-admin';
+import { Platform, Alert, NativeModules } from 'react-native';
+
+// Get native module if available
+const EMIDeviceAdmin = Platform.OS === 'android' ? NativeModules.EMIDeviceAdmin : null;
+
+console.log('DevicePolicy: Platform:', Platform.OS);
+console.log('DevicePolicy: EMIDeviceAdmin available:', !!EMIDeviceAdmin);
 
 export interface DeviceInfo {
   isDeviceOwner: boolean;
@@ -12,17 +17,14 @@ class DevicePolicyManager {
    * Check if native module is available
    */
   isNativeModuleAvailable(): boolean {
-    if (Platform.OS !== 'android') return false;
-    const available = EMIDeviceAdmin.isModuleAvailable();
-    console.log('EMIDeviceAdmin.isModuleAvailable:', available);
-    return available;
+    return Platform.OS === 'android' && !!EMIDeviceAdmin;
   }
 
   /**
    * Check if app is Device Owner (requires ADB provisioning)
    */
   async isDeviceOwner(): Promise<boolean> {
-    if (Platform.OS !== 'android') return false;
+    if (!this.isNativeModuleAvailable()) return false;
     try {
       const result = await EMIDeviceAdmin.isDeviceOwner();
       console.log('isDeviceOwner:', result);
@@ -37,7 +39,7 @@ class DevicePolicyManager {
    * Check if Device Admin is active
    */
   async isAdminActive(): Promise<boolean> {
-    if (Platform.OS !== 'android') return false;
+    if (!this.isNativeModuleAvailable()) return false;
     try {
       const result = await EMIDeviceAdmin.isAdminActive();
       console.log('isAdminActive:', result);
@@ -53,17 +55,11 @@ class DevicePolicyManager {
    */
   async requestAdmin(): Promise<string> {
     if (Platform.OS !== 'android') {
-      console.log('requestAdmin: Not Android');
       return 'not_android';
     }
     
-    if (!EMIDeviceAdmin.isModuleAvailable()) {
-      console.log('requestAdmin: Module not available');
-      Alert.alert(
-        'Module Not Available',
-        'Device Admin module is not available. Make sure you are using a production APK build with the EMI Device Admin module.',
-        [{ text: 'OK' }]
-      );
+    if (!EMIDeviceAdmin) {
+      console.log('requestAdmin: Native module not available');
       return 'module_not_available';
     }
     
@@ -74,7 +70,6 @@ class DevicePolicyManager {
       return result;
     } catch (error: any) {
       console.log('requestAdmin error:', error);
-      Alert.alert('Error', `Failed to request Device Admin: ${error.message || error}`);
       return 'error';
     }
   }
@@ -83,7 +78,7 @@ class DevicePolicyManager {
    * Lock the device screen (requires Device Admin to be active)
    */
   async lockDevice(): Promise<boolean> {
-    if (Platform.OS !== 'android') return false;
+    if (!this.isNativeModuleAvailable()) return false;
     try {
       const result = await EMIDeviceAdmin.lockDevice();
       console.log('lockDevice result:', result);
@@ -98,7 +93,7 @@ class DevicePolicyManager {
    * Enable/disable Kiosk mode (requires Device Owner)
    */
   async setKioskMode(enable: boolean): Promise<boolean> {
-    console.log('setKioskMode: Requires Device Owner (ADB provisioning)');
+    console.log('setKioskMode: Requires Device Owner');
     return false;
   }
 
@@ -106,7 +101,7 @@ class DevicePolicyManager {
    * Block/unblock app uninstallation (requires Device Owner)
    */
   async disableUninstall(disable: boolean): Promise<boolean> {
-    console.log('disableUninstall: Requires Device Owner (ADB provisioning)');
+    console.log('disableUninstall: Requires Device Owner');
     return false;
   }
 
