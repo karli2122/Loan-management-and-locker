@@ -329,12 +329,18 @@ class Admin(BaseModel):
     password_hash: str
     role: str = "user"  # "admin" or "user"
     is_super_admin: bool = False
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class AdminCreate(BaseModel):
     username: str
     password: str
     role: str = "user"  # "admin" or "user"
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 class AdminLogin(BaseModel):
     username: str
@@ -562,7 +568,9 @@ async def register_admin(admin_data: AdminCreate, admin_token: str = None):
         username=admin_data.username,
         password_hash=hash_password(admin_data.password),
         role=admin_data.role if not is_first_admin else "admin",
-        is_super_admin=is_first_admin
+        is_super_admin=is_first_admin,
+        first_name=admin_data.first_name,
+        last_name=admin_data.last_name
     )
     await db.admins.insert_one(admin.dict())
     

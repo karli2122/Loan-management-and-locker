@@ -63,7 +63,7 @@ export default function AdminLogin() {
     try {
       const baseUrl = API_URL || API_BASE_URL;
       const primaryUrl = buildApiUrl('admin/login');
-      const fallbackUrl = `${baseUrl}/admin/login`;
+      const fallbackUrl = `${baseUrl}/api/admin/login`;
       const REDIRECT_FIELDS = ['redirect_to', 'redirectTo'];
       
       console.log('[AdminLogin] Attempting login with URLs:', { baseUrl, primaryUrl, fallbackUrl });
