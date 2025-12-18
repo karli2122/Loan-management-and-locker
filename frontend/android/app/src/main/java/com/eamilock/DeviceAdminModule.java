@@ -17,6 +17,7 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
     private static final String TAG = "DeviceAdminModule";
     private static final String PREFS_NAME = "EMILockPrefs";
     private static final String KEY_ALLOW_UNINSTALL = "allow_uninstall";
+    private static final String KEY_IS_REGISTERED = "is_registered";
 
     public DeviceAdminModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -29,6 +30,33 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
 
     private Context getContext() {
         return getReactApplicationContext();
+    }
+
+    @ReactMethod
+    public void setRegistered(boolean isRegistered, Promise promise) {
+        try {
+            Context context = getContext();
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    .edit()
+                    .putBoolean(KEY_IS_REGISTERED, isRegistered)
+                    .apply();
+            promise.resolve("success");
+        } catch (Exception e) {
+            Log.e(TAG, "setRegistered failed", e);
+            promise.resolve("error");
+        }
+    }
+
+    @ReactMethod
+    public void isRegistered(Promise promise) {
+        try {
+            Context context = getContext();
+            promise.resolve(context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    .getBoolean(KEY_IS_REGISTERED, false));
+        } catch (Exception e) {
+            Log.e(TAG, "isRegistered failed", e);
+            promise.resolve(false);
+        }
     }
 
     @ReactMethod

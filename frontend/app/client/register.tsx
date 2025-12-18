@@ -94,8 +94,9 @@ export default function ClientRegister() {
 
       // Check for incorrect code based on HTTP status codes
       // 404 = code not found, 400 = bad request (could be invalid code format)
+      const detailMessage = typeof data?.detail === 'string' ? data.detail.toLowerCase() : '';
       const isInvalidCode = response.status === 404 || 
-        (response.status === 400 && data?.detail?.toLowerCase?.().includes('registration'));
+        (response.status === 400 && detailMessage.includes('registration'));
       
       if (isInvalidCode) {
         Alert.alert(
@@ -127,6 +128,9 @@ export default function ClientRegister() {
       if (clientData) {
         await AsyncStorage.setItem('client_data', JSON.stringify(clientData));
       }
+      
+      // Mark device as registered for autostart on boot
+      await devicePolicy.setRegistered(true);
       
       // Show registration successful message and prompt for admin privileges
       Alert.alert(

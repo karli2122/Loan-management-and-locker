@@ -114,8 +114,12 @@ export default function ClientHome() {
       if (isActive) {
         setIsAdminActive(true);
         setSetupComplete(true);
-        await devicePolicy.preventUninstall(true);
-        console.log(`Device Admin confirmed active on attempt ${attempt}`);
+        const result = await devicePolicy.preventUninstall(true);
+        if (result === 'success') {
+          console.log(`Device Admin confirmed active on attempt ${attempt}, uninstall protection enabled`);
+        } else {
+          console.log(`Device Admin active but uninstall protection failed: ${result}`);
+        }
         return true;
       }
       console.log(`Admin check attempt ${attempt}/${maxAttempts} - not active yet`);
@@ -158,9 +162,13 @@ export default function ClientHome() {
         );
       } else {
         setSetupComplete(true);
-        // Ensure uninstall protection is enabled
-        await devicePolicy.preventUninstall(true);
-        console.log('Device Admin active - protection enabled');
+        // Ensure uninstall protection is enabled and check result
+        const result = await devicePolicy.preventUninstall(true);
+        if (result === 'success') {
+          console.log('Device Admin active - uninstall protection enabled');
+        } else {
+          console.log(`Device Admin active but uninstall protection failed: ${result}`);
+        }
       }
     } catch (error) {
       console.error('Device protection setup error:', error);
@@ -179,16 +187,40 @@ export default function ClientHome() {
     }, 500);
   };
 
-  // Handle lock state change
-  const updateLockState = async (locked: boolean) => {
-    if (Platform.OS !== 'android') return;
-    
+  // Handle lock state change - save both lock status and message for offline enforcement
+  const updateLockState = async (locked: boolean, message?: string) => {
     try {
-      // Save lock state for boot receiver
-      await devicePolicy.setLockState(locked);
+      // Save lock state for offline enforcement and autostart
+      await devicePolicy.setLockState(locked, message);
       wasLocked.current = locked;
     } catch (error) {
       console.error('Lock state error:', error);
+    }
+  };
+
+  // Check cached lock state on startup for offline enforcement
+  const checkCachedLockStateOnStartup = async () => {
+    try {
+      const cachedState = await devicePolicy.getCachedLockState();
+      if (cachedState.isLocked) {
+        console.log('[Startup] Device was locked - enforcing cached lock state');
+        setStatus(prev => prev ? {
+          ...prev,
+          is_locked: true,
+          lock_message: cachedState.lockMessage,
+        } : {
+          id: '',
+          name: '',
+          is_locked: true,
+          lock_message: cachedState.lockMessage,
+          warning_message: '',
+          emi_amount: 0,
+          emi_due_date: null,
+        });
+        wasLocked.current = true;
+      }
+    } catch (error) {
+      console.log('Failed to check cached lock state:', error);
     }
   };
 
@@ -200,6 +232,17 @@ export default function ClientHome() {
       // Update offline indicator
       setIsOffline(data.offline || false);
       
+      // If offline, also check cached lock state to ensure enforcement
+      if (data.offline) {
+        const cachedState = await devicePolicy.getCachedLockState();
+        if (cachedState.isLocked && !data.is_locked) {
+          // Enforce cached lock state when offline
+          data.is_locked = true;
+          data.lock_message = cachedState.lockMessage;
+          console.log('[Offline] Enforcing cached lock state');
+        }
+      }
+      
       setStatus(data);
       
       // Check if admin has allowed uninstall
@@ -207,13 +250,33 @@ export default function ClientHome() {
         handleUninstallSignal();
       }
       
-      // Update lock state if changed
+      // Update lock state if changed - save message for offline use
       if (data.is_locked !== wasLocked.current) {
-        updateLockState(data.is_locked);
+        updateLockState(data.is_locked, data.lock_message);
       }
     } catch (error) {
       console.error('Error fetching status:', error);
       setIsOffline(true);
+      
+      // On error, check and enforce cached lock state
+      const cachedState = await devicePolicy.getCachedLockState();
+      if (cachedState.isLocked) {
+        setStatus(prev => prev ? {
+          ...prev,
+          is_locked: true,
+          lock_message: cachedState.lockMessage,
+        } : {
+          id: '',
+          name: '',
+          is_locked: true,
+          lock_message: cachedState.lockMessage,
+          warning_message: '',
+          emi_amount: 0,
+          emi_due_date: null,
+        });
+        wasLocked.current = true;
+        console.log('[Error] Enforcing cached lock state');
+      }
     } finally {
       setLoading(false);
     }
@@ -275,6 +338,10 @@ export default function ClientHome() {
 
   const loadClientData = async () => {
     if (!isMounted.current) return;
+    
+    // First, check cached lock state for offline enforcement on startup
+    await checkCachedLockStateOnStartup();
+    
     const id = await AsyncStorage.getItem('client_id');
     if (!id) {
       if (isMounted.current) {
@@ -290,6 +357,10 @@ export default function ClientHome() {
 
   useEffect(() => {
     isMounted.current = true;
+    
+    // Check cached lock state immediately on startup for offline enforcement
+    checkCachedLockStateOnStartup();
+    
     // Setup device protection first (deferred for safety)
     scheduleDeviceProtectionCheck();
     
