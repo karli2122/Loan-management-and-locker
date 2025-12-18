@@ -13,12 +13,12 @@ interface Translations {
 const translations: Translations = {
   // Home Screen
   appTitle: {
-    et: 'EMI Lukustussüsteem',
-    en: 'EMI Lock System',
+    et: 'Laenu lukustussüsteem',
+    en: 'Loan Lock System',
   },
   appSubtitle: {
-    et: 'Telefoni lukustuslahendus EMI jaoks',
-    en: 'Phone Lock Management for EMI',
+    et: 'Telefoni lukustuslahendus laenude jaoks',
+    en: 'Phone Lock Management for Loans',
   },
   selectMode: {
     et: 'Vali režiim',
@@ -37,12 +37,12 @@ const translations: Translations = {
     en: 'Client Device',
   },
   clientDescription: {
-    et: 'Registreeri oma seade, vaata EMI staatust ja halda oma kontot',
-    en: 'Register your device, view EMI status, and manage your account',
+    et: 'Registreeri oma seade, vaata laenu staatust ja halda oma kontot',
+    en: 'Register your device, view loan status, and manage your account',
   },
   secureSystem: {
-    et: 'Turvaline EMI haldussüsteem',
-    en: 'Secure EMI Management System',
+    et: 'Turvaline laenuhaldussüsteem',
+    en: 'Secure Loan Management System',
   },
 
   // Admin Login
@@ -171,8 +171,8 @@ const translations: Translations = {
     en: 'Locked',
   },
   emi: {
-    et: 'EMI',
-    en: 'EMI',
+    et: 'Laen',
+    en: 'Loan',
   },
   pending: {
     et: 'Ootel',
@@ -259,8 +259,8 @@ const translations: Translations = {
     en: 'Contact Information',
   },
   emiDetails: {
-    et: 'EMI andmed',
-    en: 'EMI Details',
+    et: 'Laenu andmed',
+    en: 'Loan Details',
   },
   amount: {
     et: 'Summa',

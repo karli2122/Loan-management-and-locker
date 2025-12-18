@@ -536,7 +536,7 @@ export default function ClientHome() {
     Alert.alert(t('contactSupport'), t('howToContact'), [
       { text: t('cancel'), style: 'cancel' },
       { text: t('call'), onPress: () => Linking.openURL('tel:+1234567890') },
-      { text: t('email'), onPress: () => Linking.openURL('mailto:support@emilock.com') },
+      { text: t('email'), onPress: () => Linking.openURL('mailto:support@loanlock.com') },
     ]);
   };
 

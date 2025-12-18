@@ -173,7 +173,7 @@ export default function LoanManagement() {
       if (!response.ok) throw new Error('Failed to setup loan');
       
       const data = await response.json();
-      Alert.alert(t('success'), `Loan setup successfully!\nMonthly EMI: €${data.loan_details.monthly_emi}`);
+      Alert.alert(t('success'), `Loan setup successfully!\nMonthly Payment: €${data.loan_details.monthly_emi}`);
       setSetupLoanModal(false);
       fetchData();
     } catch (error: any) {
@@ -213,7 +213,7 @@ export default function LoanManagement() {
       if (!response.ok) throw new Error('Failed to update loan');
       
       const data = await response.json();
-      Alert.alert(t('success'), `Loan updated successfully!\nNew Monthly EMI: €${data.loan_details?.monthly_emi || 'N/A'}`);
+      Alert.alert(t('success'), `Loan updated successfully!\nNew Monthly Payment: €${data.loan_details?.monthly_emi || 'N/A'}`);
       setEditLoanModal(false);
       fetchData();
     } catch (error: any) {
@@ -389,7 +389,7 @@ export default function LoanManagement() {
                   </Text>
                 </View>
                 <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Monthly EMI</Text>
+                  <Text style={styles.summaryLabel}>Monthly Payment</Text>
                   <Text style={styles.summaryValue}>€{loanDetails.monthly_emi.toFixed(2)}</Text>
                 </View>
               </View>

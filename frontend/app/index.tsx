@@ -42,7 +42,7 @@ export default function Index() {
         <View style={styles.loadingContainer}>
           <Ionicons name="shield-checkmark" size={80} color="#4F46E5" />
           <Text style={styles.loadingText}>
-            {appMode === 'admin' ? 'EMI Admin' : 'EMI Client'}
+            {appMode === 'admin' ? 'Loan Admin' : 'Loan Client'}
           </Text>
         </View>
       </SafeAreaView>

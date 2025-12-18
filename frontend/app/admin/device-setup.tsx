@@ -21,7 +21,7 @@ import API_URL from '../../src/constants/api';
 const generateProvisioningData = (clientRegCode: string) => {
   const data = {
     "android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME": "com.emi.client/.DeviceAdminReceiver",
-    "android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION": `${API_URL}/downloads/emi-client.apk`,
+    "android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION": `${API_URL}/downloads/loan-client.apk`,
     "android.app.extra.PROVISIONING_SKIP_ENCRYPTION": true,
     "android.app.extra.PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED": true,
     "android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE": {
@@ -34,7 +34,7 @@ const generateProvisioningData = (clientRegCode: string) => {
 // Simple setup QR that contains registration code
 const generateSetupQR = (clientRegCode: string, clientName: string) => {
   return JSON.stringify({
-    type: "EMI_CLIENT_SETUP",
+    type: "LOAN_CLIENT_SETUP",
     code: clientRegCode,
     name: clientName,
     api: API_URL
@@ -75,8 +75,8 @@ export default function DeviceSetup() {
     if (!selectedClient) return;
     
     const message = language === 'et' 
-      ? `EMI Kliendi seadistus\n\nKlient: ${selectedClient.name}\nRegistreerimiskood: ${selectedClient.registration_code}\n\nJuhised:\n1. Installige EMI Client rakendus telefonile\n2. Avage rakendus ja sisestage kood: ${selectedClient.registration_code}\n3. Vajutage "Registreeri seade"\n4. Lubage administraatori õigused järgmises dialoogis\n5. Seade on nüüd kaitstud`
-      : `EMI Client Setup\n\nClient: ${selectedClient.name}\nRegistration Code: ${selectedClient.registration_code}\n\nInstructions:\n1. Install EMI Client app on the phone\n2. Open the app and enter code: ${selectedClient.registration_code}\n3. Press "Register Device"\n4. Grant admin permissions in the next dialog\n5. Device is now protected`;
+      ? `Loan Client seadistus\n\nKlient: ${selectedClient.name}\nRegistreerimiskood: ${selectedClient.registration_code}\n\nJuhised:\n1. Installige Loan Client rakendus telefonile\n2. Avage rakendus ja sisestage kood: ${selectedClient.registration_code}\n3. Vajutage "Registreeri seade"\n4. Lubage administraatori õigused järgmises dialoogis\n5. Seade on nüüd kaitstud`
+      : `Loan Client Setup\n\nClient: ${selectedClient.name}\nRegistration Code: ${selectedClient.registration_code}\n\nInstructions:\n1. Install Loan Client app on the phone\n2. Open the app and enter code: ${selectedClient.registration_code}\n3. Press "Register Device"\n4. Grant admin permissions in the next dialog\n5. Device is now protected`;
     
     try {
       await Share.share({ message });
@@ -114,8 +114,8 @@ export default function DeviceSetup() {
             </Text>
             <Text style={styles.infoText}>
               {language === 'et' 
-                ? 'Skannige QR-kood uuel või tehaseseadetega telefonil, et seadistada EMI kaitse automaatselt.'
-                : 'Scan the QR code on a new or factory-reset phone to automatically set up EMI protection.'}
+                ? 'Skannige QR-kood uuel või tehaseseadetega telefonil, et seadistada laenu kaitse automaatselt.'
+                : 'Scan the QR code on a new or factory-reset phone to automatically set up loan protection.'}
             </Text>
           </View>
         </View>
@@ -204,7 +204,7 @@ export default function DeviceSetup() {
               </Text>
               {qrType === 'simple' ? (
                 <View style={styles.instructionsList}>
-                  <Text style={styles.instructionItem}>1. {language === 'et' ? 'Installige EMI Client rakendus telefonile' : 'Install EMI Client app on the phone'}</Text>
+                  <Text style={styles.instructionItem}>1. {language === 'et' ? 'Installige Loan Client rakendus telefonile' : 'Install Loan Client app on the phone'}</Text>
                   <Text style={styles.instructionItem}>2. {language === 'et' ? 'Avage rakendus ja sisestage registreerimiskood' : 'Open the app and enter the registration code'}</Text>
                   <Text style={styles.instructionItem}>3. {language === 'et' ? 'Vajutage "Registreeri seade"' : 'Press "Register Device"'}</Text>
                   <Text style={styles.instructionItem}>4. {language === 'et' ? 'Lubage administraatori õigused järgmises dialoogis' : 'Grant admin permissions in the next dialog'}</Text>

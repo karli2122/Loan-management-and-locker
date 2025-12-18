@@ -579,7 +579,7 @@ export default function ClientDetails() {
                 <Text style={[styles.loanStatValue, { color: '#EF4444' }]}>€{(client.outstanding_balance || 0).toFixed(2)}</Text>
               </View>
               <View style={styles.loanStatItem}>
-                <Text style={styles.loanStatLabel}>{language === 'et' ? 'Kuumakse' : 'Monthly EMI'}</Text>
+                <Text style={styles.loanStatLabel}>{language === 'et' ? 'Kuumakse' : 'Monthly Payment'}</Text>
                 <Text style={styles.loanStatValue}>€{(client.monthly_emi || 0).toFixed(2)}</Text>
               </View>
             </View>

@@ -2,12 +2,12 @@ const IS_ADMIN_APP = process.env.APP_MODE === 'admin';
 
 export default {
   expo: {
-    name: IS_ADMIN_APP ? "EMI Admin" : "EMI Client",
+    name: IS_ADMIN_APP ? "Loan Admin" : "Loan Client",
     slug: IS_ADMIN_APP ? "loans" : "client",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
-    scheme: IS_ADMIN_APP ? "emiadmin" : "emiclient",
+    scheme: IS_ADMIN_APP ? "loanadmin" : "loanclient",
     userInterfaceStyle: "dark",
     newArchEnabled: true,
     splash: {
