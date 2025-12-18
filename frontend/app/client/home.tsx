@@ -104,8 +104,6 @@ export default function ClientHome() {
     }
   }, [getPushToken]);
 
-  const protectionTimeout = useRef<NodeJS.Timeout | null>(null);
-
   // Retry mechanism for checking admin status after request
   const checkAdminStatusWithRetry = async (maxAttempts = 5, delayMs = 500) => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -175,19 +173,6 @@ export default function ClientHome() {
     }
   };
 
-  const scheduleDeviceProtectionCheck = () => {
-    if (Platform.OS !== 'android') return;
-    if (protectionTimeout.current) {
-      clearTimeout(protectionTimeout.current);
-    }
-    protectionTimeout.current = setTimeout(() => {
-      checkAndSetupDeviceProtection().catch((err) =>
-        console.error('Deferred device protection setup error:', err)
-      );
-    }, 500);
-  };
-
-  // Handle lock state change - save both lock status and message for offline enforcement
   const updateLockState = async (locked: boolean, message?: string) => {
     try {
       // Save lock state for offline enforcement and autostart
@@ -370,11 +355,12 @@ export default function ClientHome() {
         // Check cached lock state immediately on startup for offline enforcement
         await checkCachedLockStateOnStartup();
         
-        // Setup device protection first (deferred for safety)
-        scheduleDeviceProtectionCheck();
-        
-        // Then load client data
+        // Load client data first
         await loadClientData();
+        
+        // Then check device protection immediately after data is loaded
+        // This ensures the admin prompt appears right after registration
+        await checkAndSetupDeviceProtection();
       } catch (error) {
         console.error('Initialization error:', error);
         setLoading(false);
@@ -398,7 +384,9 @@ export default function ClientHome() {
           updateLocation(clientId);
         }
         // Re-check protection on app resume
-        scheduleDeviceProtectionCheck();
+        checkAndSetupDeviceProtection().catch((err) =>
+          console.error('Device protection check error on resume:', err)
+        );
       }
       appState.current = nextAppState;
     });
@@ -414,9 +402,6 @@ export default function ClientHome() {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
-      }
-      if (protectionTimeout.current) {
-        clearTimeout(protectionTimeout.current);
       }
       subscription.remove();
       backHandler.remove();
