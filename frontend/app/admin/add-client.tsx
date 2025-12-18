@@ -10,19 +10,21 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
-import API_URL from '../../src/constants/api';
+import API_URL, { API_BASE_URL } from '../../src/constants/api';
 
 
 export default function AddClient() {
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [loading, setLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -30,6 +32,40 @@ export default function AddClient() {
     emi_amount: '',
     emi_due_date: '',
   });
+
+  // Date picker state
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
+
+  const baseUrl = API_URL || API_BASE_URL;
+
+  const months = language === 'et' 
+    ? ['Jaanuar', 'Veebruar', 'Märts', 'Aprill', 'Mai', 'Juuni', 'Juuli', 'August', 'September', 'Oktoober', 'November', 'Detsember']
+    : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  const getDaysInMonth = (year: number, month: number) => {
+    return new Date(year, month + 1, 0).getDate();
+  };
+
+  const handleDateSelect = () => {
+    const formattedDate = `${String(selectedDay).padStart(2, '0')}/${String(selectedMonth + 1).padStart(2, '0')}/${selectedYear}`;
+    setForm({ ...form, emi_due_date: formattedDate });
+    setShowDatePicker(false);
+  };
+
+  const openDatePicker = () => {
+    // Parse existing date if any
+    if (form.emi_due_date) {
+      const parts = form.emi_due_date.split('/');
+      if (parts.length === 3) {
+        setSelectedDay(parseInt(parts[0]) || new Date().getDate());
+        setSelectedMonth((parseInt(parts[1]) || 1) - 1);
+        setSelectedYear(parseInt(parts[2]) || new Date().getFullYear());
+      }
+    }
+    setShowDatePicker(true);
+  };
 
   const handleSubmit = async () => {
     if (!form.name.trim() || !form.phone.trim() || !form.email.trim()) {
@@ -40,7 +76,7 @@ export default function AddClient() {
     setLoading(true);
     try {
       const adminId = await AsyncStorage.getItem('admin_id');
-      const response = await fetch(`${API_URL}/api/clients`, {
+      const response = await fetch(`${baseUrl}/api/clients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -51,8 +87,14 @@ export default function AddClient() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to create client');
+        let detail = 'Failed to create client';
+        try {
+          const error = await response.json();
+          detail = error?.detail || detail;
+        } catch {
+          // non-JSON error
+        }
+        throw new Error(detail);
       }
 
       const client = await response.json();
@@ -137,16 +179,13 @@ export default function AddClient() {
             </View>
 
             <Text style={styles.label}>{t('emiDueDate')}</Text>
-            <View style={styles.inputContainer}>
+            <TouchableOpacity style={styles.inputContainer} onPress={openDatePicker}>
               <Ionicons name="calendar" size={20} color="#64748B" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="DD/MM/YYYY"
-                placeholderTextColor="#64748B"
-                value={form.emi_due_date}
-                onChangeText={(text) => setForm({ ...form, emi_due_date: text })}
-              />
-            </View>
+              <Text style={[styles.input, { paddingVertical: 18 }, !form.emi_due_date && { color: '#64748B' }]}>
+                {form.emi_due_date || 'DD/MM/YYYY'}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#64748B" />
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.submitButton, loading && styles.submitButtonDisabled]}
@@ -172,6 +211,107 @@ export default function AddClient() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Date Picker Modal */}
+      <Modal visible={showDatePicker} transparent animationType="slide">
+        <View style={styles.datePickerOverlay}>
+          <View style={styles.datePickerContent}>
+            <View style={styles.datePickerHeader}>
+              <Text style={styles.datePickerTitle}>
+                {language === 'et' ? 'Vali kuupäev' : 'Select Date'}
+              </Text>
+              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                <Ionicons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Year Selector */}
+            <View style={styles.datePickerRow}>
+              <Text style={styles.datePickerLabel}>{language === 'et' ? 'Aasta' : 'Year'}</Text>
+              <View style={styles.datePickerSelector}>
+                <TouchableOpacity 
+                  style={styles.datePickerArrow}
+                  onPress={() => setSelectedYear(selectedYear - 1)}
+                >
+                  <Ionicons name="chevron-back" size={20} color="#4F46E5" />
+                </TouchableOpacity>
+                <Text style={styles.datePickerValue}>{selectedYear}</Text>
+                <TouchableOpacity 
+                  style={styles.datePickerArrow}
+                  onPress={() => setSelectedYear(selectedYear + 1)}
+                >
+                  <Ionicons name="chevron-forward" size={20} color="#4F46E5" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Month Selector */}
+            <View style={styles.datePickerRow}>
+              <Text style={styles.datePickerLabel}>{language === 'et' ? 'Kuu' : 'Month'}</Text>
+              <View style={styles.datePickerSelector}>
+                <TouchableOpacity 
+                  style={styles.datePickerArrow}
+                  onPress={() => setSelectedMonth(selectedMonth === 0 ? 11 : selectedMonth - 1)}
+                >
+                  <Ionicons name="chevron-back" size={20} color="#4F46E5" />
+                </TouchableOpacity>
+                <Text style={styles.datePickerValue}>{months[selectedMonth]}</Text>
+                <TouchableOpacity 
+                  style={styles.datePickerArrow}
+                  onPress={() => setSelectedMonth(selectedMonth === 11 ? 0 : selectedMonth + 1)}
+                >
+                  <Ionicons name="chevron-forward" size={20} color="#4F46E5" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Day Selector */}
+            <View style={styles.datePickerRow}>
+              <Text style={styles.datePickerLabel}>{language === 'et' ? 'Päev' : 'Day'}</Text>
+              <View style={styles.datePickerSelector}>
+                <TouchableOpacity 
+                  style={styles.datePickerArrow}
+                  onPress={() => setSelectedDay(selectedDay === 1 ? getDaysInMonth(selectedYear, selectedMonth) : selectedDay - 1)}
+                >
+                  <Ionicons name="chevron-back" size={20} color="#4F46E5" />
+                </TouchableOpacity>
+                <Text style={styles.datePickerValue}>{selectedDay}</Text>
+                <TouchableOpacity 
+                  style={styles.datePickerArrow}
+                  onPress={() => setSelectedDay(selectedDay >= getDaysInMonth(selectedYear, selectedMonth) ? 1 : selectedDay + 1)}
+                >
+                  <Ionicons name="chevron-forward" size={20} color="#4F46E5" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Selected Date Preview */}
+            <View style={styles.datePreview}>
+              <Text style={styles.datePreviewText}>
+                {`${String(selectedDay).padStart(2, '0')}/${String(selectedMonth + 1).padStart(2, '0')}/${selectedYear}`}
+              </Text>
+            </View>
+
+            {/* Buttons */}
+            <View style={styles.datePickerButtons}>
+              <TouchableOpacity
+                style={[styles.datePickerButton, styles.datePickerCancelButton]}
+                onPress={() => setShowDatePicker(false)}
+              >
+                <Text style={styles.datePickerButtonText}>{t('cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.datePickerButton, styles.datePickerConfirmButton]}
+                onPress={handleDateSelect}
+              >
+                <Text style={styles.datePickerButtonText}>
+                  {language === 'et' ? 'Kinnita' : 'Confirm'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -278,5 +418,95 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#94A3B8',
     lineHeight: 20,
+  },
+  // Date Picker styles
+  datePickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  datePickerContent: {
+    width: '90%',
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 20,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  datePickerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  datePickerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  datePickerLabel: {
+    fontSize: 16,
+    color: '#94A3B8',
+    width: 60,
+  },
+  datePickerSelector: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0F172A',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginLeft: 16,
+  },
+  datePickerArrow: {
+    padding: 4,
+  },
+  datePickerValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    minWidth: 100,
+    textAlign: 'center',
+  },
+  datePreview: {
+    backgroundColor: '#4F46E520',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  datePreviewText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#4F46E5',
+  },
+  datePickerButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  datePickerButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  datePickerCancelButton: {
+    backgroundColor: '#334155',
+  },
+  datePickerConfirmButton: {
+    backgroundColor: '#4F46E5',
+  },
+  datePickerButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

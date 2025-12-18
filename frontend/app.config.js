@@ -2,12 +2,12 @@ const IS_ADMIN_APP = process.env.APP_MODE === 'admin';
 
 export default {
   expo: {
-    name: IS_ADMIN_APP ? "EMI Admin" : "EMI Client",
+    name: IS_ADMIN_APP ? "Loan Admin" : "Loan Client",
     slug: IS_ADMIN_APP ? "loans" : "client",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
-    scheme: IS_ADMIN_APP ? "emiadmin" : "emiclient",
+    scheme: IS_ADMIN_APP ? "loanadmin" : "loanclient",
     userInterfaceStyle: "dark",
     newArchEnabled: true,
     splash: {
@@ -27,7 +27,7 @@ export default {
       package: IS_ADMIN_APP ? "com.emi.admin" : "com.emi.client",
       versionCode: 1,
       // Permissions: Admin app needs basic location/network, 
-      // Client app needs elevated permissions for Device Owner protection
+      // Client app needs elevated permissions for Device Admin protection
       permissions: IS_ADMIN_APP 
         ? [
             "ACCESS_FINE_LOCATION",
@@ -41,11 +41,10 @@ export default {
             "ACCESS_COARSE_LOCATION",
             "INTERNET",
             "ACCESS_NETWORK_STATE",
-            // Device Owner and security permissions (required for EMI protection)
-            "BIND_DEVICE_ADMIN",          // Device Owner management
+            // Device Admin and security permissions (required for EMI protection)
+            "BIND_DEVICE_ADMIN",          // Device Admin management
             "RECEIVE_BOOT_COMPLETED",     // Auto-start on device boot
             "SYSTEM_ALERT_WINDOW",        // Lock screen overlay
-            "DISABLE_KEYGUARD",           // Control lock screen
             "WAKE_LOCK"                   // Prevent device sleep during lock
           ]
     },
@@ -67,17 +66,15 @@ export default {
           backgroundColor: "#0F172A"
         }
       ],
-      // Device Owner and Device Admin plugins for Client app only
-      ...(IS_ADMIN_APP
-        ? []
-        : ["./plugins/withDeviceOwner", "./plugins/withDeviceAdmin", "./plugins/withDeviceAdminPackageRegistration"])
+      // Device Admin plugin for Client app only
+      ...(IS_ADMIN_APP ? [] : ["emi-device-admin"])
     ],
     experiments: {
       typedRoutes: true
     },
     extra: {
       appMode: IS_ADMIN_APP ? "admin" : "client",
-      backendUrl: process.env.EXPO_PUBLIC_BACKEND_URL || "https://deviceloan-1.preview.emergentagent.com",
+      backendUrl: process.env.EXPO_PUBLIC_BACKEND_URL || "https://loantrack-23.preview.emergentagent.com",
       eas: {
         projectId: IS_ADMIN_APP
           ? "7be3aec1-6fef-4200-9987-5868c4320a07"

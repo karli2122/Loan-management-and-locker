@@ -133,27 +133,66 @@ export default function LoanPlans() {
   const handleToggleActive = async (plan: LoanPlan) => {
     try {
       const token = await AsyncStorage.getItem('admin_token');
+      const newActiveState = !plan.is_active;
       
-      if (plan.is_active) {
-        // Deactivate
-        const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${token}`, {
-          method: 'DELETE',
-        });
-        if (!response.ok) throw new Error('Failed to deactivate plan');
-      } else {
-        // Reactivate by updating
-        const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${token}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...plan, is_active: true }),
-        });
-        if (!response.ok) throw new Error('Failed to activate plan');
+      const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${token}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name: plan.name,
+          interest_rate: plan.interest_rate,
+          min_tenure_months: plan.min_tenure_months,
+          max_tenure_months: plan.max_tenure_months,
+          processing_fee_percent: plan.processing_fee_percent,
+          late_fee_percent: plan.late_fee_percent,
+          description: plan.description,
+          is_active: newActiveState 
+        }),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Toggle error:', errorText);
+        throw new Error('Failed to update plan');
       }
 
-      fetchPlans();
+      // Update local state immediately for better UX
+      setPlans(plans.map(p => p.id === plan.id ? { ...p, is_active: newActiveState } : p));
     } catch (error: any) {
       Alert.alert('Error', error.message);
     }
+  };
+
+  const handleDeletePlan = (plan: LoanPlan) => {
+    Alert.alert(
+      'Delete Plan',
+      `Are you sure you want to delete "${plan.name}"? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem('admin_token');
+              const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${token}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+              });
+              if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Delete error:', response.status, errorText);
+                throw new Error(`Failed to delete plan (${response.status})`);
+              }
+              // Update local state immediately
+              setPlans(plans.filter(p => p.id !== plan.id));
+              Alert.alert('Success', 'Plan deleted successfully');
+            } catch (error: any) {
+              Alert.alert('Error', error.message);
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (loading) {
@@ -215,6 +254,12 @@ export default function LoanPlans() {
                       color={plan.is_active ? "#10B981" : "#64748B"}
                     />
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDeletePlan(plan)}
+                    style={[styles.iconButton, { backgroundColor: '#EF444420' }]}
+                  >
+                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                  </TouchableOpacity>
                 </View>
               </View>
 
@@ -225,7 +270,7 @@ export default function LoanPlans() {
               <View style={styles.planDetails}>
                 <View style={styles.detailItem}>
                   <Ionicons name="trending-up" size={16} color="#4F46E5" />
-                  <Text style={styles.detailLabel}>Interest Rate</Text>
+                  <Text style={styles.detailLabel}>Monthly Interest Rate</Text>
                   <Text style={styles.detailValue}>{plan.interest_rate}%</Text>
                 </View>
 
@@ -275,7 +320,7 @@ export default function LoanPlans() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Interest Rate (% per year) *</Text>
+                <Text style={styles.inputLabel}>Monthly Interest Rate (%) *</Text>
                 <TextInput
                   style={styles.input}
                   value={interestRate}

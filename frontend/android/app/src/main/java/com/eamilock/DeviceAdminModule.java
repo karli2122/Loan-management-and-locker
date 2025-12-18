@@ -1,5 +1,6 @@
 package com.eamilock;
 
+import android.app.Activity;
 import android.app.admin.DeviceAdminReceiver;
 import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
@@ -17,6 +18,8 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
     private static final String TAG = "DeviceAdminModule";
     private static final String PREFS_NAME = "EMILockPrefs";
     private static final String KEY_ALLOW_UNINSTALL = "allow_uninstall";
+    private static final String KEY_IS_REGISTERED = "is_registered";
+    private static final int REQUEST_CODE_ENABLE_ADMIN = 1001;
 
     public DeviceAdminModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -30,14 +33,92 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
     private Context getContext() {
         return getReactApplicationContext();
     }
+    
+    /**
+     * Get the DeviceAdminReceiver ComponentName dynamically based on package
+     * Tries multiple possible receiver classes and returns the first valid one
+     */
+    private ComponentName getAdminComponent() {
+        Context context = getContext();
+        String packageName = context.getPackageName();
+        DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
+        
+        // Try multiple possible receiver class names for compatibility
+        String[] receiverClasses = {
+            packageName + ".EmiDeviceAdminReceiver",
+            "com.eamilock.DeviceAdminModule$MyDeviceAdminReceiver",
+            "com.eamilock.MyDeviceAdminReceiver"
+        };
+        
+        // First, check if any component is already active as admin
+        for (String className : receiverClasses) {
+            try {
+                ComponentName component = new ComponentName(packageName, className);
+                if (dpm.isAdminActive(component)) {
+                    Log.d(TAG, "Found active admin component: " + className);
+                    return component;
+                }
+            } catch (Exception e) {
+                // Continue trying other classes
+            }
+        }
+        
+        // If none active, try to find the first valid one
+        for (String className : receiverClasses) {
+            try {
+                // Try to load the class to verify it exists
+                Class<?> clazz = Class.forName(className);
+                ComponentName component = new ComponentName(packageName, className);
+                Log.d(TAG, "Found valid admin component class: " + className);
+                return component;
+            } catch (ClassNotFoundException e) {
+                Log.d(TAG, "Class not found: " + className);
+            } catch (Exception e) {
+                Log.d(TAG, "Error checking class: " + className + " - " + e.getMessage());
+            }
+        }
+        
+        // Fallback to inner class (always available)
+        Log.d(TAG, "Using fallback inner class admin component");
+        return new ComponentName(context, MyDeviceAdminReceiver.class);
+    }
+
+    @ReactMethod
+    public void setRegistered(boolean isRegistered, Promise promise) {
+        try {
+            Context context = getContext();
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    .edit()
+                    .putBoolean(KEY_IS_REGISTERED, isRegistered)
+                    .apply();
+            promise.resolve("success");
+        } catch (Exception e) {
+            Log.e(TAG, "setRegistered failed", e);
+            promise.resolve("error");
+        }
+    }
+
+    @ReactMethod
+    public void isRegistered(Promise promise) {
+        try {
+            Context context = getContext();
+            promise.resolve(context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    .getBoolean(KEY_IS_REGISTERED, false));
+        } catch (Exception e) {
+            Log.e(TAG, "isRegistered failed", e);
+            promise.resolve(false);
+        }
+    }
 
     @ReactMethod
     public void isDeviceAdminActive(Promise promise) {
         try {
             Context context = getContext();
             DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
-            ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
-            promise.resolve(dpm.isAdminActive(adminComponent));
+            ComponentName adminComponent = getAdminComponent();
+            boolean isActive = dpm.isAdminActive(adminComponent);
+            Log.d(TAG, "isDeviceAdminActive: " + isActive + " for " + adminComponent.flattenToString());
+            promise.resolve(isActive);
         } catch (Exception e) {
             Log.e(TAG, "isDeviceAdminActive failed", e);
             promise.resolve(false);
@@ -49,7 +130,9 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
         try {
             Context context = getContext();
             DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
-            ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
+            ComponentName adminComponent = getAdminComponent();
+            
+            Log.d(TAG, "requestDeviceAdmin: checking component " + adminComponent.flattenToString());
 
             if (!dpm.isAdminActive(adminComponent)) {
                 Intent intent = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
@@ -57,10 +140,19 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
                 intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
                         "Enable device admin to protect your device and EMI payment.");
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(intent);
+                
+                Activity currentActivity = getCurrentActivity();
+                if (currentActivity != null) {
+                    Log.d(TAG, "Starting device admin request with activity");
+                    currentActivity.startActivityForResult(intent, REQUEST_CODE_ENABLE_ADMIN);
+                } else {
+                    Log.d(TAG, "Starting device admin request with context (no activity)");
+                    context.startActivity(intent);
+                }
                 promise.resolve("requested");
                 return;
             }
+            Log.d(TAG, "Device admin already active");
             promise.resolve("already_active");
         } catch (SecurityException e) {
             Log.e(TAG, "requestDeviceAdmin security failure", e);
@@ -76,7 +168,7 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
         try {
             Context context = getContext();
             DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
-            ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
+            ComponentName adminComponent = getAdminComponent();
 
             if (dpm.isAdminActive(adminComponent)) {
                 dpm.lockNow();
@@ -94,7 +186,7 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
         try {
             Context context = getContext();
             DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
-            ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
+            ComponentName adminComponent = getAdminComponent();
 
             if (dpm.isAdminActive(adminComponent)) {
                 promise.resolve(disable ? "apps_restricted" : "apps_enabled");
@@ -111,7 +203,7 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
         try {
             Context context = getContext();
             DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
-            ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
+            ComponentName adminComponent = getAdminComponent();
 
             if (dpm.isAdminActive(adminComponent)) {
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
@@ -157,9 +249,14 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
         try {
             Context context = getContext();
             DevicePolicyManager dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
-            ComponentName adminComponent = new ComponentName(context, MyDeviceAdminReceiver.class);
+            ComponentName adminComponent = getAdminComponent();
 
             if (dpm.isAdminActive(adminComponent)) {
+                // Store the preference to prevent/allow uninstall
+                context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                        .edit()
+                        .putBoolean(KEY_ALLOW_UNINSTALL, !prevent)
+                        .apply();
                 promise.resolve(prevent ? "uninstall_blocked" : "uninstall_allowed");
                 return;
             }
@@ -196,7 +293,6 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
         }
     }
 
-    // Inner class for Device Admin Receiver
     public static class MyDeviceAdminReceiver extends DeviceAdminReceiver {
         @Override
         public void onEnabled(Context context, Intent intent) {

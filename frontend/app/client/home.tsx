@@ -35,6 +35,7 @@ interface ClientStatus {
   warning_message: string;
   emi_amount: number;
   emi_due_date: string | null;
+  uninstall_allowed?: boolean;
 }
 
 export default function ClientHome() {
@@ -44,11 +45,10 @@ export default function ClientHome() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
-  const [isDeviceOwner, setIsDeviceOwner] = useState(false);
   const [isAdminActive, setIsAdminActive] = useState(false);
-  const [kioskActive, setKioskActive] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [setupComplete, setSetupComplete] = useState(false);
+  const isMounted = useRef(false);
   const appState = useRef(AppState.currentState);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wasLocked = useRef(false);
@@ -104,67 +104,123 @@ export default function ClientHome() {
     }
   }, [getPushToken]);
 
-  // Check and setup Device Owner/Admin
+  const protectionTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // Retry mechanism for checking admin status after request
+  const checkAdminStatusWithRetry = async (maxAttempts = 5, delayMs = 500) => {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+      const isActive = await devicePolicy.isAdminActive();
+      if (isActive) {
+        setIsAdminActive(true);
+        setSetupComplete(true);
+        const result = await devicePolicy.preventUninstall(true);
+        if (result === 'success') {
+          console.log(`Device Admin confirmed active on attempt ${attempt}, uninstall protection enabled`);
+        } else {
+          console.log(`Device Admin active but uninstall protection failed: ${result}`);
+        }
+        return true;
+      }
+      console.log(`Admin check attempt ${attempt}/${maxAttempts} - not active yet`);
+    }
+    console.log('Admin status check timed out');
+    return false;
+  };
+
+  // Check and setup Device Admin
   const checkAndSetupDeviceProtection = async () => {
     if (Platform.OS !== 'android') return;
-    
+
     try {
-      // Check Device Owner status
-      const owner = await devicePolicy.isDeviceOwner();
-      setIsDeviceOwner(owner);
-      
-      // Check Admin status
       const admin = await devicePolicy.isAdminActive();
       setIsAdminActive(admin);
-      
-      if (owner) {
-        // If device owner, enable uninstall protection
-        await devicePolicy.disableUninstall(true);
-        setSetupComplete(true);
-        console.log('Device Owner mode active - full protection enabled');
-      } else if (!admin) {
-        // If not admin, request admin permissions automatically
-        console.log('Requesting Device Admin permissions...');
-        // Small delay to let UI load first
-        setTimeout(async () => {
-          try {
-            await devicePolicy.requestAdmin();
-          } catch (e) {
-            console.log('Admin request failed:', e);
-          }
-        }, 2000);
+
+      if (!admin) {
+        console.log('Device Admin not active - prompting user');
+        Alert.alert(
+          language === 'et' ? 'Seadme kaitse vajalik' : 'Device Protection Required',
+          language === 'et' 
+            ? 'Seadme turvaliseks kasutamiseks luba administraatori õigused.'
+            : 'To secure your device, please enable Device Admin permissions.',
+          [
+            {
+              text: language === 'et' ? 'Luba kohe' : 'Enable Now',
+              onPress: async () => {
+                try {
+                  await devicePolicy.requestAdmin();
+                  console.log('Device Admin request dispatched');
+                  // Use retry mechanism to check admin status
+                  await checkAdminStatusWithRetry();
+                } catch (e) {
+                  console.log('Admin request failed:', e);
+                }
+              },
+            },
+          ],
+          { cancelable: false }
+        );
       } else {
         setSetupComplete(true);
-        console.log('Device Admin active - basic protection enabled');
+        // Ensure uninstall protection is enabled and check result
+        const result = await devicePolicy.preventUninstall(true);
+        if (result === 'success') {
+          console.log('Device Admin active - uninstall protection enabled');
+        } else {
+          console.log(`Device Admin active but uninstall protection failed: ${result}`);
+        }
       }
     } catch (error) {
       console.error('Device protection setup error:', error);
     }
   };
 
-  // Enable/Disable Kiosk mode based on lock status
-  const updateKioskMode = async (locked: boolean) => {
+  const scheduleDeviceProtectionCheck = () => {
     if (Platform.OS !== 'android') return;
-    
+    if (protectionTimeout.current) {
+      clearTimeout(protectionTimeout.current);
+    }
+    protectionTimeout.current = setTimeout(() => {
+      checkAndSetupDeviceProtection().catch((err) =>
+        console.error('Deferred device protection setup error:', err)
+      );
+    }, 500);
+  };
+
+  // Handle lock state change - save both lock status and message for offline enforcement
+  const updateLockState = async (locked: boolean, message?: string) => {
     try {
-      // Save lock state for boot receiver
-      await devicePolicy.setLockState(locked);
-      
-      if (isDeviceOwner) {
-        if (locked && !kioskActive) {
-          await devicePolicy.setKioskMode(true);
-          setKioskActive(true);
-          console.log('Kiosk mode enabled');
-        } else if (!locked && kioskActive) {
-          await devicePolicy.setKioskMode(false);
-          setKioskActive(false);
-          console.log('Kiosk mode disabled');
-        }
-      }
-      
+      // Save lock state for offline enforcement and autostart
+      await devicePolicy.setLockState(locked, message);
       wasLocked.current = locked;
     } catch (error) {
-      console.error('Kiosk mode error:', error);
+      console.error('Lock state error:', error);
+    }
+  };
+
+  // Check cached lock state on startup for offline enforcement
+  const checkCachedLockStateOnStartup = async () => {
+    try {
+      const cachedState = await devicePolicy.getCachedLockState();
+      if (cachedState.isLocked) {
+        console.log('[Startup] Device was locked - enforcing cached lock state');
+        setStatus(prev => prev ? {
+          ...prev,
+          is_locked: true,
+          lock_message: cachedState.lockMessage,
+        } : {
+          id: '',
+          name: '',
+          is_locked: true,
+          lock_message: cachedState.lockMessage,
+          warning_message: '',
+          emi_amount: 0,
+          emi_due_date: null,
+        });
+        wasLocked.current = true;
+      }
+    } catch (error) {
+      console.log('Failed to check cached lock state:', error);
     }
   };
 
@@ -176,20 +232,57 @@ export default function ClientHome() {
       // Update offline indicator
       setIsOffline(data.offline || false);
       
-      setStatus(data);
+      // Create a copy of data for potential modifications (avoid mutating original)
+      let statusToSet = { ...data };
+      
+      // If offline, also check cached lock state to ensure enforcement
+      if (data.offline) {
+        const cachedState = await devicePolicy.getCachedLockState();
+        if (cachedState.isLocked && !data.is_locked) {
+          // Enforce cached lock state when offline - create new object to avoid mutation
+          statusToSet = {
+            ...data,
+            is_locked: true,
+            lock_message: cachedState.lockMessage,
+          };
+          console.log('[Offline] Enforcing cached lock state');
+        }
+      }
+      
+      setStatus(statusToSet);
       
       // Check if admin has allowed uninstall
-      if (data.uninstall_allowed && Platform.OS === 'android') {
+      if (statusToSet.uninstall_allowed && Platform.OS === 'android') {
         handleUninstallSignal();
       }
       
-      // Update kiosk mode based on lock status change
-      if (data.is_locked !== wasLocked.current) {
-        updateKioskMode(data.is_locked);
+      // Update lock state if changed - save message for offline use
+      if (statusToSet.is_locked !== wasLocked.current) {
+        updateLockState(statusToSet.is_locked, statusToSet.lock_message);
       }
     } catch (error) {
       console.error('Error fetching status:', error);
       setIsOffline(true);
+      
+      // On error, check and enforce cached lock state
+      const cachedState = await devicePolicy.getCachedLockState();
+      if (cachedState.isLocked) {
+        setStatus(prev => prev ? {
+          ...prev,
+          is_locked: true,
+          lock_message: cachedState.lockMessage,
+        } : {
+          id: '',
+          name: '',
+          is_locked: true,
+          lock_message: cachedState.lockMessage,
+          warning_message: '',
+          emi_amount: 0,
+          emi_due_date: null,
+        });
+        wasLocked.current = true;
+        console.log('[Error] Enforcing cached lock state');
+      }
     } finally {
       setLoading(false);
     }
@@ -197,18 +290,18 @@ export default function ClientHome() {
 
   const handleUninstallSignal = async () => {
     try {
-      const DeviceAdmin = (await import('../../src/components/DeviceAdmin')).default;
-      
       // Allow app to be uninstalled
-      await DeviceAdmin.allowUninstall();
+      await devicePolicy.allowUninstall();
       
       console.log('App uninstall protection disabled by admin');
       
       // Show alert to user
       Alert.alert(
-        'Account Removed',
-        'Your account has been removed by the administrator. You can now uninstall this app.',
-        [{ text: 'OK' }]
+        language === 'et' ? 'Konto eemaldatud' : 'Account Removed',
+        language === 'et' 
+          ? 'Teie konto on administraatori poolt eemaldatud. Saate nüüd rakenduse desinstallida.'
+          : 'Your account has been removed by the administrator. You can now uninstall this app.',
+        [{ text: t('ok') }]
       );
     } catch (error) {
       console.log('Error handling uninstall signal:', error);
@@ -250,9 +343,16 @@ export default function ClientHome() {
   };
 
   const loadClientData = async () => {
+    if (!isMounted.current) return;
+    
+    // First, check cached lock state for offline enforcement on startup
+    await checkCachedLockStateOnStartup();
+    
     const id = await AsyncStorage.getItem('client_id');
     if (!id) {
-      router.replace('/client/register');
+      if (isMounted.current) {
+        router.replace('/client/register');
+      }
       return;
     }
     setClientId(id);
@@ -262,11 +362,26 @@ export default function ClientHome() {
   };
 
   useEffect(() => {
-    // Setup device protection first
-    checkAndSetupDeviceProtection();
+    isMounted.current = true;
     
-    // Then load client data
-    loadClientData();
+    // Wrap initialization in try-catch to prevent crashes
+    const initialize = async () => {
+      try {
+        // Check cached lock state immediately on startup for offline enforcement
+        await checkCachedLockStateOnStartup();
+        
+        // Setup device protection first (deferred for safety)
+        scheduleDeviceProtectionCheck();
+        
+        // Then load client data
+        await loadClientData();
+      } catch (error) {
+        console.error('Initialization error:', error);
+        setLoading(false);
+      }
+    };
+    
+    initialize();
 
     // Poll status every 5 seconds
     intervalRef.current = setInterval(() => {
@@ -283,7 +398,7 @@ export default function ClientHome() {
           updateLocation(clientId);
         }
         // Re-check protection on app resume
-        checkAndSetupDeviceProtection();
+        scheduleDeviceProtectionCheck();
       }
       appState.current = nextAppState;
     });
@@ -300,14 +415,18 @@ export default function ClientHome() {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
+      if (protectionTimeout.current) {
+        clearTimeout(protectionTimeout.current);
+      }
       subscription.remove();
       backHandler.remove();
+      isMounted.current = false;
     };
   }, [clientId, status?.is_locked]);
 
-  // Initialize tamper detection and check for reboot
+  // Initialize protection and check for reboot (tamper detection disabled to prevent crashes)
   useEffect(() => {
-    const initializeTamperProtection = async () => {
+    const initializeProtection = async () => {
       if (!clientId || Platform.OS !== 'android') return;
 
       try {
@@ -326,21 +445,42 @@ export default function ClientHome() {
         
         await AsyncStorage.setItem('last_app_start', now.toString());
 
-        // Start tamper detection service
-        const DeviceAdmin = (await import('../../src/components/DeviceAdmin')).default;
-        const result = await DeviceAdmin.startTamperDetection();
-        console.log('Tamper detection:', result);
+        // NOTE: Tamper detection service disabled to prevent chat head overlay crashes
+        // The service was causing blinking overlay and app crash issues
+        // const result = await devicePolicy.startTamperDetection();
+        // console.log('Tamper detection:', result);
         
-        // Enable uninstall protection
-        await DeviceAdmin.preventUninstall(true);
+        // Enable uninstall protection if admin is active
+        const isAdmin = await devicePolicy.isAdminActive();
+        if (isAdmin) {
+          await devicePolicy.preventUninstall(true);
+          console.log('Uninstall protection enabled');
+          // Report admin mode status to backend
+          await reportAdminStatus(clientId, true);
+        } else {
+          // Report admin mode not active
+          await reportAdminStatus(clientId, false);
+        }
         
       } catch (error) {
-        console.log('Tamper protection setup error:', error);
+        console.log('Protection setup error:', error);
       }
     };
 
-    initializeTamperProtection();
+    initializeProtection();
   }, [clientId]);
+
+  const reportAdminStatus = async (id: string, adminActive: boolean) => {
+    if (!id) return;
+    try {
+      await fetch(`${API_URL}/api/device/report-admin-status?client_id=${id}&admin_active=${adminActive}`, {
+        method: 'POST',
+      });
+      console.log(`Admin mode status reported: ${adminActive}`);
+    } catch (error) {
+      console.log('Admin status report failed:', error);
+    }
+  };
 
   const reportReboot = async (id: string) => {
     try {
@@ -352,9 +492,9 @@ export default function ClientHome() {
         const data = await response.json();
         console.log('Reboot reported:', data);
         
-        // If device should be locked, ensure it's locked
+        // If device should be locked, update lock state
         if (data.should_lock && status) {
-          await updateKioskMode(true);
+          await updateLockState(true);
         }
       }
     } catch (error) {
@@ -376,11 +516,11 @@ export default function ClientHome() {
         
         // Force immediate lock on tamper attempt
         if (status) {
-          await updateKioskMode(true);
+          await updateLockState(true);
           Alert.alert(
-            'Security Alert',
-            'Tampering detected. Device has been locked.',
-            [{ text: 'OK' }]
+            language === 'et' ? 'Turvahoiatus' : 'Security Alert',
+            language === 'et' ? 'Tuvastati manipulatsioon. Seade on lukustatud.' : 'Tampering detected. Device has been locked.',
+            [{ text: t('ok') }]
           );
         }
       }
@@ -409,38 +549,11 @@ export default function ClientHome() {
     }
   };
 
-  const handleUnregister = () => {
-    // Don't allow unregister if device is locked
-    if (status?.is_locked) {
-      Alert.alert(
-        language === 'et' ? 'Keelatud' : 'Not Allowed',
-        language === 'et' ? 'Seade on lukustatud. Registreerimist ei saa tühistada.' : 'Device is locked. Cannot unregister.'
-      );
-      return;
-    }
-    
-    Alert.alert(
-      t('unregisterDevice'),
-      t('unregisterConfirm'),
-      [
-        { text: t('cancel'), style: 'cancel' },
-        {
-          text: t('unregister'),
-          style: 'destructive',
-          onPress: async () => {
-            await AsyncStorage.removeItem('client_id');
-            router.replace('/');
-          },
-        },
-      ]
-    );
-  };
-
   const handleContactSupport = () => {
     Alert.alert(t('contactSupport'), t('howToContact'), [
       { text: t('cancel'), style: 'cancel' },
       { text: t('call'), onPress: () => Linking.openURL('tel:+1234567890') },
-      { text: t('email'), onPress: () => Linking.openURL('mailto:support@emilock.com') },
+      { text: t('email'), onPress: () => Linking.openURL('mailto:support@loanlock.com') },
     ]);
   };
 
@@ -469,7 +582,7 @@ export default function ClientHome() {
           <View style={styles.lockEmiInfo}>
             <View style={styles.lockEmiItem}>
               <Text style={styles.lockEmiLabel}>{t('pendingAmount')}</Text>
-              <Text style={styles.lockEmiValue}>€{status.emi_amount.toLocaleString()}</Text>
+              <Text style={styles.lockEmiValue}>€{(status.emi_amount ?? 0).toLocaleString()}</Text>
             </View>
             {status.emi_due_date && (
               <View style={styles.lockEmiItem}>
@@ -491,14 +604,14 @@ export default function ClientHome() {
           {/* Protection Status */}
           <View style={styles.protectionStatus}>
             <Ionicons 
-              name={isDeviceOwner ? "shield-checkmark" : "shield"} 
+              name={isAdminActive ? "shield-checkmark" : "shield"} 
               size={16} 
-              color={isDeviceOwner ? "#10B981" : "#F59E0B"} 
+              color={isAdminActive ? "#10B981" : "#F59E0B"} 
             />
             <Text style={styles.protectionText}>
-              {isDeviceOwner 
-                ? (language === 'et' ? 'Täielik kaitse aktiivne' : 'Full protection active')
-                : (language === 'et' ? 'Põhikaitse aktiivne' : 'Basic protection active')}
+              {isAdminActive 
+                ? (language === 'et' ? 'Seadme kaitse aktiivne' : 'Device protection active')
+                : (language === 'et' ? 'Kaitse pole aktiivne' : 'Protection not active')}
             </Text>
           </View>
         </View>
@@ -528,9 +641,6 @@ export default function ClientHome() {
               <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>EN</Text>
             </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.settingsButton} onPress={handleUnregister}>
-            <Ionicons name="settings-outline" size={24} color="#fff" />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -541,24 +651,40 @@ export default function ClientHome() {
         }
       >
         {/* Protection Status Banner */}
-        <View style={[styles.protectionBanner, isDeviceOwner ? styles.protectionFull : styles.protectionBasic]}>
+        <View style={[styles.protectionBanner, isAdminActive ? styles.protectionFull : styles.protectionBasic]}>
           <Ionicons 
-            name={isDeviceOwner ? "shield-checkmark" : "shield"} 
+            name={isAdminActive ? "shield-checkmark" : "shield"} 
             size={24} 
-            color={isDeviceOwner ? "#10B981" : "#F59E0B"} 
+            color={isAdminActive ? "#10B981" : "#F59E0B"} 
           />
           <View style={styles.protectionBannerContent}>
             <Text style={styles.protectionBannerTitle}>
-              {isDeviceOwner 
-                ? (language === 'et' ? 'Täielik kaitse' : 'Full Protection')
-                : (language === 'et' ? 'Põhikaitse' : 'Basic Protection')}
+              {isAdminActive 
+                ? (language === 'et' ? 'Seadme kaitse' : 'Device Protection')
+                : (language === 'et' ? 'Kaitse pole aktiivne' : 'Protection Not Active')}
             </Text>
             <Text style={styles.protectionBannerText}>
-              {isDeviceOwner 
-                ? (language === 'et' ? 'Seade on täielikult kaitstud' : 'Device is fully protected')
-                : (language === 'et' ? 'Administraatori õigused aktiivsed' : 'Admin permissions active')}
+              {isAdminActive 
+                ? (language === 'et' ? 'Administraatori õigused aktiivsed' : 'Admin permissions active')
+                : (language === 'et' ? 'Palun lubage administraatori õigused' : 'Please enable admin permissions')}
             </Text>
           </View>
+          {!isAdminActive && (
+            <TouchableOpacity 
+              style={styles.enableProtectionButton}
+              onPress={async () => {
+                console.log('Enable button pressed - requesting Device Admin');
+                const result = await devicePolicy.requestAdmin();
+                console.log('Device Admin request result:', result);
+                // Re-check admin status after request
+                await checkAdminStatusWithRetry();
+              }}
+            >
+              <Text style={styles.enableProtectionText}>
+                {language === 'et' ? 'Luba' : 'Enable'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Warning Banner */}
@@ -598,13 +724,13 @@ export default function ClientHome() {
           <Text style={styles.statusInfo}>{t('deviceActiveNormal')}</Text>
         </View>
 
-        {/* EMI Card */}
+        {/* Loan Card */}
         <View style={styles.emiCard}>
-          <Text style={styles.emiCardTitle}>{t('emiDetails')}</Text>
+          <Text style={styles.emiCardTitle}>{language === 'et' ? 'Laenu andmed' : 'Loan Details'}</Text>
           <View style={styles.emiDetails}>
             <View style={styles.emiDetailItem}>
-              <Text style={styles.emiDetailLabel}>{t('monthlyEmi')}</Text>
-              <Text style={styles.emiDetailValue}>€{status?.emi_amount.toLocaleString() || '0'}</Text>
+              <Text style={styles.emiDetailLabel}>{language === 'et' ? 'Laenusumma' : 'Loan Amount'}</Text>
+              <Text style={styles.emiDetailValue}>€{(status?.emi_amount ?? 0).toLocaleString()}</Text>
             </View>
             <View style={styles.emiDetailDivider} />
             <View style={styles.emiDetailItem}>
@@ -745,6 +871,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#94A3B8',
     marginTop: 2,
+  },
+  enableProtectionButton: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  enableProtectionText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   warningBanner: {
     flexDirection: 'row',

@@ -7,7 +7,6 @@ import {
   ScrollView,
   Alert,
   Share,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -22,7 +21,7 @@ import API_URL from '../../src/constants/api';
 const generateProvisioningData = (clientRegCode: string) => {
   const data = {
     "android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME": "com.emi.client/.DeviceAdminReceiver",
-    "android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION": `${API_URL}/downloads/emi-client.apk`,
+    "android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION": `${API_URL}/downloads/loan-client.apk`,
     "android.app.extra.PROVISIONING_SKIP_ENCRYPTION": true,
     "android.app.extra.PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED": true,
     "android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE": {
@@ -35,7 +34,7 @@ const generateProvisioningData = (clientRegCode: string) => {
 // Simple setup QR that contains registration code
 const generateSetupQR = (clientRegCode: string, clientName: string) => {
   return JSON.stringify({
-    type: "EMI_CLIENT_SETUP",
+    type: "LOAN_CLIENT_SETUP",
     code: clientRegCode,
     name: clientName,
     api: API_URL
@@ -76,8 +75,8 @@ export default function DeviceSetup() {
     if (!selectedClient) return;
     
     const message = language === 'et' 
-      ? `EMI Kliendi seadistus\n\nKlient: ${selectedClient.name}\nRegistreerimiskood: ${selectedClient.registration_code}\n\nJuhised:\n1. Tehke telefonis tehaseseaded\n2. Jätke Google konto vahele\n3. Installige EMI Client rakendus\n4. Sisestage kood: ${selectedClient.registration_code}`
-      : `EMI Client Setup\n\nClient: ${selectedClient.name}\nRegistration Code: ${selectedClient.registration_code}\n\nInstructions:\n1. Factory reset the phone\n2. Skip Google account\n3. Install EMI Client app\n4. Enter code: ${selectedClient.registration_code}`;
+      ? `Loan Client seadistus\n\nKlient: ${selectedClient.name}\nRegistreerimiskood: ${selectedClient.registration_code}\n\nJuhised:\n1. Installige Loan Client rakendus telefonile\n2. Avage rakendus ja sisestage kood: ${selectedClient.registration_code}\n3. Vajutage "Registreeri seade"\n4. Lubage administraatori õigused järgmises dialoogis\n5. Seade on nüüd kaitstud`
+      : `Loan Client Setup\n\nClient: ${selectedClient.name}\nRegistration Code: ${selectedClient.registration_code}\n\nInstructions:\n1. Install Loan Client app on the phone\n2. Open the app and enter code: ${selectedClient.registration_code}\n3. Press "Register Device"\n4. Grant admin permissions in the next dialog\n5. Device is now protected`;
     
     try {
       await Share.share({ message });
@@ -115,8 +114,8 @@ export default function DeviceSetup() {
             </Text>
             <Text style={styles.infoText}>
               {language === 'et' 
-                ? 'Skannige QR-kood uuel või tehaseseadetega telefonil, et seadistada EMI kaitse automaatselt.'
-                : 'Scan the QR code on a new or factory-reset phone to automatically set up EMI protection.'}
+                ? 'Skannige QR-kood uuel või tehaseseadetega telefonil, et seadistada laenu kaitse automaatselt.'
+                : 'Scan the QR code on a new or factory-reset phone to automatically set up loan protection.'}
             </Text>
           </View>
         </View>
@@ -205,15 +204,11 @@ export default function DeviceSetup() {
               </Text>
               {qrType === 'simple' ? (
                 <View style={styles.instructionsList}>
-                  <Text style={styles.instructionItem}>1. {language === 'et' ? 'Tehke telefonil tehaseseaded' : 'Factory reset the phone'}</Text>
-                  <Text style={styles.instructionItem}>2. {language === 'et' ? 'Jätke Google konto vahele' : 'Skip Google account setup'}</Text>
-                  <Text style={styles.instructionItem}>3. {language === 'et' ? 'Lubage USB silumine' : 'Enable USB debugging'}</Text>
-                  <Text style={styles.instructionItem}>4. {language === 'et' ? 'Käivitage ADB käsk:' : 'Run ADB command:'}</Text>
-                  <View style={styles.codeBlock}>
-                    <Text style={styles.codeText}>adb shell dpm set-device-owner com.emi.client/.DeviceAdminReceiver</Text>
-                  </View>
-                  <Text style={styles.instructionItem}>5. {language === 'et' ? 'Installige EMI Client rakendus' : 'Install EMI Client app'}</Text>
-                  <Text style={styles.instructionItem}>6. {language === 'et' ? 'Skannige QR-kood või sisestage kood' : 'Scan QR code or enter the code'}</Text>
+                  <Text style={styles.instructionItem}>1. {language === 'et' ? 'Installige Loan Client rakendus telefonile' : 'Install Loan Client app on the phone'}</Text>
+                  <Text style={styles.instructionItem}>2. {language === 'et' ? 'Avage rakendus ja sisestage registreerimiskood' : 'Open the app and enter the registration code'}</Text>
+                  <Text style={styles.instructionItem}>3. {language === 'et' ? 'Vajutage "Registreeri seade"' : 'Press "Register Device"'}</Text>
+                  <Text style={styles.instructionItem}>4. {language === 'et' ? 'Lubage administraatori õigused järgmises dialoogis' : 'Grant admin permissions in the next dialog'}</Text>
+                  <Text style={styles.instructionItem}>5. {language === 'et' ? 'Seade on nüüd kaitstud ja lukustatav' : 'Device is now protected and can be locked'}</Text>
                 </View>
               ) : (
                 <View style={styles.instructionsList}>
@@ -410,17 +405,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#CBD5E1',
     lineHeight: 20,
-  },
-  codeBlock: {
-    backgroundColor: '#0F172A',
-    borderRadius: 8,
-    padding: 12,
-    marginVertical: 8,
-  },
-  codeText: {
-    fontSize: 12,
-    color: '#10B981',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   shareButton: {
     flexDirection: 'row',

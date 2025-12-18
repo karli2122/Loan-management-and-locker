@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
-import API_URL, { buildApiUrl } from '../../src/constants/api';
+import API_URL, { API_BASE_URL, buildApiUrl } from '../../src/constants/api';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
 
 export default function ClientRegister() {
@@ -26,6 +26,7 @@ export default function ClientRegister() {
   const [registrationCode, setRegistrationCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingRegistration, setCheckingRegistration] = useState(true);
+  const baseUrl = API_URL || API_BASE_URL;
 
   useEffect(() => {
     checkExistingRegistration();
@@ -35,56 +36,20 @@ export default function ClientRegister() {
     try {
       const clientId = await AsyncStorage.getItem('client_id');
       if (clientId) {
-        const response = await fetch(buildApiUrl(`device/status/${clientId}`));
+        const response = await fetch(buildApiUrl(`device/status/${clientId}`), {
+          headers: { Accept: 'application/json' },
+        });
         if (response.ok) {
           router.replace('/client/home');
           return;
-        } else {
-          await AsyncStorage.removeItem('client_id');
         }
+        await AsyncStorage.removeItem('client_id');
       }
     } catch (error) {
       console.error('Error checking registration:', error);
     } finally {
       setCheckingRegistration(false);
     }
-  };
-
-  const verifyDeviceOwner = async () => {
-    let attempts = 0;
-
-    const attempt = async () => {
-      attempts += 1;
-      const cancelButton = { text: t('cancel'), style: 'cancel' as const };
-      const retryButtons =
-        attempts < 3
-          ? [{ text: t('retry'), onPress: attempt }, cancelButton]
-          : [cancelButton];
-
-      try {
-        const isOwner = await devicePolicy.isDeviceOwner();
-        if (isOwner) {
-          try {
-            await devicePolicy.disableUninstall(true);
-          } catch (err) {
-            console.error(
-              'Unable to enforce uninstall protection for Device Owner:',
-              (err as any)?.message || err
-            );
-          }
-          Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
-            { text: t('ok'), onPress: () => router.replace('/client/home') },
-          ]);
-        } else {
-          Alert.alert(t('error'), t('deviceOwnerSetupRequired'), retryButtons);
-        }
-      } catch (err) {
-        console.error('Device Owner verification failed:', (err as any)?.message || err);
-        Alert.alert(t('error'), t('deviceOwnerVerificationFailed'), retryButtons);
-      }
-    };
-
-    await attempt();
   };
 
   const handleRegister = async () => {
@@ -99,11 +64,20 @@ export default function ClientRegister() {
       const deviceId = Device.osBuildId || Device.osInternalBuildId || 'unknown';
       const deviceModel = `${Device.brand || ''} ${Device.modelName || 'Unknown Device'}`.trim();
 
+      const parseJson = async (resp: Response) => {
+        const text = await resp.text();
+        try {
+          return text ? JSON.parse(text) : null;
+        } catch {
+          return { raw: text };
+        }
+      };
+
       // Try primary /api path, then fallback to base without /api to avoid 404s from double/missing prefix
       const attemptRegister = async (url: string) =>
         fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           body: JSON.stringify({
             registration_code: code,
             device_id: deviceId,
@@ -113,72 +87,82 @@ export default function ClientRegister() {
 
       let response = await attemptRegister(buildApiUrl('device/register'));
       if (response.status === 404) {
-        response = await attemptRegister(`${API_URL}/device/register`);
+        response = await attemptRegister(`${baseUrl}/device/register`);
       }
 
-      const text = await response.text();
-      let data: any = null;
-      try {
-        data = text ? JSON.parse(text) : null;
-      } catch {
-        // non-JSON response
+      const data = await parseJson(response);
+
+      // Check for incorrect code based on HTTP status codes only
+      // 404 = code not found (invalid registration code)
+      // 400 = bad request (invalid format or already registered)
+      if (response.status === 404 || response.status === 400) {
+        Alert.alert(
+          t('error'),
+          language === 'et' ? 'Vale kood' : 'Incorrect code'
+        );
+        return;
       }
 
       if (!response.ok) {
-        const message = data?.detail || text || 'Registration failed';
+        const message = data?.detail || data?.raw || 'Registration failed';
         throw new Error(message);
       }
 
       const clientId = data?.client_id;
       if (!clientId) {
-        throw new Error(data?.detail || 'Registration failed: invalid code');
+        Alert.alert(
+          t('error'),
+          language === 'et' ? 'Vale kood' : 'Incorrect code'
+        );
+        return;
       }
-      if (clientId) {
-        await AsyncStorage.setItem('client_id', clientId);
-      }
+
+      // Registration successful - save client data
+      await AsyncStorage.setItem('client_id', clientId);
       
-      // Store client data including lock_mode
+      // Store client data
       const clientData = data?.client;
       if (clientData) {
         await AsyncStorage.setItem('client_data', JSON.stringify(clientData));
       }
       
-      // Handle Device Admin mode setup automatically
-      if (clientData?.lock_mode === 'device_admin') {
-        // Dynamic import to avoid crashes on non-Android
-        try {
-          const DeviceAdmin = (await import('../../src/components/DeviceAdmin')).default;
-          const isActive = await DeviceAdmin.isDeviceAdminActive();
-          
-          if (!isActive) {
-            // Request Device Admin permissions
-            await DeviceAdmin.requestDeviceAdmin();
-            // Show message that permissions are needed
-            Alert.alert(
-              t('success'), 
-              t('deviceAdminPermissionPrompt'),
-              [{ text: t('ok'), onPress: () => router.replace('/client/home') }]
-            );
-          } else {
-            Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
-              { text: t('ok'), onPress: () => router.replace('/client/home') },
-            ]);
-          }
-        } catch (err) {
-          console.log('Device Admin not available:', err);
-          Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
-            { text: t('ok'), onPress: () => router.replace('/client/home') },
-          ]);
-        }
-      } else if (clientData?.lock_mode === 'device_owner') {
-        // Device Owner mode - verify owner status and enable protections
-        await verifyDeviceOwner();
-      } else {
-        Alert.alert(t('success'), t('deviceRegisteredSuccess'), [
-          { text: t('ok'), onPress: () => router.replace('/client/home') },
-        ]);
-      }
+      // Mark device as registered for autostart on boot
+      await devicePolicy.setRegistered(true);
+      
+      // Show registration successful message and prompt for admin privileges
+      Alert.alert(
+        t('success'),
+        language === 'et' 
+          ? 'Registreerimine õnnestus! Palun anna järgmises vaates administraatori õigused.'
+          : 'Registration successful! Please grant admin privileges in the next prompt.',
+        [
+          {
+            text: t('ok'),
+            onPress: async () => {
+              // Navigate to home screen first
+              router.replace('/client/home');
+              
+              // Request Device Admin permission with a small delay to ensure navigation completes
+              setTimeout(async () => {
+                try {
+                  console.log('Requesting Device Admin after registration...');
+                  const isAdminActive = await devicePolicy.isAdminActive();
+                  console.log('isAdminActive:', isAdminActive);
+                  if (!isAdminActive) {
+                    console.log('Calling requestAdmin...');
+                    const result = await devicePolicy.requestAdmin();
+                    console.log('requestAdmin result:', result);
+                  }
+                } catch (err) {
+                  console.log('Device Admin request error:', err);
+                }
+              }, 500);
+            },
+          },
+        ]
+      );
     } catch (error: any) {
+      console.error('Registration error:', error);
       Alert.alert(t('error'), error.message || 'Registration failed');
     } finally {
       setLoading(false);

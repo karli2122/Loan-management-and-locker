@@ -2,7 +2,7 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import Response, RedirectResponse
+from starlette.responses import Response, RedirectResponse, JSONResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -35,12 +35,21 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[db_name]
 
 # Create the main app
-app = FastAPI(title="EMI Phone Lock API", version="1.0.0")
+app = FastAPI(title="Loan Phone Lock API", version="1.0.0")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
 security = HTTPBasic()
+
+# Global exception handler to prevent server crashes
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    logger.error(f"Unhandled exception: {str(exc)}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "error": str(exc)}
+    )
 
 # ===================== HELPER FUNCTIONS =====================
 
@@ -320,12 +329,18 @@ class Admin(BaseModel):
     password_hash: str
     role: str = "user"  # "admin" or "user"
     is_super_admin: bool = False
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class AdminCreate(BaseModel):
     username: str
     password: str
     role: str = "user"  # "admin" or "user"
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 class AdminLogin(BaseModel):
     username: str
@@ -430,6 +445,7 @@ class Client(BaseModel):
     tamper_attempts: int = 0  # Count of tampering attempts
     last_tamper_attempt: Optional[datetime] = None  # Last tamper attempt timestamp
     last_reboot: Optional[datetime] = None  # Last device reboot timestamp
+    admin_mode_active: bool = False  # Device Admin mode active on device
 
 class Payment(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -502,6 +518,7 @@ class ClientStatusResponse(BaseModel):
     warning_message: str
     emi_amount: float
     emi_due_date: Optional[str]
+    uninstall_allowed: bool = False
 
 # ===================== ADMIN ROUTES =====================
 
@@ -551,7 +568,9 @@ async def register_admin(admin_data: AdminCreate, admin_token: str = None):
         username=admin_data.username,
         password_hash=hash_password(admin_data.password),
         role=admin_data.role if not is_first_admin else "admin",
-        is_super_admin=is_first_admin
+        is_super_admin=is_first_admin,
+        first_name=admin_data.first_name,
+        last_name=admin_data.last_name
     )
     await db.admins.insert_one(admin.dict())
     
@@ -655,6 +674,41 @@ async def change_password(admin_token: str, password_data: PasswordChange):
     )
     
     return {"message": "Password changed successfully"}
+
+class ProfileUpdate(BaseModel):
+    first_name: str
+    last_name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
+@api_router.put("/admin/update-profile")
+async def update_admin_profile(admin_token: str, profile_data: ProfileUpdate):
+    """Update admin profile information"""
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    admin = await db.admins.find_one({"id": token_doc["admin_id"]})
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    
+    # Update profile fields
+    update_data = {
+        "first_name": profile_data.first_name,
+        "last_name": profile_data.last_name,
+    }
+    if profile_data.email:
+        update_data["email"] = profile_data.email
+    if profile_data.phone:
+        update_data["phone"] = profile_data.phone
+    
+    await db.admins.update_one(
+        {"id": admin["id"]},
+        {"$set": update_data}
+    )
+    
+    logger.info(f"Profile updated for admin: {admin['username']}")
+    return {"message": "Profile updated successfully"}
 
 @api_router.delete("/admin/{admin_id}")
 async def delete_admin(admin_id: str, admin_token: str):
@@ -891,7 +945,8 @@ async def get_device_status(client_id: str):
         lock_message=client["lock_message"],
         warning_message=client.get("warning_message", ""),
         emi_amount=client["emi_amount"],
-        emi_due_date=client.get("emi_due_date")
+        emi_due_date=client.get("emi_due_date"),
+        uninstall_allowed=client.get("uninstall_allowed", False)
     )
 
 @api_router.post("/device/location")
@@ -937,6 +992,20 @@ async def clear_warning(client_id: str):
     
     await db.clients.update_one({"id": client_id}, {"$set": {"warning_message": ""}})
     return {"message": "Warning cleared"}
+
+@api_router.post("/device/report-admin-status")
+async def report_admin_status(client_id: str, admin_active: bool):
+    """Report admin mode status from client device"""
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {"admin_mode_active": admin_active}}
+    )
+    
+    return {"message": "Admin mode status updated", "admin_active": admin_active}
 
 # ===================== TAMPER DETECTION =====================
 
@@ -1039,21 +1108,18 @@ async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token:
 
 @api_router.delete("/loan-plans/{plan_id}")
 async def delete_loan_plan(plan_id: str, admin_token: str):
-    """Delete (deactivate) a loan plan"""
+    """Delete a loan plan permanently"""
     if not await verify_admin_token_header(admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
     
-    # Soft delete - just deactivate
-    result = await db.loan_plans.update_one(
-        {"id": plan_id},
-        {"$set": {"is_active": False}}
-    )
+    # Hard delete - remove from database
+    result = await db.loan_plans.delete_one({"id": plan_id})
     
-    if result.modified_count == 0:
+    if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Loan plan not found")
     
-    logger.info(f"Loan plan deactivated: {plan_id}")
-    return {"message": "Loan plan deactivated successfully"}
+    logger.info(f"Loan plan deleted: {plan_id}")
+    return {"message": "Loan plan deleted successfully"}
 
 # ===================== EMI CALCULATOR =====================
 
@@ -1686,6 +1752,13 @@ app.add_middleware(
 @app.middleware("http")
 async def swallow_404_middleware(request, call_next):
     """Discard body for 404 responses to reduce noise."""
+    def json_redirect(corrected_path: str):
+        return JSONResponse(
+            status_code=307,
+            content={"redirect_to": corrected_path, "detail": "Use /api prefix"},
+            headers={"Location": corrected_path}
+        )
+
     response = await call_next(request)
     if response.status_code == 404:
         path = request.url.path
@@ -1694,7 +1767,7 @@ async def swallow_404_middleware(request, call_next):
         # Fix double /api/api prefix
         if path.startswith("/api/api"):
             corrected = path.replace("/api/api", "/api", 1) + query
-            return RedirectResponse(url=corrected, status_code=307)
+            return json_redirect(corrected)
 
         # Add missing /api prefix for common admin endpoints
         missing_admin_api_targets = (
@@ -1705,7 +1778,7 @@ async def swallow_404_middleware(request, call_next):
         )
         if path in missing_admin_api_targets:
             corrected = f"/api{path}{query}"
-            return RedirectResponse(url=corrected, status_code=307)
+            return json_redirect(corrected)
 
         # Add missing /api prefix for common client endpoints
         missing_client_api_targets = (
@@ -1714,7 +1787,7 @@ async def swallow_404_middleware(request, call_next):
         )
         if path in missing_client_api_targets:
             corrected = f"/api{path}{query}"
-            return RedirectResponse(url=corrected, status_code=307)
+            return json_redirect(corrected)
 
         return Response(status_code=404)
     return response

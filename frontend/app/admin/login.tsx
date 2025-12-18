@@ -17,7 +17,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
-import API_URL, { buildApiUrl } from '../../src/constants/api';
+import API_URL, { API_BASE_URL, buildApiUrl } from '../../src/constants/api';
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -54,15 +54,19 @@ export default function AdminLogin() {
       const attemptLogin = async (url: string) => {
         return fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           body: JSON.stringify(creds),
         });
       };
 
     setLoading(true);
     try {
+      const baseUrl = API_URL || API_BASE_URL;
       const primaryUrl = buildApiUrl('admin/login');
-      const fallbackUrl = `${API_URL}/admin/login`;
+      const fallbackUrl = `${baseUrl}/api/admin/login`;
+      const REDIRECT_FIELDS = ['redirect_to', 'redirectTo'];
+      
+      console.log('[AdminLogin] Attempting login with URLs:', { baseUrl, primaryUrl, fallbackUrl });
 
       const extractValue = (data: any, keys: string[]): string | null => {
         if (!data) return null;
@@ -78,10 +82,12 @@ export default function AdminLogin() {
         detail?: string | null,
         text?: string | null,
         url?: string,
+        redirectTo?: string | null,
       ) => {
         const parts: string[] = [];
         if (detail) parts.push(detail);
         if (!detail && text) parts.push(text);
+        if (redirectTo) parts.push(`Suggested endpoint: ${redirectTo}`);
         if (status) parts.push(`(status ${status})`);
         if (url) parts.push(`at ${url}`);
         return (
@@ -90,7 +96,7 @@ export default function AdminLogin() {
         );
       };
 
-      const consumeResponse = async (resp: Response) => {
+      const consumeResponse = async (resp: Response, url: string) => {
         const text = await resp.text();
         let data: any = null;
         try {
@@ -98,33 +104,96 @@ export default function AdminLogin() {
         } catch {
           // Non-JSON response (e.g., HTML error page)
         }
-        return { resp, text, data };
+        return { resp, text, data, url };
       };
 
-      let response = await attemptLogin(primaryUrl);
-      let parsed = await consumeResponse(response);
+      const networkError = (err: unknown) => {
+        const defaultMsg = 'Request failed.';
+        const networkMsg =
+          err instanceof Error
+            ? err.message
+            : typeof err === 'string'
+              ? err
+              : defaultMsg;
+        const prefix = `${defaultMsg} If you are offline, please check your connection.`;
+        if (networkMsg === defaultMsg) {
+          return new Error(prefix);
+        }
+        return new Error(`${prefix} Details: ${networkMsg}`);
+      };
+
+      const getRedirect = (data: any) => {
+        if (!data) return null;
+        // Body fields we expect from the API (not HTTP headers).
+        for (const key of REDIRECT_FIELDS) {
+          if (data[key] && typeof data[key] === 'string') return data[key];
+        }
+        return null;
+      };
+
+      let response: Response | null = null;
+      let parsed: Awaited<ReturnType<typeof consumeResponse>> | null = null;
       let triedFallback = false;
-      let lastUrl = primaryUrl;
+
+      try {
+        console.log('[AdminLogin] Trying primary URL:', primaryUrl);
+        response = await attemptLogin(primaryUrl);
+      } catch (err: unknown) {
+        console.error('[AdminLogin] Primary URL failed:', err);
+        throw networkError(err);
+      }
+      parsed = await consumeResponse(response, primaryUrl);
+      console.log('[AdminLogin] Primary response:', { status: response.status, hasData: !!parsed.data, textPreview: parsed.text?.substring(0, 100) });
 
       if (
         !response.ok &&
         (response.status === 404 || response.status === 401 || response.status === 403)
       ) {
-        response = await attemptLogin(fallbackUrl);
-        parsed = await consumeResponse(response);
-        triedFallback = true;
-        lastUrl = fallbackUrl;
+        try {
+          console.log('[AdminLogin] Trying fallback URL:', fallbackUrl);
+          response = await attemptLogin(fallbackUrl);
+          parsed = await consumeResponse(response, fallbackUrl);
+          triedFallback = true;
+          console.log('[AdminLogin] Fallback response:', { status: response.status, hasData: !!parsed.data });
+        } catch (err: unknown) {
+          console.error('[AdminLogin] Fallback URL failed:', err);
+          throw networkError(err);
+        }
       }
 
       if (!response.ok) {
-        throw new Error(formatMessage(response.status, parsed.data?.detail, parsed.text, lastUrl));
+        throw new Error(
+          formatMessage(
+            response.status,
+            parsed.data?.detail,
+            parsed.text,
+            parsed.url,
+            getRedirect(parsed.data)
+          )
+        );
+      }
+
+      if (response.ok && !parsed.data) {
+        // Check if we received HTML (likely a proxy/server error page)
+        const isHtmlResponse = parsed.text?.toLowerCase()?.includes('<!doctype') || 
+                               parsed.text?.toLowerCase()?.includes('<html');
+        const truncatedText = parsed.text?.substring(0, 100) || '(empty response)';
+        throw new Error(
+          `${isHtmlResponse ? 'Received HTML instead of JSON' : 'Non-JSON response'}. ` +
+          `Check that backend URL (${baseUrl}) points to the API server. ` +
+          `Tried: ${parsed.url}. Status: ${response.status}. ` +
+          `Response preview: ${truncatedText}${parsed.text?.length > 100 ? '...' : ''}`
+        );
       }
 
       if ((!parsed.data || !parsed.data.token) && !triedFallback) {
-        response = await attemptLogin(fallbackUrl);
-        parsed = await consumeResponse(response);
-        triedFallback = true;
-        lastUrl = fallbackUrl;
+        try {
+          response = await attemptLogin(fallbackUrl);
+          parsed = await consumeResponse(response, fallbackUrl);
+          triedFallback = true;
+        } catch (err: unknown) {
+          throw networkError(err);
+        }
       }
 
       const token =
@@ -132,7 +201,15 @@ export default function AdminLogin() {
         extractValue(parsed.data?.data, ['token', 'access_token']);
 
       if (!token) {
-        throw new Error(formatMessage(response.status, parsed.data?.detail, parsed.text, lastUrl));
+        throw new Error(
+          formatMessage(
+            response.status,
+            parsed.data?.detail,
+            parsed.text,
+            parsed.url,
+            getRedirect(parsed.data)
+          )
+        );
       }
 
       await AsyncStorage.setItem('admin_token', token);
@@ -217,7 +294,7 @@ export default function AdminLogin() {
                 trackColor={{ false: '#334155', true: '#4F46E5' }}
                 thumbColor="#fff"
               />
-              <Text style={styles.rememberText}>{t('staySignedIn') ?? 'Stay signed in'}</Text>
+              <Text style={styles.rememberText}>{t('staySignedIn')}</Text>
             </View>
 
             <TouchableOpacity
@@ -228,7 +305,7 @@ export default function AdminLogin() {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.buttonText}>{t('signIn')}</Text>
+                <Text style={styles.buttonText}>{t('login')}</Text>
               )}
             </TouchableOpacity>
           </View>

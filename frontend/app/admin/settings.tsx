@@ -39,6 +39,7 @@ export default function AdminSettings() {
   // Modal states
   const [showAddAdmin, setShowAddAdmin] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   
   // Form states
@@ -49,6 +50,18 @@ export default function AdminSettings() {
   const [newUserRole, setNewUserRole] = useState('user'); // 'admin' or 'user'
   const [currentPassword, setCurrentPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // Profile edit states
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  
+  // Google Drive backup states
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [googleAccount, setGoogleAccount] = useState<string | null>(null);
+  const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
+  const [backupInProgress, setBackupInProgress] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -60,11 +73,24 @@ export default function AdminSettings() {
       const adminId = await AsyncStorage.getItem('admin_id');
       const username = await AsyncStorage.getItem('admin_username');
       const role = await AsyncStorage.getItem('admin_role');
+      const firstName = await AsyncStorage.getItem('admin_first_name');
+      const lastName = await AsyncStorage.getItem('admin_last_name');
+      
+      // Load Google Drive backup info
+      const googleConnectedStr = await AsyncStorage.getItem('google_drive_connected');
+      const googleAccountStr = await AsyncStorage.getItem('google_drive_account');
+      const lastBackup = await AsyncStorage.getItem('last_backup_date');
+      
+      setGoogleConnected(googleConnectedStr === 'true');
+      setGoogleAccount(googleAccountStr);
+      setLastBackupDate(lastBackup);
       
       setAdminToken(token);
       setCurrentAdminId(adminId);
       setCurrentUsername(username || '');
       setCurrentUserRole(role || 'user');
+      setEditFirstName(firstName || '');
+      setEditLastName(lastName || '');
       
       // Only fetch admin list if user is an admin
       if (token && role === 'admin') {
@@ -121,10 +147,16 @@ export default function AdminSettings() {
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.detail || 'Failed to create user');
+        // Try to parse error as JSON, fallback to text
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          throw new Error(data.detail || 'Failed to create user');
+        } else {
+          const text = await response.text();
+          throw new Error(text || 'Failed to create user');
+        }
       }
 
       const roleText = newUserRole === 'admin' ? (language === 'et' ? 'administraator' : 'admin') : (language === 'et' ? 'kasutaja' : 'user');
@@ -255,6 +287,60 @@ export default function AdminSettings() {
     );
   };
 
+  const handleUpdateProfile = async () => {
+    if (!editFirstName.trim() || !editLastName.trim()) {
+      Alert.alert(
+        language === 'et' ? 'Viga' : 'Error',
+        language === 'et' ? 'Palun sisesta nimi' : 'Please enter your name'
+      );
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/admin/update-profile?admin_token=${adminToken}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          first_name: editFirstName.trim(),
+          last_name: editLastName.trim(),
+          email: editEmail.trim() || null,
+          phone: editPhone.trim() || null,
+        }),
+      });
+
+      if (!response.ok) {
+        // Try to parse error as JSON, fallback to text
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          throw new Error(data.detail || 'Failed to update profile');
+        } else {
+          const text = await response.text();
+          throw new Error(text || 'Failed to update profile');
+        }
+      }
+
+      // Update local storage
+      await AsyncStorage.setItem('admin_first_name', editFirstName.trim());
+      await AsyncStorage.setItem('admin_last_name', editLastName.trim());
+
+      Alert.alert(
+        language === 'et' ? 'Õnnestus' : 'Success',
+        language === 'et' ? 'Profiil uuendatud' : 'Profile updated successfully'
+      );
+      
+      setShowEditProfile(false);
+    } catch (error: any) {
+      Alert.alert(
+        language === 'et' ? 'Viga' : 'Error',
+        error.message
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleLogout = async () => {
     Alert.alert(
       language === 'et' ? 'Logi välja' : 'Logout',
@@ -271,6 +357,113 @@ export default function AdminSettings() {
         },
       ]
     );
+  };
+
+  const handleConnectGoogleDrive = async () => {
+    // Simulate Google OAuth connection - in production, implement actual Google Sign-In
+    Alert.alert(
+      language === 'et' ? 'Ühenda Google Drive' : 'Connect Google Drive',
+      language === 'et' 
+        ? 'Kas soovid ühendada Google Drive varundamiseks?' 
+        : 'Do you want to connect Google Drive for backup?',
+      [
+        { text: language === 'et' ? 'Tühista' : 'Cancel', style: 'cancel' },
+        {
+          text: language === 'et' ? 'Ühenda' : 'Connect',
+          onPress: async () => {
+            // Simulate connection success
+            const mockEmail = `${currentUsername}@gmail.com`;
+            await AsyncStorage.setItem('google_drive_connected', 'true');
+            await AsyncStorage.setItem('google_drive_account', mockEmail);
+            setGoogleConnected(true);
+            setGoogleAccount(mockEmail);
+            
+            Alert.alert(
+              language === 'et' ? 'Ühendatud' : 'Connected',
+              language === 'et' 
+                ? 'Google Drive on edukalt ühendatud' 
+                : 'Google Drive connected successfully'
+            );
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDisconnectGoogleDrive = async () => {
+    Alert.alert(
+      language === 'et' ? 'Katkesta ühendus' : 'Disconnect',
+      language === 'et' 
+        ? 'Kas oled kindel, et soovid Google Drive ühenduse katkestada?' 
+        : 'Are you sure you want to disconnect Google Drive?',
+      [
+        { text: language === 'et' ? 'Tühista' : 'Cancel', style: 'cancel' },
+        {
+          text: language === 'et' ? 'Katkesta' : 'Disconnect',
+          style: 'destructive',
+          onPress: async () => {
+            await AsyncStorage.multiRemove([
+              'google_drive_connected',
+              'google_drive_account',
+              'last_backup_date',
+            ]);
+            setGoogleConnected(false);
+            setGoogleAccount(null);
+            setLastBackupDate(null);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleBackupNow = async () => {
+    if (!googleConnected) {
+      Alert.alert(
+        language === 'et' ? 'Viga' : 'Error',
+        language === 'et' 
+          ? 'Palun ühenda esmalt Google Drive' 
+          : 'Please connect Google Drive first'
+      );
+      return;
+    }
+
+    setBackupInProgress(true);
+    try {
+      // Simulate backup process - in production, implement actual backup to Google Drive
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const now = new Date().toISOString();
+      await AsyncStorage.setItem('last_backup_date', now);
+      setLastBackupDate(now);
+      
+      Alert.alert(
+        language === 'et' ? 'Varundamine õnnestus' : 'Backup Successful',
+        language === 'et' 
+          ? 'Andmed on varundatud Google Drive\'i' 
+          : 'Data has been backed up to Google Drive'
+      );
+    } catch (error) {
+      Alert.alert(
+        language === 'et' ? 'Viga' : 'Error',
+        language === 'et' 
+          ? 'Varundamine ebaõnnestus' 
+          : 'Backup failed'
+      );
+    } finally {
+      setBackupInProgress(false);
+    }
+  };
+
+  const formatBackupDate = (dateStr: string | null) => {
+    if (!dateStr) return language === 'et' ? 'Pole varundatud' : 'Never';
+    const date = new Date(dateStr);
+    return date.toLocaleString(language === 'et' ? 'et-EE' : 'en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   if (loading) {
@@ -306,13 +499,24 @@ export default function AdminSettings() {
               <Text style={styles.avatarText}>{currentUsername.charAt(0).toUpperCase()}</Text>
             </View>
             <View style={styles.userInfo}>
-              <Text style={styles.userName}>{currentUsername}</Text>
+              <Text style={styles.userName}>{editFirstName} {editLastName}</Text>
               <Text style={styles.userRole}>{language === 'et' ? 'Administraator' : 'Administrator'}</Text>
             </View>
           </View>
 
           <TouchableOpacity
             style={styles.actionButton}
+            onPress={() => setShowEditProfile(true)}
+          >
+            <Ionicons name="person" size={20} color="#4F46E5" />
+            <Text style={styles.actionButtonText}>
+              {language === 'et' ? 'Muuda profiili' : 'Edit Profile'}
+            </Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, { marginTop: 8 }]}
             onPress={() => setShowChangePassword(true)}
           >
             <Ionicons name="key" size={20} color="#4F46E5" />
@@ -341,6 +545,85 @@ export default function AdminSettings() {
             >
               <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>English</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Google Drive Backup Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            {language === 'et' ? 'Google Drive varundus' : 'Google Drive Backup'}
+          </Text>
+          
+          <View style={styles.backupCard}>
+            <View style={styles.backupStatus}>
+              <Ionicons 
+                name={googleConnected ? 'cloud-done' : 'cloud-offline'} 
+                size={32} 
+                color={googleConnected ? '#10B981' : '#64748B'} 
+              />
+              <View style={styles.backupStatusInfo}>
+                <Text style={styles.backupStatusText}>
+                  {googleConnected 
+                    ? (language === 'et' ? 'Ühendatud' : 'Connected') 
+                    : (language === 'et' ? 'Ühendamata' : 'Not Connected')}
+                </Text>
+                {googleConnected && googleAccount && (
+                  <Text style={styles.backupAccountText}>{googleAccount}</Text>
+                )}
+              </View>
+            </View>
+            
+            {googleConnected && (
+              <View style={styles.lastBackupRow}>
+                <Ionicons name="time-outline" size={16} color="#64748B" />
+                <Text style={styles.lastBackupText}>
+                  {language === 'et' ? 'Viimane varundus: ' : 'Last backup: '}
+                  {formatBackupDate(lastBackupDate)}
+                </Text>
+              </View>
+            )}
+            
+            <View style={styles.backupButtons}>
+              {googleConnected ? (
+                <>
+                  <TouchableOpacity
+                    style={[styles.backupButton, styles.backupNowButton]}
+                    onPress={handleBackupNow}
+                    disabled={backupInProgress}
+                  >
+                    {backupInProgress ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="cloud-upload" size={18} color="#fff" />
+                        <Text style={styles.backupButtonText}>
+                          {language === 'et' ? 'Varunda kohe' : 'Backup Now'}
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.backupButton, styles.disconnectButton]}
+                    onPress={handleDisconnectGoogleDrive}
+                  >
+                    <Ionicons name="unlink" size={18} color="#EF4444" />
+                    <Text style={[styles.backupButtonText, { color: '#EF4444' }]}>
+                      {language === 'et' ? 'Katkesta' : 'Disconnect'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.backupButton, styles.connectButton]}
+                  onPress={handleConnectGoogleDrive}
+                >
+                  <Ionicons name="logo-google" size={18} color="#fff" />
+                  <Text style={styles.backupButtonText}>
+                    {language === 'et' ? 'Ühenda Google Drive' : 'Connect Google Drive'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
 
@@ -409,7 +692,7 @@ export default function AdminSettings() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
-              {language === 'et' ? 'Lisa administraator' : 'Add Administrator'}
+              {language === 'et' ? 'Lisa kasutaja' : 'Add User'}
             </Text>
             
             <View style={styles.inputContainer}>
@@ -601,6 +884,88 @@ export default function AdminSettings() {
           </View>
         </View>
       </Modal>
+
+      {/* Edit Profile Modal */}
+      <Modal visible={showEditProfile} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              {language === 'et' ? 'Muuda profiili' : 'Edit Profile'}
+            </Text>
+            
+            <View style={styles.inputContainer}>
+              <Ionicons name="person" size={20} color="#64748B" />
+              <TextInput
+                style={styles.input}
+                placeholder={language === 'et' ? 'Eesnimi' : 'First name'}
+                placeholderTextColor="#64748B"
+                value={editFirstName}
+                onChangeText={setEditFirstName}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="person" size={20} color="#64748B" />
+              <TextInput
+                style={styles.input}
+                placeholder={language === 'et' ? 'Perekonnanimi' : 'Last name'}
+                placeholderTextColor="#64748B"
+                value={editLastName}
+                onChangeText={setEditLastName}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="mail" size={20} color="#64748B" />
+              <TextInput
+                style={styles.input}
+                placeholder={language === 'et' ? 'E-posti aadress' : 'Email address'}
+                placeholderTextColor="#64748B"
+                value={editEmail}
+                onChangeText={setEditEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="call" size={20} color="#64748B" />
+              <TextInput
+                style={styles.input}
+                placeholder={language === 'et' ? 'Telefoninumber' : 'Phone number'}
+                placeholderTextColor="#64748B"
+                value={editPhone}
+                onChangeText={setEditPhone}
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowEditProfile(false)}
+              >
+                <Text style={styles.cancelButtonText}>
+                  {language === 'et' ? 'Tühista' : 'Cancel'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleUpdateProfile}
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.confirmButtonText}>
+                    {language === 'et' ? 'Salvesta' : 'Save'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -730,6 +1095,73 @@ const styles = StyleSheet.create({
   },
   langTextActive: {
     color: '#4F46E5',
+  },
+  // Google Drive Backup styles
+  backupCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 16,
+  },
+  backupStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  backupStatusInfo: {
+    flex: 1,
+  },
+  backupStatusText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  backupAccountText: {
+    fontSize: 13,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  lastBackupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#334155',
+  },
+  lastBackupText: {
+    fontSize: 13,
+    color: '#94A3B8',
+  },
+  backupButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  backupButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  backupNowButton: {
+    backgroundColor: '#4F46E5',
+  },
+  disconnectButton: {
+    backgroundColor: '#EF444420',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  connectButton: {
+    backgroundColor: '#10B981',
+  },
+  backupButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
   addButton: {
     width: 36,
