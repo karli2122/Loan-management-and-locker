@@ -422,7 +422,17 @@ export default function ClientHome() {
       appState.current = nextAppState;
     });
 
-    // Block back button when locked
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      subscription.remove();
+      isMounted.current = false;
+    };
+  }, [clientId]);
+
+  // Separate effect for back button handler that depends on lock status
+  useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       if (status?.is_locked) {
         return true; // Prevent going back when locked
@@ -431,14 +441,9 @@ export default function ClientHome() {
     });
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-      subscription.remove();
       backHandler.remove();
-      isMounted.current = false;
     };
-  }, [clientId, status?.is_locked]);
+  }, [status?.is_locked]);
 
   // Initialize protection and check for reboot (tamper detection disabled to prevent crashes)
   useEffect(() => {
