@@ -107,8 +107,8 @@ export default function ClientHome() {
   }, [getPushToken]);
 
   // Retry mechanism for checking admin status after request
-  // Gives user up to 30 seconds to complete the admin permission flow
-  const checkAdminStatusWithRetry = async (maxAttempts = 30, delayMs = 1000) => {
+  // Gives user up to 15 seconds to complete the admin permission flow (reduced from 30)
+  const checkAdminStatusWithRetry = async (maxAttempts = 15, delayMs = 1000) => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       await new Promise(resolve => setTimeout(resolve, delayMs));
       const isActive = await devicePolicy.isAdminActive();
@@ -172,19 +172,46 @@ export default function ClientHome() {
               text: language === 'et' ? 'Luba kohe' : 'Enable Now',
               onPress: async () => {
                 try {
-                  await devicePolicy.requestAdmin();
-                  console.log('Device Admin request dispatched');
-                  // Use retry mechanism to check admin status
-                  const granted = await checkAdminStatusWithRetry();
-                  if (granted) {
+                  console.log('User pressed Enable Now - requesting admin');
+                  const result = await devicePolicy.requestAdmin();
+                  console.log('Device Admin request result:', result);
+                  
+                  // Check if the request was dispatched successfully
+                  if (result === 'error' || result === 'error_module_not_available') {
+                    console.error('Device Admin module not available or error occurred');
+                    Alert.alert(
+                      language === 'et' ? 'Viga' : 'Error',
+                      language === 'et' 
+                        ? 'Administraatori õiguste taotlemine ebaõnnestus. Palun proovige uuesti.'
+                        : 'Failed to request admin permissions. Please try again.'
+                    );
                     isRequestingAdmin.current = false;
-                  } else {
-                    // If not granted after retries, reset flag so user can try again
-                    isRequestingAdmin.current = false;
+                    return;
                   }
+                  
+                  // Use retry mechanism to check admin status (non-blocking)
+                  checkAdminStatusWithRetry().then(granted => {
+                    if (granted) {
+                      console.log('Admin permission granted');
+                      isRequestingAdmin.current = false;
+                    } else {
+                      console.log('Admin permission not granted after waiting');
+                      // Reset flag so user can try again
+                      isRequestingAdmin.current = false;
+                    }
+                  }).catch(e => {
+                    console.log('Admin check failed:', e);
+                    isRequestingAdmin.current = false;
+                  });
                 } catch (e) {
                   console.log('Admin request failed:', e);
                   isRequestingAdmin.current = false;
+                  Alert.alert(
+                    language === 'et' ? 'Viga' : 'Error',
+                    language === 'et' 
+                      ? 'Administraatori õiguste taotlemine ebaõnnestus.'
+                      : 'Failed to request admin permissions.'
+                  );
                 }
               },
             },
@@ -683,10 +710,35 @@ export default function ClientHome() {
               style={styles.enableProtectionButton}
               onPress={async () => {
                 console.log('Enable button pressed - requesting Device Admin');
-                const result = await devicePolicy.requestAdmin();
-                console.log('Device Admin request result:', result);
-                // Re-check admin status after request
-                await checkAdminStatusWithRetry();
+                try {
+                  const result = await devicePolicy.requestAdmin();
+                  console.log('Device Admin request result:', result);
+                  
+                  // Check if the request was dispatched successfully
+                  if (result === 'error' || result === 'error_module_not_available') {
+                    console.error('Device Admin module not available or error occurred');
+                    Alert.alert(
+                      language === 'et' ? 'Viga' : 'Error',
+                      language === 'et' 
+                        ? 'Administraatori õiguste taotlemine ebaõnnestus. Palun proovige uuesti.'
+                        : 'Failed to request admin permissions. Please try again.'
+                    );
+                    return;
+                  }
+                  
+                  // Re-check admin status after request (non-blocking)
+                  checkAdminStatusWithRetry().catch(err => {
+                    console.error('Admin status check error:', err);
+                  });
+                } catch (error) {
+                  console.error('Enable button error:', error);
+                  Alert.alert(
+                    language === 'et' ? 'Viga' : 'Error',
+                    language === 'et' 
+                      ? 'Administraatori õiguste taotlemine ebaõnnestus.'
+                      : 'Failed to request admin permissions.'
+                  );
+                }
               }}
             >
               <Text style={styles.enableProtectionText}>
