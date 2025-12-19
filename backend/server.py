@@ -1183,19 +1183,53 @@ async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token:
     return LoanPlan(**updated_plan)
 
 @api_router.delete("/loan-plans/{plan_id}")
-async def delete_loan_plan(plan_id: str, admin_token: str = Query(...)):
-    """Delete a loan plan permanently"""
+async def delete_loan_plan(plan_id: str, admin_token: str = Query(...), permanent: bool = Query(default=False)):
+    """Delete a loan plan (soft delete by default, permanent delete optional)
+    
+    Args:
+        plan_id: ID of the loan plan to delete
+        admin_token: Admin authentication token
+        permanent: If True, permanently delete; if False (default), soft delete (deactivate)
+    """
     if not await verify_admin_token_header(admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
     
-    # Hard delete - remove from database
-    result = await db.loan_plans.delete_one({"id": plan_id})
-    
-    if result.deleted_count == 0:
+    # Check if plan exists
+    plan = await db.loan_plans.find_one({"id": plan_id})
+    if not plan:
         raise HTTPException(status_code=404, detail="Loan plan not found")
     
-    logger.info(f"Loan plan deleted: {plan_id}")
-    return {"message": "Loan plan deleted successfully"}
+    if permanent:
+        # Safety check: Cannot permanently delete if clients have loans with this plan
+        clients_with_plan = await db.clients.find_one({
+            "loan_plan_id": plan_id,
+            "outstanding_balance": {"$gt": 0}
+        })
+        
+        if clients_with_plan:
+            raise HTTPException(
+                status_code=400, 
+                detail="Cannot permanently delete loan plan: Clients with pending loans are using this plan. Please deactivate instead."
+            )
+        
+        # Hard delete - remove from database
+        result = await db.loan_plans.delete_one({"id": plan_id})
+        logger.info(f"Loan plan permanently deleted: {plan_id}")
+        return {"message": "Loan plan permanently deleted", "deleted": True}
+    else:
+        # Soft delete - deactivate the plan
+        result = await db.loan_plans.update_one(
+            {"id": plan_id},
+            {"$set": {"is_active": False}}
+        )
+        
+        if result.modified_count == 0 and not plan.get("is_active", True):
+            # Plan was already inactive
+            logger.info(f"Loan plan already inactive: {plan_id}")
+            return {"message": "Loan plan already deactivated", "deleted": False}
+        
+        logger.info(f"Loan plan deactivated (soft delete): {plan_id}")
+        return {"message": "Loan plan deactivated successfully", "deleted": False}
 
 # ===================== EMI CALCULATOR =====================
 
