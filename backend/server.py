@@ -593,6 +593,41 @@ async def change_password(admin_token: str, password_data: PasswordChange):
     
     return {"message": "Password changed successfully"}
 
+class AdminProfileUpdate(BaseModel):
+    username: Optional[str] = None
+
+@api_router.put("/admin/profile")
+async def update_admin_profile(update_data: AdminProfileUpdate, admin_token: str):
+    """Update own admin profile (username)"""
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    admin = await db.admins.find_one({"id": token_doc["admin_id"]})
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    
+    update_dict = {}
+    
+    if update_data.username:
+        # Check if new username is already taken by another admin
+        existing = await db.admins.find_one({
+            "username": update_data.username,
+            "id": {"$ne": admin["id"]}
+        })
+        if existing:
+            raise HTTPException(status_code=400, detail="Username already taken")
+        update_dict["username"] = update_data.username
+    
+    if update_dict:
+        await db.admins.update_one({"id": admin["id"]}, {"$set": update_dict})
+    
+    updated_admin = await db.admins.find_one({"id": admin["id"]})
+    return {
+        "message": "Profile updated successfully",
+        "username": updated_admin["username"]
+    }
+
 @api_router.delete("/admin/{admin_id}")
 async def delete_admin(admin_id: str, admin_token: str):
     """Delete a user (requires admin role, cannot delete yourself, super admin, or last admin)"""
