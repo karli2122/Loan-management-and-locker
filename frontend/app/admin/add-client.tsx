@@ -38,7 +38,8 @@ export default function AddClient() {
 
     setLoading(true);
     try {
-      const response = await fetch(getApiUrl('api/clients'), {
+      const token = await AsyncStorage.getItem('admin_token');
+      const response = await fetch(getApiUrl(`api/clients?admin_token=${token}`), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
