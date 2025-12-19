@@ -128,10 +128,30 @@ export default function AddLoan() {
       }
     }
 
-    if (!loanAmount.trim() || parseFloat(loanAmount) <= 0) {
+    const loanAmountNum = parseFloat(loanAmount);
+    const interestRateNum = parseFloat(interestRate);
+    const tenureNum = parseInt(tenure);
+
+    if (!loanAmount.trim() || isNaN(loanAmountNum) || loanAmountNum <= 0) {
       Alert.alert(
         language === 'et' ? 'Viga' : 'Error',
         language === 'et' ? 'Palun sisesta kehtiv laenusumma' : 'Please enter a valid loan amount'
+      );
+      return;
+    }
+
+    if (!interestRate.trim() || isNaN(interestRateNum) || interestRateNum < 0) {
+      Alert.alert(
+        language === 'et' ? 'Viga' : 'Error',
+        language === 'et' ? 'Palun sisesta kehtiv intressimäär' : 'Please enter a valid interest rate'
+      );
+      return;
+    }
+
+    if (!tenure.trim() || isNaN(tenureNum) || tenureNum <= 0) {
+      Alert.alert(
+        language === 'et' ? 'Viga' : 'Error',
+        language === 'et' ? 'Palun sisesta kehtiv periood' : 'Please enter a valid tenure'
       );
       return;
     }
@@ -150,7 +170,7 @@ export default function AddLoan() {
             name: newClientName.trim(),
             phone: newClientPhone.trim(),
             email: newClientEmail.trim(),
-            admin_id: adminId ?? undefined,
+            admin_id: adminId,
           }),
         });
 
@@ -168,9 +188,9 @@ export default function AddLoan() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          loan_amount: parseFloat(loanAmount),
-          interest_rate: parseFloat(interestRate),
-          loan_tenure_months: parseInt(tenure),
+          loan_amount: loanAmountNum,
+          interest_rate: interestRateNum,
+          loan_tenure_months: tenureNum,
         }),
       });
 
