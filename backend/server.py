@@ -535,11 +535,15 @@ async def enforce_client_scope(client: dict, admin_id: Optional[str]):
             raise HTTPException(status_code=403, detail="Client is assigned to an admin")
         return
     
-    # Check if admin is super admin
-    admin = await db.admins.find_one({"id": admin_id})
-    if admin and admin.get("is_super_admin", False):
-        # Super admin can access any client
-        return
+    try:
+        # Check if admin is super admin
+        admin = await db.admins.find_one({"id": admin_id})
+        if admin and admin.get("is_super_admin", False):
+            # Super admin can access any client
+            return
+    except Exception as e:
+        logger.error(f"Error checking admin privileges: {e}")
+        # Continue with regular access check on error
     
     # For regular admins, check ownership
     if client.get("admin_id"):
@@ -791,48 +795,60 @@ async def get_all_clients(skip: int = 0, limit: int = 100, admin_id: Optional[st
         limit: Maximum number of records to return (default: 100, max: 500)
         admin_id: Optional admin ID for filtering. Required for non-super admins.
     """
-    # Cap limit at 500 to prevent excessive data transfer
-    limit = min(limit, 500)
-    
-    # Build query based on admin privileges
-    query = {}
-    
-    if admin_id:
-        # Check if this admin is a super admin
-        admin = await db.admins.find_one({"id": admin_id})
-        if admin and admin.get("is_super_admin", False):
-            # Super admin sees all clients
-            logger.info(f"Super admin {admin_id} accessing all clients")
-            query = {}  # No filter - return all clients
+    try:
+        # Cap limit at 500 to prevent excessive data transfer
+        limit = min(limit, 500)
+        
+        # Build query based on admin privileges
+        query = {}
+        
+        if admin_id:
+            try:
+                # Check if this admin is a super admin
+                admin = await db.admins.find_one({"id": admin_id})
+                if admin and admin.get("is_super_admin", False):
+                    # Super admin sees all clients
+                    logger.info(f"Super admin {admin_id} accessing all clients")
+                    query = {}  # No filter - return all clients
+                else:
+                    # Regular admin sees only their clients OR clients without admin_id (legacy data)
+                    logger.info(f"Admin {admin_id} accessing their clients and unassigned clients")
+                    query = {"$or": [
+                        {"admin_id": admin_id},
+                        {"admin_id": {"$exists": False}},
+                        {"admin_id": None}
+                    ]}
+            except Exception as e:
+                logger.error(f"Error checking admin privileges, defaulting to strict filtering: {e}")
+                # On error, use strict filtering
+                query = {"admin_id": admin_id}
         else:
-            # Regular admin sees only their clients OR clients without admin_id (legacy data)
-            logger.info(f"Admin {admin_id} accessing their clients and unassigned clients")
-            query = {"$or": [
-                {"admin_id": admin_id},
-                {"admin_id": {"$exists": False}},
-                {"admin_id": None}
-            ]}
-    else:
-        # No admin_id provided - reject the request
-        logger.warning("admin_id not provided for client listing; rejecting request")
-        raise HTTPException(status_code=400, detail="admin_id is required for client listings")
-    
-    # Get total count for pagination metadata
-    total_count = await db.clients.count_documents(query)
-    
-    # Fetch paginated clients - removed projection to avoid Pydantic validation errors
-    # The Client model requires all fields, projection would cause missing field errors
-    clients = await db.clients.find(query).skip(skip).limit(limit).to_list(limit)
-    
-    return {
-        "clients": [Client(**c) for c in clients],
-        "pagination": {
-            "total": total_count,
-            "skip": skip,
-            "limit": limit,
-            "has_more": skip + limit < total_count
+            # No admin_id provided - reject the request
+            logger.warning("admin_id not provided for client listing; rejecting request")
+            raise HTTPException(status_code=400, detail="admin_id is required for client listings")
+        
+        # Get total count for pagination metadata
+        total_count = await db.clients.count_documents(query)
+        
+        # Fetch paginated clients - removed projection to avoid Pydantic validation errors
+        # The Client model requires all fields, projection would cause missing field errors
+        clients = await db.clients.find(query).skip(skip).limit(limit).to_list(limit)
+        
+        return {
+            "clients": [Client(**c) for c in clients],
+            "pagination": {
+                "total": total_count,
+                "skip": skip,
+                "limit": limit,
+                "has_more": skip + limit < total_count
+            }
         }
-    }
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching clients: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch clients")
 
 @api_router.get("/clients/{client_id}", response_model=Client)
 async def get_client(client_id: str, admin_id: Optional[str] = Query(default=None)):
