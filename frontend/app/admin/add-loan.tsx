@@ -84,10 +84,15 @@ export default function AddLoan() {
 
   const fetchLoanPlans = async () => {
     try {
+      console.log('Fetching loan plans from:', `${API_URL}/api/loan-plans?active_only=true`);
       const response = await fetch(`${API_URL}/api/loan-plans?active_only=true`);
+      console.log('Loan plans response status:', response.status);
       if (response.ok) {
         const data = await response.json();
+        console.log('Loan plans fetched:', data.length, 'plans');
         setLoanPlans(data);
+      } else {
+        console.error('Failed to fetch loan plans:', response.status);
       }
     } catch (error) {
       console.error('Error fetching loan plans:', error);
