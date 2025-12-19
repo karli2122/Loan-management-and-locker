@@ -8,7 +8,7 @@
       "distribution": "internal",
       "env": {
         "APP_MODE": "admin",
-        "EXPO_PUBLIC_BACKEND_URL": "https://loantrack-23.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://apkdebug.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk"
@@ -18,7 +18,7 @@
       "distribution": "internal",
       "env": {
         "APP_MODE": "admin",
-        "EXPO_PUBLIC_BACKEND_URL": "https://loantrack-23.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://apkdebug.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk"
@@ -27,7 +27,7 @@
     "admin-production": {
       "env": {
         "APP_MODE": "admin",
-        "EXPO_PUBLIC_BACKEND_URL": "https://loantrack-23.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://apkdebug.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk"
@@ -38,7 +38,7 @@
       "distribution": "internal",
       "env": {
         "APP_MODE": "client",
-        "EXPO_PUBLIC_BACKEND_URL": "https://loantrack-23.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://apkdebug.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk"
@@ -48,7 +48,7 @@
       "distribution": "internal",
       "env": {
         "APP_MODE": "client",
-        "EXPO_PUBLIC_BACKEND_URL": "https://loantrack-23.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://apkdebug.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk"
@@ -57,7 +57,7 @@
     "client-production": {
       "env": {
         "APP_MODE": "client",
-        "EXPO_PUBLIC_BACKEND_URL": "https://loantrack-23.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://apkdebug.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk"

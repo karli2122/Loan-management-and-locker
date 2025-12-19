@@ -4,7 +4,7 @@
  */
 
 // Hardcoded base URL - environment variables are unreliable in EAS builds
-const BASE_URL = 'https://loantrack-23.preview.emergentagent.com';
+const BASE_URL = 'https://apkdebug.preview.emergentagent.com';
 
 export const getBaseUrl = (): string => {
   return BASE_URL;
