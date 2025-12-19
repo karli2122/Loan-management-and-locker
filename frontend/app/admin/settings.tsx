@@ -832,6 +832,11 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginTop: 2,
   },
+  userEmail: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
