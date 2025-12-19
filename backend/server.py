@@ -545,13 +545,14 @@ async def enforce_client_scope(client: dict, admin_id: Optional[str]):
         logger.error(f"Error checking admin privileges: {e}")
         # Continue with regular access check on error
     
-    # For regular admins, check ownership
+    # For regular admins, check ownership strictly
     if client.get("admin_id"):
         if client["admin_id"] != admin_id:
             raise HTTPException(status_code=403, detail="Client not accessible for this admin")
     else:
-        # Client has no admin_id (legacy) - allow access for any admin
-        logger.info(f"Admin {admin_id} accessing unassigned client {client['id']}")
+        # Client has no admin_id - deny access for regular admins (strict filtering)
+        logger.warning(f"Admin {admin_id} attempted to access unassigned client {client['id']}")
+        raise HTTPException(status_code=403, detail="Client not assigned to any admin")
 
 @api_router.post("/admin/register", response_model=AdminResponse)
 async def register_admin(admin_data: AdminCreate, admin_token: str = Query(default=None)):
@@ -811,13 +812,9 @@ async def get_all_clients(skip: int = 0, limit: int = 100, admin_id: Optional[st
                     logger.info(f"Super admin {admin_id} accessing all clients")
                     query = {}  # No filter - return all clients
                 else:
-                    # Regular admin sees only their clients OR clients without admin_id (legacy data)
-                    logger.info(f"Admin {admin_id} accessing their clients and unassigned clients")
-                    query = {"$or": [
-                        {"admin_id": admin_id},
-                        {"admin_id": {"$exists": False}},
-                        {"admin_id": None}
-                    ]}
+                    # Regular admin sees ONLY their clients (strict filtering)
+                    logger.info(f"Admin {admin_id} accessing their clients only")
+                    query = {"admin_id": admin_id}
             except Exception as e:
                 logger.error(f"Error checking admin privileges, defaulting to strict filtering: {e}")
                 # On error, use strict filtering
