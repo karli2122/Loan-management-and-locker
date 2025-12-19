@@ -256,7 +256,7 @@ export default function LoansTab() {
         </Text>
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => router.push('/admin/add-client')}
+          onPress={() => router.push('/admin/add-loan')}
         >
           <Ionicons name="add" size={24} color="#fff" />
         </TouchableOpacity>

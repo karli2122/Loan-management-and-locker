@@ -537,7 +537,7 @@ async def enforce_client_scope(client: dict, admin_id: Optional[str]):
         raise HTTPException(status_code=403, detail="Client not assigned to this admin")
 
 @api_router.post("/admin/register", response_model=AdminResponse)
-async def register_admin(admin_data: AdminCreate, admin_token: str = None):
+async def register_admin(admin_data: AdminCreate, admin_token: str = Query(default=None)):
     # Validate password length
     if len(admin_data.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
@@ -627,7 +627,7 @@ class AdminListResponse(BaseModel):
     created_at: datetime
 
 @api_router.get("/admin/list")
-async def list_admins(admin_token: str):
+async def list_admins(admin_token: str = Query(...)):
     """List all users (requires admin role)"""
     # Verify token and check if requester is an admin
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
@@ -648,7 +648,7 @@ async def list_admins(admin_token: str):
     } for a in admins]
 
 @api_router.post("/admin/change-password")
-async def change_password(admin_token: str, password_data: PasswordChange):
+async def change_password(admin_token: str = Query(...), password_data: PasswordChange = None):
     """Change admin password"""
     # Validate new password length
     if len(password_data.new_password) < 6:
@@ -682,7 +682,7 @@ class ProfileUpdate(BaseModel):
     phone: Optional[str] = None
 
 @api_router.put("/admin/update-profile")
-async def update_admin_profile(admin_token: str, profile_data: ProfileUpdate):
+async def update_admin_profile(admin_token: str = Query(...), profile_data: ProfileUpdate = None):
     """Update admin profile information"""
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
@@ -711,7 +711,7 @@ async def update_admin_profile(admin_token: str, profile_data: ProfileUpdate):
     return {"message": "Profile updated successfully"}
 
 @api_router.delete("/admin/{admin_id}")
-async def delete_admin(admin_id: str, admin_token: str):
+async def delete_admin(admin_id: str, admin_token: str = Query(...)):
     """Delete a user (requires admin role, cannot delete yourself, super admin, or last admin)"""
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
@@ -1061,7 +1061,7 @@ async def report_reboot(client_id: str):
 # ===================== LOAN PLANS =====================
 
 @api_router.post("/loan-plans", response_model=LoanPlan)
-async def create_loan_plan(plan_data: LoanPlanCreate, admin_token: str):
+async def create_loan_plan(plan_data: LoanPlanCreate, admin_token: str = Query(...)):
     """Create a new loan plan"""
     if not await verify_admin_token_header(admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
@@ -1088,7 +1088,7 @@ async def get_loan_plan(plan_id: str):
     return LoanPlan(**plan)
 
 @api_router.put("/loan-plans/{plan_id}", response_model=LoanPlan)
-async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token: str):
+async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token: str = Query(...)):
     """Update a loan plan"""
     if not await verify_admin_token_header(admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
@@ -1107,7 +1107,7 @@ async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token:
     return LoanPlan(**updated_plan)
 
 @api_router.delete("/loan-plans/{plan_id}")
-async def delete_loan_plan(plan_id: str, admin_token: str):
+async def delete_loan_plan(plan_id: str, admin_token: str = Query(...)):
     """Delete a loan plan permanently"""
     if not await verify_admin_token_header(admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
@@ -1249,7 +1249,7 @@ async def setup_loan(client_id: str, loan_data: ClientCreate):
     }
 
 @api_router.post("/loans/{client_id}/payments")
-async def record_payment(client_id: str, payment_data: PaymentCreate, admin_token: str):
+async def record_payment(client_id: str, payment_data: PaymentCreate, admin_token: str = Query(...)):
     """Record a payment for a client's loan"""
     # Verify admin token
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
@@ -1397,7 +1397,7 @@ async def update_loan_settings(client_id: str, settings: LoanSettings):
 # ===================== LATE FEES & REMINDERS =====================
 
 @api_router.post("/late-fees/calculate-all")
-async def calculate_all_late_fees(admin_token: str):
+async def calculate_all_late_fees(admin_token: str = Query(...)):
     """Manually trigger late fee calculation for all overdue clients"""
     if not await verify_admin_token_header(admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
@@ -1447,7 +1447,7 @@ async def get_client_reminders(client_id: str, admin_id: Optional[str] = None):
     return [Reminder(**r) for r in reminders]
 
 @api_router.post("/reminders/create-all")
-async def create_all_reminders(admin_token: str):
+async def create_all_reminders(admin_token: str = Query(...)):
     """Manually trigger reminder creation for all clients"""
     if not await verify_admin_token_header(admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
