@@ -129,34 +129,18 @@ export default function ClientRegister() {
       // Mark device as registered for autostart on boot
       await devicePolicy.setRegistered(true);
       
-      // Show registration successful message and prompt for admin privileges
+      // Show registration successful message
       Alert.alert(
         t('success'),
         language === 'et' 
-          ? 'Registreerimine õnnestus! Palun anna järgmises vaates administraatori õigused.'
-          : 'Registration successful! Please grant admin privileges in the next prompt.',
+          ? 'Registreerimine õnnestus!'
+          : 'Registration successful!',
         [
           {
             text: t('ok'),
-            onPress: async () => {
-              // Navigate to home screen first
+            onPress: () => {
+              // Navigate to home screen - it will handle admin permission prompt
               router.replace('/client/home');
-              
-              // Request Device Admin permission with a small delay to ensure navigation completes
-              setTimeout(async () => {
-                try {
-                  console.log('Requesting Device Admin after registration...');
-                  const isAdminActive = await devicePolicy.isAdminActive();
-                  console.log('isAdminActive:', isAdminActive);
-                  if (!isAdminActive) {
-                    console.log('Calling requestAdmin...');
-                    const result = await devicePolicy.requestAdmin();
-                    console.log('requestAdmin result:', result);
-                  }
-                } catch (err) {
-                  console.log('Device Admin request error:', err);
-                }
-              }, 500);
             },
           },
         ]

@@ -52,6 +52,7 @@ export default function ClientHome() {
   const appState = useRef(AppState.currentState);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wasLocked = useRef(false);
+  const isRequestingAdmin = useRef(false);
   const resolveProjectId = useCallback(
     () => Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId,
     []
@@ -104,8 +105,6 @@ export default function ClientHome() {
     }
   }, [getPushToken]);
 
-  const protectionTimeout = useRef<NodeJS.Timeout | null>(null);
-
   // Retry mechanism for checking admin status after request
   const checkAdminStatusWithRetry = async (maxAttempts = 5, delayMs = 500) => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -132,12 +131,19 @@ export default function ClientHome() {
   const checkAndSetupDeviceProtection = async () => {
     if (Platform.OS !== 'android') return;
 
+    // Prevent showing multiple prompts if already requesting
+    if (isRequestingAdmin.current) {
+      console.log('Admin request already in progress, skipping...');
+      return;
+    }
+
     try {
       const admin = await devicePolicy.isAdminActive();
       setIsAdminActive(admin);
 
       if (!admin) {
         console.log('Device Admin not active - prompting user');
+        isRequestingAdmin.current = true;
         Alert.alert(
           language === 'et' ? 'Seadme kaitse vajalik' : 'Device Protection Required',
           language === 'et' 
@@ -151,9 +157,16 @@ export default function ClientHome() {
                   await devicePolicy.requestAdmin();
                   console.log('Device Admin request dispatched');
                   // Use retry mechanism to check admin status
-                  await checkAdminStatusWithRetry();
+                  const granted = await checkAdminStatusWithRetry();
+                  if (granted) {
+                    isRequestingAdmin.current = false;
+                  } else {
+                    // If not granted after retries, reset flag so user can try again
+                    isRequestingAdmin.current = false;
+                  }
                 } catch (e) {
                   console.log('Admin request failed:', e);
+                  isRequestingAdmin.current = false;
                 }
               },
             },
@@ -162,6 +175,7 @@ export default function ClientHome() {
         );
       } else {
         setSetupComplete(true);
+        isRequestingAdmin.current = false;
         // Ensure uninstall protection is enabled and check result
         const result = await devicePolicy.preventUninstall(true);
         if (result === 'success') {
@@ -172,22 +186,10 @@ export default function ClientHome() {
       }
     } catch (error) {
       console.error('Device protection setup error:', error);
+      isRequestingAdmin.current = false;
     }
   };
 
-  const scheduleDeviceProtectionCheck = () => {
-    if (Platform.OS !== 'android') return;
-    if (protectionTimeout.current) {
-      clearTimeout(protectionTimeout.current);
-    }
-    protectionTimeout.current = setTimeout(() => {
-      checkAndSetupDeviceProtection().catch((err) =>
-        console.error('Deferred device protection setup error:', err)
-      );
-    }, 500);
-  };
-
-  // Handle lock state change - save both lock status and message for offline enforcement
   const updateLockState = async (locked: boolean, message?: string) => {
     try {
       // Save lock state for offline enforcement and autostart
@@ -345,9 +347,6 @@ export default function ClientHome() {
   const loadClientData = async () => {
     if (!isMounted.current) return;
     
-    // First, check cached lock state for offline enforcement on startup
-    await checkCachedLockStateOnStartup();
-    
     const id = await AsyncStorage.getItem('client_id');
     if (!id) {
       if (isMounted.current) {
@@ -370,11 +369,12 @@ export default function ClientHome() {
         // Check cached lock state immediately on startup for offline enforcement
         await checkCachedLockStateOnStartup();
         
-        // Setup device protection first (deferred for safety)
-        scheduleDeviceProtectionCheck();
-        
-        // Then load client data
+        // Load client data first
         await loadClientData();
+        
+        // Then check device protection immediately after data is loaded
+        // This ensures the admin prompt appears right after registration
+        await checkAndSetupDeviceProtection();
       } catch (error) {
         console.error('Initialization error:', error);
         setLoading(false);
@@ -398,7 +398,9 @@ export default function ClientHome() {
           updateLocation(clientId);
         }
         // Re-check protection on app resume
-        scheduleDeviceProtectionCheck();
+        checkAndSetupDeviceProtection().catch((err) =>
+          console.error('Device protection check error on resume:', err)
+        );
       }
       appState.current = nextAppState;
     });
@@ -414,9 +416,6 @@ export default function ClientHome() {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
-      }
-      if (protectionTimeout.current) {
-        clearTimeout(protectionTimeout.current);
       }
       subscription.remove();
       backHandler.remove();
