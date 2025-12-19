@@ -39,6 +39,7 @@ export default function AdminSettings() {
   // Modal states
   const [showAddAdmin, setShowAddAdmin] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   
   // Form states
@@ -47,6 +48,7 @@ export default function AdminSettings() {
   const [newUserRole, setNewUserRole] = useState('user'); // 'admin' or 'user'
   const [currentPassword, setCurrentPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [editUsername, setEditUsername] = useState('');
 
   useEffect(() => {
     loadData();
