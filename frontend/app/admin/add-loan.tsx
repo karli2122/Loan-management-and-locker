@@ -234,6 +234,9 @@ export default function AddLoan() {
         errorMessage = error.message;
       } else if (error?.detail) {
         errorMessage = error.detail;
+      } else if (typeof error === 'object' && error !== null) {
+        // Handle object errors by trying to extract meaningful information
+        errorMessage = JSON.stringify(error);
       }
       
       Alert.alert(
@@ -672,6 +675,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
+    paddingBottom: 40,
     maxHeight: '80%',
   },
   modalHeader: {
