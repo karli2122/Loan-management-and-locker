@@ -2,7 +2,7 @@
  * API utility functions for consistent endpoint URL generation
  */
 
-const FALLBACK_URL = 'https://loantrack-23.preview.emergentagent.com';
+const FALLBACK_URL = 'https://apkdebug.preview.emergentagent.com';
 
 export const getBaseUrl = (): string => {
   let url = process.env.EXPO_PUBLIC_BACKEND_URL || FALLBACK_URL;
