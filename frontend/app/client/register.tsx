@@ -211,16 +211,6 @@ export default function ClientRegister() {
               />
             </View>
 
-            <View style={styles.deviceInfo}>
-              <Ionicons name="information-circle" size={20} color="#3B82F6" />
-              <View style={styles.deviceInfoContent}>
-                <Text style={styles.deviceInfoTitle}>{t('deviceInformation')}</Text>
-                <Text style={styles.deviceInfoText}>
-                  {Device.brand} {Device.modelName}
-                </Text>
-              </View>
-            </View>
-
             <TouchableOpacity
               style={[styles.button, loading && styles.buttonDisabled]}
               onPress={handleRegister}
@@ -342,28 +332,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     padding: 16,
     letterSpacing: 8,
-  },
-  deviceInfo: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    gap: 12,
-  },
-  deviceInfoContent: {
-    flex: 1,
-  },
-  deviceInfoTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#3B82F6',
-    marginBottom: 4,
-  },
-  deviceInfoText: {
-    fontSize: 14,
-    color: '#94A3B8',
   },
   button: {
     flexDirection: 'row',

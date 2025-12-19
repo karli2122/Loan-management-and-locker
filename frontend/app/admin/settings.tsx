@@ -360,12 +360,18 @@ export default function AdminSettings() {
   };
 
   const handleConnectGoogleDrive = async () => {
-    // Simulate Google OAuth connection - in production, implement actual Google Sign-In
+    // TODO: Implement actual Google OAuth connection and Google Drive API integration
+    // Current implementation is a simulation for UI/UX testing
+    // Real implementation requires:
+    // 1. Google OAuth 2.0 setup with expo-auth-session
+    // 2. Google Drive API credentials and permissions
+    // 3. Backend endpoint to securely store OAuth tokens
+    // 4. Actual file upload to Google Drive using the API
     Alert.alert(
       language === 'et' ? 'Ühenda Google Drive' : 'Connect Google Drive',
       language === 'et' 
-        ? 'Kas soovid ühendada Google Drive varundamiseks?' 
-        : 'Do you want to connect Google Drive for backup?',
+        ? 'Kas soovid ühendada Google Drive varundamiseks?\n\n⚠️ See on praegu demo versioon' 
+        : 'Do you want to connect Google Drive for backup?\n\n⚠️ This is currently a demo version',
       [
         { text: language === 'et' ? 'Tühista' : 'Cancel', style: 'cancel' },
         {
@@ -379,10 +385,10 @@ export default function AdminSettings() {
             setGoogleAccount(mockEmail);
             
             Alert.alert(
-              language === 'et' ? 'Ühendatud' : 'Connected',
+              language === 'et' ? 'Ühendatud (Demo)' : 'Connected (Demo)',
               language === 'et' 
-                ? 'Google Drive on edukalt ühendatud' 
-                : 'Google Drive connected successfully'
+                ? 'Google Drive on edukalt ühendatud (simulatsioon)' 
+                : 'Google Drive connected successfully (simulation)'
             );
           },
         },
@@ -429,7 +435,13 @@ export default function AdminSettings() {
 
     setBackupInProgress(true);
     try {
-      // Simulate backup process - in production, implement actual backup to Google Drive
+      // TODO: Implement actual backup to Google Drive
+      // Current implementation is a simulation for UI/UX testing
+      // Real implementation should:
+      // 1. Fetch all data from the backend (clients, loans, payments, etc.)
+      // 2. Format data as JSON or CSV
+      // 3. Upload to Google Drive using authenticated API calls
+      // 4. Handle errors and retry logic
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       const now = new Date().toISOString();
@@ -437,10 +449,10 @@ export default function AdminSettings() {
       setLastBackupDate(now);
       
       Alert.alert(
-        language === 'et' ? 'Varundamine õnnestus' : 'Backup Successful',
+        language === 'et' ? 'Varundamine õnnestus (Demo)' : 'Backup Successful (Demo)',
         language === 'et' 
-          ? 'Andmed on varundatud Google Drive\'i' 
-          : 'Data has been backed up to Google Drive'
+          ? 'Andmed on varundatud Google Drive\'i (simulatsioon)' 
+          : 'Data has been backed up to Google Drive (simulation)'
       );
     } catch (error) {
       Alert.alert(

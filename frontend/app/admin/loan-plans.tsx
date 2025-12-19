@@ -183,8 +183,9 @@ export default function LoanPlans() {
                 console.error('Delete error:', response.status, errorText);
                 throw new Error(`Failed to delete plan (${response.status})`);
               }
-              // Update local state immediately
-              setPlans(plans.filter(p => p.id !== plan.id));
+              
+              // Fetch fresh data from server to ensure consistency
+              await fetchPlans();
               Alert.alert('Success', 'Plan deleted successfully');
             } catch (error: any) {
               Alert.alert('Error', error.message);

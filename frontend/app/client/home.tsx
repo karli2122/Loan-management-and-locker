@@ -33,8 +33,8 @@ interface ClientStatus {
   is_locked: boolean;
   lock_message: string;
   warning_message: string;
-  emi_amount: number;
-  emi_due_date: string | null;
+  loan_amount: number;
+  loan_due_date: string | null;
   uninstall_allowed?: boolean;
 }
 
@@ -48,6 +48,7 @@ export default function ClientHome() {
   const [isAdminActive, setIsAdminActive] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [setupComplete, setSetupComplete] = useState(false);
+  const [lastAdminPromptTime, setLastAdminPromptTime] = useState<number>(0);
   const isMounted = useRef(false);
   const appState = useRef(AppState.currentState);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -137,6 +138,13 @@ export default function ClientHome() {
       return;
     }
 
+    // Don't show prompt more than once every 30 seconds
+    const now = Date.now();
+    if (now - lastAdminPromptTime < 30000) {
+      console.log('Admin prompt shown recently, skipping...');
+      return;
+    }
+
     try {
       const admin = await devicePolicy.isAdminActive();
       setIsAdminActive(admin);
@@ -144,12 +152,21 @@ export default function ClientHome() {
       if (!admin) {
         console.log('Device Admin not active - prompting user');
         isRequestingAdmin.current = true;
+        setLastAdminPromptTime(now);
         Alert.alert(
           language === 'et' ? 'Seadme kaitse vajalik' : 'Device Protection Required',
           language === 'et' 
             ? 'Seadme turvaliseks kasutamiseks luba administraatori õigused.'
             : 'To secure your device, please enable Device Admin permissions.',
           [
+            {
+              text: language === 'et' ? 'Hiljem' : 'Later',
+              style: 'cancel',
+              onPress: () => {
+                console.log('User postponed admin setup');
+                isRequestingAdmin.current = false;
+              },
+            },
             {
               text: language === 'et' ? 'Luba kohe' : 'Enable Now',
               onPress: async () => {
@@ -170,8 +187,7 @@ export default function ClientHome() {
                 }
               },
             },
-          ],
-          { cancelable: false }
+          ]
         );
       } else {
         setSetupComplete(true);
@@ -216,8 +232,8 @@ export default function ClientHome() {
           is_locked: true,
           lock_message: cachedState.lockMessage,
           warning_message: '',
-          emi_amount: 0,
-          emi_due_date: null,
+          loan_amount: 0,
+          loan_due_date: null,
         });
         wasLocked.current = true;
       }
@@ -279,8 +295,8 @@ export default function ClientHome() {
           is_locked: true,
           lock_message: cachedState.lockMessage,
           warning_message: '',
-          emi_amount: 0,
-          emi_due_date: null,
+          loan_amount: 0,
+          loan_due_date: null,
         });
         wasLocked.current = true;
         console.log('[Error] Enforcing cached lock state');
@@ -548,13 +564,6 @@ export default function ClientHome() {
     }
   };
 
-  const handleContactSupport = () => {
-    Alert.alert(t('contactSupport'), t('howToContact'), [
-      { text: t('cancel'), style: 'cancel' },
-      { text: t('call'), onPress: () => Linking.openURL('tel:+1234567890') },
-      { text: t('email'), onPress: () => Linking.openURL('mailto:support@loanlock.com') },
-    ]);
-  };
 
   if (loading) {
     return (
@@ -578,26 +587,21 @@ export default function ClientHome() {
           <Text style={styles.lockTitle}>{t('deviceLocked')}</Text>
           <Text style={styles.lockMessage}>{status.lock_message}</Text>
 
-          <View style={styles.lockEmiInfo}>
-            <View style={styles.lockEmiItem}>
-              <Text style={styles.lockEmiLabel}>{t('pendingAmount')}</Text>
-              <Text style={styles.lockEmiValue}>€{(status.emi_amount ?? 0).toLocaleString()}</Text>
+          <View style={styles.lockLoanInfo}>
+            <View style={styles.lockLoanItem}>
+              <Text style={styles.lockLoanLabel}>{t('pendingAmount')}</Text>
+              <Text style={styles.lockLoanValue}>€{(status.loan_amount ?? 0).toLocaleString()}</Text>
             </View>
-            {status.emi_due_date && (
-              <View style={styles.lockEmiItem}>
-                <Text style={styles.lockEmiLabel}>{t('dueDate')}</Text>
-                <Text style={styles.lockEmiValue}>{status.emi_due_date}</Text>
+            {status.loan_due_date && (
+              <View style={styles.lockLoanItem}>
+                <Text style={styles.lockLoanLabel}>{t('dueDate')}</Text>
+                <Text style={styles.lockLoanValue}>{status.loan_due_date}</Text>
               </View>
             )}
           </View>
 
-          <TouchableOpacity style={styles.contactButton} onPress={handleContactSupport}>
-            <Ionicons name="call" size={20} color="#fff" />
-            <Text style={styles.contactButtonText}>{t('contactSupport')}</Text>
-          </TouchableOpacity>
-
           <Text style={styles.lockFooter}>
-            {t('clearEmiToUnlock')}
+            {t('clearLoanToUnlock')}
           </Text>
           
           {/* Protection Status */}
@@ -724,17 +728,17 @@ export default function ClientHome() {
         </View>
 
         {/* Loan Card */}
-        <View style={styles.emiCard}>
-          <Text style={styles.emiCardTitle}>{language === 'et' ? 'Laenu andmed' : 'Loan Details'}</Text>
-          <View style={styles.emiDetails}>
-            <View style={styles.emiDetailItem}>
-              <Text style={styles.emiDetailLabel}>{language === 'et' ? 'Laenusumma' : 'Loan Amount'}</Text>
-              <Text style={styles.emiDetailValue}>€{(status?.emi_amount ?? 0).toLocaleString()}</Text>
+        <View style={styles.loanCard}>
+          <Text style={styles.loanCardTitle}>{language === 'et' ? 'Laenu andmed' : 'Loan Details'}</Text>
+          <View style={styles.loanDetails}>
+            <View style={styles.loanDetailItem}>
+              <Text style={styles.loanDetailLabel}>{language === 'et' ? 'Laenusumma' : 'Loan Amount'}</Text>
+              <Text style={styles.loanDetailValue}>€{(status?.loan_amount ?? 0).toLocaleString()}</Text>
             </View>
-            <View style={styles.emiDetailDivider} />
-            <View style={styles.emiDetailItem}>
-              <Text style={styles.emiDetailLabel}>{t('dueDate')}</Text>
-              <Text style={styles.emiDetailValue}>{status?.emi_due_date || t('notSet')}</Text>
+            <View style={styles.loanDetailDivider} />
+            <View style={styles.loanDetailItem}>
+              <Text style={styles.loanDetailLabel}>{t('dueDate')}</Text>
+              <Text style={styles.loanDetailValue}>{status?.loan_due_date || t('notSet')}</Text>
             </View>
           </View>
         </View>
@@ -742,17 +746,7 @@ export default function ClientHome() {
         {/* Quick Actions */}
         <View style={styles.actionsSection}>
           <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
-          <TouchableOpacity style={styles.actionCard} onPress={handleContactSupport}>
-            <View style={[styles.actionIcon, { backgroundColor: '#3B82F6' }]}>
-              <Ionicons name="headset" size={24} color="#fff" />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>{t('contactSupport')}</Text>
-              <Text style={styles.actionDescription}>{t('getHelp')}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
-
+          
           <TouchableOpacity style={styles.actionCard} onPress={onRefresh}>
             <View style={[styles.actionIcon, { backgroundColor: '#10B981' }]}>
               <Ionicons name="refresh" size={24} color="#fff" />
@@ -950,36 +944,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#94A3B8',
   },
-  emiCard: {
+  loanCard: {
     backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
   },
-  emiCardTitle: {
+  loanCardTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#fff',
     marginBottom: 16,
   },
-  emiDetails: {
+  loanDetails: {
     flexDirection: 'row',
   },
-  emiDetailItem: {
+  loanDetailItem: {
     flex: 1,
     alignItems: 'center',
   },
-  emiDetailLabel: {
+  loanDetailLabel: {
     fontSize: 13,
     color: '#64748B',
     marginBottom: 4,
   },
-  emiDetailValue: {
+  loanDetailValue: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
   },
-  emiDetailDivider: {
+  loanDetailDivider: {
     width: 1,
     backgroundColor: '#334155',
   },
@@ -1054,7 +1048,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 32,
   },
-  lockEmiInfo: {
+  lockLoanInfo: {
     flexDirection: 'row',
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     borderRadius: 16,
@@ -1062,16 +1056,16 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     width: '100%',
   },
-  lockEmiItem: {
+  lockLoanItem: {
     flex: 1,
     alignItems: 'center',
   },
-  lockEmiLabel: {
+  lockLoanLabel: {
     fontSize: 13,
     color: '#FCA5A5',
     marginBottom: 4,
   },
-  lockEmiValue: {
+  lockLoanValue: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
