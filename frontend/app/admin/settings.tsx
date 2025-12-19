@@ -639,6 +639,56 @@ export default function AdminSettings() {
           </View>
         </View>
       </Modal>
+
+      {/* Edit Profile Modal */}
+      <Modal visible={showEditProfile} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              {language === 'et' ? 'Muuda kasutajanime' : 'Edit Username'}
+            </Text>
+            
+            <View style={styles.inputContainer}>
+              <Ionicons name="person" size={20} color="#64748B" />
+              <TextInput
+                style={styles.input}
+                placeholder={language === 'et' ? 'Kasutajanimi' : 'Username'}
+                placeholderTextColor="#64748B"
+                value={editUsername}
+                onChangeText={setEditUsername}
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setShowEditProfile(false);
+                  setEditUsername('');
+                }}
+              >
+                <Text style={styles.cancelButtonText}>
+                  {language === 'et' ? 'Tühista' : 'Cancel'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleUpdateProfile}
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.confirmButtonText}>
+                    {language === 'et' ? 'Salvesta' : 'Save'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
