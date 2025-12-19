@@ -335,6 +335,7 @@ class Reminder(BaseModel):
 
 class Client(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    admin_id: Optional[str] = None  # ID of the admin who created this client
     name: str
     phone: str
     email: str = ""  # Made optional with default empty string for backwards compatibility
