@@ -55,10 +55,12 @@ export default function DeviceSetup() {
 
   const fetchClients = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/clients`);
+      const token = await AsyncStorage.getItem('admin_token');
+      const response = await fetch(`${API_BASE_URL}/api/clients?admin_token=${token}`);
       const data = await response.json();
       // Only show unregistered clients
-      setClients(data.filter((c: any) => !c.is_registered));
+      const clientsList = data.clients || data;
+      setClients(clientsList.filter((c: any) => !c.is_registered));
     } catch (error) {
       console.error('Failed to fetch clients:', error);
     }
