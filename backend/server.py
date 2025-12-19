@@ -1379,15 +1379,25 @@ async def mark_reminder_sent(reminder_id: str):
 # ===================== REPORTS & ANALYTICS =====================
 
 @api_router.get("/reports/collection")
-async def get_collection_report():
-    """Get collection statistics and metrics"""
+async def get_collection_report(admin_token: str):
+    """Get collection statistics and metrics for the authenticated admin"""
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    admin_id = token_doc["admin_id"]
+    # Filter by admin_id - include legacy clients without admin_id
+    query = {"$or": [{"admin_id": admin_id}, {"admin_id": None}, {"admin_id": {"$exists": False}}]}
+    
     # Total clients
-    total_clients = await db.clients.count_documents({})
-    active_loans = await db.clients.count_documents({"outstanding_balance": {"$gt": 0}})
-    completed_loans = await db.clients.count_documents({"outstanding_balance": 0, "total_paid": {"$gt": 0}})
+    total_clients = await db.clients.count_documents(query)
+    active_query = {**query, "outstanding_balance": {"$gt": 0}}
+    completed_query = {**query, "outstanding_balance": 0, "total_paid": {"$gt": 0}}
+    active_loans = await db.clients.count_documents({"$and": [query, {"outstanding_balance": {"$gt": 0}}]})
+    completed_loans = await db.clients.count_documents({"$and": [query, {"outstanding_balance": 0, "total_paid": {"$gt": 0}}]})
     
     # Financial totals
-    clients = await db.clients.find().to_list(1000)
+    clients = await db.clients.find(query).to_list(1000)
     total_disbursed = sum(c.get("total_amount_due", 0) for c in clients)
     total_collected = sum(c.get("total_paid", 0) for c in clients)
     total_outstanding = sum(c.get("outstanding_balance", 0) for c in clients)
