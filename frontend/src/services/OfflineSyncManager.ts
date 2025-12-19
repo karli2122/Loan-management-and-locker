@@ -19,7 +19,7 @@ const CACHE_KEY_PREFIX = 'offline_cache_';
 const SYNC_INTERVAL = 30000; // 30 seconds
 
 class OfflineSyncManager {
-  private syncInterval: NodeJS.Timeout | null = null;
+  private syncInterval: ReturnType<typeof setInterval> | null = null;
   private isOnline: boolean = true;
   private onStatusUpdateCallback: ((status: any) => void) | null = null;
 
