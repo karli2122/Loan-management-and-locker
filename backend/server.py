@@ -1020,22 +1020,39 @@ async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token:
     return LoanPlan(**updated_plan)
 
 @api_router.delete("/loan-plans/{plan_id}")
-async def delete_loan_plan(plan_id: str, admin_token: str):
-    """Delete (deactivate) a loan plan"""
+async def delete_loan_plan(plan_id: str, admin_token: str, permanent: bool = False):
+    """Delete a loan plan - soft delete (deactivate) or permanent delete"""
     if not await verify_admin_token_header(admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
     
-    # Soft delete - just deactivate
-    result = await db.loan_plans.update_one(
-        {"id": plan_id},
-        {"$set": {"is_active": False}}
-    )
-    
-    if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Loan plan not found")
-    
-    logger.info(f"Loan plan deactivated: {plan_id}")
-    return {"message": "Loan plan deactivated successfully"}
+    if permanent:
+        # Check if any clients are using this plan
+        clients_using_plan = await db.clients.count_documents({"loan_plan_id": plan_id})
+        if clients_using_plan > 0:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot delete: {clients_using_plan} client(s) are using this loan plan. Deactivate it instead."
+            )
+        
+        # Permanent delete
+        result = await db.loan_plans.delete_one({"id": plan_id})
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Loan plan not found")
+        
+        logger.info(f"Loan plan permanently deleted: {plan_id}")
+        return {"message": "Loan plan permanently deleted"}
+    else:
+        # Soft delete - just deactivate
+        result = await db.loan_plans.update_one(
+            {"id": plan_id},
+            {"$set": {"is_active": False}}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Loan plan not found")
+        
+        logger.info(f"Loan plan deactivated: {plan_id}")
+        return {"message": "Loan plan deactivated successfully"}
 
 # ===================== EMI CALCULATOR =====================
 
