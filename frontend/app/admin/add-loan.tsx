@@ -182,8 +182,9 @@ export default function AddLoan() {
         });
 
         if (!clientResponse.ok) {
-          const error = await clientResponse.json();
-          throw new Error(error?.detail || 'Failed to create client');
+          const errorData = await clientResponse.json().catch(() => ({}));
+          const errorMessage = errorData?.detail || errorData?.message || `Failed to create client (${clientResponse.status})`;
+          throw new Error(errorMessage);
         }
 
         const newClient = await clientResponse.json();
@@ -202,8 +203,9 @@ export default function AddLoan() {
       });
 
       if (!loanResponse.ok) {
-        const error = await loanResponse.json();
-        throw new Error(error?.detail || 'Failed to setup loan');
+        const errorData = await loanResponse.json().catch(() => ({}));
+        const errorMessage = errorData?.detail || errorData?.message || `Failed to setup loan (${loanResponse.status})`;
+        throw new Error(errorMessage);
       }
 
       const loanData = await loanResponse.json();
@@ -221,9 +223,22 @@ export default function AddLoan() {
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error: any) {
+      console.error('Add loan error:', error);
+      let errorMessage = 'Something went wrong';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.detail) {
+        errorMessage = error.detail;
+      }
+      
       Alert.alert(
         language === 'et' ? 'Viga' : 'Error',
-        error.message || 'Something went wrong'
+        errorMessage
       );
     } finally {
       setLoading(false);
