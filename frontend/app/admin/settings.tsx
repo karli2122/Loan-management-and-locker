@@ -71,6 +71,11 @@ export default function AdminSettings() {
       setCurrentUsername(username || '');
       setCurrentUserRole(role || 'user');
       
+      // Fetch profile data
+      if (token) {
+        await fetchProfile(token);
+      }
+      
       // Only fetch admin list if user is an admin
       if (token && role === 'admin') {
         await fetchAdmins(token);
@@ -79,6 +84,21 @@ export default function AdminSettings() {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProfile = async (token: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/admin/profile?admin_token=${token}`);
+      if (response.ok) {
+        const data = await response.json();
+        setProfileFirstName(data.first_name || '');
+        setProfileLastName(data.last_name || '');
+        setProfileEmail(data.email || '');
+        setProfilePhone(data.phone || '');
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
     }
   };
 
