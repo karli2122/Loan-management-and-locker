@@ -361,8 +361,8 @@ const translations: Translations = {
     en: 'Register Device',
   },
   enterRegistrationCode: {
-    et: 'Sisesta oma EMI pakkuja antud registreerimiskood, et siduda oma seade',
-    en: 'Enter the registration code provided by your EMI provider to link your device',
+    et: 'Sisesta oma laenupakkuja antud registreerimiskood, et siduda oma seade',
+    en: 'Enter the registration code provided by your loan provider to link your device',
   },
   enterCode: {
     et: 'Sisesta kood',
@@ -373,8 +373,8 @@ const translations: Translations = {
     en: 'Device Information',
   },
   noCodeHelp: {
-    et: 'Pole koodi? Võta ühendust oma EMI pakkujaga, et saada oma unikaalne registreerimiskood.',
-    en: "Don't have a code? Contact your EMI provider to get your unique registration code.",
+    et: 'Pole koodi? Võta ühendust oma laenupakkujaga, et saada oma unikaalne registreerimiskood.',
+    en: "Don't have a code? Contact your loan provider to get your unique registration code.",
   },
   deviceRegisteredSuccess: {
     et: 'Seade registreeritud edukalt!',
@@ -403,8 +403,8 @@ const translations: Translations = {
     en: 'Your device is active and working normally',
   },
   monthlyEmi: {
-    et: 'Igakuine EMI',
-    en: 'Monthly EMI',
+    et: 'Igakuine laenumakse',
+    en: 'Monthly Payment',
   },
   contactSupport: {
     et: 'Võta ühendust toega',
@@ -441,8 +441,8 @@ const translations: Translations = {
     en: 'Pending Amount',
   },
   clearEmiToUnlock: {
-    et: 'Palun tasu oma EMI võlgnevus, et avada oma seade',
-    en: 'Please clear your pending EMI to unlock your device',
+    et: 'Palun tasu oma laenuvõlgnevus, et avada oma seade',
+    en: 'Please clear your pending loan payment to unlock your device',
   },
   howToContact: {
     et: 'Kuidas soovid ühendust võtta?',
@@ -487,8 +487,8 @@ const translations: Translations = {
 
   // Default lock message
   defaultLockMessage: {
-    et: 'Teie seade on lukustatud tasumata EMI makse tõttu.',
-    en: 'Your device has been locked due to pending EMI payment.',
+    et: 'Teie seade on lukustatud tasumata laenumakse tõttu.',
+    en: 'Your device has been locked due to pending loan payment.',
   },
 
   // Stay signed in
