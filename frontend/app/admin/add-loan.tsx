@@ -150,7 +150,7 @@ export default function AddLoan() {
             name: newClientName.trim(),
             phone: newClientPhone.trim(),
             email: newClientEmail.trim(),
-            admin_id: adminId || undefined,
+            admin_id: adminId ?? undefined,
           }),
         });
 

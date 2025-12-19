@@ -648,7 +648,7 @@ async def list_admins(admin_token: str = Query(...)):
     } for a in admins]
 
 @api_router.post("/admin/change-password")
-async def change_password(admin_token: str = Query(...), password_data: PasswordChange = ...):
+async def change_password(password_data: PasswordChange, admin_token: str = Query(...)):
     """Change admin password"""
     # Validate new password length
     if len(password_data.new_password) < 6:
@@ -682,7 +682,7 @@ class ProfileUpdate(BaseModel):
     phone: Optional[str] = None
 
 @api_router.put("/admin/update-profile")
-async def update_admin_profile(admin_token: str = Query(...), profile_data: ProfileUpdate = ...):
+async def update_admin_profile(profile_data: ProfileUpdate, admin_token: str = Query(...)):
     """Update admin profile information"""
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
