@@ -38,7 +38,7 @@ const generateSetupQR = (clientRegCode: string, clientName: string) => {
     type: "EMI_CLIENT_SETUP",
     code: clientRegCode,
     name: clientName,
-    api: API_URL
+    api: API_BASE_URL
   });
 };
 
