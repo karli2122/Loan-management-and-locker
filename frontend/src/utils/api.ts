@@ -1,20 +1,16 @@
 /**
  * API utility functions for consistent endpoint URL generation
+ * HARDCODED URL to fix APK build issues with environment variables
  */
 
-const FALLBACK_URL = 'https://apkdebug.preview.emergentagent.com';
+// Hardcoded base URL - environment variables are unreliable in EAS builds
+const BASE_URL = 'https://apkdebug.preview.emergentagent.com';
 
 export const getBaseUrl = (): string => {
-  let url = process.env.EXPO_PUBLIC_BACKEND_URL || FALLBACK_URL;
-  // Remove trailing slash
-  url = url.replace(/\/$/, '');
-  // Remove /api suffix if present (we'll add it in getApiUrl)
-  url = url.replace(/\/api$/, '');
-  return url;
+  return BASE_URL;
 };
 
 export const getApiUrl = (endpoint: string): string => {
-  const baseUrl = getBaseUrl();
   // Remove leading slash from endpoint
   let cleanEndpoint = endpoint.replace(/^\//, '');
   // Ensure endpoint starts with 'api/' - if not, add it
@@ -24,10 +20,9 @@ export const getApiUrl = (endpoint: string): string => {
   // Remove double 'api/api/' if present
   cleanEndpoint = cleanEndpoint.replace(/^api\/api\//, 'api/');
   
-  const finalUrl = `${baseUrl}/${cleanEndpoint}`;
-  console.log('API URL:', finalUrl);
+  const finalUrl = `${BASE_URL}/${cleanEndpoint}`;
   return finalUrl;
 };
 
 // For use in template literals
-export const API_BASE_URL = getBaseUrl();
+export const API_BASE_URL = BASE_URL;
