@@ -13,6 +13,7 @@ export default function AdminLayout() {
       <Stack.Screen name="login" />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="add-client" />
+      <Stack.Screen name="add-loan" />
       <Stack.Screen name="client-details" />
       <Stack.Screen name="device-setup" />
       <Stack.Screen name="settings" />
