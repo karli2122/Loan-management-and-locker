@@ -401,4 +401,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
+  infoCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#94A3B8',
+    lineHeight: 20,
+  },
 });
