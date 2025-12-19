@@ -362,6 +362,20 @@ export default function AdminSettings() {
 
           <TouchableOpacity
             style={styles.actionButton}
+            onPress={() => {
+              setEditUsername(currentUsername);
+              setShowEditProfile(true);
+            }}
+          >
+            <Ionicons name="person" size={20} color="#4F46E5" />
+            <Text style={styles.actionButtonText}>
+              {language === 'et' ? 'Muuda kasutajanime' : 'Edit Username'}
+            </Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, { marginTop: 8 }]}
             onPress={() => setShowChangePassword(true)}
           >
             <Ionicons name="key" size={20} color="#4F46E5" />
