@@ -156,6 +156,40 @@ export default function LoanPlans() {
     }
   };
 
+  const handleDeletePlan = (plan: LoanPlan) => {
+    Alert.alert(
+      'Delete Loan Plan',
+      `Are you sure you want to permanently delete "${plan.name}"?\n\nThis action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem('admin_token');
+              const response = await fetch(
+                `${API_BASE_URL}/api/loan-plans/${plan.id}?admin_token=${token}&permanent=true`,
+                { method: 'DELETE' }
+              );
+              
+              const data = await response.json();
+              
+              if (!response.ok) {
+                throw new Error(data.detail || 'Failed to delete plan');
+              }
+              
+              Alert.alert('Success', 'Loan plan deleted successfully');
+              fetchPlans();
+            } catch (error: any) {
+              Alert.alert('Error', error.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
