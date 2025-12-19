@@ -52,6 +52,7 @@ export default function ClientHome() {
   const appState = useRef(AppState.currentState);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wasLocked = useRef(false);
+  const isRequestingAdmin = useRef(false);
   const resolveProjectId = useCallback(
     () => Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId,
     []
@@ -130,12 +131,19 @@ export default function ClientHome() {
   const checkAndSetupDeviceProtection = async () => {
     if (Platform.OS !== 'android') return;
 
+    // Prevent showing multiple prompts if already requesting
+    if (isRequestingAdmin.current) {
+      console.log('Admin request already in progress, skipping...');
+      return;
+    }
+
     try {
       const admin = await devicePolicy.isAdminActive();
       setIsAdminActive(admin);
 
       if (!admin) {
         console.log('Device Admin not active - prompting user');
+        isRequestingAdmin.current = true;
         Alert.alert(
           language === 'et' ? 'Seadme kaitse vajalik' : 'Device Protection Required',
           language === 'et' 
@@ -149,9 +157,16 @@ export default function ClientHome() {
                   await devicePolicy.requestAdmin();
                   console.log('Device Admin request dispatched');
                   // Use retry mechanism to check admin status
-                  await checkAdminStatusWithRetry();
+                  const granted = await checkAdminStatusWithRetry();
+                  if (granted) {
+                    isRequestingAdmin.current = false;
+                  } else {
+                    // If not granted after retries, reset flag so user can try again
+                    isRequestingAdmin.current = false;
+                  }
                 } catch (e) {
                   console.log('Admin request failed:', e);
+                  isRequestingAdmin.current = false;
                 }
               },
             },
@@ -160,6 +175,7 @@ export default function ClientHome() {
         );
       } else {
         setSetupComplete(true);
+        isRequestingAdmin.current = false;
         // Ensure uninstall protection is enabled and check result
         const result = await devicePolicy.preventUninstall(true);
         if (result === 'success') {
@@ -170,6 +186,7 @@ export default function ClientHome() {
       }
     } catch (error) {
       console.error('Device protection setup error:', error);
+      isRequestingAdmin.current = false;
     }
   };
 
