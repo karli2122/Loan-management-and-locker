@@ -48,6 +48,7 @@ export default function ClientHome() {
   const [isAdminActive, setIsAdminActive] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [setupComplete, setSetupComplete] = useState(false);
+  const [lastAdminPromptTime, setLastAdminPromptTime] = useState<number>(0);
   const isMounted = useRef(false);
   const appState = useRef(AppState.currentState);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -137,6 +138,13 @@ export default function ClientHome() {
       return;
     }
 
+    // Don't show prompt more than once every 30 seconds
+    const now = Date.now();
+    if (now - lastAdminPromptTime < 30000) {
+      console.log('Admin prompt shown recently, skipping...');
+      return;
+    }
+
     try {
       const admin = await devicePolicy.isAdminActive();
       setIsAdminActive(admin);
@@ -144,12 +152,21 @@ export default function ClientHome() {
       if (!admin) {
         console.log('Device Admin not active - prompting user');
         isRequestingAdmin.current = true;
+        setLastAdminPromptTime(now);
         Alert.alert(
           language === 'et' ? 'Seadme kaitse vajalik' : 'Device Protection Required',
           language === 'et' 
             ? 'Seadme turvaliseks kasutamiseks luba administraatori õigused.'
             : 'To secure your device, please enable Device Admin permissions.',
           [
+            {
+              text: language === 'et' ? 'Hiljem' : 'Later',
+              style: 'cancel',
+              onPress: () => {
+                console.log('User postponed admin setup');
+                isRequestingAdmin.current = false;
+              },
+            },
             {
               text: language === 'et' ? 'Luba kohe' : 'Enable Now',
               onPress: async () => {
@@ -170,8 +187,7 @@ export default function ClientHome() {
                 }
               },
             },
-          ],
-          { cancelable: false }
+          ]
         );
       } else {
         setSetupComplete(true);
