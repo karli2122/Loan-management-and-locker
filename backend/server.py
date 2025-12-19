@@ -699,7 +699,7 @@ class ProfileUpdate(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
 
-@api_router.put("/admin/update-profile")
+@api_router.post("/admin/update-profile")
 async def update_admin_profile(profile_data: ProfileUpdate, admin_token: str = Query(...)):
     """Update admin profile information"""
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
