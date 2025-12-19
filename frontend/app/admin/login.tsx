@@ -35,7 +35,7 @@ export default function AdminLogin() {
     setLoading(true);
     try {
       // Use hardcoded URL directly for APK builds to avoid env variable issues
-      const loginUrl = 'https://apkdebug.preview.emergentagent.com/api/admin/login';
+      const loginUrl = 'https://loantrack-23.preview.emergentagent.com/api/admin/login';
       console.log('Attempting login to:', loginUrl);
 
       const response = await fetch(loginUrl, {
