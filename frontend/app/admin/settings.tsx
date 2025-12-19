@@ -298,8 +298,8 @@ export default function AdminSettings() {
 
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/admin/update-profile?admin_token=${adminToken}`, {
-        method: 'POST',
+      const response = await fetch(`${API_URL}/api/admin/profile?admin_token=${adminToken}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           first_name: editFirstName.trim(),

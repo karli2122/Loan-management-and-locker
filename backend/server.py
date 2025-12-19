@@ -699,7 +699,39 @@ class ProfileUpdate(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
 
-@api_router.post("/admin/update-profile")
+class ProfileResponse(BaseModel):
+    id: str
+    username: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    role: str
+    is_super_admin: bool
+
+@api_router.get("/admin/profile", response_model=ProfileResponse)
+async def get_admin_profile(admin_token: str = Query(...)):
+    """Get current admin profile information"""
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    admin = await db.admins.find_one({"id": token_doc["admin_id"]})
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    
+    return ProfileResponse(
+        id=admin["id"],
+        username=admin["username"],
+        first_name=admin.get("first_name"),
+        last_name=admin.get("last_name"),
+        email=admin.get("email"),
+        phone=admin.get("phone"),
+        role=admin.get("role", "user"),
+        is_super_admin=admin.get("is_super_admin", False)
+    )
+
+@api_router.put("/admin/profile")
 async def update_admin_profile(profile_data: ProfileUpdate, admin_token: str = Query(...)):
     """Update admin profile information"""
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
