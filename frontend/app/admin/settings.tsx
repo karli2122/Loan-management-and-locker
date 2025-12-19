@@ -365,11 +365,20 @@ export default function AdminSettings() {
           </Text>
           <View style={styles.userCard}>
             <View style={styles.avatarContainer}>
-              <Text style={styles.avatarText}>{currentUsername.charAt(0).toUpperCase()}</Text>
+              <Text style={styles.avatarText}>
+                {(profileFirstName || currentUsername).charAt(0).toUpperCase()}
+              </Text>
             </View>
             <View style={styles.userInfo}>
-              <Text style={styles.userName}>{currentUsername}</Text>
-              <Text style={styles.userRole}>{language === 'et' ? 'Administraator' : 'Administrator'}</Text>
+              <Text style={styles.userName}>
+                {profileFirstName && profileLastName 
+                  ? `${profileFirstName} ${profileLastName}` 
+                  : currentUsername}
+              </Text>
+              <Text style={styles.userRole}>@{currentUsername}</Text>
+              {profileEmail && (
+                <Text style={styles.userEmail}>{profileEmail}</Text>
+              )}
             </View>
           </View>
 
