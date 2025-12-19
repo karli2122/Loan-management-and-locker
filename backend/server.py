@@ -602,11 +602,14 @@ async def change_password(admin_token: str, password_data: PasswordChange):
     return {"message": "Password changed successfully"}
 
 class AdminProfileUpdate(BaseModel):
-    username: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
 
 @api_router.put("/admin/profile")
 async def update_admin_profile(update_data: AdminProfileUpdate, admin_token: str):
-    """Update own admin profile (username)"""
+    """Update own admin profile (first name, last name, email, phone)"""
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
         raise HTTPException(status_code=401, detail="Invalid admin token")
@@ -617,15 +620,17 @@ async def update_admin_profile(update_data: AdminProfileUpdate, admin_token: str
     
     update_dict = {}
     
-    if update_data.username:
-        # Check if new username is already taken by another admin
-        existing = await db.admins.find_one({
-            "username": update_data.username,
-            "id": {"$ne": admin["id"]}
-        })
-        if existing:
-            raise HTTPException(status_code=400, detail="Username already taken")
-        update_dict["username"] = update_data.username
+    if update_data.first_name is not None:
+        update_dict["first_name"] = update_data.first_name.strip() if update_data.first_name else None
+    
+    if update_data.last_name is not None:
+        update_dict["last_name"] = update_data.last_name.strip() if update_data.last_name else None
+    
+    if update_data.email is not None:
+        update_dict["email"] = update_data.email.strip() if update_data.email else None
+    
+    if update_data.phone is not None:
+        update_dict["phone"] = update_data.phone.strip() if update_data.phone else None
     
     if update_dict:
         await db.admins.update_one({"id": admin["id"]}, {"$set": update_dict})
@@ -633,7 +638,32 @@ async def update_admin_profile(update_data: AdminProfileUpdate, admin_token: str
     updated_admin = await db.admins.find_one({"id": admin["id"]})
     return {
         "message": "Profile updated successfully",
-        "username": updated_admin["username"]
+        "first_name": updated_admin.get("first_name"),
+        "last_name": updated_admin.get("last_name"),
+        "email": updated_admin.get("email"),
+        "phone": updated_admin.get("phone")
+    }
+
+@api_router.get("/admin/profile")
+async def get_admin_profile(admin_token: str):
+    """Get current admin profile"""
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    admin = await db.admins.find_one({"id": token_doc["admin_id"]})
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    
+    return {
+        "id": admin["id"],
+        "username": admin["username"],
+        "role": admin.get("role", "user"),
+        "is_super_admin": admin.get("is_super_admin", False),
+        "first_name": admin.get("first_name"),
+        "last_name": admin.get("last_name"),
+        "email": admin.get("email"),
+        "phone": admin.get("phone")
     }
 
 @api_router.delete("/admin/{admin_id}")
