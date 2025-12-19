@@ -34,15 +34,8 @@ export default function AdminLogin() {
 
     setLoading(true);
     try {
-      // Use hardcoded URL as ultimate fallback for APK builds
-      const HARDCODED_URL = 'https://apkdebug.preview.emergentagent.com/api/admin/login';
-      let loginUrl = getApiUrl('api/admin/login');
-      
-      // Validate URL - if it doesn't look right, use hardcoded
-      if (!loginUrl || !loginUrl.includes('loantrack-23') || !loginUrl.includes('/api/')) {
-        console.log('URL validation failed, using hardcoded URL');
-        loginUrl = HARDCODED_URL;
-      }
+      // Use hardcoded URL directly for APK builds to avoid env variable issues
+      const loginUrl = 'https://apkdebug.preview.emergentagent.com/api/admin/login';
       console.log('Attempting login to:', loginUrl);
 
       const response = await fetch(loginUrl, {
