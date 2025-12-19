@@ -290,7 +290,10 @@ export default function LoansTab() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tabButton, tab === 'settled' && styles.tabButtonActive]}
-          onPress={() => setTab('settled')}
+          onPress={() => {
+            setTab('settled');
+            setPaymentFilter('all'); // Reset payment filter when switching to settled tab
+          }}
         >
           <Text style={[styles.tabText, tab === 'settled' && styles.tabTextActive]}>
             {language === 'et' ? 'Tasutud' : 'Settled'}
@@ -298,64 +301,66 @@ export default function LoansTab() {
         </TouchableOpacity>
       </View>
 
-      {/* Payment Date Filter */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        style={styles.paymentFilterContainer}
-        contentContainerStyle={styles.paymentFilterContent}
-      >
-        <TouchableOpacity
-          style={[styles.paymentFilterButton, paymentFilter === 'all' && styles.paymentFilterButtonActive]}
-          onPress={() => setPaymentFilter('all')}
+      {/* Payment Date Filter - Only show for 'given' tab */}
+      {tab === 'given' && (
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={styles.paymentFilterContainer}
+          contentContainerStyle={styles.paymentFilterContent}
         >
-          <Text style={[styles.paymentFilterText, paymentFilter === 'all' && styles.paymentFilterTextActive]}>
-            {language === 'et' ? 'Kõik' : 'All'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.paymentFilterButton, paymentFilter === 'today' && styles.paymentFilterButtonActive]}
-          onPress={() => setPaymentFilter('today')}
-        >
-          <Ionicons 
-            name="today" 
-            size={14} 
-            color={paymentFilter === 'today' ? '#fff' : '#94A3B8'} 
-            style={{ marginRight: 4 }} 
-          />
-          <Text style={[styles.paymentFilterText, paymentFilter === 'today' && styles.paymentFilterTextActive]}>
-            {language === 'et' ? 'Täna' : 'Today'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.paymentFilterButton, paymentFilter === 'tomorrow' && styles.paymentFilterButtonActive]}
-          onPress={() => setPaymentFilter('tomorrow')}
-        >
-          <Ionicons 
-            name="calendar" 
-            size={14} 
-            color={paymentFilter === 'tomorrow' ? '#fff' : '#94A3B8'} 
-            style={{ marginRight: 4 }} 
-          />
-          <Text style={[styles.paymentFilterText, paymentFilter === 'tomorrow' && styles.paymentFilterTextActive]}>
-            {language === 'et' ? 'Homme' : 'Tomorrow'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.paymentFilterButton, paymentFilter === 'next3days' && styles.paymentFilterButtonActive]}
-          onPress={() => setPaymentFilter('next3days')}
-        >
-          <Ionicons 
-            name="calendar-outline" 
-            size={14} 
-            color={paymentFilter === 'next3days' ? '#fff' : '#94A3B8'} 
-            style={{ marginRight: 4 }} 
-          />
-          <Text style={[styles.paymentFilterText, paymentFilter === 'next3days' && styles.paymentFilterTextActive]}>
-            {language === 'et' ? '3 päeva' : 'Next 3 days'}
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
+          <TouchableOpacity
+            style={[styles.paymentFilterButton, paymentFilter === 'all' && styles.paymentFilterButtonActive]}
+            onPress={() => setPaymentFilter('all')}
+          >
+            <Text style={[styles.paymentFilterText, paymentFilter === 'all' && styles.paymentFilterTextActive]}>
+              {language === 'et' ? 'Kõik' : 'All'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.paymentFilterButton, paymentFilter === 'today' && styles.paymentFilterButtonActive]}
+            onPress={() => setPaymentFilter('today')}
+          >
+            <Ionicons 
+              name="today" 
+              size={14} 
+              color={paymentFilter === 'today' ? '#fff' : '#94A3B8'} 
+              style={{ marginRight: 4 }} 
+            />
+            <Text style={[styles.paymentFilterText, paymentFilter === 'today' && styles.paymentFilterTextActive]}>
+              {language === 'et' ? 'Täna' : 'Today'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.paymentFilterButton, paymentFilter === 'tomorrow' && styles.paymentFilterButtonActive]}
+            onPress={() => setPaymentFilter('tomorrow')}
+          >
+            <Ionicons 
+              name="calendar" 
+              size={14} 
+              color={paymentFilter === 'tomorrow' ? '#fff' : '#94A3B8'} 
+              style={{ marginRight: 4 }} 
+            />
+            <Text style={[styles.paymentFilterText, paymentFilter === 'tomorrow' && styles.paymentFilterTextActive]}>
+              {language === 'et' ? 'Homme' : 'Tomorrow'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.paymentFilterButton, paymentFilter === 'next3days' && styles.paymentFilterButtonActive]}
+            onPress={() => setPaymentFilter('next3days')}
+          >
+            <Ionicons 
+              name="calendar-outline" 
+              size={14} 
+              color={paymentFilter === 'next3days' ? '#fff' : '#94A3B8'} 
+              style={{ marginRight: 4 }} 
+            />
+            <Text style={[styles.paymentFilterText, paymentFilter === 'next3days' && styles.paymentFilterTextActive]}>
+              {language === 'et' ? '3 päeva' : 'Next 3 days'}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
 
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#64748B" />
