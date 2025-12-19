@@ -236,10 +236,8 @@ export default function AddLoan() {
         errorMessage = error.message;
       } else if (error?.detail) {
         errorMessage = error.detail;
-      } else if (typeof error === 'object' && error !== null) {
-        // Handle object errors by trying to extract meaningful information
-        errorMessage = JSON.stringify(error);
       }
+      // For any other object types, keep the generic message
       
       Alert.alert(
         language === 'et' ? 'Viga' : 'Error',
