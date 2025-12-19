@@ -182,9 +182,17 @@ The `react-native-worklets` package was already included in `frontend/package.js
 **No Breaking Changes**
 
 All changes are backward compatible:
-- Frontend already sends `admin_token` as query parameters
+- Frontend already sends `admin_token` as query parameters (not positional)
+- In FastAPI, query parameters (marked with `Query()`) are passed as query strings (e.g., `?admin_token=xxx`), not positional arguments
+- Request body parameters are always sent in the JSON body, regardless of function parameter order
 - Existing API clients using query parameters will continue to work
 - Tests already use `params` for query parameters
+
+**Parameter Order Change:**
+The order of parameters in `change_password` and `update_admin_profile` was changed to comply with Python syntax (required parameters before optional ones). This does NOT affect API clients because:
+- `admin_token` is a query parameter (`?admin_token=xxx` in URL)
+- `password_data` and `profile_data` are body parameters (in JSON body)
+- HTTP clients don't use positional arguments - they send data in specific locations (query string vs body)
 
 ---
 

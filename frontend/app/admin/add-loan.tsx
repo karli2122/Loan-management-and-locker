@@ -130,7 +130,7 @@ export default function AddLoan() {
 
     const loanAmountNum = parseFloat(loanAmount);
     const interestRateNum = parseFloat(interestRate);
-    const tenureNum = parseInt(tenure);
+    const tenureNum = parseInt(tenure, 10);
 
     if (!loanAmount.trim() || isNaN(loanAmountNum) || loanAmountNum <= 0) {
       Alert.alert(
@@ -170,7 +170,7 @@ export default function AddLoan() {
             name: newClientName.trim(),
             phone: newClientPhone.trim(),
             email: newClientEmail.trim(),
-            admin_id: adminId,
+            admin_id: adminId || null,
           }),
         });
 
@@ -201,11 +201,14 @@ export default function AddLoan() {
 
       const loanData = await loanResponse.json();
       
+      const monthlyEmi = loanData?.loan_details?.monthly_emi;
+      const emiText = monthlyEmi ? `€${monthlyEmi.toFixed(2)}` : 'N/A';
+      
       Alert.alert(
         language === 'et' ? 'Õnnestus' : 'Success',
         language === 'et' 
-          ? `Laen loodud!\nIgakuine makse: €${loanData.loan_details.monthly_emi.toFixed(2)}`
-          : `Loan created successfully!\nMonthly payment: €${loanData.loan_details.monthly_emi.toFixed(2)}`,
+          ? `Laen loodud!\nIgakuine makse: ${emiText}`
+          : `Loan created successfully!\nMonthly payment: ${emiText}`,
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error: any) {
