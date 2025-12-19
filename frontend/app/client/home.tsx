@@ -160,7 +160,7 @@ export default function ClientHome() {
   const fetchStatus = async (id: string) => {
     try {
       // Use offline sync manager for smart caching
-      const data = await OfflineSyncManager.syncStatus(id, API_URL);
+      const data = await OfflineSyncManager.syncStatus(id, API_BASE_URL);
       
       // Update offline indicator
       setIsOffline(data.offline || false);
