@@ -276,6 +276,10 @@ class Admin(BaseModel):
     password_hash: str
     role: str = "user"  # "admin" or "user"
     is_super_admin: bool = False
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class AdminCreate(BaseModel):
