@@ -34,7 +34,15 @@ export default function AdminLogin() {
 
     setLoading(true);
     try {
-      const loginUrl = getApiUrl('api/admin/login');
+      // Use hardcoded URL as ultimate fallback for APK builds
+      const HARDCODED_URL = 'https://loantrack-23.preview.emergentagent.com/api/admin/login';
+      let loginUrl = getApiUrl('api/admin/login');
+      
+      // Validate URL - if it doesn't look right, use hardcoded
+      if (!loginUrl || !loginUrl.includes('loantrack-23') || !loginUrl.includes('/api/')) {
+        console.log('URL validation failed, using hardcoded URL');
+        loginUrl = HARDCODED_URL;
+      }
       console.log('Attempting login to:', loginUrl);
 
       const response = await fetch(loginUrl, {
