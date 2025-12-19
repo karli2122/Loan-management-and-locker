@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getApiUrl, API_BASE_URL } from '../../src/utils/api';
 import QRCode from 'react-native-qrcode-svg';
 import { useLanguage } from '../../src/context/LanguageContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 // Android Enterprise provisioning QR code data
