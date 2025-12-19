@@ -21,7 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
 import OfflineSyncManager from '../../src/services/OfflineSyncManager';
-import { getApiUrl } from '../../src/utils/api';
+import { getApiUrl, API_BASE_URL } from '../../src/utils/api';
 
 interface ClientStatus {
   id: string;
