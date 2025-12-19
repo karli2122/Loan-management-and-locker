@@ -215,6 +215,12 @@ export default function LoanPlans() {
                       color={plan.is_active ? "#10B981" : "#64748B"}
                     />
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDeletePlan(plan)}
+                    style={styles.iconButton}
+                  >
+                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                  </TouchableOpacity>
                 </View>
               </View>
 
