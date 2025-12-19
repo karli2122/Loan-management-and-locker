@@ -655,28 +655,60 @@ export default function AdminSettings() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
-              {language === 'et' ? 'Muuda kasutajanime' : 'Edit Username'}
+              {language === 'et' ? 'Muuda profiili' : 'Edit Profile'}
             </Text>
             
+            <View style={styles.inputContainer}>
+              <Ionicons name="person-outline" size={20} color="#64748B" />
+              <TextInput
+                style={styles.input}
+                placeholder={language === 'et' ? 'Eesnimi' : 'First Name'}
+                placeholderTextColor="#64748B"
+                value={profileFirstName}
+                onChangeText={setProfileFirstName}
+              />
+            </View>
+
             <View style={styles.inputContainer}>
               <Ionicons name="person" size={20} color="#64748B" />
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'Kasutajanimi' : 'Username'}
+                placeholder={language === 'et' ? 'Perekonnanimi' : 'Last Name'}
                 placeholderTextColor="#64748B"
-                value={editUsername}
-                onChangeText={setEditUsername}
+                value={profileLastName}
+                onChangeText={setProfileLastName}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="mail" size={20} color="#64748B" />
+              <TextInput
+                style={styles.input}
+                placeholder={language === 'et' ? 'E-post' : 'Email'}
+                placeholderTextColor="#64748B"
+                value={profileEmail}
+                onChangeText={setProfileEmail}
+                keyboardType="email-address"
                 autoCapitalize="none"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="call" size={20} color="#64748B" />
+              <TextInput
+                style={styles.input}
+                placeholder={language === 'et' ? 'Telefoninumber' : 'Phone Number'}
+                placeholderTextColor="#64748B"
+                value={profilePhone}
+                onChangeText={setProfilePhone}
+                keyboardType="phone-pad"
               />
             </View>
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => {
-                  setShowEditProfile(false);
-                  setEditUsername('');
-                }}
+                onPress={() => setShowEditProfile(false)}
               >
                 <Text style={styles.cancelButtonText}>
                   {language === 'et' ? 'Tühista' : 'Cancel'}
