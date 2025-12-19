@@ -48,7 +48,12 @@ export default function AdminSettings() {
   const [newUserRole, setNewUserRole] = useState('user'); // 'admin' or 'user'
   const [currentPassword, setCurrentPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [editUsername, setEditUsername] = useState('');
+  
+  // Profile edit states
+  const [profileFirstName, setProfileFirstName] = useState('');
+  const [profileLastName, setProfileLastName] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
 
   useEffect(() => {
     loadData();
