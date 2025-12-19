@@ -72,6 +72,31 @@ This flag is:
 - Set to `true` when showing the prompt
 - Reset to `false` when the user makes a choice (either "Later" or after attempting to enable)
 
+### 4. **Extended Retry Mechanism**
+
+The retry mechanism waits for the user to complete the Android settings flow:
+
+```typescript
+const checkAdminStatusWithRetry = async (maxAttempts = 30, delayMs = 1000) => {
+  // Checks every 1 second for up to 30 seconds
+  // This gives users adequate time to:
+  // 1. Read the Android settings explanation
+  // 2. Click "Activate" button
+  // 3. Return to the app
+  ...
+}
+```
+
+**Why 30 seconds?** 
+- Opening Android settings takes 1-2 seconds
+- Reading explanation takes 3-5 seconds
+- User decision and tap takes 2-3 seconds
+- Return to app takes 1-2 seconds
+- Total typical flow: 7-12 seconds
+- 30 seconds provides comfortable buffer
+
+Previous issue: The retry mechanism only waited 2.5 seconds total (5 attempts × 500ms), which was too short for users to complete the permission flow. This caused the "Enable Now" button to appear non-functional.
+
 ## Code Location
 
 **File:** `/frontend/app/client/home.tsx`
@@ -123,10 +148,13 @@ Specific commit note: "Fix repeated admin mode prompt by adding Later button and
 1. Install the client app on an Android device
 2. Ensure Device Admin permissions are NOT granted initially
 3. Open the app and observe the permission dialog
-4. Test the "Later" button functionality
-5. Verify the prompt doesn't reappear within 30 seconds
-6. After 30+ seconds, background and foreground the app to trigger a new check
-7. Verify the prompt appears again (if admin still not granted)
+4. Click "Enable Now" button
+5. Android settings will open - click "Activate" to grant admin permissions
+6. The app will automatically detect the permission grant within 30 seconds
+7. Test the "Later" button functionality - prompt should dismiss
+8. Verify the prompt doesn't reappear within 30 seconds
+9. After 30+ seconds, background and foreground the app to trigger a new check
+10. Verify the prompt appears again (if admin still not granted)
 
 ### Automated Testing Considerations
 If adding automated tests in the future, consider testing:
@@ -134,6 +162,7 @@ If adding automated tests in the future, consider testing:
 - The concurrent request flag behavior
 - The "Later" button handler
 - The state transitions when admin is granted/denied
+- The retry mechanism timeout (30 seconds for user to complete action)
 
 ## Implementation Details
 

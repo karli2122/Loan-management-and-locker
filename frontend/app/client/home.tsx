@@ -107,7 +107,8 @@ export default function ClientHome() {
   }, [getPushToken]);
 
   // Retry mechanism for checking admin status after request
-  const checkAdminStatusWithRetry = async (maxAttempts = 5, delayMs = 500) => {
+  // Gives user up to 30 seconds to complete the admin permission flow
+  const checkAdminStatusWithRetry = async (maxAttempts = 30, delayMs = 1000) => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       await new Promise(resolve => setTimeout(resolve, delayMs));
       const isActive = await devicePolicy.isAdminActive();
@@ -124,7 +125,7 @@ export default function ClientHome() {
       }
       console.log(`Admin check attempt ${attempt}/${maxAttempts} - not active yet`);
     }
-    console.log('Admin status check timed out');
+    console.log('Admin status check timed out - user may not have granted permission');
     return false;
   };
 
