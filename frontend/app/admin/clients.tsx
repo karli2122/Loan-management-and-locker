@@ -41,8 +41,9 @@ export default function ClientsList() {
 
   const fetchClients = async () => {
     try {
+      const token = await AsyncStorage.getItem('admin_token');
       // Fetch with pagination - get first 500 records (increased limit for admin panel)
-      const response = await fetch(`${API_BASE_URL}/api/clients?limit=500`);
+      const response = await fetch(`${API_BASE_URL}/api/clients?limit=500&admin_token=${token}`);
       const data = await response.json();
       
       // Handle both old and new API response format
