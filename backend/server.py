@@ -529,12 +529,25 @@ async def verify_admin_token_header(token: str) -> bool:
 
 async def enforce_client_scope(client: dict, admin_id: Optional[str]):
     """Ensure the requested client belongs to the provided admin scope"""
+    if not admin_id:
+        # No admin_id provided - client must not have admin_id either (legacy access)
+        if client.get("admin_id"):
+            raise HTTPException(status_code=403, detail="Client is assigned to an admin")
+        return
+    
+    # Check if admin is super admin
+    admin = await db.admins.find_one({"id": admin_id})
+    if admin and admin.get("is_super_admin", False):
+        # Super admin can access any client
+        return
+    
+    # For regular admins, check ownership
     if client.get("admin_id"):
-        if not admin_id or client["admin_id"] != admin_id:
+        if client["admin_id"] != admin_id:
             raise HTTPException(status_code=403, detail="Client not accessible for this admin")
-    elif admin_id:
-        logger.warning(f"Admin {admin_id} attempted to access unassigned client {client['id']}")
-        raise HTTPException(status_code=403, detail="Client not assigned to this admin")
+    else:
+        # Client has no admin_id (legacy) - allow access for any admin
+        logger.info(f"Admin {admin_id} accessing unassigned client {client['id']}")
 
 @api_router.post("/admin/register", response_model=AdminResponse)
 async def register_admin(admin_data: AdminCreate, admin_token: str = Query(default=None)):
@@ -776,15 +789,33 @@ async def get_all_clients(skip: int = 0, limit: int = 100, admin_id: Optional[st
     Args:
         skip: Number of records to skip (default: 0)
         limit: Maximum number of records to return (default: 100, max: 500)
+        admin_id: Optional admin ID for filtering. Required for non-super admins.
     """
     # Cap limit at 500 to prevent excessive data transfer
     limit = min(limit, 500)
     
-    if not admin_id:
+    # Build query based on admin privileges
+    query = {}
+    
+    if admin_id:
+        # Check if this admin is a super admin
+        admin = await db.admins.find_one({"id": admin_id})
+        if admin and admin.get("is_super_admin", False):
+            # Super admin sees all clients
+            logger.info(f"Super admin {admin_id} accessing all clients")
+            query = {}  # No filter - return all clients
+        else:
+            # Regular admin sees only their clients OR clients without admin_id (legacy data)
+            logger.info(f"Admin {admin_id} accessing their clients and unassigned clients")
+            query = {"$or": [
+                {"admin_id": admin_id},
+                {"admin_id": {"$exists": False}},
+                {"admin_id": None}
+            ]}
+    else:
+        # No admin_id provided - reject the request
         logger.warning("admin_id not provided for client listing; rejecting request")
         raise HTTPException(status_code=400, detail="admin_id is required for client listings")
-    
-    query = {"admin_id": admin_id}
     
     # Get total count for pagination metadata
     total_count = await db.clients.count_documents(query)
