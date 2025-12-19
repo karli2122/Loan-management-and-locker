@@ -709,28 +709,44 @@ async def delete_admin(admin_id: str, admin_token: str):
 # ===================== CLIENT MANAGEMENT ROUTES =====================
 
 @api_router.post("/clients", response_model=Client)
-async def create_client(client_data: ClientCreate):
-    client = Client(**client_data.dict())
+async def create_client(client_data: ClientCreate, admin_token: str):
+    """Create a new client - requires admin authentication"""
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    client = Client(**client_data.dict(), admin_id=token_doc["admin_id"])
     await db.clients.insert_one(client.dict())
     return client
 
 @api_router.get("/clients")
-async def get_all_clients(skip: int = 0, limit: int = 100):
-    """Get all clients with pagination
+async def get_all_clients(admin_token: str, skip: int = 0, limit: int = 100):
+    """Get all clients for the authenticated admin with pagination
     
     Args:
+        admin_token: Admin authentication token
         skip: Number of records to skip (default: 0)
         limit: Maximum number of records to return (default: 100, max: 500)
     """
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    admin_id = token_doc["admin_id"]
+    
     # Cap limit at 500 to prevent excessive data transfer
     limit = min(limit, 500)
     
+    # Filter by admin_id - only show clients created by this admin
+    # Also include clients with no admin_id (legacy data) for backwards compatibility
+    query = {"$or": [{"admin_id": admin_id}, {"admin_id": None}, {"admin_id": {"$exists": False}}]}
+    
     # Get total count for pagination metadata
-    total_count = await db.clients.count_documents({})
+    total_count = await db.clients.count_documents(query)
     
     # Fetch paginated clients - removed projection to avoid Pydantic validation errors
     # The Client model requires all fields, projection would cause missing field errors
-    clients = await db.clients.find().skip(skip).limit(limit).to_list(limit)
+    clients = await db.clients.find(query).skip(skip).limit(limit).to_list(limit)
     
     return {
         "clients": [Client(**c) for c in clients],
