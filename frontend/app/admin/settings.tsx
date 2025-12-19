@@ -233,25 +233,17 @@ export default function AdminSettings() {
   };
 
   const handleUpdateProfile = async () => {
-    if (!editUsername.trim()) {
-      Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Palun sisesta kasutajanimi' : 'Please enter a username'
-      );
-      return;
-    }
-
-    if (editUsername.trim() === currentUsername) {
-      setShowEditProfile(false);
-      return;
-    }
-
     setActionLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/admin/profile?admin_token=${adminToken}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: editUsername.trim() }),
+        body: JSON.stringify({
+          first_name: profileFirstName,
+          last_name: profileLastName,
+          email: profileEmail,
+          phone: profilePhone,
+        }),
       });
 
       const data = await response.json();
@@ -259,10 +251,6 @@ export default function AdminSettings() {
       if (!response.ok) {
         throw new Error(data.detail || 'Failed to update profile');
       }
-
-      // Update local storage and state
-      await AsyncStorage.setItem('admin_username', editUsername.trim());
-      setCurrentUsername(editUsername.trim());
       
       Alert.alert(
         language === 'et' ? 'Õnnestus' : 'Success',
