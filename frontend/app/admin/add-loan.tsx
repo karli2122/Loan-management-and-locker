@@ -97,8 +97,10 @@ export default function AddLoan() {
   };
 
   const filteredClients = clients.filter(c =>
-    c.name.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
-    c.phone.includes(clientSearchQuery)
+    c && c.name && c.phone && (
+      c.name.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
+      c.phone.includes(clientSearchQuery)
+    )
   );
 
   const handlePlanSelect = (plan: LoanPlan) => {
@@ -202,7 +204,9 @@ export default function AddLoan() {
       const loanData = await loanResponse.json();
       
       const monthlyEmi = loanData?.loan_details?.monthly_emi;
-      const emiText = monthlyEmi ? `€${monthlyEmi.toFixed(2)}` : 'N/A';
+      const emiText = (typeof monthlyEmi === 'number' && !isNaN(monthlyEmi)) 
+        ? `€${monthlyEmi.toFixed(2)}` 
+        : 'N/A';
       
       Alert.alert(
         language === 'et' ? 'Õnnestus' : 'Success',
