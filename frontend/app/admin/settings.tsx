@@ -298,7 +298,7 @@ export default function AdminSettings() {
 
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/admin/update-profile?admin_token=${adminToken}`, {
+      const response = await fetch(`${API_URL}/api/admin/profile?admin_token=${adminToken}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -512,7 +512,11 @@ export default function AdminSettings() {
             </View>
             <View style={styles.userInfo}>
               <Text style={styles.userName}>{editFirstName} {editLastName}</Text>
-              <Text style={styles.userRole}>{language === 'et' ? 'Administraator' : 'Administrator'}</Text>
+              <Text style={styles.userRole}>
+                {currentUserRole === 'admin' 
+                  ? (language === 'et' ? 'Administraator' : 'Administrator')
+                  : (language === 'et' ? 'Kasutaja' : 'User')}
+              </Text>
             </View>
           </View>
 

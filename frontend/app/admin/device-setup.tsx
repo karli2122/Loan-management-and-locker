@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
   Share,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -47,6 +48,7 @@ export default function DeviceSetup() {
   const [clients, setClients] = useState<any[]>([]);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [qrType, setQrType] = useState<'simple' | 'enterprise'>('simple');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchClients();
@@ -55,7 +57,8 @@ export default function DeviceSetup() {
   const fetchClients = async () => {
     try {
       const adminId = await AsyncStorage.getItem('admin_id');
-      const query = adminId ? `?admin_id=${adminId}` : '';
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      const query = adminId ? `?admin_id=${adminId}&admin_token=${adminToken}` : `?admin_token=${adminToken}`;
       const response = await fetch(`${API_URL}/api/clients${query}`);
       const data = await response.json();
       // Only show unregistered clients
@@ -70,6 +73,11 @@ export default function DeviceSetup() {
       console.error('Failed to fetch clients:', error);
     }
   };
+
+  const filteredClients = clients.filter((client) =>
+    client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    client.registration_code.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleShare = async () => {
     if (!selectedClient) return;
@@ -105,51 +113,54 @@ export default function DeviceSetup() {
       </View>
 
       <ScrollView style={styles.content}>
-        {/* Instructions */}
-        <View style={styles.infoCard}>
-          <Ionicons name="information-circle" size={24} color="#3B82F6" />
-          <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>
-              {language === 'et' ? 'Automaatne seadistus' : 'Automatic Setup'}
-            </Text>
-            <Text style={styles.infoText}>
-              {language === 'et' 
-                ? 'Skannige QR-kood uuel või tehaseseadetega telefonil, et seadistada laenu kaitse automaatselt.'
-                : 'Scan the QR code on a new or factory-reset phone to automatically set up loan protection.'}
-            </Text>
-          </View>
-        </View>
-
         {/* Client Selection */}
         <Text style={styles.sectionTitle}>
           {language === 'et' ? 'Vali klient' : 'Select Client'}
         </Text>
         
-        {clients.length === 0 ? (
+        {/* Search Field */}
+        <TextInput
+          style={styles.searchInput}
+          placeholder={language === 'et' ? 'Otsi klienti...' : 'Search client...'}
+          placeholderTextColor="#64748B"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        
+        {filteredClients.length === 0 ? (
           <View style={styles.emptyCard}>
             <Ionicons name="checkmark-circle" size={48} color="#10B981" />
             <Text style={styles.emptyText}>
-              {language === 'et' 
-                ? 'Kõik kliendid on registreeritud'
-                : 'All clients are registered'}
+              {searchQuery ? (
+                language === 'et' ? 'Kliente ei leitud' : 'No clients found'
+              ) : (
+                language === 'et' 
+                  ? 'Kõik kliendid on registreeritud'
+                  : 'All clients are registered'
+              )}
             </Text>
           </View>
         ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.clientList}>
-            {clients.map((client) => (
+          <View style={styles.clientListVertical}>
+            {filteredClients.map((client) => (
               <TouchableOpacity
                 key={client.id}
                 style={[
-                  styles.clientCard,
+                  styles.clientCardVertical,
                   selectedClient?.id === client.id && styles.clientCardSelected
                 ]}
                 onPress={() => setSelectedClient(client)}
               >
-                <Text style={styles.clientName}>{client.name}</Text>
-                <Text style={styles.clientCode}>{client.registration_code}</Text>
+                <View style={styles.clientCardContent}>
+                  <Text style={styles.clientName}>{client.name}</Text>
+                  <Text style={styles.clientCode}>{client.registration_code}</Text>
+                </View>
+                {selectedClient?.id === client.id && (
+                  <Ionicons name="checkmark-circle" size={24} color="#4F46E5" />
+                )}
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
         )}
 
         {/* QR Type Selection */}
@@ -204,18 +215,13 @@ export default function DeviceSetup() {
               </Text>
               {qrType === 'simple' ? (
                 <View style={styles.instructionsList}>
-                  <Text style={styles.instructionItem}>1. {language === 'et' ? 'Installige Loan Client rakendus telefonile' : 'Install Loan Client app on the phone'}</Text>
-                  <Text style={styles.instructionItem}>2. {language === 'et' ? 'Avage rakendus ja sisestage registreerimiskood' : 'Open the app and enter the registration code'}</Text>
-                  <Text style={styles.instructionItem}>3. {language === 'et' ? 'Vajutage "Registreeri seade"' : 'Press "Register Device"'}</Text>
-                  <Text style={styles.instructionItem}>4. {language === 'et' ? 'Lubage administraatori õigused järgmises dialoogis' : 'Grant admin permissions in the next dialog'}</Text>
-                  <Text style={styles.instructionItem}>5. {language === 'et' ? 'Seade on nüüd kaitstud ja lukustatav' : 'Device is now protected and can be locked'}</Text>
+                  <Text style={styles.instructionItem}>1. {language === 'et' ? 'Skannige QR-kood' : 'Scan the QR code'}</Text>
+                  <Text style={styles.instructionItem}>2. {language === 'et' ? 'Seade seadistatakse' : 'Device will be configured'}</Text>
                 </View>
               ) : (
                 <View style={styles.instructionsList}>
-                  <Text style={styles.instructionItem}>1. {language === 'et' ? 'Tehke telefonil tehaseseaded' : 'Factory reset the phone'}</Text>
-                  <Text style={styles.instructionItem}>2. {language === 'et' ? 'Tervitusekraanil puudutage 6 korda' : 'On welcome screen, tap 6 times'}</Text>
-                  <Text style={styles.instructionItem}>3. {language === 'et' ? 'Skannige see QR-kood' : 'Scan this QR code'}</Text>
-                  <Text style={styles.instructionItem}>4. {language === 'et' ? 'Seade seadistatakse automaatselt' : 'Device will set up automatically'}</Text>
+                  <Text style={styles.instructionItem}>1. {language === 'et' ? 'Skannige QR-kood' : 'Scan the QR code'}</Text>
+                  <Text style={styles.instructionItem}>2. {language === 'et' ? 'Järgige seadme juhiseid' : 'Follow device instructions'}</Text>
                 </View>
               )}
             </View>
@@ -295,6 +301,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#CBD5E1',
     marginBottom: 12,
+  },
+  searchInput: {
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 16,
+    color: '#fff',
+    borderWidth: 1,
+    borderColor: '#334155',
+    marginBottom: 16,
+  },
+  clientListVertical: {
+    marginBottom: 24,
+  },
+  clientCardVertical: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  clientCardContent: {
+    flex: 1,
   },
   clientList: {
     marginBottom: 24,

@@ -529,12 +529,30 @@ async def verify_admin_token_header(token: str) -> bool:
 
 async def enforce_client_scope(client: dict, admin_id: Optional[str]):
     """Ensure the requested client belongs to the provided admin scope"""
+    if not admin_id:
+        # No admin_id provided - client must not have admin_id either (legacy access)
+        if client.get("admin_id"):
+            raise HTTPException(status_code=403, detail="Client is assigned to an admin")
+        return
+    
+    try:
+        # Check if admin is super admin
+        admin = await db.admins.find_one({"id": admin_id})
+        if admin and admin.get("is_super_admin", False):
+            # Super admin can access any client
+            return
+    except Exception as e:
+        logger.error(f"Error checking admin privileges: {e}")
+        # Continue with regular access check on error
+    
+    # For regular admins, check ownership strictly
     if client.get("admin_id"):
-        if not admin_id or client["admin_id"] != admin_id:
+        if client["admin_id"] != admin_id:
             raise HTTPException(status_code=403, detail="Client not accessible for this admin")
-    elif admin_id:
+    else:
+        # Client has no admin_id - deny access for regular admins (strict filtering)
         logger.warning(f"Admin {admin_id} attempted to access unassigned client {client['id']}")
-        raise HTTPException(status_code=403, detail="Client not assigned to this admin")
+        raise HTTPException(status_code=403, detail="Client not assigned to any admin")
 
 @api_router.post("/admin/register", response_model=AdminResponse)
 async def register_admin(admin_data: AdminCreate, admin_token: str = Query(default=None)):
@@ -681,7 +699,39 @@ class ProfileUpdate(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
 
-@api_router.put("/admin/update-profile")
+class ProfileResponse(BaseModel):
+    id: str
+    username: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    role: str
+    is_super_admin: bool
+
+@api_router.get("/admin/profile", response_model=ProfileResponse)
+async def get_admin_profile(admin_token: str = Query(...)):
+    """Get current admin profile information"""
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    admin = await db.admins.find_one({"id": token_doc["admin_id"]})
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    
+    return ProfileResponse(
+        id=admin["id"],
+        username=admin["username"],
+        first_name=admin.get("first_name"),
+        last_name=admin.get("last_name"),
+        email=admin.get("email"),
+        phone=admin.get("phone"),
+        role=admin.get("role", "user"),
+        is_super_admin=admin.get("is_super_admin", False)
+    )
+
+@api_router.put("/admin/profile")
 async def update_admin_profile(profile_data: ProfileUpdate, admin_token: str = Query(...)):
     """Update admin profile information"""
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
@@ -776,32 +826,58 @@ async def get_all_clients(skip: int = 0, limit: int = 100, admin_id: Optional[st
     Args:
         skip: Number of records to skip (default: 0)
         limit: Maximum number of records to return (default: 100, max: 500)
+        admin_id: Optional admin ID for filtering. Required for non-super admins.
     """
-    # Cap limit at 500 to prevent excessive data transfer
-    limit = min(limit, 500)
-    
-    if not admin_id:
-        logger.warning("admin_id not provided for client listing; rejecting request")
-        raise HTTPException(status_code=400, detail="admin_id is required for client listings")
-    
-    query = {"admin_id": admin_id}
-    
-    # Get total count for pagination metadata
-    total_count = await db.clients.count_documents(query)
-    
-    # Fetch paginated clients - removed projection to avoid Pydantic validation errors
-    # The Client model requires all fields, projection would cause missing field errors
-    clients = await db.clients.find(query).skip(skip).limit(limit).to_list(limit)
-    
-    return {
-        "clients": [Client(**c) for c in clients],
-        "pagination": {
-            "total": total_count,
-            "skip": skip,
-            "limit": limit,
-            "has_more": skip + limit < total_count
+    try:
+        # Cap limit at 500 to prevent excessive data transfer
+        limit = min(limit, 500)
+        
+        # Build query based on admin privileges
+        query = {}
+        
+        if admin_id:
+            try:
+                # Check if this admin is a super admin
+                admin = await db.admins.find_one({"id": admin_id})
+                if admin and admin.get("is_super_admin", False):
+                    # Super admin sees all clients
+                    logger.info(f"Super admin {admin_id} accessing all clients")
+                    query = {}  # No filter - return all clients
+                else:
+                    # Regular admin sees ONLY their clients (strict filtering)
+                    logger.info(f"Admin {admin_id} accessing their clients only")
+                    query = {"admin_id": admin_id}
+            except Exception as e:
+                logger.error(f"Error checking admin privileges, defaulting to strict filtering: {e}")
+                # On error, use strict filtering
+                query = {"admin_id": admin_id}
+        else:
+            # No admin_id provided - reject the request
+            logger.warning("admin_id not provided for client listing; rejecting request")
+            raise HTTPException(status_code=400, detail="admin_id is required for client listings")
+        
+        # Get total count for pagination metadata
+        total_count = await db.clients.count_documents(query)
+        
+        # Fetch paginated clients - removed projection to avoid Pydantic validation errors
+        # The Client model requires all fields, projection would cause missing field errors
+        clients = await db.clients.find(query).skip(skip).limit(limit).to_list(limit)
+        
+        return {
+            "clients": [Client(**c) for c in clients],
+            "pagination": {
+                "total": total_count,
+                "skip": skip,
+                "limit": limit,
+                "has_more": skip + limit < total_count
+            }
         }
-    }
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching clients: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch clients")
 
 @api_router.get("/clients/{client_id}", response_model=Client)
 async def get_client(client_id: str, admin_id: Optional[str] = Query(default=None)):
@@ -1107,19 +1183,53 @@ async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token:
     return LoanPlan(**updated_plan)
 
 @api_router.delete("/loan-plans/{plan_id}")
-async def delete_loan_plan(plan_id: str, admin_token: str = Query(...)):
-    """Delete a loan plan permanently"""
+async def delete_loan_plan(plan_id: str, admin_token: str = Query(...), permanent: bool = Query(default=False)):
+    """Delete a loan plan (soft delete by default, permanent delete optional)
+    
+    Args:
+        plan_id: ID of the loan plan to delete
+        admin_token: Admin authentication token
+        permanent: If True, permanently delete; if False (default), soft delete (deactivate)
+    """
     if not await verify_admin_token_header(admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
     
-    # Hard delete - remove from database
-    result = await db.loan_plans.delete_one({"id": plan_id})
-    
-    if result.deleted_count == 0:
+    # Check if plan exists
+    plan = await db.loan_plans.find_one({"id": plan_id})
+    if not plan:
         raise HTTPException(status_code=404, detail="Loan plan not found")
     
-    logger.info(f"Loan plan deleted: {plan_id}")
-    return {"message": "Loan plan deleted successfully"}
+    if permanent:
+        # Safety check: Cannot permanently delete if clients have loans with this plan
+        clients_with_plan = await db.clients.find_one({
+            "loan_plan_id": plan_id,
+            "outstanding_balance": {"$gt": 0}
+        })
+        
+        if clients_with_plan:
+            raise HTTPException(
+                status_code=400, 
+                detail="Cannot permanently delete loan plan: Clients with pending loans are using this plan. Please deactivate instead."
+            )
+        
+        # Hard delete - remove from database
+        result = await db.loan_plans.delete_one({"id": plan_id})
+        logger.info(f"Loan plan permanently deleted: {plan_id}")
+        return {"message": "Loan plan permanently deleted", "deleted": True}
+    else:
+        # Soft delete - deactivate the plan
+        result = await db.loan_plans.update_one(
+            {"id": plan_id},
+            {"$set": {"is_active": False}}
+        )
+        
+        if result.modified_count == 0 and not plan.get("is_active", True):
+            # Plan was already inactive
+            logger.info(f"Loan plan already inactive: {plan_id}")
+            return {"message": "Loan plan already deactivated", "deleted": False}
+        
+        logger.info(f"Loan plan deactivated (soft delete): {plan_id}")
+        return {"message": "Loan plan deactivated successfully", "deleted": False}
 
 # ===================== EMI CALCULATOR =====================
 

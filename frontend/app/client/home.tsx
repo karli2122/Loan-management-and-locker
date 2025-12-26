@@ -107,8 +107,8 @@ export default function ClientHome() {
   }, [getPushToken]);
 
   // Retry mechanism for checking admin status after request
-  // Gives user up to 30 seconds to complete the admin permission flow
-  const checkAdminStatusWithRetry = async (maxAttempts = 30, delayMs = 1000) => {
+  // Gives user up to 15 seconds to complete the admin permission flow (reduced from 30)
+  const checkAdminStatusWithRetry = async (maxAttempts = 15, delayMs = 1000) => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       await new Promise(resolve => setTimeout(resolve, delayMs));
       const isActive = await devicePolicy.isAdminActive();
@@ -172,19 +172,47 @@ export default function ClientHome() {
               text: language === 'et' ? 'Luba kohe' : 'Enable Now',
               onPress: async () => {
                 try {
-                  await devicePolicy.requestAdmin();
-                  console.log('Device Admin request dispatched');
-                  // Use retry mechanism to check admin status
-                  const granted = await checkAdminStatusWithRetry();
-                  if (granted) {
+                  console.log('User pressed Enable Now - requesting admin');
+                  const result = await devicePolicy.requestAdmin();
+                  console.log('Device Admin request result:', result);
+                  
+                  // Only show error if module is truly unavailable
+                  if (result === 'error_module_not_available') {
+                    console.error('Device Admin module not available');
+                    Alert.alert(
+                      language === 'et' ? 'Viga' : 'Error',
+                      language === 'et' 
+                        ? 'Seadme administraatori moodul pole saadaval. Palun veenduge, et rakendus on õigesti paigaldatud.'
+                        : 'Device Admin module not available. Please ensure the app is properly installed.'
+                    );
                     isRequestingAdmin.current = false;
-                  } else {
-                    // If not granted after retries, reset flag so user can try again
-                    isRequestingAdmin.current = false;
+                    return;
                   }
+                  
+                  // For 'dispatched', 'success', or any other non-error result, wait for user response
+                  // Use retry mechanism to check admin status (non-blocking)
+                  checkAdminStatusWithRetry().then(granted => {
+                    if (granted) {
+                      console.log('Admin permission granted');
+                      isRequestingAdmin.current = false;
+                    } else {
+                      console.log('Admin permission not granted after waiting - user may have dismissed dialog');
+                      // Reset flag so user can try again
+                      isRequestingAdmin.current = false;
+                    }
+                  }).catch(e => {
+                    console.log('Admin check failed:', e);
+                    isRequestingAdmin.current = false;
+                  });
                 } catch (e) {
                   console.log('Admin request failed:', e);
                   isRequestingAdmin.current = false;
+                  Alert.alert(
+                    language === 'et' ? 'Viga' : 'Error',
+                    language === 'et' 
+                      ? 'Administraatori õiguste taotlemine ebaõnnestus.'
+                      : 'Failed to request admin permissions.'
+                  );
                 }
               },
             },
@@ -422,7 +450,17 @@ export default function ClientHome() {
       appState.current = nextAppState;
     });
 
-    // Block back button when locked
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      subscription.remove();
+      isMounted.current = false;
+    };
+  }, [clientId]);
+
+  // Separate effect for back button handler that depends on lock status
+  useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       if (status?.is_locked) {
         return true; // Prevent going back when locked
@@ -431,14 +469,9 @@ export default function ClientHome() {
     });
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-      subscription.remove();
       backHandler.remove();
-      isMounted.current = false;
     };
-  }, [clientId, status?.is_locked]);
+  }, [status?.is_locked]);
 
   // Initialize protection and check for reboot (tamper detection disabled to prevent crashes)
   useEffect(() => {
@@ -678,10 +711,36 @@ export default function ClientHome() {
               style={styles.enableProtectionButton}
               onPress={async () => {
                 console.log('Enable button pressed - requesting Device Admin');
-                const result = await devicePolicy.requestAdmin();
-                console.log('Device Admin request result:', result);
-                // Re-check admin status after request
-                await checkAdminStatusWithRetry();
+                try {
+                  const result = await devicePolicy.requestAdmin();
+                  console.log('Device Admin request result:', result);
+                  
+                  // Only show error if module is truly unavailable
+                  if (result === 'error_module_not_available') {
+                    console.error('Device Admin module not available');
+                    Alert.alert(
+                      language === 'et' ? 'Viga' : 'Error',
+                      language === 'et' 
+                        ? 'Seadme administraatori moodul pole saadaval. Palun veenduge, et rakendus on õigesti paigaldatud.'
+                        : 'Device Admin module not available. Please ensure the app is properly installed.'
+                    );
+                    return;
+                  }
+                  
+                  // For 'dispatched', 'success', or any other non-error result, wait for user response
+                  // Re-check admin status after request (non-blocking)
+                  checkAdminStatusWithRetry().catch(err => {
+                    console.error('Admin status check error:', err);
+                  });
+                } catch (error) {
+                  console.error('Enable button error:', error);
+                  Alert.alert(
+                    language === 'et' ? 'Viga' : 'Error',
+                    language === 'et' 
+                      ? 'Administraatori õiguste taotlemine ebaõnnestus.'
+                      : 'Failed to request admin permissions.'
+                  );
+                }
               }}
             >
               <Text style={styles.enableProtectionText}>

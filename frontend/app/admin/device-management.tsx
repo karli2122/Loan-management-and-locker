@@ -34,7 +34,8 @@ export default function DeviceManagement() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/stats`);
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      const response = await fetch(`${API_URL}/api/stats?admin_token=${adminToken}`);
       const data = await response.json();
       setStats(data);
     } catch (error) {
@@ -167,7 +168,7 @@ export default function DeviceManagement() {
                 {language === 'et' ? 'Seadme seadistus' : 'Device Setup'}
               </Text>
               <Text style={styles.actionDescription}>
-                {language === 'et' ? 'QR-kood automaatseks seadistuseks' : 'QR code for automatic setup'}
+                {language === 'et' ? 'QR-kood seadme seadistamiseks' : 'QR code for device setup'}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
