@@ -34,10 +34,11 @@ export default function Reports() {
 
   const fetchReports = async () => {
     try {
+      const token = await AsyncStorage.getItem('admin_token');
       const [collection, clients, financial] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/reports/collection`).then(r => r.json()),
-        fetch(`${API_BASE_URL}/api/reports/clients`).then(r => r.json()),
-        fetch(`${API_BASE_URL}/api/reports/financial`).then(r => r.json()),
+        fetch(`${API_BASE_URL}/api/reports/collection?admin_token=${token}`).then(r => r.json()),
+        fetch(`${API_BASE_URL}/api/reports/clients?admin_token=${token}`).then(r => r.json()),
+        fetch(`${API_BASE_URL}/api/reports/financial?admin_token=${token}`).then(r => r.json()),
       ]);
       
       setCollectionReport(collection);
