@@ -135,12 +135,13 @@ export default function LoanManagement() {
       
       // Fetch payment history
       if (clientData.loan_start_date) {
-        const paymentsRes = await fetch(`${API_URL}/api/loans/${id}/payments`);
+        const adminToken = await AsyncStorage.getItem('admin_token');
+        const paymentsRes = await fetch(`${API_URL}/api/loans/${id}/payments?admin_token=${adminToken}`);
         const paymentsData = await paymentsRes.json();
         setPayments(paymentsData.payments || []);
         
         // Fetch payment schedule
-        const scheduleRes = await fetch(`${API_URL}/api/loans/${id}/schedule`);
+        const scheduleRes = await fetch(`${API_URL}/api/loans/${id}/schedule?admin_token=${adminToken}`);
         const scheduleData = await scheduleRes.json();
         setSchedule(scheduleData.schedule || []);
       }
@@ -160,7 +161,8 @@ export default function LoanManagement() {
 
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/loans/${id}/setup`, {
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      const response = await fetch(`${API_URL}/api/loans/${id}/setup?admin_token=${adminToken}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -200,7 +202,8 @@ export default function LoanManagement() {
 
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/loans/${id}/update`, {
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      const response = await fetch(`${API_URL}/api/loans/${id}/update?admin_token=${adminToken}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -263,7 +266,8 @@ export default function LoanManagement() {
   const handleUpdateSettings = async () => {
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/loans/${id}/settings`, {
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      const response = await fetch(`${API_URL}/api/loans/${id}/settings?admin_token=${adminToken}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

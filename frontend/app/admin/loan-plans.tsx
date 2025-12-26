@@ -54,7 +54,8 @@ export default function LoanPlans() {
 
   const fetchPlans = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/loan-plans`);
+      const token = await AsyncStorage.getItem('admin_token');
+      const response = await fetch(`${API_URL}/api/loan-plans?admin_token=${token}`);
       const data = await response.json();
       setPlans(data);
     } catch (error) {

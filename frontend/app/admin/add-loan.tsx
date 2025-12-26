@@ -70,7 +70,8 @@ export default function AddLoan() {
   const fetchClients = async () => {
     try {
       const adminId = await AsyncStorage.getItem('admin_id');
-      const query = adminId ? `?limit=500&admin_id=${adminId}` : '?limit=500';
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      const query = adminId ? `?limit=500&admin_id=${adminId}&admin_token=${adminToken}` : `?limit=500&admin_token=${adminToken}`;
       const response = await fetch(`${API_URL}/api/clients${query}`);
       if (response.ok) {
         const data = await response.json();
@@ -86,8 +87,9 @@ export default function AddLoan() {
 
   const fetchLoanPlans = async () => {
     try {
-      console.log('Fetching loan plans from:', `${API_URL}/api/loan-plans?active_only=true`);
-      const response = await fetch(`${API_URL}/api/loan-plans?active_only=true`);
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      console.log('Fetching loan plans from:', `${API_URL}/api/loan-plans?active_only=true&admin_token=${adminToken}`);
+      const response = await fetch(`${API_URL}/api/loan-plans?active_only=true&admin_token=${adminToken}`);
       console.log('Loan plans response status:', response.status);
       if (response.ok) {
         const data = await response.json();
@@ -172,7 +174,8 @@ export default function AddLoan() {
       // Create new client if needed
       if (clientMode === 'new') {
         const adminId = await AsyncStorage.getItem('admin_id');
-        const clientResponse = await fetch(`${API_URL}/api/clients`, {
+        const adminToken = await AsyncStorage.getItem('admin_token');
+        const clientResponse = await fetch(`${API_URL}/api/clients?admin_token=${adminToken}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -194,7 +197,8 @@ export default function AddLoan() {
       }
 
       // Setup loan for the client
-      const loanResponse = await fetch(`${API_URL}/api/loans/${clientId}/setup`, {
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      const loanResponse = await fetch(`${API_URL}/api/loans/${clientId}/setup?admin_token=${adminToken}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

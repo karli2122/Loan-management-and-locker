@@ -34,7 +34,8 @@ export default function DeviceManagement() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/stats`);
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      const response = await fetch(`${API_URL}/api/stats?admin_token=${adminToken}`);
       const data = await response.json();
       setStats(data);
     } catch (error) {
