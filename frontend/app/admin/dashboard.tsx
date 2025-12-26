@@ -46,7 +46,8 @@ export default function Dashboard() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/reports/collection`);
+      const token = await AsyncStorage.getItem('admin_token');
+      const response = await fetch(`${API_BASE_URL}/api/reports/collection?admin_token=${token}`);
       const data = await response.json();
       
       setLoanStats({
