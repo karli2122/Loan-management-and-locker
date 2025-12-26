@@ -6,6 +6,7 @@
     "admin-development": {
       "developmentClient": true,
       "distribution": "internal",
+      "node": "18.18.0",
       "env": {
         "APP_MODE": "admin",
         "EXPO_PUBLIC_BACKEND_URL": "https://apkdebug.preview.emergentagent.com"
@@ -16,6 +17,7 @@
     },
     "admin-preview": {
       "distribution": "internal",
+      "node": "18.18.0",
       "env": {
         "APP_MODE": "admin",
         "EXPO_PUBLIC_BACKEND_URL": "https://apkdebug.preview.emergentagent.com"
@@ -25,6 +27,7 @@
       }
     },
     "admin-production": {
+      "node": "18.18.0",
       "env": {
         "APP_MODE": "admin",
         "EXPO_PUBLIC_BACKEND_URL": "https://apkdebug.preview.emergentagent.com"
@@ -36,6 +39,7 @@
     "client-development": {
       "developmentClient": true,
       "distribution": "internal",
+      "node": "18.18.0",
       "env": {
         "APP_MODE": "client",
         "EXPO_PUBLIC_BACKEND_URL": "https://apkdebug.preview.emergentagent.com"
@@ -46,6 +50,7 @@
     },
     "client-preview": {
       "distribution": "internal",
+      "node": "18.18.0",
       "env": {
         "APP_MODE": "client",
         "EXPO_PUBLIC_BACKEND_URL": "https://apkdebug.preview.emergentagent.com"
@@ -55,6 +60,7 @@
       }
     },
     "client-production": {
+      "node": "18.18.0",
       "env": {
         "APP_MODE": "client",
         "EXPO_PUBLIC_BACKEND_URL": "https://apkdebug.preview.emergentagent.com"
