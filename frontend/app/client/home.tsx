@@ -176,26 +176,27 @@ export default function ClientHome() {
                   const result = await devicePolicy.requestAdmin();
                   console.log('Device Admin request result:', result);
                   
-                  // Check if the request was dispatched successfully
-                  if (result === 'error' || result === 'error_module_not_available') {
-                    console.error('Device Admin module not available or error occurred');
+                  // Only show error if module is truly unavailable
+                  if (result === 'error_module_not_available') {
+                    console.error('Device Admin module not available');
                     Alert.alert(
                       language === 'et' ? 'Viga' : 'Error',
                       language === 'et' 
-                        ? 'Administraatori õiguste taotlemine ebaõnnestus. Palun proovige uuesti.'
-                        : 'Failed to request admin permissions. Please try again.'
+                        ? 'Seadme administraatori moodul pole saadaval. Palun veenduge, et rakendus on õigesti paigaldatud.'
+                        : 'Device Admin module not available. Please ensure the app is properly installed.'
                     );
                     isRequestingAdmin.current = false;
                     return;
                   }
                   
+                  // For 'dispatched', 'success', or any other non-error result, wait for user response
                   // Use retry mechanism to check admin status (non-blocking)
                   checkAdminStatusWithRetry().then(granted => {
                     if (granted) {
                       console.log('Admin permission granted');
                       isRequestingAdmin.current = false;
                     } else {
-                      console.log('Admin permission not granted after waiting');
+                      console.log('Admin permission not granted after waiting - user may have dismissed dialog');
                       // Reset flag so user can try again
                       isRequestingAdmin.current = false;
                     }
@@ -714,18 +715,19 @@ export default function ClientHome() {
                   const result = await devicePolicy.requestAdmin();
                   console.log('Device Admin request result:', result);
                   
-                  // Check if the request was dispatched successfully
-                  if (result === 'error' || result === 'error_module_not_available') {
-                    console.error('Device Admin module not available or error occurred');
+                  // Only show error if module is truly unavailable
+                  if (result === 'error_module_not_available') {
+                    console.error('Device Admin module not available');
                     Alert.alert(
                       language === 'et' ? 'Viga' : 'Error',
                       language === 'et' 
-                        ? 'Administraatori õiguste taotlemine ebaõnnestus. Palun proovige uuesti.'
-                        : 'Failed to request admin permissions. Please try again.'
+                        ? 'Seadme administraatori moodul pole saadaval. Palun veenduge, et rakendus on õigesti paigaldatud.'
+                        : 'Device Admin module not available. Please ensure the app is properly installed.'
                     );
                     return;
                   }
                   
+                  // For 'dispatched', 'success', or any other non-error result, wait for user response
                   // Re-check admin status after request (non-blocking)
                   checkAdminStatusWithRetry().catch(err => {
                     console.error('Admin status check error:', err);
