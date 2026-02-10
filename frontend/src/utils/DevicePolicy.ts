@@ -28,16 +28,18 @@ class DevicePolicyManager {
   async isAdminActive(): Promise<boolean> {
     if (Platform.OS !== 'android') return false;
     try {
-      return (await nativeModule?.isDeviceAdminActive?.()) || false;
+      const result = await nativeModule?.isDeviceAdminActive?.();
+      console.log('DevicePolicy: isAdminActive =', result);
+      return result || false;
     } catch (error) {
-      console.log('DevicePolicy not available:', error);
+      console.log('DevicePolicy: isAdminActive error:', error);
       return false;
     }
   }
 
   /**
    * Request Device Admin permission
-   * Opens the system dialog to grant Device Admin permissions
+   * Now returns the actual result from native side (granted/denied/already_active/etc)
    */
   async requestAdmin(): Promise<string> {
     if (Platform.OS !== 'android') return 'not_supported';

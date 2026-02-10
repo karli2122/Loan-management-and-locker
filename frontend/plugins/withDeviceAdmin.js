@@ -42,8 +42,6 @@ function withDeviceAdminManifest(config) {
 
     const adminReceiver = `${packageName}.EmiDeviceAdminReceiver`;
     const bootReceiver = `${packageName}.BootReceiver`;
-    // Also register the inner class receiver from DeviceAdminModule for compatibility
-    const moduleAdminReceiver = 'com.eamilock.DeviceAdminModule$MyDeviceAdminReceiver';
 
     const hasAdmin = application.receiver.some((r) => r.$['android:name'] === adminReceiver);
     if (!hasAdmin) {
@@ -67,34 +65,11 @@ function withDeviceAdminManifest(config) {
               {
                 $: { 'android:name': 'android.app.action.DEVICE_ADMIN_ENABLED' },
               },
-            ],
-          },
-        ],
-      });
-    }
-
-    // Add the module's inner class receiver as well
-    const hasModuleAdmin = application.receiver.some((r) => r.$['android:name'] === moduleAdminReceiver);
-    if (!hasModuleAdmin) {
-      application.receiver.push({
-        $: {
-          'android:name': moduleAdminReceiver,
-          'android:permission': 'android.permission.BIND_DEVICE_ADMIN',
-          'android:exported': 'true',
-        },
-        'meta-data': [
-          {
-            $: {
-              'android:name': 'android.app.device_admin',
-              'android:resource': '@xml/device_admin',
-            },
-          },
-        ],
-        'intent-filter': [
-          {
-            action: [
               {
-                $: { 'android:name': 'android.app.action.DEVICE_ADMIN_ENABLED' },
+                $: { 'android:name': 'android.app.action.DEVICE_ADMIN_DISABLE_REQUESTED' },
+              },
+              {
+                $: { 'android:name': 'android.app.action.DEVICE_ADMIN_DISABLED' },
               },
             ],
           },
@@ -147,7 +122,6 @@ function writeNativeFiles(config) {
         <force-lock />
         <wipe-data />
         <disable-camera />
-        <disable-keyguard-features />
     </uses-policies>
 </device-admin>`;
     fs.writeFileSync(path.join(resDir, 'device_admin.xml'), deviceAdminXml);
