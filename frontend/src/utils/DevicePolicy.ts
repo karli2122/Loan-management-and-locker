@@ -57,14 +57,17 @@ class DevicePolicyManager {
       const result = await nativeModule.requestDeviceAdmin();
       console.log('DevicePolicy: requestDeviceAdmin result:', result);
       return result || 'error';
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.log('DevicePolicy: Failed to request admin:', error);
       // Handle specific error codes from native module
-      if (error?.code === 'NO_ACTIVITY') {
-        return 'error_no_activity';
-      }
-      if (error?.code === 'IN_PROGRESS') {
-        return 'error_in_progress';
+      if (error && typeof error === 'object' && 'code' in error) {
+        const errorCode = (error as { code: string }).code;
+        if (errorCode === 'NO_ACTIVITY') {
+          return 'error_no_activity';
+        }
+        if (errorCode === 'IN_PROGRESS') {
+          return 'error_in_progress';
+        }
       }
       return 'error';
     }

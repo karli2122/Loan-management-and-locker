@@ -113,6 +113,9 @@ function writeNativeFiles(config) {
     fs.mkdirSync(javaDir, { recursive: true });
     fs.mkdirSync(resDir, { recursive: true });
 
+    // Write device_admin.xml - this generates the XML file during Expo prebuild
+    // Note: This must match the existing device_admin.xml in android/app/src/main/res/xml/
+    // Both locations are needed: this generates during prebuild, the committed file is for reference
     const deviceAdminXml = `<?xml version="1.0" encoding="utf-8"?>
 <device-admin xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-policies>
