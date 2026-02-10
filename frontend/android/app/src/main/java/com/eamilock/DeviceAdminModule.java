@@ -15,6 +15,8 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 public class DeviceAdminModule extends ReactContextBaseJavaModule {
     private static final String TAG = "DeviceAdminModule";
     private static final String PREFS_NAME = "EMILockPrefs";
@@ -23,23 +25,23 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
     private static final String KEY_ADMIN_ACTIVE = "admin_active";
     private static final int REQUEST_CODE_ENABLE_ADMIN = 1001;
 
-    private Promise adminRequestPromise = null;
+    private final AtomicReference<Promise> adminRequestPromise = new AtomicReference<>(null);
 
     private final ActivityEventListener activityEventListener = new BaseActivityEventListener() {
         @Override
         public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) {
             if (requestCode == REQUEST_CODE_ENABLE_ADMIN) {
                 Log.d(TAG, "onActivityResult: requestCode=" + requestCode + ", resultCode=" + resultCode);
-                if (adminRequestPromise != null) {
+                Promise promise = adminRequestPromise.getAndSet(null);
+                if (promise != null) {
                     // Check if admin is now active
                     boolean isActive = isAdminActiveSync();
                     Log.d(TAG, "Admin active after result: " + isActive);
                     if (isActive) {
-                        adminRequestPromise.resolve("granted");
+                        promise.resolve("granted");
                     } else {
-                        adminRequestPromise.resolve("denied");
+                        promise.resolve("denied");
                     }
-                    adminRequestPromise = null;
                 }
             }
         }
@@ -134,8 +136,19 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
                 return;
             }
 
+            Activity currentActivity = getCurrentActivity();
+            if (currentActivity == null) {
+                Log.e(TAG, "No current activity available - cannot request device admin properly");
+                promise.reject("NO_ACTIVITY", "No activity available to request device admin permission");
+                return;
+            }
+
             // Store promise to resolve in onActivityResult
-            adminRequestPromise = promise;
+            if (!adminRequestPromise.compareAndSet(null, promise)) {
+                Log.w(TAG, "Device admin request already in progress");
+                promise.reject("IN_PROGRESS", "Device admin request already in progress");
+                return;
+            }
 
             Intent intent = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
             intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent);
@@ -143,25 +156,16 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
                     "Enable device admin to protect your device and ensure loan security. " +
                     "This prevents unauthorized app removal.");
 
-            Activity currentActivity = getCurrentActivity();
-            if (currentActivity != null) {
-                Log.d(TAG, "Starting admin request with activity");
-                currentActivity.startActivityForResult(intent, REQUEST_CODE_ENABLE_ADMIN);
-            } else {
-                Log.e(TAG, "No current activity available");
-                adminRequestPromise = null;
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                getContext().startActivity(intent);
-                promise.resolve("requested_no_activity");
-            }
+            Log.d(TAG, "Starting admin request with activity");
+            currentActivity.startActivityForResult(intent, REQUEST_CODE_ENABLE_ADMIN);
         } catch (SecurityException e) {
             Log.e(TAG, "requestDeviceAdmin security error", e);
-            adminRequestPromise = null;
-            promise.resolve("security_error");
+            adminRequestPromise.set(null);
+            promise.reject("SECURITY_ERROR", "Security error requesting device admin", e);
         } catch (Exception e) {
             Log.e(TAG, "requestDeviceAdmin failed", e);
-            adminRequestPromise = null;
-            promise.resolve("error");
+            adminRequestPromise.set(null);
+            promise.reject("ERROR", "Failed to request device admin", e);
         }
     }
 

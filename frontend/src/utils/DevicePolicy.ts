@@ -39,7 +39,8 @@ class DevicePolicyManager {
 
   /**
    * Request Device Admin permission
-   * Now returns the actual result from native side (granted/denied/already_active/etc)
+   * Now returns the actual result from native side (granted/denied/already_active)
+   * or throws an error if no activity is available or request is in progress
    */
   async requestAdmin(): Promise<string> {
     if (Platform.OS !== 'android') return 'not_supported';
@@ -56,8 +57,15 @@ class DevicePolicyManager {
       const result = await nativeModule.requestDeviceAdmin();
       console.log('DevicePolicy: requestDeviceAdmin result:', result);
       return result || 'error';
-    } catch (error) {
+    } catch (error: any) {
       console.log('DevicePolicy: Failed to request admin:', error);
+      // Handle specific error codes from native module
+      if (error?.code === 'NO_ACTIVITY') {
+        return 'error_no_activity';
+      }
+      if (error?.code === 'IN_PROGRESS') {
+        return 'error_in_progress';
+      }
       return 'error';
     }
   }
