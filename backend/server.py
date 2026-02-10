@@ -551,6 +551,30 @@ async def verify_admin_token_header(token: str) -> bool:
     token_doc = await db.admin_tokens.find_one({"token": token})
     return token_doc is not None
 
+async def get_admin_id_from_token_or_id(admin_token: Optional[str] = None, admin_id: Optional[str] = None) -> Optional[str]:
+    """
+    Extract admin_id from either admin_token or admin_id parameter.
+    Supports backward compatibility with old APK using admin_id.
+    Newer APK should use admin_token for better security.
+    
+    Args:
+        admin_token: JWT/token from newer APK
+        admin_id: Direct admin_id from older APK
+        
+    Returns:
+        admin_id string or None
+    """
+    if admin_token:
+        # New way: get admin_id from token
+        token_doc = await db.admin_tokens.find_one({"token": admin_token})
+        if token_doc:
+            return token_doc.get("admin_id")
+        # Invalid token provided, return None to let caller handle
+        return None
+    
+    # Old way: use admin_id directly (backward compatibility)
+    return admin_id
+
 async def enforce_client_scope(client: dict, admin_id: Optional[str]):
     """Ensure the requested client belongs to the provided admin scope"""
     if client.get("admin_id"):
@@ -777,13 +801,23 @@ async def delete_admin(admin_id: str, admin_token: str = Query(...)):
 
 @api_router.post("/clients", response_model=Client)
 async def create_client(client_data: ClientCreate, admin_token: Optional[str] = Query(default=None)):
+    """Create a new client
+    
+    Args:
+        client_data: Client information
+        admin_token: (Optional) Admin token for authentication. If not provided, uses admin_id from client_data.
+    """
     admin_id = client_data.admin_id
     
     if admin_token:
+        # New way: get admin_id from token
         token_doc = await db.admin_tokens.find_one({"token": admin_token})
         if not token_doc:
             raise HTTPException(status_code=401, detail="Invalid admin token")
         admin_id = token_doc["admin_id"]
+    elif not admin_id:
+        # Neither token nor admin_id provided
+        raise HTTPException(status_code=400, detail="Either admin_token or admin_id is required")
     
     client_payload = client_data.dict()
     if admin_id:
@@ -794,21 +828,31 @@ async def create_client(client_data: ClientCreate, admin_token: Optional[str] = 
     return client
 
 @api_router.get("/clients")
-async def get_all_clients(skip: int = 0, limit: int = 100, admin_id: Optional[str] = Query(default=None)):
+async def get_all_clients(
+    skip: int = 0, 
+    limit: int = 100, 
+    admin_id: Optional[str] = Query(default=None),
+    admin_token: Optional[str] = Query(default=None)
+):
     """Get all clients with pagination
     
     Args:
         skip: Number of records to skip (default: 0)
         limit: Maximum number of records to return (default: 100, max: 500)
+        admin_id: (Deprecated) Direct admin ID for backward compatibility with old APK
+        admin_token: (Recommended) Admin token for authentication
     """
     # Cap limit at 500 to prevent excessive data transfer
     limit = min(limit, 500)
     
-    if not admin_id:
-        logger.warning("admin_id not provided for client listing; rejecting request")
-        raise HTTPException(status_code=400, detail="admin_id is required for client listings")
+    # Get admin_id from either token or direct parameter (backward compatibility)
+    resolved_admin_id = await get_admin_id_from_token_or_id(admin_token, admin_id)
     
-    query = {"admin_id": admin_id}
+    if not resolved_admin_id:
+        logger.warning("Neither admin_id nor valid admin_token provided for client listing")
+        raise HTTPException(status_code=400, detail="admin_id or admin_token is required for client listings")
+    
+    query = {"admin_id": resolved_admin_id}
     
     # Get total count for pagination metadata
     total_count = await db.clients.count_documents(query)
@@ -1595,12 +1639,23 @@ async def mark_reminder_sent(reminder_id: str):
 # ===================== REPORTS & ANALYTICS =====================
 
 @api_router.get("/reports/collection")
-async def get_collection_report(admin_id: Optional[str] = Query(default=None)):
-    """Get collection statistics and metrics"""
+async def get_collection_report(
+    admin_id: Optional[str] = Query(default=None),
+    admin_token: Optional[str] = Query(default=None)
+):
+    """Get collection statistics and metrics
+    
+    Args:
+        admin_id: (Deprecated) Direct admin ID for backward compatibility with old APK
+        admin_token: (Recommended) Admin token for authentication
+    """
+    # Get admin_id from either token or direct parameter (backward compatibility)
+    resolved_admin_id = await get_admin_id_from_token_or_id(admin_token, admin_id)
+    
     # Build query filter for admin
     query = {}
-    if admin_id:
-        query["admin_id"] = admin_id
+    if resolved_admin_id:
+        query["admin_id"] = resolved_admin_id
     
     # Total clients
     total_clients = await db.clients.count_documents(query)
@@ -1685,11 +1740,22 @@ async def get_collection_report(admin_id: Optional[str] = Query(default=None)):
     }
 
 @api_router.get("/reports/clients")
-async def get_client_report(admin_id: Optional[str] = Query(default=None)):
-    """Get client-wise statistics"""
+async def get_client_report(
+    admin_id: Optional[str] = Query(default=None),
+    admin_token: Optional[str] = Query(default=None)
+):
+    """Get client-wise statistics
+    
+    Args:
+        admin_id: (Deprecated) Direct admin ID for backward compatibility with old APK
+        admin_token: (Recommended) Admin token for authentication
+    """
+    # Get admin_id from either token or direct parameter (backward compatibility)
+    resolved_admin_id = await get_admin_id_from_token_or_id(admin_token, admin_id)
+    
     query = {}
-    if admin_id:
-        query["admin_id"] = admin_id
+    if resolved_admin_id:
+        query["admin_id"] = resolved_admin_id
     
     clients = await db.clients.find(query).to_list(1000)
     
@@ -1727,11 +1793,22 @@ async def get_client_report(admin_id: Optional[str] = Query(default=None)):
     }
 
 @api_router.get("/reports/financial")
-async def get_financial_report(admin_id: Optional[str] = Query(default=None)):
-    """Get detailed financial breakdown"""
+async def get_financial_report(
+    admin_id: Optional[str] = Query(default=None),
+    admin_token: Optional[str] = Query(default=None)
+):
+    """Get detailed financial breakdown
+    
+    Args:
+        admin_id: (Deprecated) Direct admin ID for backward compatibility with old APK
+        admin_token: (Recommended) Admin token for authentication
+    """
+    # Get admin_id from either token or direct parameter (backward compatibility)
+    resolved_admin_id = await get_admin_id_from_token_or_id(admin_token, admin_id)
+    
     query = {}
-    if admin_id:
-        query["admin_id"] = admin_id
+    if resolved_admin_id:
+        query["admin_id"] = resolved_admin_id
     
     clients = await db.clients.find(query).to_list(1000)
     
