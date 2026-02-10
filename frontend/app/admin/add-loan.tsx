@@ -184,14 +184,13 @@ export default function AddLoan() {
       console.error('Add loan error:', error);
       let errorMessage = 'Something went wrong';
       
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
+      if (typeof error === 'string') {
         errorMessage = error;
-      } else if (error?.message) {
+      } else if (error instanceof Error) {
         errorMessage = error.message;
-      } else if (error?.detail) {
-        errorMessage = error.detail;
+      } else if (error && typeof error === 'object') {
+        // Try to extract message from common error object properties
+        errorMessage = error.message || error.detail || error.error || JSON.stringify(error);
       }
       
       Alert.alert(
