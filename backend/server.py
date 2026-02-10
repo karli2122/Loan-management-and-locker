@@ -1361,11 +1361,14 @@ async def record_payment(client_id: str, payment_data: PaymentCreate, admin_toke
     }
 
 @api_router.get("/loans/{client_id}/payments")
-async def get_payment_history(client_id: str):
+async def get_payment_history(client_id: str, admin_id: Optional[str] = Query(default=None)):
     """Get payment history for a client"""
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Enforce admin scope
+    await enforce_client_scope(client, admin_id)
     
     payments = await db.payments.find({"client_id": client_id}).sort("payment_date", -1).to_list(100)
     
@@ -1376,11 +1379,14 @@ async def get_payment_history(client_id: str):
     }
 
 @api_router.get("/loans/{client_id}/schedule")
-async def get_payment_schedule(client_id: str):
+async def get_payment_schedule(client_id: str, admin_id: Optional[str] = Query(default=None)):
     """Generate payment schedule for a client's loan"""
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Enforce admin scope
+    await enforce_client_scope(client, admin_id)
     
     if not client.get("loan_start_date"):
         raise HTTPException(status_code=400, detail="Loan not set up for this client")
@@ -1421,11 +1427,14 @@ async def get_payment_schedule(client_id: str):
     }
 
 @api_router.put("/loans/{client_id}/settings")
-async def update_loan_settings(client_id: str, settings: LoanSettings):
+async def update_loan_settings(client_id: str, settings: LoanSettings, admin_id: Optional[str] = Query(default=None)):
     """Update auto-lock settings for a client"""
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Enforce admin scope
+    await enforce_client_scope(client, admin_id)
     
     await db.clients.update_one(
         {"id": client_id},
