@@ -405,6 +405,7 @@ class Client(BaseModel):
     
     # Loan Management Fields
     loan_plan_id: Optional[str] = None  # Reference to loan plan
+    loan_number: str = ""  # Unique loan identifier
     loan_amount: float = 0.0  # Total loan amount (device price - down payment)
     down_payment: float = 0.0  # Initial down payment
     interest_rate: float = 0.0  # Annual interest rate percentage
@@ -418,8 +419,12 @@ class Client(BaseModel):
     loan_start_date: Optional[datetime] = None  # When loan started
     last_payment_date: Optional[datetime] = None  # Last payment received
     next_payment_due: Optional[datetime] = None  # Next payment due date
+    loan_due_date: Optional[datetime] = None  # Final due date for the loan
     days_overdue: int = 0  # Days past due date
     payment_reminders_enabled: bool = True  # Enable payment reminders
+    tags: str = ""  # Comma-separated tags for categorization
+    assigned_to: str = ""  # Admin/user assigned to manage this loan
+    repayment_type: str = "One-Time Payment"  # Type of repayment (One-Time Payment, Installments, etc.)
     
     # Auto-lock settings
     auto_lock_enabled: bool = True  # Enable auto-lock on missed payment
@@ -481,10 +486,16 @@ class ClientCreate(BaseModel):
     lock_mode: str = "device_admin"  # "device_owner" or "device_admin"
     admin_id: Optional[str] = None
     # Loan fields
+    loan_number: str = ""  # Unique loan identifier
     loan_amount: float = 0.0
     down_payment: float = 0.0
     interest_rate: float = 10.0  # Default 10% annual
     loan_tenure_months: int = 12
+    tags: str = ""  # Comma-separated tags
+    assigned_to: str = ""  # Admin/user assigned to manage this loan
+    repayment_type: str = "One-Time Payment"  # Type of repayment
+    given_on: Optional[str] = None  # Date when loan was given
+    loan_due_date: Optional[str] = None  # Final due date for the loan
 
 class ClientUpdate(BaseModel):
     name: Optional[str] = None
@@ -501,6 +512,12 @@ class ClientUpdate(BaseModel):
     device_model: Optional[str] = None
     used_price_eur: Optional[float] = None
     admin_id: Optional[str] = None
+    # New loan fields
+    loan_number: Optional[str] = None
+    tags: Optional[str] = None
+    assigned_to: Optional[str] = None
+    repayment_type: Optional[str] = None
+    loan_due_date: Optional[str] = None
 
 class DeviceRegistration(BaseModel):
     registration_code: str
@@ -1297,10 +1314,30 @@ async def setup_loan(client_id: str, loan_data: ClientCreate, admin_id: Optional
     
     # Calculate next payment due date (one month from now)
     from dateutil.relativedelta import relativedelta
-    loan_start = datetime.utcnow()
+    
+    # Parse given_on date if provided, otherwise use current time
+    if loan_data.given_on:
+        try:
+            from dateutil import parser
+            loan_start = parser.parse(loan_data.given_on)
+        except:
+            loan_start = datetime.utcnow()
+    else:
+        loan_start = datetime.utcnow()
+    
     next_due = loan_start + relativedelta(months=1)
     
+    # Parse loan_due_date if provided
+    loan_due_date = None
+    if loan_data.loan_due_date:
+        try:
+            from dateutil import parser
+            loan_due_date = parser.parse(loan_data.loan_due_date)
+        except:
+            pass
+    
     update_data = {
+        "loan_number": loan_data.loan_number or "",
         "loan_amount": loan_data.loan_amount,
         "down_payment": loan_data.down_payment,
         "interest_rate": loan_data.interest_rate,
@@ -1310,7 +1347,11 @@ async def setup_loan(client_id: str, loan_data: ClientCreate, admin_id: Optional
         "outstanding_balance": loan_calc["total_amount"],
         "loan_start_date": loan_start,
         "next_payment_due": next_due,
-        "days_overdue": 0
+        "loan_due_date": loan_due_date,
+        "days_overdue": 0,
+        "tags": loan_data.tags or "",
+        "assigned_to": loan_data.assigned_to or "",
+        "repayment_type": loan_data.repayment_type or "One-Time Payment",
     }
     
     await db.clients.update_one({"id": client_id}, {"$set": update_data})
