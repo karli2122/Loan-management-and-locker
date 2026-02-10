@@ -183,10 +183,42 @@ export default function LoanPlans() {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
               });
+              
               if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Delete error:', response.status, errorText);
-                throw new Error(`Failed to delete plan (${response.status})`);
+                const contentType = response.headers.get('content-type');
+                let errorMessage = `Failed to delete plan (${response.status})`;
+                
+                if (contentType && contentType.includes('application/json')) {
+                  const errorData = await response.json();
+                  errorMessage = errorData?.detail || errorMessage;
+                  
+                  // Check if error is about clients using the plan
+                  if (response.status === 400 && errorData?.detail?.includes('client(s) are currently using this plan')) {
+                    // Extract number of clients from error message
+                    const match = errorData.detail.match(/(\d+) client\(s\)/);
+                    const clientCount = match ? match[1] : 'some';
+                    
+                    // Show option to force delete
+                    Alert.alert(
+                      'Loan Plan In Use',
+                      `${clientCount} client(s) are currently using this plan. Do you want to:\n\n• Cancel and reassign clients first (recommended)\n• Force delete and remove plan reference from clients`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Force Delete',
+                          style: 'destructive',
+                          onPress: () => handleForceDeletePlan(plan),
+                        },
+                      ]
+                    );
+                    return;
+                  }
+                } else {
+                  const errorText = await response.text();
+                  console.error('Delete error:', response.status, errorText);
+                }
+                
+                throw new Error(errorMessage);
               }
               
               // Remove from local state immediately for better UX
@@ -202,6 +234,38 @@ export default function LoanPlans() {
         },
       ]
     );
+  };
+
+  const handleForceDeletePlan = async (plan: LoanPlan) => {
+    try {
+      const token = await AsyncStorage.getItem('admin_token');
+      const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${token}&force=true`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Force delete error:', response.status, errorText);
+        throw new Error(`Failed to delete plan (${response.status})`);
+      }
+      
+      const result = await response.json();
+      
+      // Remove from local state immediately for better UX
+      setPlans(prevPlans => prevPlans.filter(p => p.id !== plan.id));
+      
+      const clientsAffected = result.clients_affected || 0;
+      const message = clientsAffected > 0 
+        ? `Plan deleted successfully. ${clientsAffected} client(s) had their loan plan reference removed.`
+        : 'Plan deleted successfully';
+      
+      Alert.alert('Success', message);
+    } catch (error: any) {
+      // On error, refresh to ensure consistency
+      await fetchPlans();
+      Alert.alert('Error', error.message);
+    }
   };
 
   if (loading) {

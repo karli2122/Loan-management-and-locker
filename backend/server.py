@@ -1137,8 +1137,8 @@ async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token:
     return LoanPlan(**updated_plan)
 
 @api_router.delete("/loan-plans/{plan_id}")
-async def delete_loan_plan(plan_id: str, admin_token: str = Query(...)):
-    """Delete a loan plan permanently"""
+async def delete_loan_plan(plan_id: str, admin_token: str = Query(...), force: bool = Query(default=False)):
+    """Delete a loan plan permanently. Checks for client usage unless force=true."""
     if not await verify_admin_token_header(admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
     
@@ -1156,6 +1156,24 @@ async def delete_loan_plan(plan_id: str, admin_token: str = Query(...)):
     if plan.get("admin_id") and plan["admin_id"] != token_doc["admin_id"]:
         raise HTTPException(status_code=403, detail="Access denied: This loan plan belongs to another admin")
     
+    # Check if any clients are using this loan plan
+    clients_using_plan = await db.clients.count_documents({"loan_plan_id": plan_id})
+    
+    if clients_using_plan > 0 and not force:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot delete loan plan: {clients_using_plan} client(s) are currently using this plan. Please reassign clients to a different plan first, or use force=true to delete and clear client references."
+        )
+    
+    # If force=true or no clients using the plan, proceed with deletion
+    if force and clients_using_plan > 0:
+        # Clear the loan_plan_id from all clients using this plan
+        await db.clients.update_many(
+            {"loan_plan_id": plan_id},
+            {"$set": {"loan_plan_id": None}}
+        )
+        logger.info(f"Cleared loan_plan_id from {clients_using_plan} clients before deleting plan {plan_id}")
+    
     # Hard delete - remove from database
     result = await db.loan_plans.delete_one({"id": plan_id})
     
@@ -1163,7 +1181,10 @@ async def delete_loan_plan(plan_id: str, admin_token: str = Query(...)):
         raise HTTPException(status_code=404, detail="Loan plan not found")
     
     logger.info(f"Loan plan deleted: {plan_id} by admin {token_doc['admin_id']}")
-    return {"message": "Loan plan deleted successfully"}
+    return {
+        "message": "Loan plan deleted successfully",
+        "clients_affected": clients_using_plan if force else 0
+    }
 
 # ===================== EMI CALCULATOR =====================
 
