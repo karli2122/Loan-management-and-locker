@@ -64,10 +64,16 @@ export default function Reports() {
 
   const fetchReports = async () => {
     try {
+      const adminId = await AsyncStorage.getItem('admin_id');
+      if (!adminId) {
+        console.error('Admin ID not found');
+        return;
+      }
+      
       const [collection, clients, financial] = await Promise.all([
-        fetch(`${API_URL}/api/reports/collection`).then(r => r.json()),
-        fetch(`${API_URL}/api/reports/clients`).then(r => r.json()),
-        fetch(`${API_URL}/api/reports/financial`).then(r => r.json()),
+        fetch(`${API_URL}/api/reports/collection?admin_id=${adminId}`).then(r => r.json()),
+        fetch(`${API_URL}/api/reports/clients?admin_id=${adminId}`).then(r => r.json()),
+        fetch(`${API_URL}/api/reports/financial?admin_id=${adminId}`).then(r => r.json()),
       ]);
       
       setCollectionReport(collection);

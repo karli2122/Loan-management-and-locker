@@ -84,8 +84,14 @@ export default function AddLoan() {
 
   const fetchLoanPlans = async () => {
     try {
-      console.log('Fetching loan plans from:', `${API_URL}/api/loan-plans?active_only=true`);
-      const response = await fetch(`${API_URL}/api/loan-plans?active_only=true`);
+      const adminId = await AsyncStorage.getItem('admin_id');
+      if (!adminId) {
+        console.error('Admin ID not found');
+        return;
+      }
+      
+      console.log('Fetching loan plans from:', `${API_URL}/api/loan-plans?active_only=true&admin_id=${adminId}`);
+      const response = await fetch(`${API_URL}/api/loan-plans?active_only=true&admin_id=${adminId}`);
       console.log('Loan plans response status:', response.status);
       if (response.ok) {
         const data = await response.json();
