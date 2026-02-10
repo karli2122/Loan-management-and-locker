@@ -57,9 +57,15 @@ export default function Dashboard() {
   });
 
   const fetchStats = async () => {
-    const baseUrl = API_URL || 'https://loantrack-23.preview.emergentagent.com';
+    const baseUrl = API_URL || 'https://apkdebug.preview.emergentagent.com';
     try {
-      const response = await fetch(`${baseUrl}/api/reports/collection`);
+      const adminId = await AsyncStorage.getItem('admin_id');
+      if (!adminId) {
+        console.error('Admin ID not found');
+        return;
+      }
+      
+      const response = await fetch(`${baseUrl}/api/reports/collection?admin_id=${adminId}`);
       if (!response.ok) {
         console.error('API error:', response.status);
         return;

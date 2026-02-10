@@ -135,12 +135,12 @@ export default function LoanManagement() {
       
       // Fetch payment history
       if (clientData.loan_start_date) {
-        const paymentsRes = await fetch(`${API_URL}/api/loans/${id}/payments`);
+        const paymentsRes = await fetch(`${API_URL}/api/loans/${id}/payments${adminQuery}`);
         const paymentsData = await paymentsRes.json();
         setPayments(paymentsData.payments || []);
         
         // Fetch payment schedule
-        const scheduleRes = await fetch(`${API_URL}/api/loans/${id}/schedule`);
+        const scheduleRes = await fetch(`${API_URL}/api/loans/${id}/schedule${adminQuery}`);
         const scheduleData = await scheduleRes.json();
         setSchedule(scheduleData.schedule || []);
       }
@@ -263,7 +263,9 @@ export default function LoanManagement() {
   const handleUpdateSettings = async () => {
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/loans/${id}/settings`, {
+      const scope = await getAdminId();
+      const adminQuery = scope ? `?admin_id=${scope}` : '';
+      const response = await fetch(`${API_URL}/api/loans/${id}/settings${adminQuery}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

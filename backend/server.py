@@ -363,6 +363,7 @@ class LoanPlan(BaseModel):
     late_fee_percent: float = 2.0  # Per month
     description: str = ""
     is_active: bool = True
+    admin_id: Optional[str] = None  # Tenant scoping - each admin has their own loan plans
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class LoanPlanCreate(BaseModel):
@@ -1066,25 +1067,45 @@ async def create_loan_plan(plan_data: LoanPlanCreate, admin_token: str = Query(.
     if not await verify_admin_token_header(admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
     
-    plan = LoanPlan(**plan_data.dict())
+    # Get admin_id from token
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    # Create plan with admin_id
+    plan_dict = plan_data.dict()
+    plan_dict["admin_id"] = token_doc["admin_id"]
+    plan = LoanPlan(**plan_dict)
     await db.loan_plans.insert_one(plan.dict())
     
-    logger.info(f"Loan plan created: {plan.name}")
+    logger.info(f"Loan plan created: {plan.name} by admin {token_doc['admin_id']}")
     return plan
 
 @api_router.get("/loan-plans")
-async def get_loan_plans(active_only: bool = False):
-    """Get all loan plans"""
-    query = {"is_active": True} if active_only else {}
+async def get_loan_plans(active_only: bool = False, admin_id: Optional[str] = Query(default=None)):
+    """Get all loan plans for the specified admin"""
+    if not admin_id:
+        logger.warning("admin_id not provided for loan plan listing; rejecting request")
+        raise HTTPException(status_code=400, detail="admin_id is required for loan plan listings")
+    
+    query = {"admin_id": admin_id}
+    if active_only:
+        query["is_active"] = True
+    
     plans = await db.loan_plans.find(query).to_list(100)
     return [LoanPlan(**p) for p in plans]
 
 @api_router.get("/loan-plans/{plan_id}", response_model=LoanPlan)
-async def get_loan_plan(plan_id: str):
+async def get_loan_plan(plan_id: str, admin_id: Optional[str] = Query(default=None)):
     """Get a specific loan plan"""
     plan = await db.loan_plans.find_one({"id": plan_id})
     if not plan:
         raise HTTPException(status_code=404, detail="Loan plan not found")
+    
+    # Check admin ownership if admin_id is provided
+    if admin_id and plan.get("admin_id") and plan["admin_id"] != admin_id:
+        raise HTTPException(status_code=403, detail="Access denied: This loan plan belongs to another admin")
+    
     return LoanPlan(**plan)
 
 @api_router.put("/loan-plans/{plan_id}", response_model=LoanPlan)
@@ -1093,9 +1114,18 @@ async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token:
     if not await verify_admin_token_header(admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
     
+    # Get admin_id from token
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
     plan = await db.loan_plans.find_one({"id": plan_id})
     if not plan:
         raise HTTPException(status_code=404, detail="Loan plan not found")
+    
+    # Check admin ownership
+    if plan.get("admin_id") and plan["admin_id"] != token_doc["admin_id"]:
+        raise HTTPException(status_code=403, detail="Access denied: This loan plan belongs to another admin")
     
     await db.loan_plans.update_one(
         {"id": plan_id},
@@ -1103,14 +1133,46 @@ async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token:
     )
     
     updated_plan = await db.loan_plans.find_one({"id": plan_id})
-    logger.info(f"Loan plan updated: {plan_id}")
+    logger.info(f"Loan plan updated: {plan_id} by admin {token_doc['admin_id']}")
     return LoanPlan(**updated_plan)
 
 @api_router.delete("/loan-plans/{plan_id}")
-async def delete_loan_plan(plan_id: str, admin_token: str = Query(...)):
-    """Delete a loan plan permanently"""
+async def delete_loan_plan(plan_id: str, admin_token: str = Query(...), force: bool = Query(default=False)):
+    """Delete a loan plan permanently. Checks for client usage unless force=true."""
     if not await verify_admin_token_header(admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    # Get admin_id from token
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    # Check if plan exists and belongs to admin
+    plan = await db.loan_plans.find_one({"id": plan_id})
+    if not plan:
+        raise HTTPException(status_code=404, detail="Loan plan not found")
+    
+    # Check admin ownership
+    if plan.get("admin_id") and plan["admin_id"] != token_doc["admin_id"]:
+        raise HTTPException(status_code=403, detail="Access denied: This loan plan belongs to another admin")
+    
+    # Check if any clients are using this loan plan
+    clients_using_plan = await db.clients.count_documents({"loan_plan_id": plan_id})
+    
+    if clients_using_plan > 0 and not force:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot delete loan plan: {clients_using_plan} client(s) are currently using this plan. Please reassign clients to a different plan first, or use force=true to delete and clear client references."
+        )
+    
+    # If force=true or no clients using the plan, proceed with deletion
+    if force and clients_using_plan > 0:
+        # Clear the loan_plan_id from all clients using this plan
+        await db.clients.update_many(
+            {"loan_plan_id": plan_id},
+            {"$set": {"loan_plan_id": None}}
+        )
+        logger.info(f"Cleared loan_plan_id from {clients_using_plan} clients before deleting plan {plan_id}")
     
     # Hard delete - remove from database
     result = await db.loan_plans.delete_one({"id": plan_id})
@@ -1118,8 +1180,11 @@ async def delete_loan_plan(plan_id: str, admin_token: str = Query(...)):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Loan plan not found")
     
-    logger.info(f"Loan plan deleted: {plan_id}")
-    return {"message": "Loan plan deleted successfully"}
+    logger.info(f"Loan plan deleted: {plan_id} by admin {token_doc['admin_id']}")
+    return {
+        "message": "Loan plan deleted successfully",
+        "clients_affected": clients_using_plan if force else 0
+    }
 
 # ===================== EMI CALCULATOR =====================
 
@@ -1208,11 +1273,14 @@ async def calculate_amortization_schedule(
 # ===================== LOAN MANAGEMENT =====================
 
 @api_router.post("/loans/{client_id}/setup")
-async def setup_loan(client_id: str, loan_data: ClientCreate):
+async def setup_loan(client_id: str, loan_data: ClientCreate, admin_id: Optional[str] = Query(default=None)):
     """Setup or update loan details for a client"""
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Enforce admin scope - ensure client belongs to requesting admin
+    await enforce_client_scope(client, admin_id)
     
     # Calculate EMI using simple interest
     loan_calc = calculate_simple_interest_emi(
@@ -1314,11 +1382,14 @@ async def record_payment(client_id: str, payment_data: PaymentCreate, admin_toke
     }
 
 @api_router.get("/loans/{client_id}/payments")
-async def get_payment_history(client_id: str):
+async def get_payment_history(client_id: str, admin_id: Optional[str] = Query(default=None)):
     """Get payment history for a client"""
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Enforce admin scope
+    await enforce_client_scope(client, admin_id)
     
     payments = await db.payments.find({"client_id": client_id}).sort("payment_date", -1).to_list(100)
     
@@ -1329,11 +1400,14 @@ async def get_payment_history(client_id: str):
     }
 
 @api_router.get("/loans/{client_id}/schedule")
-async def get_payment_schedule(client_id: str):
+async def get_payment_schedule(client_id: str, admin_id: Optional[str] = Query(default=None)):
     """Generate payment schedule for a client's loan"""
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Enforce admin scope
+    await enforce_client_scope(client, admin_id)
     
     if not client.get("loan_start_date"):
         raise HTTPException(status_code=400, detail="Loan not set up for this client")
@@ -1374,11 +1448,14 @@ async def get_payment_schedule(client_id: str):
     }
 
 @api_router.put("/loans/{client_id}/settings")
-async def update_loan_settings(client_id: str, settings: LoanSettings):
+async def update_loan_settings(client_id: str, settings: LoanSettings, admin_id: Optional[str] = Query(default=None)):
     """Update auto-lock settings for a client"""
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Enforce admin scope
+    await enforce_client_scope(client, admin_id)
     
     await db.clients.update_one(
         {"id": client_id},
@@ -1471,15 +1548,20 @@ async def mark_reminder_sent(reminder_id: str):
 # ===================== REPORTS & ANALYTICS =====================
 
 @api_router.get("/reports/collection")
-async def get_collection_report():
+async def get_collection_report(admin_id: Optional[str] = Query(default=None)):
     """Get collection statistics and metrics"""
+    # Build query filter for admin
+    query = {}
+    if admin_id:
+        query["admin_id"] = admin_id
+    
     # Total clients
-    total_clients = await db.clients.count_documents({})
-    active_loans = await db.clients.count_documents({"outstanding_balance": {"$gt": 0}})
-    completed_loans = await db.clients.count_documents({"outstanding_balance": 0, "total_paid": {"$gt": 0}})
+    total_clients = await db.clients.count_documents(query)
+    active_loans = await db.clients.count_documents({**query, "outstanding_balance": {"$gt": 0}})
+    completed_loans = await db.clients.count_documents({**query, "outstanding_balance": 0, "total_paid": {"$gt": 0}})
     
     # Financial totals
-    clients = await db.clients.find().to_list(1000)
+    clients = await db.clients.find(query).to_list(1000)
     clients_by_id = {c.get("id"): c for c in clients if c.get("id")}
     total_disbursed = sum(c.get("total_amount_due", 0) for c in clients)
     total_collected = sum(c.get("total_paid", 0) for c in clients)
@@ -1496,7 +1578,14 @@ async def get_collection_report():
     from dateutil.relativedelta import relativedelta
     month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     month_end = month_start + relativedelta(months=1)
-    month_payments = await db.payments.find({"payment_date": {"$gte": month_start}}).to_list(1000)
+    
+    # Get client IDs for this admin to filter payments
+    client_ids = [c.get("id") for c in clients if c.get("id")]
+    payment_query = {"payment_date": {"$gte": month_start}}
+    if client_ids:
+        payment_query["client_id"] = {"$in": client_ids}
+    
+    month_payments = await db.payments.find(payment_query).to_list(1000)
     month_collected = sum(p.get("amount", 0) for p in month_payments)
     month_profit = 0
     for payment in month_payments:
@@ -1549,9 +1638,13 @@ async def get_collection_report():
     }
 
 @api_router.get("/reports/clients")
-async def get_client_report():
+async def get_client_report(admin_id: Optional[str] = Query(default=None)):
     """Get client-wise statistics"""
-    clients = await db.clients.find().to_list(1000)
+    query = {}
+    if admin_id:
+        query["admin_id"] = admin_id
+    
+    clients = await db.clients.find(query).to_list(1000)
     
     # Categorize clients
     on_time = []
@@ -1587,10 +1680,21 @@ async def get_client_report():
     }
 
 @api_router.get("/reports/financial")
-async def get_financial_report():
+async def get_financial_report(admin_id: Optional[str] = Query(default=None)):
     """Get detailed financial breakdown"""
-    clients = await db.clients.find().to_list(1000)
-    payments = await db.payments.find().to_list(1000)
+    query = {}
+    if admin_id:
+        query["admin_id"] = admin_id
+    
+    clients = await db.clients.find(query).to_list(1000)
+    
+    # Get client IDs to filter payments
+    client_ids = [c.get("id") for c in clients if c.get("id")]
+    payment_query = {}
+    if client_ids:
+        payment_query["client_id"] = {"$in": client_ids}
+    
+    payments = await db.payments.find(payment_query).to_list(1000)
     
     # Calculate totals
     total_principal = sum(c.get("loan_amount", 0) for c in clients)
@@ -1705,10 +1809,17 @@ async def fetch_phone_price(client_id: str, admin_id: Optional[str] = Query(defa
 # ===================== STATS ROUTE =====================
 
 @api_router.get("/stats")
-async def get_stats():
-    total_clients = await db.clients.count_documents({})
-    locked_devices = await db.clients.count_documents({"is_locked": True})
-    registered_devices = await db.clients.count_documents({"is_registered": True})
+async def get_stats(admin_id: Optional[str] = Query(default=None)):
+    """Get statistics, optionally filtered by admin_id"""
+    query = {}
+    if admin_id:
+        query["admin_id"] = admin_id
+    
+    total_clients = await db.clients.count_documents(query)
+    locked_query = {**query, "is_locked": True}
+    locked_devices = await db.clients.count_documents(locked_query)
+    registered_query = {**query, "is_registered": True}
+    registered_devices = await db.clients.count_documents(registered_query)
     
     return {
         "total_clients": total_clients,

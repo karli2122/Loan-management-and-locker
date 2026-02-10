@@ -244,6 +244,12 @@ export default function ClientHome() {
   };
 
   const fetchStatus = async (id: string) => {
+    // Add null check
+    if (!id || id.trim() === '') {
+      console.log('fetchStatus: No valid client ID');
+      setLoading(false);
+      return;
+    }
     try {
       // Use offline sync manager for smart caching
       const data = await OfflineSyncManager.syncStatus(id, API_URL);
@@ -328,6 +334,11 @@ export default function ClientHome() {
   };
 
   const updateLocation = async (id: string) => {
+    // Add null check
+    if (!id || id.trim() === '') {
+      console.log('updateLocation: No valid client ID');
+      return;
+    }
     try {
       const { status: permStatus } = await Location.requestForegroundPermissionsAsync();
       if (permStatus !== 'granted') return;
@@ -364,17 +375,30 @@ export default function ClientHome() {
   const loadClientData = async () => {
     if (!isMounted.current) return;
     
-    const id = await AsyncStorage.getItem('client_id');
-    if (!id) {
-      if (isMounted.current) {
-        router.replace('/client/register');
+    try {
+      const id = await AsyncStorage.getItem('client_id');
+      if (!id) {
+        console.log('No client ID found, redirecting to register');
+        if (isMounted.current) {
+          router.replace('/client/register');
+        }
+        return;
       }
-      return;
+      
+      console.log('Client ID loaded:', id);
+      setClientId(id);
+      
+      // Wait for state to update before making API calls
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Now make API calls
+      await fetchStatus(id);
+      await updateLocation(id);
+      await registerPushToken(id);
+    } catch (error) {
+      console.error('loadClientData error:', error);
+      setLoading(false);
     }
-    setClientId(id);
-    await fetchStatus(id);
-    await updateLocation(id);
-    await registerPushToken(id);
   };
 
   useEffect(() => {
@@ -400,12 +424,12 @@ export default function ClientHome() {
     
     initialize();
 
-    // Poll status every 5 seconds
+    // Poll status every 30 seconds (reduced from 5 seconds to prevent database overflow)
     intervalRef.current = setInterval(() => {
       if (clientId) {
         fetchStatus(clientId);
       }
-    }, 5000);
+    }, 30000); // Was 5000
 
     // Handle app state changes
     const subscription = AppState.addEventListener('change', (nextAppState) => {
