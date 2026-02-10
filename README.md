@@ -139,7 +139,7 @@ The frontend apps communicate with a backend API. Configure the API URL:
 
 3. **Default URL (if not configured):**
    ```
-   https://loantrack-23.preview.emergentagent.com
+   https://apkdebug.preview.emergentagent.com
    ```
 
 For production builds, use EAS Secrets:

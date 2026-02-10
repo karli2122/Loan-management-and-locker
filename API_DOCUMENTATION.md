@@ -35,7 +35,7 @@ EXPO_PUBLIC_BACKEND_URL=https://your-production-domain.com/api
 
 **Default (if not configured)**: 
 ```
-https://loantrack-23.preview.emergentagent.com
+https://apkdebug.preview.emergentagent.com
 ```
 
 ### Setting Backend URL

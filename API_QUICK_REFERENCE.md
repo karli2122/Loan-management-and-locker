@@ -11,7 +11,7 @@
 | Environment | URL |
 |------------|-----|
 | **Development** | `http://localhost:5000/api` |
-| **Production (Default)** | `https://loantrack-23.preview.emergentagent.com` |
+| **Production (Default)** | `https://apkdebug.preview.emergentagent.com` |
 | **Your Backend** | `https://your-backend-url.com/api` |
 
 ### Quick Setup
@@ -133,7 +133,7 @@ curl "https://your-api.com/api/clients?admin_token=YOUR_TOKEN"
 import Constants from 'expo-constants';
 
 const API_URL = Constants.expoConfig?.extra?.backendUrl || 
-  'https://loantrack-23.preview.emergentagent.com';
+  'https://apkdebug.preview.emergentagent.com';
 
 // Example API call
 const response = await fetch(`${API_URL}/api/stats`);
