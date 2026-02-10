@@ -189,10 +189,13 @@ export default function LoanPlans() {
                 throw new Error(`Failed to delete plan (${response.status})`);
               }
               
-              // Fetch fresh data from server to ensure consistency
-              await fetchPlans();
+              // Remove from local state immediately for better UX
+              setPlans(prevPlans => prevPlans.filter(p => p.id !== plan.id));
+              
               Alert.alert('Success', 'Plan deleted successfully');
             } catch (error: any) {
+              // On error, refresh to ensure consistency
+              await fetchPlans();
               Alert.alert('Error', error.message);
             }
           },
