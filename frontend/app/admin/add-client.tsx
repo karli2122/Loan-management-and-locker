@@ -104,7 +104,19 @@ export default function AddClient() {
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error: any) {
-      Alert.alert(t('error'), error.message || 'Something went wrong');
+      // Extract meaningful error message from various error formats
+      let errorMessage = 'Something went wrong';
+      
+      if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (error && typeof error === 'object') {
+        // Try to extract message from common error object properties
+        errorMessage = error.message || error.detail || error.error || JSON.stringify(error);
+      }
+      
+      Alert.alert(t('error'), errorMessage);
     } finally {
       setLoading(false);
     }
