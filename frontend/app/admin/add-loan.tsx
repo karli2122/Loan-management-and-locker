@@ -188,8 +188,26 @@ export default function AddLoan() {
         });
 
         if (!clientResponse.ok) {
-          const errorData = await clientResponse.json().catch(() => ({}));
-          const errorMessage = errorData?.detail || errorData?.message || `Failed to create client (${clientResponse.status})`;
+          // Try to get error message from response
+          let errorMessage = `Failed to create client (${clientResponse.status})`;
+          try {
+            const contentType = clientResponse.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const errorData = await clientResponse.json();
+              errorMessage = errorData?.detail || errorData?.message || errorMessage;
+            } else {
+              const errorText = await clientResponse.text();
+              // If it's an HTML error page, just use the status code
+              if (errorText.toLowerCase().includes('<!doctype') || errorText.toLowerCase().includes('<html')) {
+                errorMessage = `Server error (${clientResponse.status}). Please check backend connection.`;
+              } else if (errorText && errorText.length < 200) {
+                // Only use text if it's short and likely a real error message
+                errorMessage = errorText;
+              }
+            }
+          } catch (parseError) {
+            console.error('Error parsing error response:', parseError);
+          }
           throw new Error(errorMessage);
         }
 
@@ -198,7 +216,8 @@ export default function AddLoan() {
       }
 
       // Setup loan for the client
-      const loanResponse = await fetch(`${API_URL}/api/loans/${clientId}/setup`, {
+      const adminId = await AsyncStorage.getItem('admin_id');
+      const loanResponse = await fetch(`${API_URL}/api/loans/${clientId}/setup?admin_id=${adminId || ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -209,8 +228,26 @@ export default function AddLoan() {
       });
 
       if (!loanResponse.ok) {
-        const errorData = await loanResponse.json().catch(() => ({}));
-        const errorMessage = errorData?.detail || errorData?.message || `Failed to setup loan (${loanResponse.status})`;
+        // Try to get error message from response
+        let errorMessage = `Failed to setup loan (${loanResponse.status})`;
+        try {
+          const contentType = loanResponse.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await loanResponse.json();
+            errorMessage = errorData?.detail || errorData?.message || errorMessage;
+          } else {
+            const errorText = await loanResponse.text();
+            // If it's an HTML error page, just use the status code
+            if (errorText.toLowerCase().includes('<!doctype') || errorText.toLowerCase().includes('<html')) {
+              errorMessage = `Server error (${loanResponse.status}). Please check backend connection.`;
+            } else if (errorText && errorText.length < 200) {
+              // Only use text if it's short and likely a real error message
+              errorMessage = errorText;
+            }
+          }
+        } catch (parseError) {
+          console.error('Error parsing error response:', parseError);
+        }
         throw new Error(errorMessage);
       }
 

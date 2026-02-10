@@ -1252,11 +1252,14 @@ async def calculate_amortization_schedule(
 # ===================== LOAN MANAGEMENT =====================
 
 @api_router.post("/loans/{client_id}/setup")
-async def setup_loan(client_id: str, loan_data: ClientCreate):
+async def setup_loan(client_id: str, loan_data: ClientCreate, admin_id: Optional[str] = Query(default=None)):
     """Setup or update loan details for a client"""
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Enforce admin scope - ensure client belongs to requesting admin
+    await enforce_client_scope(client, admin_id)
     
     # Calculate EMI using simple interest
     loan_calc = calculate_simple_interest_emi(
