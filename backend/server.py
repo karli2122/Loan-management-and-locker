@@ -391,6 +391,8 @@ class Client(BaseModel):
     name: str
     phone: str
     email: str = ""  # Made optional with default empty string for backwards compatibility
+    address: str = ""  # Client address
+    notes: str = ""  # Additional notes about the client
     admin_id: Optional[str] = None  # Tenant scoping
     device_id: str = ""
     device_model: str = ""
@@ -472,6 +474,8 @@ class ClientCreate(BaseModel):
     name: str
     phone: str
     email: str
+    address: str = ""  # Client address
+    notes: str = ""  # Additional notes about the client
     emi_amount: float = 0.0
     emi_due_date: Optional[str] = None
     lock_mode: str = "device_admin"  # "device_owner" or "device_admin"
@@ -486,6 +490,8 @@ class ClientUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
+    address: Optional[str] = None  # Client address
+    notes: Optional[str] = None  # Additional notes about the client
     emi_amount: Optional[float] = None
     emi_due_date: Optional[str] = None
     is_locked: Optional[bool] = None
