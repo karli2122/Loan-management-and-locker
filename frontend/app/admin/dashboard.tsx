@@ -46,12 +46,12 @@ export default function Dashboard() {
 
   const fetchStats = async () => {
     try {
-      const adminId = await AsyncStorage.getItem('admin_id');
+      const adminId = await AsyncStorage.getItem('admin_token');
       if (!adminId) {
         console.error('Admin ID not found');
         return;
       }
-      const response = await fetch(`${API_URL}/api/reports/collection?admin_id=${adminId}`);
+      const response = await fetch(`${API_URL}/api/reports/collection?admin_token=${adminId}`);
       const data = await response.json();
       
       setLoanStats({

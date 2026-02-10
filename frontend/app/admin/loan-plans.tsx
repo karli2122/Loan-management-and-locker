@@ -59,7 +59,7 @@ export default function LoanPlans() {
         Alert.alert('Error', 'Admin session not found');
         return;
       }
-      const response = await fetch(`${API_URL}/api/loan-plans?admin_id=${adminId}`);
+      const response = await fetch(`${API_URL}/api/loan-plans?admin_token=${adminId}`);
       const data = await response.json();
       setPlans(data);
     } catch (error) {

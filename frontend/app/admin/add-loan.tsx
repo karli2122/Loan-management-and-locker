@@ -58,8 +58,8 @@ export default function AddLoan() {
 
   const fetchClients = async () => {
     try {
-      const adminId = await AsyncStorage.getItem('admin_id');
-      const query = adminId ? `?limit=500&admin_id=${adminId}` : '?limit=500';
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      const query = adminToken ? `?limit=500&admin_token=${adminToken}` : '?limit=500';
       const response = await fetch(`${API_URL}/api/clients${query}`);
       if (response.ok) {
         const data = await response.json();
@@ -129,8 +129,8 @@ export default function AddLoan() {
       const clientId = selectedClient.id;
 
       // Setup loan for the client
-      const adminId = await AsyncStorage.getItem('admin_id');
-      const loanResponse = await fetch(`${API_URL}/api/loans/${clientId}/setup?admin_id=${adminId || ''}`, {
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      const loanResponse = await fetch(`${API_URL}/api/loans/${clientId}/setup?admin_token=${adminToken || ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

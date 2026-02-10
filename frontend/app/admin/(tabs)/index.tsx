@@ -59,13 +59,13 @@ export default function Dashboard() {
   const fetchStats = async () => {
     const baseUrl = API_URL || 'https://apkdebug.preview.emergentagent.com';
     try {
-      const adminId = await AsyncStorage.getItem('admin_id');
+      const adminId = await AsyncStorage.getItem('admin_token');
       if (!adminId) {
         console.error('Admin ID not found');
         return;
       }
       
-      const response = await fetch(`${baseUrl}/api/reports/collection?admin_id=${adminId}`);
+      const response = await fetch(`${baseUrl}/api/reports/collection?admin_token=${adminId}`);
       if (!response.ok) {
         console.error('API error:', response.status);
         return;

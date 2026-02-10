@@ -54,8 +54,8 @@ export default function DeviceSetup() {
 
   const fetchClients = async () => {
     try {
-      const adminId = await AsyncStorage.getItem('admin_id');
-      const query = adminId ? `?admin_id=${adminId}` : '';
+      const adminId = await AsyncStorage.getItem('admin_token');
+      const query = adminId ? `?admin_token=${adminId}` : '';
       const response = await fetch(`${API_URL}/api/clients${query}`);
       const data = await response.json();
       // Only show unregistered clients

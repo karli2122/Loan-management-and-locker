@@ -35,8 +35,8 @@ export default function TransactionsTab() {
   const fetchPayments = async () => {
     try {
       // Fetch all clients and extract their payments
-      const adminId = await AsyncStorage.getItem('admin_id');
-      const query = adminId ? `?limit=500&admin_id=${adminId}` : '?limit=500';
+      const adminId = await AsyncStorage.getItem('admin_token');
+      const query = adminId ? `?limit=500&admin_token=${adminId}` : '?limit=500';
       const response = await fetch(`${API_URL}/api/clients${query}`);
       const data = await response.json();
       const allPayments: Payment[] = [];
