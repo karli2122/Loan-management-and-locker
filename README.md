@@ -30,9 +30,16 @@ This system consists of two mobile applications:
 
 ## Documentation
 
+### Getting Started
 - **[Quick Start Guide](QUICK_START.md)** - Start building APKs in minutes
 - **[Deployment Guide](DEPLOYMENT.md)** - Complete APK deployment documentation
 - **[Release Checklist](RELEASE_CHECKLIST.md)** - Pre-release verification steps
+
+### API Documentation
+- **[API Documentation](API_DOCUMENTATION.md)** - Complete API endpoint reference
+- **[API Quick Reference](API_QUICK_REFERENCE.md)** - Quick API setup and common endpoints
+
+### Technical Guides
 - **[Build Instructions](frontend/BUILD_INSTRUCTIONS.md)** - Detailed build process
 - **[Device Owner Setup](frontend/DEVICE_OWNER_SETUP.md)** - Client app protection setup
 - **[Changelog](CHANGELOG.md)** - Version history and changes
@@ -116,17 +123,37 @@ python server.py
 
 ## Configuration
 
-1. Copy environment template:
+### Backend API Setup
+
+The frontend apps communicate with a backend API. Configure the API URL:
+
+1. **Copy environment template:**
    ```bash
    cp frontend/.env.template frontend/.env.local
    ```
 
-2. Update backend URL in `.env.local`:
-   ```
-   EXPO_PUBLIC_BACKEND_URL=https://your-backend-url/api
+2. **Update backend URL in `.env.local`:**
+   ```bash
+   EXPO_PUBLIC_BACKEND_URL=https://your-backend-url.com/api
    ```
 
-3. Configure app settings in `frontend/app.config.js`
+3. **Default URL (if not configured):**
+   ```
+   https://loantrack-23.preview.emergentagent.com
+   ```
+
+For production builds, use EAS Secrets:
+```bash
+eas secret:create --scope project --name EXPO_PUBLIC_BACKEND_URL --value "https://your-api.com/api"
+```
+
+### App Configuration
+
+Configure app settings in `frontend/app.config.js`:
+- App names and package identifiers
+- Permissions
+- Icons and splash screens
+- EAS project IDs
 
 ## Security
 
