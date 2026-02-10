@@ -391,6 +391,8 @@ class Client(BaseModel):
     name: str
     phone: str
     email: str = ""  # Made optional with default empty string for backwards compatibility
+    address: str = ""  # Client address
+    notes: str = ""  # Additional notes about the client
     admin_id: Optional[str] = None  # Tenant scoping
     device_id: str = ""
     device_model: str = ""
@@ -403,6 +405,7 @@ class Client(BaseModel):
     
     # Loan Management Fields
     loan_plan_id: Optional[str] = None  # Reference to loan plan
+    loan_number: str = ""  # Unique loan identifier
     loan_amount: float = 0.0  # Total loan amount (device price - down payment)
     down_payment: float = 0.0  # Initial down payment
     interest_rate: float = 0.0  # Annual interest rate percentage
@@ -416,8 +419,12 @@ class Client(BaseModel):
     loan_start_date: Optional[datetime] = None  # When loan started
     last_payment_date: Optional[datetime] = None  # Last payment received
     next_payment_due: Optional[datetime] = None  # Next payment due date
+    loan_due_date: Optional[datetime] = None  # Final due date for the loan
     days_overdue: int = 0  # Days past due date
     payment_reminders_enabled: bool = True  # Enable payment reminders
+    tags: str = ""  # Comma-separated tags for categorization
+    assigned_to: str = ""  # Admin/user assigned to manage this loan
+    repayment_type: str = "One-Time Payment"  # Type of repayment (One-Time Payment, Installments, etc.)
     
     # Auto-lock settings
     auto_lock_enabled: bool = True  # Enable auto-lock on missed payment
@@ -472,20 +479,30 @@ class ClientCreate(BaseModel):
     name: str
     phone: str
     email: str
+    address: str = ""  # Client address
+    notes: str = ""  # Additional notes about the client
     emi_amount: float = 0.0
     emi_due_date: Optional[str] = None
     lock_mode: str = "device_admin"  # "device_owner" or "device_admin"
     admin_id: Optional[str] = None
     # Loan fields
+    loan_number: str = ""  # Unique loan identifier
     loan_amount: float = 0.0
     down_payment: float = 0.0
     interest_rate: float = 10.0  # Default 10% annual
     loan_tenure_months: int = 12
+    tags: str = ""  # Comma-separated tags
+    assigned_to: str = ""  # Admin/user assigned to manage this loan
+    repayment_type: str = "One-Time Payment"  # Type of repayment
+    given_on: Optional[str] = None  # Date when loan was given
+    loan_due_date: Optional[str] = None  # Final due date for the loan
 
 class ClientUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
+    address: Optional[str] = None  # Client address
+    notes: Optional[str] = None  # Additional notes about the client
     emi_amount: Optional[float] = None
     emi_due_date: Optional[str] = None
     is_locked: Optional[bool] = None
@@ -495,6 +512,12 @@ class ClientUpdate(BaseModel):
     device_model: Optional[str] = None
     used_price_eur: Optional[float] = None
     admin_id: Optional[str] = None
+    # New loan fields
+    loan_number: Optional[str] = None
+    tags: Optional[str] = None
+    assigned_to: Optional[str] = None
+    repayment_type: Optional[str] = None
+    loan_due_date: Optional[str] = None
 
 class DeviceRegistration(BaseModel):
     registration_code: str
@@ -527,6 +550,32 @@ async def verify_admin_token_header(token: str) -> bool:
     """Helper function to verify admin token"""
     token_doc = await db.admin_tokens.find_one({"token": token})
     return token_doc is not None
+
+async def get_admin_id_from_token(admin_token: str) -> Optional[str]:
+    """
+    Extract admin_id from admin_token.
+    
+    Args:
+        admin_token: JWT/token for authentication
+        
+    Returns:
+        admin_id string or None if token is invalid
+        
+    Raises:
+        HTTPException: If token is invalid or not found
+    """
+    if not admin_token:
+        raise HTTPException(status_code=401, detail="Authentication token required")
+    
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    admin_id = token_doc.get("admin_id")
+    if not admin_id:
+        raise HTTPException(status_code=401, detail="Token does not have associated admin")
+    
+    return admin_id
 
 async def enforce_client_scope(client: dict, admin_id: Optional[str]):
     """Ensure the requested client belongs to the provided admin scope"""
@@ -753,39 +802,43 @@ async def delete_admin(admin_id: str, admin_token: str = Query(...)):
 # ===================== CLIENT MANAGEMENT ROUTES =====================
 
 @api_router.post("/clients", response_model=Client)
-async def create_client(client_data: ClientCreate, admin_token: Optional[str] = Query(default=None)):
-    admin_id = client_data.admin_id
+async def create_client(client_data: ClientCreate, admin_token: str = Query(...)):
+    """Create a new client
     
-    if admin_token:
-        token_doc = await db.admin_tokens.find_one({"token": admin_token})
-        if not token_doc:
-            raise HTTPException(status_code=401, detail="Invalid admin token")
-        admin_id = token_doc["admin_id"]
+    Args:
+        client_data: Client information
+        admin_token: Admin token for authentication (required)
+    """
+    # Get admin_id from token
+    admin_id = await get_admin_id_from_token(admin_token)
     
     client_payload = client_data.dict()
-    if admin_id:
-        client_payload["admin_id"] = admin_id
+    client_payload["admin_id"] = admin_id
     
     client = Client(**client_payload)
     await db.clients.insert_one(client.dict())
     return client
 
 @api_router.get("/clients")
-async def get_all_clients(skip: int = 0, limit: int = 100, admin_id: Optional[str] = Query(default=None)):
+async def get_all_clients(
+    skip: int = 0, 
+    limit: int = 100, 
+    admin_token: str = Query(...)
+):
     """Get all clients with pagination
     
     Args:
         skip: Number of records to skip (default: 0)
         limit: Maximum number of records to return (default: 100, max: 500)
+        admin_token: Admin token for authentication (required)
     """
     # Cap limit at 500 to prevent excessive data transfer
     limit = min(limit, 500)
     
-    if not admin_id:
-        logger.warning("admin_id not provided for client listing; rejecting request")
-        raise HTTPException(status_code=400, detail="admin_id is required for client listings")
+    # Get admin_id from token
+    resolved_admin_id = await get_admin_id_from_token(admin_token)
     
-    query = {"admin_id": admin_id}
+    query = {"admin_id": resolved_admin_id}
     
     # Get total count for pagination metadata
     total_count = await db.clients.count_documents(query)
@@ -805,7 +858,15 @@ async def get_all_clients(skip: int = 0, limit: int = 100, admin_id: Optional[st
     }
 
 @api_router.get("/clients/{client_id}", response_model=Client)
-async def get_client(client_id: str, admin_id: Optional[str] = Query(default=None)):
+async def get_client(client_id: str, admin_token: str = Query(...)):
+    """Get a specific client by ID
+    
+    Args:
+        client_id: Client ID
+        admin_token: Admin token for authentication (required)
+    """
+    admin_id = await get_admin_id_from_token(admin_token)
+    
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -814,7 +875,15 @@ async def get_client(client_id: str, admin_id: Optional[str] = Query(default=Non
     return Client(**client)
 
 @api_router.put("/clients/{client_id}", response_model=Client)
-async def update_client(client_id: str, update_data: ClientUpdate, admin_id: Optional[str] = Query(default=None)):
+async def update_client(client_id: str, update_data: ClientUpdate, admin_token: str = Query(...)):
+    """Update client information
+    
+    Args:
+        client_id: Client ID
+        update_data: Updated client data
+        admin_token: Admin token for authentication (required)
+    """
+    admin_id = await get_admin_id_from_token(admin_token)
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -828,8 +897,15 @@ async def update_client(client_id: str, update_data: ClientUpdate, admin_id: Opt
     return Client(**updated_client)
 
 @api_router.post("/clients/{client_id}/allow-uninstall")
-async def allow_uninstall(client_id: str, admin_id: Optional[str] = Query(default=None)):
-    """Signal device to allow app uninstallation - must be called before deletion"""
+async def allow_uninstall(client_id: str, admin_token: str = Query(...)):
+    """Signal device to allow app uninstallation - must be called before deletion
+    
+    Args:
+        client_id: Client ID
+        admin_token: Admin token for authentication (required)
+    """
+    admin_id = await get_admin_id_from_token(admin_token)
+    
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -849,7 +925,15 @@ async def allow_uninstall(client_id: str, admin_id: Optional[str] = Query(defaul
     }
 
 @api_router.delete("/clients/{client_id}")
-async def delete_client(client_id: str, admin_id: Optional[str] = Query(default=None)):
+async def delete_client(client_id: str, admin_token: str = Query(...)):
+    """Delete a client
+    
+    Args:
+        client_id: Client ID
+        admin_token: Admin token for authentication (required)
+    """
+    admin_id = await get_admin_id_from_token(admin_token)
+    
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -872,7 +956,16 @@ async def delete_client(client_id: str, admin_id: Optional[str] = Query(default=
 # ===================== LOCK CONTROL ROUTES =====================
 
 @api_router.post("/clients/{client_id}/lock")
-async def lock_client_device(client_id: str, message: Optional[str] = None, admin_id: Optional[str] = Query(default=None)):
+async def lock_client_device(client_id: str, message: Optional[str] = None, admin_token: str = Query(...)):
+    """Lock a client device
+    
+    Args:
+        client_id: Client ID
+        message: Optional lock message
+        admin_token: Admin token for authentication (required)
+    """
+    admin_id = await get_admin_id_from_token(admin_token)
+    
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -886,7 +979,15 @@ async def lock_client_device(client_id: str, message: Optional[str] = None, admi
     return {"message": "Device locked successfully"}
 
 @api_router.post("/clients/{client_id}/unlock")
-async def unlock_client_device(client_id: str, admin_id: Optional[str] = Query(default=None)):
+async def unlock_client_device(client_id: str, admin_token: str = Query(...)):
+    """Unlock a client device
+    
+    Args:
+        client_id: Client ID
+        admin_token: Admin token for authentication (required)
+    """
+    admin_id = await get_admin_id_from_token(admin_token)
+    
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -896,7 +997,16 @@ async def unlock_client_device(client_id: str, admin_id: Optional[str] = Query(d
     return {"message": "Device unlocked successfully"}
 
 @api_router.post("/clients/{client_id}/warning")
-async def send_warning(client_id: str, message: str, admin_id: Optional[str] = Query(default=None)):
+async def send_warning(client_id: str, message: str, admin_token: str = Query(...)):
+    """Send a warning message to a client device
+    
+    Args:
+        client_id: Client ID
+        message: Warning message
+        admin_token: Admin token for authentication (required)
+    """
+    admin_id = await get_admin_id_from_token(admin_token)
+    
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -1082,13 +1192,20 @@ async def create_loan_plan(plan_data: LoanPlanCreate, admin_token: str = Query(.
     return plan
 
 @api_router.get("/loan-plans")
-async def get_loan_plans(active_only: bool = False, admin_id: Optional[str] = Query(default=None)):
-    """Get all loan plans for the specified admin"""
-    if not admin_id:
-        logger.warning("admin_id not provided for loan plan listing; rejecting request")
-        raise HTTPException(status_code=400, detail="admin_id is required for loan plan listings")
+async def get_loan_plans(
+    active_only: bool = False, 
+    admin_token: str = Query(...)
+):
+    """Get all loan plans for the specified admin
     
-    query = {"admin_id": admin_id}
+    Args:
+        active_only: Filter for active plans only
+        admin_token: Admin token for authentication (required)
+    """
+    # Get admin_id from token
+    resolved_admin_id = await get_admin_id_from_token(admin_token)
+    
+    query = {"admin_id": resolved_admin_id}
     if active_only:
         query["is_active"] = True
     
@@ -1096,14 +1213,25 @@ async def get_loan_plans(active_only: bool = False, admin_id: Optional[str] = Qu
     return [LoanPlan(**p) for p in plans]
 
 @api_router.get("/loan-plans/{plan_id}", response_model=LoanPlan)
-async def get_loan_plan(plan_id: str, admin_id: Optional[str] = Query(default=None)):
-    """Get a specific loan plan"""
+async def get_loan_plan(
+    plan_id: str, 
+    admin_token: str = Query(...)
+):
+    """Get a specific loan plan
+    
+    Args:
+        plan_id: Loan plan ID
+        admin_token: Admin token for authentication (required)
+    """
+    # Get admin_id from token
+    resolved_admin_id = await get_admin_id_from_token(admin_token)
+    
     plan = await db.loan_plans.find_one({"id": plan_id})
     if not plan:
         raise HTTPException(status_code=404, detail="Loan plan not found")
     
     # Check admin ownership if admin_id is provided
-    if admin_id and plan.get("admin_id") and plan["admin_id"] != admin_id:
+    if resolved_admin_id and plan.get("admin_id") and plan["admin_id"] != resolved_admin_id:
         raise HTTPException(status_code=403, detail="Access denied: This loan plan belongs to another admin")
     
     return LoanPlan(**plan)
@@ -1291,10 +1419,30 @@ async def setup_loan(client_id: str, loan_data: ClientCreate, admin_id: Optional
     
     # Calculate next payment due date (one month from now)
     from dateutil.relativedelta import relativedelta
-    loan_start = datetime.utcnow()
+    
+    # Parse given_on date if provided, otherwise use current time
+    if loan_data.given_on:
+        try:
+            from dateutil import parser
+            loan_start = parser.parse(loan_data.given_on)
+        except:
+            loan_start = datetime.utcnow()
+    else:
+        loan_start = datetime.utcnow()
+    
     next_due = loan_start + relativedelta(months=1)
     
+    # Parse loan_due_date if provided
+    loan_due_date = None
+    if loan_data.loan_due_date:
+        try:
+            from dateutil import parser
+            loan_due_date = parser.parse(loan_data.loan_due_date)
+        except:
+            pass
+    
     update_data = {
+        "loan_number": loan_data.loan_number or "",
         "loan_amount": loan_data.loan_amount,
         "down_payment": loan_data.down_payment,
         "interest_rate": loan_data.interest_rate,
@@ -1304,7 +1452,11 @@ async def setup_loan(client_id: str, loan_data: ClientCreate, admin_id: Optional
         "outstanding_balance": loan_calc["total_amount"],
         "loan_start_date": loan_start,
         "next_payment_due": next_due,
-        "days_overdue": 0
+        "loan_due_date": loan_due_date,
+        "days_overdue": 0,
+        "tags": loan_data.tags or "",
+        "assigned_to": loan_data.assigned_to or "",
+        "repayment_type": loan_data.repayment_type or "One-Time Payment",
     }
     
     await db.clients.update_one({"id": client_id}, {"$set": update_data})
@@ -1548,12 +1700,21 @@ async def mark_reminder_sent(reminder_id: str):
 # ===================== REPORTS & ANALYTICS =====================
 
 @api_router.get("/reports/collection")
-async def get_collection_report(admin_id: Optional[str] = Query(default=None)):
-    """Get collection statistics and metrics"""
+async def get_collection_report(
+    admin_token: str = Query(...)
+):
+    """Get collection statistics and metrics
+    
+    Args:
+        admin_token: Admin token for authentication (required)
+    """
+    # Get admin_id from token
+    resolved_admin_id = await get_admin_id_from_token(admin_token)
+    
     # Build query filter for admin
     query = {}
-    if admin_id:
-        query["admin_id"] = admin_id
+    if resolved_admin_id:
+        query["admin_id"] = resolved_admin_id
     
     # Total clients
     total_clients = await db.clients.count_documents(query)
@@ -1638,11 +1799,20 @@ async def get_collection_report(admin_id: Optional[str] = Query(default=None)):
     }
 
 @api_router.get("/reports/clients")
-async def get_client_report(admin_id: Optional[str] = Query(default=None)):
-    """Get client-wise statistics"""
+async def get_client_report(
+    admin_token: str = Query(...)
+):
+    """Get client-wise statistics
+    
+    Args:
+        admin_token: Admin token for authentication (required)
+    """
+    # Get admin_id from token
+    resolved_admin_id = await get_admin_id_from_token(admin_token)
+    
     query = {}
-    if admin_id:
-        query["admin_id"] = admin_id
+    if resolved_admin_id:
+        query["admin_id"] = resolved_admin_id
     
     clients = await db.clients.find(query).to_list(1000)
     
@@ -1680,11 +1850,20 @@ async def get_client_report(admin_id: Optional[str] = Query(default=None)):
     }
 
 @api_router.get("/reports/financial")
-async def get_financial_report(admin_id: Optional[str] = Query(default=None)):
-    """Get detailed financial breakdown"""
+async def get_financial_report(
+    admin_token: str = Query(...)
+):
+    """Get detailed financial breakdown
+    
+    Args:
+        admin_token: Admin token for authentication (required)
+    """
+    # Get admin_id from token
+    resolved_admin_id = await get_admin_id_from_token(admin_token)
+    
     query = {}
-    if admin_id:
-        query["admin_id"] = admin_id
+    if resolved_admin_id:
+        query["admin_id"] = resolved_admin_id
     
     clients = await db.clients.find(query).to_list(1000)
     

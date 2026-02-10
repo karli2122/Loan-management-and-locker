@@ -54,12 +54,12 @@ export default function LoanPlans() {
 
   const fetchPlans = async () => {
     try {
-      const adminId = await AsyncStorage.getItem('admin_id');
-      if (!adminId) {
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      if (!adminToken) {
         Alert.alert('Error', 'Admin session not found');
         return;
       }
-      const response = await fetch(`${API_URL}/api/loan-plans?admin_id=${adminId}`);
+      const response = await fetch(`${API_URL}/api/loan-plans?admin_token=${adminToken}`);
       const data = await response.json();
       setPlans(data);
     } catch (error) {

@@ -92,7 +92,7 @@ export default function ClientDetails() {
   
   const getAdminScope = async () => {
     if (adminId) return adminId;
-    const stored = await AsyncStorage.getItem('admin_id');
+    const stored = await AsyncStorage.getItem('admin_token');
     if (stored) {
       setAdminId(stored);
       return stored;
@@ -102,13 +102,13 @@ export default function ClientDetails() {
 
   const buildAdminQuery = async (hasQuery = false) => {
     const scope = await getAdminScope();
-    return scope ? `${hasQuery ? '&' : '?'}admin_id=${scope}` : '';
+    return scope ? `${hasQuery ? '&' : '?'}admin_token=${scope}` : '';
   };
 
   const fetchClient = async () => {
     try {
       const scope = await getAdminScope();
-      const adminQuery = scope ? `?admin_id=${scope}` : '';
+      const adminQuery = scope ? `?admin_token=${scope}` : '';
       const response = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`);
       if (!response.ok) throw new Error('Client not found');
       const data = await response.json();

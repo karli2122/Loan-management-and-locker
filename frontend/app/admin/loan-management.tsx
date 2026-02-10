@@ -96,7 +96,7 @@ export default function LoanManagement() {
 
   const getAdminId = async () => {
     if (adminId) return adminId;
-    const stored = await AsyncStorage.getItem('admin_id');
+    const stored = await AsyncStorage.getItem('admin_token');
     if (stored) {
       setAdminId(stored);
       return stored;
@@ -107,7 +107,7 @@ export default function LoanManagement() {
   const fetchData = async () => {
     try {
       const scope = await getAdminId();
-      const adminQuery = scope ? `?admin_id=${scope}` : '';
+      const adminQuery = scope ? `?admin_token=${scope}` : '';
       // Fetch client details
       const clientRes = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`);
       const clientData = await clientRes.json();
