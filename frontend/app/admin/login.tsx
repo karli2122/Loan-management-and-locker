@@ -213,18 +213,38 @@ export default function AdminLogin() {
       }
 
       await AsyncStorage.setItem('admin_token', token);
-      await AsyncStorage.setItem('admin_id', parsed.data.id);
-      await AsyncStorage.setItem('admin_username', parsed.data.username);
-      await AsyncStorage.setItem('admin_role', parsed.data.role || 'user');
-      await AsyncStorage.setItem('is_super_admin', parsed.data.is_super_admin ? 'true' : 'false');
-      await AsyncStorage.setItem('admin_stay_signed_in', staySignedIn ? 'true' : 'false');
-      if (parsed.data.first_name) {
-        await AsyncStorage.setItem('admin_first_name', parsed.data.first_name);
-        setFirstName(parsed.data.first_name);
+      
+      // Safely extract admin data with fallbacks
+      const adminData = parsed.data || {};
+      
+      // Log for debugging
+      console.log('[AdminLogin] Admin data extracted:', {
+        hasId: !!adminData.id,
+        hasUsername: !!adminData.username,
+        hasRole: !!adminData.role,
+        role: adminData.role
+      });
+      
+      // Validate required fields
+      if (!adminData.id || !adminData.username) {
+        throw new Error(
+          'Login succeeded but response missing required fields (id or username). ' +
+          `Response: ${JSON.stringify(adminData).substring(0, 200)}`
+        );
       }
-      if (parsed.data.last_name) {
-        await AsyncStorage.setItem('admin_last_name', parsed.data.last_name);
-        setLastName(parsed.data.last_name);
+      
+      await AsyncStorage.setItem('admin_id', adminData.id);
+      await AsyncStorage.setItem('admin_username', adminData.username);
+      await AsyncStorage.setItem('admin_role', adminData.role || 'user');
+      await AsyncStorage.setItem('is_super_admin', adminData.is_super_admin ? 'true' : 'false');
+      await AsyncStorage.setItem('admin_stay_signed_in', staySignedIn ? 'true' : 'false');
+      if (adminData.first_name) {
+        await AsyncStorage.setItem('admin_first_name', adminData.first_name);
+        setFirstName(adminData.first_name);
+      }
+      if (adminData.last_name) {
+        await AsyncStorage.setItem('admin_last_name', adminData.last_name);
+        setLastName(adminData.last_name);
       }
 
       router.replace('/admin/(tabs)');
