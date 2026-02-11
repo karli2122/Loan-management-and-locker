@@ -18,30 +18,30 @@ from pathlib import Path
 
 def test_zip_upload(admin_token, zip_file_path):
     """Test uploading a ZIP file to the API"""
-    
+
     # API endpoint
     url = "http://localhost:8000/api/admin/upload-zip"
-    
+
     # Check if file exists
     zip_path = Path(zip_file_path)
     if not zip_path.exists():
         print(f"❌ Error: File not found: {zip_file_path}")
         return False
-    
+
     # Check if file is a ZIP
-    if zip_path.suffix.lower() != '.zip':
+    if zip_path.suffix.lower() != ".zip":
         print(f"⚠️  Warning: File doesn't have .zip extension: {zip_file_path}")
-    
+
     print(f"📦 Uploading: {zip_path.name} ({zip_path.stat().st_size} bytes)")
-    
+
     # Prepare the request
-    with open(zip_path, 'rb') as f:
-        files = {'file': (zip_path.name, f, 'application/zip')}
-        params = {'admin_token': admin_token}
-        
+    with open(zip_path, "rb") as f:
+        files = {"file": (zip_path.name, f, "application/zip")}
+        params = {"admin_token": admin_token}
+
         try:
             response = requests.post(url, files=files, params=params)
-            
+
             if response.status_code == 200:
                 data = response.json()
                 print("✅ Upload successful!")
@@ -52,11 +52,11 @@ def test_zip_upload(admin_token, zip_file_path):
                 print(f"   Path: {data['upload_path']}")
                 return True
             else:
-                print(f"❌ Upload failed!")
+                print("❌ Upload failed!")
                 print(f"   Status code: {response.status_code}")
                 print(f"   Error: {response.json().get('detail', 'Unknown error')}")
                 return False
-                
+
         except requests.exceptions.ConnectionError:
             print("❌ Error: Could not connect to server.")
             print("   Make sure the backend is running on http://localhost:8000")
@@ -72,16 +72,16 @@ def main():
         print("\nExample:")
         print("  python manual_test_upload.py abc123def456 /path/to/file.zip")
         sys.exit(1)
-    
+
     admin_token = sys.argv[1]
     zip_file_path = sys.argv[2]
-    
+
     print("=" * 60)
     print("ZIP Upload Test")
     print("=" * 60)
-    
+
     success = test_zip_upload(admin_token, zip_file_path)
-    
+
     print("=" * 60)
     sys.exit(0 if success else 1)
 

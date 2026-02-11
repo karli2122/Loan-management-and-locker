@@ -9,7 +9,7 @@ client = TestClient(app)
 def create_test_zip():
     """Create a test ZIP file in memory"""
     zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
         zip_file.writestr("test_file.txt", "This is a test file content")
         zip_file.writestr("another_file.txt", "More test content")
     zip_buffer.seek(0)
@@ -19,12 +19,9 @@ def create_test_zip():
 def test_upload_zip_without_auth():
     """Test that upload without authentication fails"""
     zip_file = create_test_zip()
-    
-    response = client.post(
-        "/api/admin/upload-zip",
-        files={"file": ("test.zip", zip_file, "application/zip")}
-    )
-    
+
+    response = client.post("/api/admin/upload-zip", files={"file": ("test.zip", zip_file, "application/zip")})
+
     # Should fail with 422 (missing required parameter)
     assert response.status_code == 422
 
@@ -32,12 +29,9 @@ def test_upload_zip_without_auth():
 def test_upload_non_zip_file_without_auth():
     """Test that uploading non-ZIP file without auth fails with validation error"""
     text_file = io.BytesIO(b"This is not a zip file")
-    
-    response = client.post(
-        "/api/admin/upload-zip",
-        files={"file": ("test.txt", text_file, "text/plain")}
-    )
-    
+
+    response = client.post("/api/admin/upload-zip", files={"file": ("test.txt", text_file, "text/plain")})
+
     # Should fail with 422 (missing required parameter)
     assert response.status_code == 422
 
@@ -46,7 +40,7 @@ def test_upload_endpoint_exists():
     """Test that the upload endpoint is registered"""
     # Test OPTIONS to see if endpoint exists
     response = client.options("/api/admin/upload-zip")
-    
+
     # Endpoint should exist (not 404)
     assert response.status_code != 404
 
