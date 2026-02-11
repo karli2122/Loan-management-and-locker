@@ -11,7 +11,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 import hashlib
 import secrets
 
@@ -1895,7 +1895,7 @@ async def upload_zip_file(
     
     # Generate unique filename to prevent overwrites
     unique_id = uuid.uuid4().hex[:8]
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     safe_filename = f"{timestamp}_{unique_id}_{file.filename}"
     file_path = UPLOAD_DIR / safe_filename
     

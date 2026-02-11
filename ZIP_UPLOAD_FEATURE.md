@@ -81,7 +81,7 @@ Format: `{timestamp}_{unique_id}_{original_filename}`
 Example: `20260211_132145_a1b2c3d4_archive.zip`
 
 Where:
-- `timestamp`: YYYYmmdd_HHMMSS in UTC
+- `timestamp`: YYYYMMDD_HHMMSS in UTC
 - `unique_id`: 8-character random hex string
 - `original_filename`: Original name of the uploaded file
 
