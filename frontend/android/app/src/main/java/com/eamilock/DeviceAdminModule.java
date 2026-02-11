@@ -93,7 +93,7 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
             promise.resolve("success");
         } catch (Exception e) {
             Log.e(TAG, "setRegistered failed", e);
-            promise.resolve("error");
+            promise.reject("ERROR", "Failed to set registration status", e);
         }
     }
 
@@ -183,7 +183,7 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
             }
         } catch (Exception e) {
             Log.e(TAG, "lockDevice failed", e);
-            promise.resolve("error");
+            promise.reject("ERROR", "Failed to lock device", e);
         }
     }
 
@@ -195,7 +195,7 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
             promise.resolve("started");
         } catch (Exception e) {
             Log.e(TAG, "startTamperDetection failed", e);
-            promise.resolve("error");
+            promise.reject("ERROR", "Failed to start tamper detection", e);
         }
     }
 
@@ -207,7 +207,7 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
             promise.resolve("stopped");
         } catch (Exception e) {
             Log.e(TAG, "stopTamperDetection failed", e);
-            promise.resolve("error");
+            promise.reject("ERROR", "Failed to stop tamper detection", e);
         }
     }
 
@@ -225,7 +225,7 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
             }
         } catch (Exception e) {
             Log.e(TAG, "preventUninstall failed", e);
-            promise.resolve("error");
+            promise.reject("ERROR", "Failed to prevent uninstall", e);
         }
     }
 
@@ -239,7 +239,7 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
             promise.resolve("uninstall_allowed");
         } catch (Exception e) {
             Log.e(TAG, "allowUninstall failed", e);
-            promise.resolve("error");
+            promise.reject("ERROR", "Failed to allow uninstall", e);
         }
     }
 
