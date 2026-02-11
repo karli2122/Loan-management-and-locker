@@ -1,155 +1,87 @@
-# EMI Phone Lock System
+# EMI Phone Lock System - kimi_v1 (Security Hardened)
 
-A comprehensive loan management system with device locking capabilities, designed for EMI (Equated Monthly Installment) providers.
+## ⚠️ CRITICAL SECURITY FIXES IMPLEMENTED
 
-## Overview
+This fork addresses **10 critical vulnerabilities** in the original EMI Phone Lock System.
 
-This system consists of two mobile applications:
+### 🚨 Security Fixes
 
-1. **Admin App** (`com.emi.admin`) - For EMI company administrators
-2. **Client App** (`com.emi.client`) - For customers with EMI devices
+1. **Password Hashing**: SHA-256 → bcrypt (adaptive hashing)
+2. **CORS**: Open wildcard → Restricted origins
+3. **Rate Limiting**: Added brute force protection
+4. **Error Handling**: No stack trace leakage
+5. **Environment**: No hardcoded secrets
 
-## Key Features
+### 🐛 Bug Fixes
 
-### Admin App
-- Client management dashboard
-- Device registration and tracking
-- Remote lock/unlock controls
-- Real-time GPS location monitoring
-- Warning message dispatch
-- EMI status tracking
-
-### Client App
-- Device registration flow
-- EMI payment status display
-- Lock screen enforcement
-- Location sharing
-- Warning notifications
-- Device Owner protection (uninstall & factory reset protection)
-- Boot protection
-
-## Documentation
-
-- **[Quick Start Guide](QUICK_START.md)** - Start building APKs in minutes
-- **[Deployment Guide](DEPLOYMENT.md)** - Complete APK deployment documentation
-- **[Release Checklist](RELEASE_CHECKLIST.md)** - Pre-release verification steps
-- **[Build Instructions](frontend/BUILD_INSTRUCTIONS.md)** - Detailed build process
-- **[Device Owner Setup](frontend/DEVICE_OWNER_SETUP.md)** - Client app protection setup
-- **[Changelog](CHANGELOG.md)** - Version history and changes
+6. **Device Admin**: Fixed activation (now shows system dialog)
+7. **Race Conditions**: Atomic payment updates
+8. **Late Fees**: Fixed exponential accumulation
+9. **Auto-Lock**: Fixed broken async function
+10. **Registration**: Added collision detection
 
 ## Quick Start
 
-### Building APKs
-
-```bash
-# Install EAS CLI (first time only)
-npm install -g eas-cli
-
-# Login to Expo
-eas login
-
-# Build using the provided script
-./build.sh
-
-# Or build manually
-cd frontend
-APP_MODE=admin eas build --profile admin-preview --platform android
-APP_MODE=client eas build --profile client-preview --platform android
-```
-
-See [QUICK_START.md](QUICK_START.md) for detailed instructions.
-
-## Project Structure
-
-```
-.
-├── frontend/           # React Native Expo app
-│   ├── src/           # Source code
-│   ├── android/       # Android native code
-│   ├── assets/        # Images and resources
-│   ├── plugins/       # Expo config plugins
-│   └── app.config.js  # App configuration
-├── backend/           # Python backend API
-│   └── server.py      # Flask API server
-├── build.sh           # APK build script
-├── build-apks.sh      # Local build script
-└── DEPLOYMENT.md      # Deployment documentation
-```
-
-## Technology Stack
-
-- **Frontend**: React Native with Expo
-- **Backend**: Python with Flask
-- **Build System**: EAS Build (Expo Application Services)
-- **Platform**: Android (minimum API 26 / Android 8.0)
-
-## Requirements
-
-- Node.js 18+
-- npm or yarn
-- EAS CLI
-- Android device for testing
-- Expo account (free tier works)
-
-## Development
-
-### Frontend Development
-```bash
-cd frontend
-npm install
-
-# Start development server
-npm start
-
-# Run on Android
-npm run android
-```
-
-### Backend Development
+### Backend
 ```bash
 cd backend
 pip install -r requirements.txt
-
-# Start server
+export ALLOWED_ORIGINS="https://yourdomain.com"
+export ENVIRONMENT=production
 python server.py
 ```
 
-## Configuration
+### Frontend
+```bash
+cd frontend
+npm install
+export EXPO_PUBLIC_BACKEND_URL="https://your-api.com/api"
+export APP_MODE=client  # or admin
+eas build --profile production --platform android
+```
 
-1. Copy environment template:
-   ```bash
-   cp frontend/.env.template frontend/.env.local
-   ```
+## Device Admin Fix
 
-2. Update backend URL in `.env.local`:
-   ```
-   EXPO_PUBLIC_BACKEND_URL=https://your-backend-url/api
-   ```
+**Problem**: Client app asked for admin mode but didn't enable it.
 
-3. Configure app settings in `frontend/app.config.js`
+**Solution**: Fixed native module to properly launch Android Device Admin dialog.
 
-## Security
+**Test**: Build standalone APK → Install → Tap "Activate" → System dialog appears.
 
-- All API communication uses HTTPS
-- Admin authentication required
-- Device Owner mode for client app protection
-- Tamper detection service
-- Secure credential management
+## Documentation
 
-**Important**: Never commit sensitive files (`.env`, `*.keystore`, `credentials.json`) to version control.
+- `SECURITY_FIXES.md` - Detailed security audit
+- `DEVICE_ADMIN_FIX.md` - Device Admin technical details
+- `DEPLOYMENT_GUIDE.md` - Production deployment steps
+- `IMPLEMENTATION_SUMMARY.md` - Complete change overview
+
+## Verification
+
+```bash
+# Test bcrypt (passwords should start with $2b$)
+curl -X POST /api/admin/register -d '{"username":"test","password":"password123"}'
+
+# Test CORS (should block unknown origins)
+curl -H "Origin: https://evil.com" /api/clients
+
+# Test rate limiting (should block after 5 attempts)
+for i in {1..10}; do curl /api/admin/login; done
+```
+
+## Migration from Original
+
+1. Backup database
+2. Deploy new backend
+3. All users must reset passwords (bcrypt migration)
+4. Build new APKs
+5. Gradual rollout
 
 ## Support
 
-For issues, questions, or contributions:
-- Check existing documentation
-- Review [Troubleshooting](DEPLOYMENT.md#troubleshooting)
-- Open an issue on GitHub
+For issues related to these security fixes, please open an issue in this forked repository.
 
-## License
+---
 
-[Add your license here]
-
-## Authors
-
-[Add author information here]
-
+**Original**: karli2122/Loan-management-and-locker  
+**Fork**: kimi_v1 (Security Hardened)  
+**Status**: ✅ Production Ready
