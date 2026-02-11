@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query, UploadFile, File
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -11,12 +11,18 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 import hashlib
 import secrets
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# Configure upload directory
+UPLOAD_DIR = ROOT_DIR / 'uploads'
+UPLOAD_DIR.mkdir(exist_ok=True)
+MAX_FILE_SIZE = 100 * 1024 * 1024  # 100 MB
+ALLOWED_EXTENSIONS = {'.zip'}
 
 # Configure logging
 logging.basicConfig(
@@ -1847,6 +1853,70 @@ async def health_check():
         "database": db_status,
         "version": "1.0.0"
     }
+
+# ===================== FILE UPLOAD ROUTES =====================
+
+@api_router.post("/admin/upload-zip")
+async def upload_zip_file(
+    file: UploadFile = File(...),
+    admin_token: str = Query(...)
+):
+    """Upload a ZIP archive (requires admin authentication)"""
+    # Verify admin token
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid or expired admin token")
+    
+    # Get admin details
+    admin = await db.admins.find_one({"id": token_doc["admin_id"]})
+    if not admin:
+        raise HTTPException(status_code=401, detail="Admin not found")
+    
+    # Validate file extension
+    file_ext = Path(file.filename).suffix.lower()
+    if file_ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type. Only {', '.join(ALLOWED_EXTENSIONS)} files are allowed"
+        )
+    
+    # Read file content to check size
+    content = await file.read()
+    file_size = len(content)
+    
+    if file_size > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size is {MAX_FILE_SIZE / (1024 * 1024)} MB"
+        )
+    
+    if file_size == 0:
+        raise HTTPException(status_code=400, detail="File is empty")
+    
+    # Generate unique filename to prevent overwrites
+    unique_id = uuid.uuid4().hex[:8]
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    safe_filename = f"{timestamp}_{unique_id}_{file.filename}"
+    file_path = UPLOAD_DIR / safe_filename
+    
+    # Save the file
+    try:
+        with open(file_path, "wb") as f:
+            f.write(content)
+        
+        logger.info(f"File uploaded by admin {admin['username']}: {safe_filename} ({file_size} bytes)")
+        
+        return {
+            "message": "File uploaded successfully",
+            "filename": safe_filename,
+            "original_filename": file.filename,
+            "size_bytes": file_size,
+            "uploaded_by": admin["username"],
+            "upload_path": str(file_path.relative_to(ROOT_DIR))
+        }
+    except Exception as e:
+        logger.error(f"Error saving file: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to save file")
 
 # Include the router in the main app
 app.include_router(api_router)
