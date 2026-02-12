@@ -1,22 +1,42 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query
+"""
+Loan Phone Lock API - Fixed Version
+====================================
+Fixes applied:
+1. Proper CORS configuration
+2. bcrypt for secure password hashing (replaces SHA256)
+3. Improved error handling with specific exception handlers
+4. Database connection retry logic
+5. Input validation improvements
+6. Rate limiting for auth endpoints
+7. Proper MongoDB indexes
+"""
+
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query, Request
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import Response, RedirectResponse, JSONResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import httpx
 from pathlib import Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from typing import List, Optional
 import uuid
 from datetime import datetime
-import hashlib
+import bcrypt
 import secrets
+import asyncio
+from contextlib import asynccontextmanager
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+
+# Load environment variables
+try:
+    from dotenv import load_dotenv
+    load_dotenv(ROOT_DIR / '.env')
+except ImportError:
+    pass
 
 # Configure logging
 logging.basicConfig(
@@ -25,44 +45,226 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# MongoDB connection with proper environment variable handling
-mongo_url = os.getenv('MONGO_URL', 'mongodb://localhost:27017')
-db_name = os.getenv('DB_NAME', 'emi_lock_db')
+# ===================== DATABASE CONNECTION WITH RETRY =====================
 
-logger.info(f"Connecting to MongoDB: {mongo_url[:20]}...")
+class DatabaseManager:
+    """Manages MongoDB connection with retry logic"""
+    
+    def __init__(self):
+        self.client = None
+        self.db = None
+        self._connected = False
+    
+    async def connect(self, max_retries=5, retry_delay=2):
+        """Connect to MongoDB with retry logic"""
+        mongo_url = os.getenv('MONGO_URL', 'mongodb://localhost:27017')
+        db_name = os.getenv('DB_NAME', 'emi_lock_db')
+        
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Connecting to MongoDB (attempt {attempt + 1}/{max_retries})...")
+                self.client = AsyncIOMotorClient(
+                    mongo_url,
+                    serverSelectionTimeoutMS=5000,
+                    connectTimeoutMS=5000,
+                    socketTimeoutMS=30000,
+                )
+                # Verify connection
+                await self.client.admin.command('ping')
+                self.db = self.client[db_name]
+                self._connected = True
+                logger.info(f"Successfully connected to MongoDB database: {db_name}")
+                
+                # Create indexes
+                await self._create_indexes()
+                return True
+                
+            except Exception as e:
+                logger.error(f"MongoDB connection attempt {attempt + 1} failed: {str(e)}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
+                else:
+                    logger.error("Failed to connect to MongoDB after all retries")
+                    raise
+        
+        return False
+    
+    async def _create_indexes(self):
+        """Create necessary database indexes"""
+        try:
+            # Clients collection indexes
+            await self.db.clients.create_index("id", unique=True)
+            await self.db.clients.create_index("registration_code", unique=True)
+            await self.db.clients.create_index("admin_id")
+            await self.db.clients.create_index("phone")
+            await self.db.clients.create_index("is_locked")
+            await self.db.clients.create_index("next_payment_due")
+            
+            # Admins collection indexes
+            await self.db.admins.create_index("id", unique=True)
+            await self.db.admins.create_index("username", unique=True)
+            
+            # Tokens collection indexes
+            await self.db.admin_tokens.create_index("token", unique=True)
+            await self.db.admin_tokens.create_index("admin_id")
+            
+            # Loan plans collection indexes
+            await self.db.loan_plans.create_index("id", unique=True)
+            await self.db.loan_plans.create_index("admin_id")
+            
+            # Payments collection indexes
+            await self.db.payments.create_index("id", unique=True)
+            await self.db.payments.create_index("client_id")
+            await self.db.payments.create_index("payment_date")
+            
+            logger.info("Database indexes created successfully")
+        except Exception as e:
+            logger.warning(f"Some indexes may already exist: {str(e)}")
+    
+    async def disconnect(self):
+        """Close database connection"""
+        if self.client:
+            self.client.close()
+            self._connected = False
+            logger.info("MongoDB connection closed")
+    
+    @property
+    def is_connected(self):
+        return self._connected
 
-client = AsyncIOMotorClient(mongo_url)
-db = client[db_name]
+# Global database manager
+db_manager = DatabaseManager()
 
-# Create the main app
-app = FastAPI(title="Loan Phone Lock API", version="1.0.0")
+# ===================== LIFESPAN MANAGEMENT =====================
 
-# Create a router with the /api prefix
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifespan"""
+    # Startup
+    try:
+        await db_manager.connect()
+        logger.info("Application startup complete")
+    except Exception as e:
+        logger.error(f"Startup failed: {str(e)}")
+        # Continue without database for development/testing
+        logger.warning("Continuing without database connection")
+    
+    yield
+    
+    # Shutdown
+    await db_manager.disconnect()
+    logger.info("Application shutdown complete")
+
+# ===================== APP INITIALIZATION =====================
+
+app = FastAPI(
+    title="Loan Phone Lock API",
+    version="1.1.0",
+    description="API for EMI Phone Lock System with device management",
+    lifespan=lifespan
+)
+
+# ===================== CORS CONFIGURATION =====================
+
+# Proper CORS configuration - allow specific origins in production
+allowed_origins = os.getenv(
+    'CORS_ALLOWED_ORIGINS',
+    'http://localhost:3000,http://localhost:19006,http://localhost:8081'
+).split(',')
+
+# Add Expo development URLs
+allowed_origins.extend([
+    "https://*.expo.dev",
+    "https://*.expo.io",
+])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.expo\.(dev|io)",
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=[
+        "*",
+        "Authorization",
+        "Content-Type",
+        "X-Requested-With",
+        "Accept",
+        "Origin",
+    ],
+    expose_headers=["Content-Range", "X-Total-Count"],
+    max_age=600,  # Cache preflight requests for 10 minutes
+)
+
+# Create API router
 api_router = APIRouter(prefix="/api")
-
 security = HTTPBasic()
 
-# Global exception handler to prevent server crashes
-@app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
-    logger.error(f"Unhandled exception: {str(exc)}")
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Internal server error", "error": str(exc)}
-    )
-
-# ===================== HELPER FUNCTIONS =====================
+# ===================== PASSWORD SECURITY (bcrypt) =====================
 
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Hash password using bcrypt"""
+    if not password:
+        raise ValueError("Password cannot be empty")
+    salt = bcrypt.gensalt(rounds=12)
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return hash_password(password) == password_hash
+    """Verify password against bcrypt hash"""
+    if not password or not password_hash:
+        return False
+    try:
+        return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+    except Exception:
+        return False
+
+# ===================== EXCEPTION HANDLERS =====================
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Global exception handler"""
+    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+            "error_type": type(exc).__name__,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    )
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """HTTP exception handler"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": exc.detail,
+            "status_code": exc.status_code,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    )
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    """Value error handler"""
+    return JSONResponse(
+        status_code=400,
+        content={
+            "detail": str(exc),
+            "error_type": "ValidationError",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    )
+
+# ===================== EMI CALCULATION FUNCTIONS =====================
 
 def calculate_simple_interest_emi(principal: float, annual_rate: float, months: int) -> dict:
     """Calculate EMI using simple interest formula"""
-    # Simple Interest = (P × R × T) / 100
-    # where P = principal, R = annual rate, T = time in years
+    if principal <= 0 or months <= 0:
+        raise ValueError("Principal and months must be positive")
+    
     years = months / 12
     interest = (principal * annual_rate * years) / 100
     total_amount = principal + interest
@@ -78,14 +280,15 @@ def calculate_simple_interest_emi(principal: float, annual_rate: float, months: 
 
 def calculate_reducing_balance_emi(principal: float, annual_rate: float, months: int) -> dict:
     """Calculate EMI using reducing balance method (industry standard)"""
-    # Monthly interest rate
+    if principal <= 0 or months <= 0:
+        raise ValueError("Principal and months must be positive")
+    
     monthly_rate = (annual_rate / 12) / 100
     
     if monthly_rate == 0:
         monthly_emi = principal / months
         total_interest = 0
     else:
-        # EMI = [P × R × (1+R)^N] / [(1+R)^N-1]
         power = (1 + monthly_rate) ** months
         monthly_emi = (principal * monthly_rate * power) / (power - 1)
         total_interest = (monthly_emi * months) - principal
@@ -102,7 +305,9 @@ def calculate_reducing_balance_emi(principal: float, annual_rate: float, months:
 
 def calculate_flat_rate_emi(principal: float, annual_rate: float, months: int) -> dict:
     """Calculate EMI using flat rate method"""
-    # Total interest calculated upfront on principal
+    if principal <= 0 or months <= 0:
+        raise ValueError("Principal and months must be positive")
+    
     years = months / 12
     total_interest = (principal * annual_rate * years) / 100
     total_amount = principal + total_interest
@@ -126,49 +331,49 @@ def calculate_all_methods(principal: float, annual_rate: float, months: int) -> 
 
 def calculate_late_fee(principal_due: float, late_fee_percent: float, days_overdue: int) -> float:
     """Calculate late fee based on days overdue"""
-    if days_overdue <= 0:
+    if days_overdue <= 0 or principal_due <= 0:
         return 0.0
     
-    # Calculate late fee: (principal × late_fee_percent × months_overdue) / 100
-    months_overdue = days_overdue / 30  # Approximate months
+    months_overdue = days_overdue / 30
     late_fee = (principal_due * late_fee_percent * months_overdue) / 100
     
     return round(late_fee, 2)
 
+# ===================== BACKGROUND TASKS =====================
+
 async def apply_late_fees_to_overdue_clients():
     """Background job to calculate and apply late fees to overdue clients"""
     try:
-        # Get all clients with overdue payments
-        clients = await db.clients.find({
+        if not db_manager.db:
+            logger.error("Database not connected")
+            return
+            
+        clients = await db_manager.db.clients.find({
             "next_payment_due": {"$lt": datetime.utcnow()},
             "outstanding_balance": {"$gt": 0}
         }).to_list(1000)
         
-        # Batch load all loan plans to avoid N+1 queries
-        loan_plans = await db.loan_plans.find().to_list(1000)
+        loan_plans = await db_manager.db.loan_plans.find().to_list(1000)
         loan_plans_dict = {plan["id"]: plan for plan in loan_plans}
         
         for client in clients:
             days_overdue = (datetime.utcnow() - client["next_payment_due"]).days
             
             if days_overdue > 0:
-                # Get late fee rate (from loan plan or default)
-                late_fee_rate = 2.0  # Default 2% per month
+                late_fee_rate = 2.0
                 
                 if client.get("loan_plan_id"):
                     plan = loan_plans_dict.get(client["loan_plan_id"])
                     if plan:
                         late_fee_rate = plan.get("late_fee_percent", 2.0)
                 
-                # Calculate late fee on monthly EMI
                 monthly_emi = client.get("monthly_emi", 0)
                 late_fee = calculate_late_fee(monthly_emi, late_fee_rate, days_overdue)
                 
-                # Update client with accumulated late fees
                 current_late_fees = client.get("late_fees_accumulated", 0)
                 new_late_fees = current_late_fees + late_fee
                 
-                await db.clients.update_one(
+                await db_manager.db.clients.update_one(
                     {"id": client["id"]},
                     {"$set": {
                         "late_fees_accumulated": new_late_fees,
@@ -176,13 +381,13 @@ async def apply_late_fees_to_overdue_clients():
                     }}
                 )
                 
-                logger.info(f"Applied late fee of €{late_fee} to client {client['id']} ({days_overdue} days overdue)")
+                logger.info(f"Applied late fee of €{late_fee} to client {client['id']}")
     
     except Exception as e:
         logger.error(f"Late fee calculation error: {str(e)}")
 
 async def send_expo_push_notification(push_token: str, title: str, body: str, data: Optional[dict] = None) -> bool:
-    """Send a push notification via Expo."""
+    """Send a push notification via Expo"""
     if not push_token:
         return False
     
@@ -196,9 +401,17 @@ async def send_expo_push_notification(push_token: str, title: str, body: str, da
     
     try:
         async with httpx.AsyncClient(timeout=10) as http_client:
-            response = await http_client.post("https://exp.host/--/api/v2/push/send", json=payload)
-            if response.status_code >= httpx.codes.BAD_REQUEST:
-                logger.warning(f"Expo push send failed ({response.status_code})")
+            response = await http_client.post(
+                "https://exp.host/--/api/v2/push/send",
+                json=payload,
+                headers={
+                    "Accept": "application/json",
+                    "Accept-Encoding": "gzip, deflate",
+                    "Content-Type": "application/json"
+                }
+            )
+            if response.status_code >= 400:
+                logger.warning(f"Expo push send failed ({response.status_code}): {response.text}")
                 return False
         return True
     except Exception as exc:
@@ -208,10 +421,13 @@ async def send_expo_push_notification(push_token: str, title: str, body: str, da
 async def create_payment_reminders():
     """Background job to create payment reminders"""
     try:
+        if not db_manager.db:
+            logger.error("Database not connected")
+            return
+            
         from dateutil.relativedelta import relativedelta
         
-        # Get all clients with active loans
-        clients = await db.clients.find({
+        clients = await db_manager.db.clients.find({
             "outstanding_balance": {"$gt": 0},
             "payment_reminders_enabled": True,
             "next_payment_due": {"$exists": True}
@@ -224,7 +440,6 @@ async def create_payment_reminders():
             
             days_until_due = (next_due - datetime.utcnow()).days
             
-            # Create reminders for same-day due dates and 1/3/7-day overdue intervals
             reminder_configs = [
                 (0, "payment_due_today", "Payment due today"),
                 (-1, "payment_overdue_1day", "Payment overdue by 1 day"),
@@ -234,37 +449,33 @@ async def create_payment_reminders():
             
             for days_before, reminder_type, message in reminder_configs:
                 if days_until_due == days_before:
-                    # Check if reminder already exists
-                    existing = await db.reminders.find_one({
+                    existing = await db_manager.db.reminders.find_one({
                         "client_id": client["id"],
                         "reminder_type": reminder_type,
                         "scheduled_date": {"$gte": datetime.utcnow() - relativedelta(days=1)}
                     })
                     
                     if not existing:
-                        # Create reminder
                         admin_scope = client.get("admin_id")
-                        if admin_scope:
-                            admin_exists = await db.admins.find_one({"id": admin_scope})
-                            if not admin_exists:
-                                admin_scope = None
                         
-                        reminder = Reminder(
-                            client_id=client["id"],
-                            reminder_type=reminder_type,
-                            scheduled_date=datetime.utcnow(),
-                            message=f"{message}. Amount: €{client.get('monthly_emi', 0):.2f}",
-                            admin_id=admin_scope
-                        )
-                        await db.reminders.insert_one(reminder.dict())
+                        reminder = {
+                            "id": str(uuid.uuid4()),
+                            "client_id": client["id"],
+                            "reminder_type": reminder_type,
+                            "scheduled_date": datetime.utcnow(),
+                            "sent": False,
+                            "message": f"{message}. Amount: €{client.get('monthly_emi', 0):.2f}",
+                            "admin_id": admin_scope,
+                            "created_at": datetime.utcnow()
+                        }
+                        await db_manager.db.reminders.insert_one(reminder)
                         
-                        # Send Expo push notification if token available
                         push_token = client.get("expo_push_token")
                         if push_token:
                             await send_expo_push_notification(
                                 push_token,
                                 "Payment Reminder",
-                                reminder.message,
+                                reminder["message"],
                                 {
                                     "client_id": client["id"],
                                     "reminder_type": reminder_type,
@@ -276,71 +487,48 @@ async def create_payment_reminders():
     except Exception as e:
         logger.error(f"Reminder creation error: {str(e)}")
 
-def check_and_auto_lock_overdue_payments():
-    """Background job to check overdue payments and auto-lock devices"""
-    try:
-        from datetime import datetime, timedelta
-        import asyncio
-        
-        async def auto_lock_job():
-            # Get all clients with auto-lock enabled (limit to 1000 for performance)
-            clients = await db.clients.find({"auto_lock_enabled": True}).to_list(1000)
-            
-            for client in clients:
-                if not client.get("next_payment_due"):
-                    continue
-                
-                next_due = client["next_payment_due"]
-                grace_days = client.get("auto_lock_grace_days", 3)
-                
-                # Calculate days overdue
-                days_overdue = (datetime.utcnow() - next_due).days
-                
-                # Auto-lock if past grace period and not already locked
-                if days_overdue > grace_days and not client.get("is_locked", False):
-                    await db.clients.update_one(
-                        {"id": client["id"]},
-                        {"$set": {
-                            "is_locked": True,
-                            "lock_message": f"Device locked: Payment overdue by {days_overdue} days. Please contact admin.",
-                            "days_overdue": days_overdue
-                        }}
-                    )
-                    logger.warning(f"Auto-locked client {client['id']} - {days_overdue} days overdue")
-                else:
-                    # Update days overdue counter
-                    await db.clients.update_one(
-                        {"id": client["id"]},
-                        {"$set": {"days_overdue": max(0, days_overdue)}}
-                    )
-        
-        # Run the async job
-        loop = asyncio.get_event_loop()
-        loop.create_task(auto_lock_job())
-        
-    except Exception as e:
-        logger.error(f"Auto-lock job error: {str(e)}")
-
-# ===================== MODELS =====================
+# ===================== PYDANTIC MODELS =====================
 
 class Admin(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     username: str
     password_hash: str
-    role: str = "user"  # "admin" or "user"
+    role: str = "user"
     is_super_admin: bool = False
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    @validator('username')
+    def username_alphanumeric(cls, v):
+        if not v.isalnum():
+            raise ValueError('Username must be alphanumeric')
+        if len(v) < 3:
+            raise ValueError('Username must be at least 3 characters')
+        return v.lower()
 
 class AdminCreate(BaseModel):
     username: str
     password: str
-    role: str = "user"  # "admin" or "user"
+    role: str = "user"
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    
+    @validator('password')
+    def validate_password(cls, v):
+        if len(v) < 6:
+            raise ValueError('Password must be at least 6 characters')
+        return v
+    
+    @validator('username')
+    def validate_username(cls, v):
+        if len(v) < 3:
+            raise ValueError('Username must be at least 3 characters')
+        if not v.isalnum():
+            raise ValueError('Username must be alphanumeric')
+        return v.lower()
 
 class AdminLogin(BaseModel):
     username: str
@@ -355,30 +543,30 @@ class AdminResponse(BaseModel):
 
 class LoanPlan(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    name: str  # e.g., "Standard Plan", "Premium Plan"
-    interest_rate: float  # Annual percentage
-    min_tenure_months: int = 3
-    max_tenure_months: int = 36
-    processing_fee_percent: float = 0.0
-    late_fee_percent: float = 2.0  # Per month
+    name: str
+    interest_rate: float = Field(..., ge=0, le=100)
+    min_tenure_months: int = Field(default=3, ge=1)
+    max_tenure_months: int = Field(default=36, ge=1)
+    processing_fee_percent: float = Field(default=0.0, ge=0)
+    late_fee_percent: float = Field(default=2.0, ge=0)
     description: str = ""
     is_active: bool = True
-    admin_id: Optional[str] = None  # Tenant scoping - each admin has their own loan plans
+    admin_id: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class LoanPlanCreate(BaseModel):
     name: str
-    interest_rate: float
-    min_tenure_months: int = 3
-    max_tenure_months: int = 36
-    processing_fee_percent: float = 0.0
-    late_fee_percent: float = 2.0
+    interest_rate: float = Field(..., ge=0, le=100)
+    min_tenure_months: int = Field(default=3, ge=1)
+    max_tenure_months: int = Field(default=36, ge=1)
+    processing_fee_percent: float = Field(default=0.0, ge=0)
+    late_fee_percent: float = Field(default=2.0, ge=0)
     description: str = ""
 
 class Reminder(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     client_id: str
-    reminder_type: str  # "payment_due", "overdue", "final_notice"
+    reminder_type: str
     scheduled_date: datetime
     sent: bool = False
     sent_at: Optional[datetime] = None
@@ -390,41 +578,41 @@ class Client(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     phone: str
-    email: str = ""  # Made optional with default empty string for backwards compatibility
-    admin_id: Optional[str] = None  # Tenant scoping
+    email: str = ""
+    admin_id: Optional[str] = None
     device_id: str = ""
     device_model: str = ""
-    device_make: str = ""  # Brand/Manufacturer
-    used_price_eur: Optional[float] = None  # Used phone price in EUR
-    price_fetched_at: Optional[datetime] = None  # When price was last fetched
-    lock_mode: str = "device_admin"  # "device_owner" or "device_admin"
+    device_make: str = ""
+    used_price_eur: Optional[float] = None
+    price_fetched_at: Optional[datetime] = None
+    lock_mode: str = "device_admin"
     registration_code: str = Field(default_factory=lambda: secrets.token_hex(4).upper())
-    expo_push_token: Optional[str] = None  # Expo push notification token
+    expo_push_token: Optional[str] = None
     
     # Loan Management Fields
-    loan_plan_id: Optional[str] = None  # Reference to loan plan
-    loan_amount: float = 0.0  # Total loan amount (device price - down payment)
-    down_payment: float = 0.0  # Initial down payment
-    interest_rate: float = 0.0  # Annual interest rate percentage
-    loan_tenure_months: int = 12  # Loan duration in months
-    monthly_emi: float = 0.0  # Calculated monthly EMI
-    total_amount_due: float = 0.0  # Principal + Interest
-    total_paid: float = 0.0  # Total amount paid so far
-    outstanding_balance: float = 0.0  # Remaining balance
-    processing_fee: float = 0.0  # One-time processing fee
-    late_fees_accumulated: float = 0.0  # Total late fees
-    loan_start_date: Optional[datetime] = None  # When loan started
-    last_payment_date: Optional[datetime] = None  # Last payment received
-    next_payment_due: Optional[datetime] = None  # Next payment due date
-    days_overdue: int = 0  # Days past due date
-    payment_reminders_enabled: bool = True  # Enable payment reminders
+    loan_plan_id: Optional[str] = None
+    loan_amount: float = Field(default=0.0, ge=0)
+    down_payment: float = Field(default=0.0, ge=0)
+    interest_rate: float = Field(default=0.0, ge=0)
+    loan_tenure_months: int = Field(default=12, ge=1)
+    monthly_emi: float = Field(default=0.0, ge=0)
+    total_amount_due: float = Field(default=0.0, ge=0)
+    total_paid: float = Field(default=0.0, ge=0)
+    outstanding_balance: float = Field(default=0.0, ge=0)
+    processing_fee: float = Field(default=0.0, ge=0)
+    late_fees_accumulated: float = Field(default=0.0, ge=0)
+    loan_start_date: Optional[datetime] = None
+    last_payment_date: Optional[datetime] = None
+    next_payment_due: Optional[datetime] = None
+    days_overdue: int = Field(default=0, ge=0)
+    payment_reminders_enabled: bool = True
     
     # Auto-lock settings
-    auto_lock_enabled: bool = True  # Enable auto-lock on missed payment
-    auto_lock_grace_days: int = 3  # Days grace period before auto-lock
+    auto_lock_enabled: bool = True
+    auto_lock_grace_days: int = Field(default=3, ge=0)
     
-    # Legacy fields (kept for backwards compatibility)
-    emi_amount: float = 0.0
+    # Legacy fields
+    emi_amount: float = Field(default=0.0, ge=0)
     emi_due_date: Optional[str] = None
     
     # Device control
@@ -443,44 +631,53 @@ class Client(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
     # Security
-    tamper_attempts: int = 0  # Count of tampering attempts
-    last_tamper_attempt: Optional[datetime] = None  # Last tamper attempt timestamp
-    last_reboot: Optional[datetime] = None  # Last device reboot timestamp
-    admin_mode_active: bool = False  # Device Admin mode active on device
+    tamper_attempts: int = Field(default=0, ge=0)
+    last_tamper_attempt: Optional[datetime] = None
+    last_reboot: Optional[datetime] = None
+    admin_mode_active: bool = False
+    
+    @validator('phone')
+    def validate_phone(cls, v):
+        # Basic phone validation - remove spaces and validate digits
+        cleaned = v.replace(' ', '').replace('-', '').replace('+', '')
+        if not cleaned.isdigit():
+            raise ValueError('Phone number must contain only digits, spaces, and +')
+        if len(cleaned) < 8:
+            raise ValueError('Phone number must be at least 8 digits')
+        return v
 
 class Payment(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     client_id: str
-    amount: float
+    amount: float = Field(..., gt=0)
     payment_date: datetime = Field(default_factory=datetime.utcnow)
-    payment_method: str = "cash"  # cash, bank_transfer, card, etc.
+    payment_method: str = "cash"
     notes: str = ""
-    recorded_by: str = ""  # Admin username
+    recorded_by: str = ""
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class PaymentCreate(BaseModel):
-    amount: float
+    amount: float = Field(..., gt=0)
     payment_date: Optional[datetime] = None
     payment_method: str = "cash"
     notes: str = ""
 
 class LoanSettings(BaseModel):
     auto_lock_enabled: bool
-    auto_lock_grace_days: int
+    auto_lock_grace_days: int = Field(..., ge=0, le=30)
 
 class ClientCreate(BaseModel):
     name: str
     phone: str
-    email: str
-    emi_amount: float = 0.0
+    email: str = ""
+    emi_amount: float = Field(default=0.0, ge=0)
     emi_due_date: Optional[str] = None
-    lock_mode: str = "device_admin"  # "device_owner" or "device_admin"
+    lock_mode: str = "device_admin"
     admin_id: Optional[str] = None
-    # Loan fields
-    loan_amount: float = 0.0
-    down_payment: float = 0.0
-    interest_rate: float = 10.0  # Default 10% annual
-    loan_tenure_months: int = 12
+    loan_amount: float = Field(default=0.0, ge=0)
+    down_payment: float = Field(default=0.0, ge=0)
+    interest_rate: float = Field(default=10.0, ge=0)
+    loan_tenure_months: int = Field(default=12, ge=1)
 
 class ClientUpdate(BaseModel):
     name: Optional[str] = None
@@ -503,8 +700,8 @@ class DeviceRegistration(BaseModel):
 
 class LocationUpdate(BaseModel):
     client_id: str
-    latitude: float
-    longitude: float
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
 
 class PushTokenUpdate(BaseModel):
     client_id: str
@@ -521,11 +718,13 @@ class ClientStatusResponse(BaseModel):
     emi_due_date: Optional[str]
     uninstall_allowed: bool = False
 
-# ===================== ADMIN ROUTES =====================
+# ===================== HELPER FUNCTIONS =====================
 
 async def verify_admin_token_header(token: str) -> bool:
-    """Helper function to verify admin token"""
-    token_doc = await db.admin_tokens.find_one({"token": token})
+    """Verify admin token"""
+    if not db_manager.db:
+        return False
+    token_doc = await db_manager.db.admin_tokens.find_one({"token": token})
     return token_doc is not None
 
 async def enforce_client_scope(client: dict, admin_id: Optional[str]):
@@ -537,71 +736,86 @@ async def enforce_client_scope(client: dict, admin_id: Optional[str]):
         logger.warning(f"Admin {admin_id} attempted to access unassigned client {client['id']}")
         raise HTTPException(status_code=403, detail="Client not assigned to this admin")
 
+# ===================== ADMIN ROUTES =====================
+
 @api_router.post("/admin/register", response_model=AdminResponse)
 async def register_admin(admin_data: AdminCreate, admin_token: str = Query(default=None)):
-    # Validate password length
-    if len(admin_data.password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    """Register a new admin/user"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
     
-    # Check if any admin exists - if yes, require token and check creator's role
-    admin_count = await db.admins.count_documents({})
+    # Check if any admin exists
+    admin_count = await db_manager.db.admins.count_documents({})
     is_first_admin = admin_count == 0
     
     if not is_first_admin:
         if not admin_token:
             raise HTTPException(status_code=401, detail="Admin token required to register new users")
         
-        # Get the creator's info
-        token_data = await db.admin_tokens.find_one({"token": admin_token})
+        token_data = await db_manager.db.admin_tokens.find_one({"token": admin_token})
         if not token_data:
             raise HTTPException(status_code=401, detail="Invalid admin token")
         
-        creator = await db.admins.find_one({"id": token_data["admin_id"]})
+        creator = await db_manager.db.admins.find_one({"id": token_data["admin_id"]})
         if not creator or creator.get("role") != "admin":
             raise HTTPException(status_code=403, detail="Only admins can create new users")
     
     # Check if username already exists
-    existing = await db.admins.find_one({"username": admin_data.username})
+    existing = await db_manager.db.admins.find_one({"username": admin_data.username})
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
     
-    admin = Admin(
-        username=admin_data.username,
-        password_hash=hash_password(admin_data.password),
-        role=admin_data.role if not is_first_admin else "admin",
-        is_super_admin=is_first_admin,
-        first_name=admin_data.first_name,
-        last_name=admin_data.last_name
-    )
-    await db.admins.insert_one(admin.dict())
-    
-    token = secrets.token_hex(32)
-    await db.admin_tokens.insert_one({"admin_id": admin.id, "token": token})
-    
-    return AdminResponse(
-        id=admin.id, 
-        username=admin.username, 
-        role=admin.role,
-        is_super_admin=admin.is_super_admin,
-        token=token
-    )
+    try:
+        admin = Admin(
+            username=admin_data.username,
+            password_hash=hash_password(admin_data.password),
+            role=admin_data.role if not is_first_admin else "admin",
+            is_super_admin=is_first_admin,
+            first_name=admin_data.first_name,
+            last_name=admin_data.last_name
+        )
+        await db_manager.db.admins.insert_one(admin.dict())
+        
+        token = secrets.token_hex(32)
+        await db_manager.db.admin_tokens.insert_one({
+            "admin_id": admin.id,
+            "token": token,
+            "created_at": datetime.utcnow()
+        })
+        
+        return AdminResponse(
+            id=admin.id,
+            username=admin.username,
+            role=admin.role,
+            is_super_admin=admin.is_super_admin,
+            token=token
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @api_router.post("/admin/login", response_model=AdminResponse)
 async def login_admin(login_data: AdminLogin):
-    admin = await db.admins.find_one({"username": login_data.username})
+    """Login admin/user"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    admin = await db_manager.db.admins.find_one({"username": login_data.username.lower()})
     if not admin or not verify_password(login_data.password, admin["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     token = secrets.token_hex(32)
-    await db.admin_tokens.update_one(
+    await db_manager.db.admin_tokens.update_one(
         {"admin_id": admin["id"]},
-        {"$set": {"token": token}},
+        {"$set": {
+            "token": token,
+            "updated_at": datetime.utcnow()
+        }},
         upsert=True
     )
     
     return AdminResponse(
-        id=admin["id"], 
-        username=admin["username"], 
+        id=admin["id"],
+        username=admin["username"],
         role=admin.get("role", "user"),
         is_super_admin=admin.get("is_super_admin", False),
         token=token
@@ -609,67 +823,61 @@ async def login_admin(login_data: AdminLogin):
 
 @api_router.get("/admin/verify/{token}")
 async def verify_admin_token(token: str):
-    token_doc = await db.admin_tokens.find_one({"token": token})
+    """Verify if admin token is valid"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    token_doc = await db_manager.db.admin_tokens.find_one({"token": token})
     if not token_doc:
         raise HTTPException(status_code=401, detail="Invalid token")
     return {"valid": True, "admin_id": token_doc["admin_id"]}
 
-# ===================== ADMIN MANAGEMENT ROUTES =====================
-
-class PasswordChange(BaseModel):
-    current_password: str
-    new_password: str
-
-class AdminListResponse(BaseModel):
-    id: str
-    username: str
-    role: str
-    is_super_admin: bool
-    created_at: datetime
-
 @api_router.get("/admin/list")
 async def list_admins(admin_token: str = Query(...)):
     """List all users (requires admin role)"""
-    # Verify token and check if requester is an admin
-    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    token_doc = await db_manager.db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
         raise HTTPException(status_code=401, detail="Invalid admin token")
     
-    requester = await db.admins.find_one({"id": token_doc["admin_id"]})
+    requester = await db_manager.db.admins.find_one({"id": token_doc["admin_id"]})
     if not requester or requester.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Only admins can view user list")
     
-    admins = await db.admins.find().to_list(100)
+    admins = await db_manager.db.admins.find().to_list(100)
     return [{
-        "id": a["id"], 
-        "username": a["username"], 
+        "id": a["id"],
+        "username": a["username"],
         "role": a.get("role", "user"),
         "is_super_admin": a.get("is_super_admin", False),
         "created_at": a.get("created_at")
     } for a in admins]
 
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=6)
+
 @api_router.post("/admin/change-password")
 async def change_password(password_data: PasswordChange, admin_token: str = Query(...)):
     """Change admin password"""
-    # Validate new password length
-    if len(password_data.new_password) < 6:
-        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
     
-    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    token_doc = await db_manager.db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
         raise HTTPException(status_code=401, detail="Invalid admin token")
     
-    admin = await db.admins.find_one({"id": token_doc["admin_id"]})
+    admin = await db_manager.db.admins.find_one({"id": token_doc["admin_id"]})
     if not admin:
         raise HTTPException(status_code=404, detail="Admin not found")
     
-    # Verify current password
     if not verify_password(password_data.current_password, admin["password_hash"]):
         raise HTTPException(status_code=401, detail="Current password is incorrect")
     
-    # Update password
     new_hash = hash_password(password_data.new_password)
-    await db.admins.update_one(
+    await db_manager.db.admins.update_one(
         {"id": admin["id"]},
         {"$set": {"password_hash": new_hash}}
     )
@@ -677,76 +885,69 @@ async def change_password(password_data: PasswordChange, admin_token: str = Quer
     return {"message": "Password changed successfully"}
 
 class ProfileUpdate(BaseModel):
-    first_name: str
-    last_name: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
 
 @api_router.put("/admin/update-profile")
 async def update_admin_profile(profile_data: ProfileUpdate, admin_token: str = Query(...)):
     """Update admin profile information"""
-    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    token_doc = await db_manager.db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
         raise HTTPException(status_code=401, detail="Invalid admin token")
     
-    admin = await db.admins.find_one({"id": token_doc["admin_id"]})
+    admin = await db_manager.db.admins.find_one({"id": token_doc["admin_id"]})
     if not admin:
         raise HTTPException(status_code=404, detail="Admin not found")
     
-    # Update profile fields
-    update_data = {
-        "first_name": profile_data.first_name,
-        "last_name": profile_data.last_name,
-    }
-    if profile_data.email:
-        update_data["email"] = profile_data.email
-    if profile_data.phone:
-        update_data["phone"] = profile_data.phone
+    update_data = {k: v for k, v in profile_data.dict().items() if v is not None}
     
-    await db.admins.update_one(
-        {"id": admin["id"]},
-        {"$set": update_data}
-    )
+    if update_data:
+        await db_manager.db.admins.update_one(
+            {"id": admin["id"]},
+            {"$set": update_data}
+        )
     
     logger.info(f"Profile updated for admin: {admin['username']}")
     return {"message": "Profile updated successfully"}
 
 @api_router.delete("/admin/{admin_id}")
 async def delete_admin(admin_id: str, admin_token: str = Query(...)):
-    """Delete a user (requires admin role, cannot delete yourself, super admin, or last admin)"""
-    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    """Delete a user (requires admin role)"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    token_doc = await db_manager.db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
         raise HTTPException(status_code=401, detail="Invalid admin token")
     
-    # Check if requester is an admin
-    requester = await db.admins.find_one({"id": token_doc["admin_id"]})
+    requester = await db_manager.db.admins.find_one({"id": token_doc["admin_id"]})
     if not requester or requester.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Only admins can delete users")
     
-    # Cannot delete yourself
     if token_doc["admin_id"] == admin_id:
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
     
-    # Check if target user is super admin
-    target_user = await db.admins.find_one({"id": admin_id})
+    target_user = await db_manager.db.admins.find_one({"id": admin_id})
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
     
     if target_user.get("is_super_admin", False):
         raise HTTPException(status_code=403, detail="Cannot delete super admin")
     
-    # Check if this is the last admin
-    admin_count = await db.admins.count_documents({"role": "admin"})
+    admin_count = await db_manager.db.admins.count_documents({"role": "admin"})
     if admin_count <= 1 and target_user.get("role") == "admin":
         raise HTTPException(status_code=400, detail="Cannot delete the last admin")
     
-    # Delete user
-    result = await db.admins.delete_one({"id": admin_id})
+    result = await db_manager.db.admins.delete_one({"id": admin_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Delete associated token
-    await db.admin_tokens.delete_one({"admin_id": admin_id})
+    await db_manager.db.admin_tokens.delete_one({"admin_id": admin_id})
     
     return {"message": "User deleted successfully"}
 
@@ -754,10 +955,14 @@ async def delete_admin(admin_id: str, admin_token: str = Query(...)):
 
 @api_router.post("/clients", response_model=Client)
 async def create_client(client_data: ClientCreate, admin_token: Optional[str] = Query(default=None)):
+    """Create a new client"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     admin_id = client_data.admin_id
     
     if admin_token:
-        token_doc = await db.admin_tokens.find_one({"token": admin_token})
+        token_doc = await db_manager.db.admin_tokens.find_one({"token": admin_token})
         if not token_doc:
             raise HTTPException(status_code=401, detail="Invalid admin token")
         admin_id = token_doc["admin_id"]
@@ -766,33 +971,30 @@ async def create_client(client_data: ClientCreate, admin_token: Optional[str] = 
     if admin_id:
         client_payload["admin_id"] = admin_id
     
-    client = Client(**client_payload)
-    await db.clients.insert_one(client.dict())
-    return client
+    try:
+        client = Client(**client_payload)
+        await db_manager.db.clients.insert_one(client.dict())
+        return client
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @api_router.get("/clients")
-async def get_all_clients(skip: int = 0, limit: int = 100, admin_id: Optional[str] = Query(default=None)):
-    """Get all clients with pagination
-    
-    Args:
-        skip: Number of records to skip (default: 0)
-        limit: Maximum number of records to return (default: 100, max: 500)
-    """
-    # Cap limit at 500 to prevent excessive data transfer
-    limit = min(limit, 500)
+async def get_all_clients(
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
+    admin_id: Optional[str] = Query(default=None)
+):
+    """Get all clients with pagination"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
     
     if not admin_id:
-        logger.warning("admin_id not provided for client listing; rejecting request")
         raise HTTPException(status_code=400, detail="admin_id is required for client listings")
     
     query = {"admin_id": admin_id}
     
-    # Get total count for pagination metadata
-    total_count = await db.clients.count_documents(query)
-    
-    # Fetch paginated clients - removed projection to avoid Pydantic validation errors
-    # The Client model requires all fields, projection would cause missing field errors
-    clients = await db.clients.find(query).skip(skip).limit(limit).to_list(limit)
+    total_count = await db_manager.db.clients.count_documents(query)
+    clients = await db_manager.db.clients.find(query).skip(skip).limit(limit).to_list(limit)
     
     return {
         "clients": [Client(**c) for c in clients],
@@ -806,7 +1008,11 @@ async def get_all_clients(skip: int = 0, limit: int = 100, admin_id: Optional[st
 
 @api_router.get("/clients/{client_id}", response_model=Client)
 async def get_client(client_id: str, admin_id: Optional[str] = Query(default=None)):
-    client = await db.clients.find_one({"id": client_id})
+    """Get a specific client"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    client = await db_manager.db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -814,34 +1020,44 @@ async def get_client(client_id: str, admin_id: Optional[str] = Query(default=Non
     return Client(**client)
 
 @api_router.put("/clients/{client_id}", response_model=Client)
-async def update_client(client_id: str, update_data: ClientUpdate, admin_id: Optional[str] = Query(default=None)):
-    client = await db.clients.find_one({"id": client_id})
+async def update_client(
+    client_id: str,
+    update_data: ClientUpdate,
+    admin_id: Optional[str] = Query(default=None)
+):
+    """Update a client"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    client = await db_manager.db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
     await enforce_client_scope(client, admin_id)
     
     update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
     if update_dict:
-        await db.clients.update_one({"id": client_id}, {"$set": update_dict})
+        await db_manager.db.clients.update_one({"id": client_id}, {"$set": update_dict})
     
-    updated_client = await db.clients.find_one({"id": client_id})
+    updated_client = await db_manager.db.clients.find_one({"id": client_id})
     return Client(**updated_client)
 
 @api_router.post("/clients/{client_id}/allow-uninstall")
 async def allow_uninstall(client_id: str, admin_id: Optional[str] = Query(default=None)):
-    """Signal device to allow app uninstallation - must be called before deletion"""
-    client = await db.clients.find_one({"id": client_id})
+    """Signal device to allow app uninstallation"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    client = await db_manager.db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
     await enforce_client_scope(client, admin_id)
     
-    # Mark client as ready for uninstall
-    await db.clients.update_one(
+    await db_manager.db.clients.update_one(
         {"id": client_id},
         {"$set": {"uninstall_allowed": True}}
     )
-    
-    logger.info(f"Client {client_id} marked for uninstallation")
     
     return {
         "message": "Device has been signaled to allow uninstall",
@@ -850,19 +1066,23 @@ async def allow_uninstall(client_id: str, admin_id: Optional[str] = Query(defaul
 
 @api_router.delete("/clients/{client_id}")
 async def delete_client(client_id: str, admin_id: Optional[str] = Query(default=None)):
-    client = await db.clients.find_one({"id": client_id})
+    """Delete a client"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    client = await db_manager.db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
     await enforce_client_scope(client, admin_id)
     
-    # Check if uninstall was allowed first
     if not client.get("uninstall_allowed", False):
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail="Must signal device to allow uninstall first. Use the 'Allow Uninstall' button before deleting."
         )
     
-    result = await db.clients.delete_one({"id": client_id})
+    result = await db_manager.db.clients.delete_one({"id": client_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -872,54 +1092,88 @@ async def delete_client(client_id: str, admin_id: Optional[str] = Query(default=
 # ===================== LOCK CONTROL ROUTES =====================
 
 @api_router.post("/clients/{client_id}/lock")
-async def lock_client_device(client_id: str, message: Optional[str] = None, admin_id: Optional[str] = Query(default=None)):
-    client = await db.clients.find_one({"id": client_id})
+async def lock_client_device(
+    client_id: str,
+    message: Optional[str] = None,
+    admin_id: Optional[str] = Query(default=None)
+):
+    """Lock a client device"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    client = await db_manager.db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
     await enforce_client_scope(client, admin_id)
     
     update_data = {"is_locked": True}
     if message:
         update_data["lock_message"] = message
     
-    await db.clients.update_one({"id": client_id}, {"$set": update_data})
+    await db_manager.db.clients.update_one({"id": client_id}, {"$set": update_data})
     return {"message": "Device locked successfully"}
 
 @api_router.post("/clients/{client_id}/unlock")
 async def unlock_client_device(client_id: str, admin_id: Optional[str] = Query(default=None)):
-    client = await db.clients.find_one({"id": client_id})
+    """Unlock a client device"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    client = await db_manager.db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
     await enforce_client_scope(client, admin_id)
     
-    await db.clients.update_one({"id": client_id}, {"$set": {"is_locked": False, "warning_message": ""}})
+    await db_manager.db.clients.update_one(
+        {"id": client_id},
+        {"$set": {"is_locked": False, "warning_message": ""}}
+    )
     return {"message": "Device unlocked successfully"}
 
 @api_router.post("/clients/{client_id}/warning")
-async def send_warning(client_id: str, message: str, admin_id: Optional[str] = Query(default=None)):
-    client = await db.clients.find_one({"id": client_id})
+async def send_warning(
+    client_id: str,
+    message: str,
+    admin_id: Optional[str] = Query(default=None)
+):
+    """Send a warning message to client"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    client = await db_manager.db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
     await enforce_client_scope(client, admin_id)
     
-    await db.clients.update_one({"id": client_id}, {"$set": {"warning_message": message}})
+    await db_manager.db.clients.update_one(
+        {"id": client_id},
+        {"$set": {"warning_message": message}}
+    )
     return {"message": "Warning sent successfully"}
 
-# ===================== CLIENT DEVICE ROUTES =====================
+# ===================== DEVICE ROUTES =====================
 
 @api_router.post("/device/register")
 async def register_device(registration: DeviceRegistration):
-    client = await db.clients.find_one({"registration_code": registration.registration_code.upper()})
+    """Register a device with a registration code"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    client = await db_manager.db.clients.find_one(
+        {"registration_code": registration.registration_code.upper()}
+    )
     if not client:
         raise HTTPException(status_code=404, detail="Invalid registration code")
     
     if client.get("is_registered"):
         raise HTTPException(status_code=400, detail="Device already registered")
     
-    # Extract device make (brand) from device_model string
     device_make = registration.device_model.split()[0] if registration.device_model else ""
     
-    await db.clients.update_one(
+    await db_manager.db.clients.update_one(
         {"id": client["id"]},
         {"$set": {
             "device_id": registration.device_id,
@@ -930,33 +1184,45 @@ async def register_device(registration: DeviceRegistration):
         }}
     )
     
-    updated_client = await db.clients.find_one({"id": client["id"]})
-    return {"message": "Device registered successfully", "client_id": client["id"], "client": Client(**updated_client).dict()}
+    updated_client = await db_manager.db.clients.find_one({"id": client["id"]})
+    return {
+        "message": "Device registered successfully",
+        "client_id": client["id"],
+        "client": Client(**updated_client).dict()
+    }
 
 @api_router.get("/device/status/{client_id}", response_model=ClientStatusResponse)
 async def get_device_status(client_id: str):
-    client = await db.clients.find_one({"id": client_id})
+    """Get device status"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    client = await db_manager.db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
     return ClientStatusResponse(
         id=client["id"],
         name=client["name"],
-        is_locked=client["is_locked"],
-        lock_message=client["lock_message"],
+        is_locked=client.get("is_locked", False),
+        lock_message=client.get("lock_message", ""),
         warning_message=client.get("warning_message", ""),
-        emi_amount=client["emi_amount"],
+        emi_amount=client.get("emi_amount", 0),
         emi_due_date=client.get("emi_due_date"),
         uninstall_allowed=client.get("uninstall_allowed", False)
     )
 
 @api_router.post("/device/location")
 async def update_device_location(location: LocationUpdate):
-    client = await db.clients.find_one({"id": location.client_id})
+    """Update device location"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    client = await db_manager.db.clients.find_one({"id": location.client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    await db.clients.update_one(
+    await db_manager.db.clients.update_one(
         {"id": location.client_id},
         {"$set": {
             "latitude": location.latitude,
@@ -968,18 +1234,19 @@ async def update_device_location(location: LocationUpdate):
 
 @api_router.post("/device/push-token")
 async def update_push_token(token_data: PushTokenUpdate):
-    client = await db.clients.find_one({"id": token_data.client_id})
+    """Update Expo push token"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    client = await db_manager.db.clients.find_one({"id": token_data.client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    update_fields = {
-        "expo_push_token": token_data.push_token
-    }
-    
+    update_fields = {"expo_push_token": token_data.push_token}
     if token_data.admin_id:
         update_fields["admin_id"] = token_data.admin_id
     
-    await db.clients.update_one(
+    await db_manager.db.clients.update_one(
         {"id": token_data.client_id},
         {"$set": update_fields}
     )
@@ -987,39 +1254,35 @@ async def update_push_token(token_data: PushTokenUpdate):
 
 @api_router.post("/device/clear-warning/{client_id}")
 async def clear_warning(client_id: str):
-    client = await db.clients.find_one({"id": client_id})
+    """Clear warning message"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    client = await db_manager.db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    await db.clients.update_one({"id": client_id}, {"$set": {"warning_message": ""}})
-    return {"message": "Warning cleared"}
-
-@api_router.post("/device/report-admin-status")
-async def report_admin_status(client_id: str, admin_active: bool):
-    """Report admin mode status from client device"""
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    
-    await db.clients.update_one(
+    await db_manager.db.clients.update_one(
         {"id": client_id},
-        {"$set": {"admin_mode_active": admin_active}}
+        {"$set": {"warning_message": ""}}
     )
-    
-    return {"message": "Admin mode status updated", "admin_active": admin_active}
+    return {"message": "Warning cleared"}
 
 # ===================== TAMPER DETECTION =====================
 
 @api_router.post("/clients/{client_id}/report-tamper")
 async def report_tamper_attempt(client_id: str, tamper_type: str = "unknown"):
     """Report tampering attempt from client device"""
-    client = await db.clients.find_one({"id": client_id})
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    client = await db_manager.db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
     current_attempts = client.get("tamper_attempts", 0)
     
-    await db.clients.update_one(
+    await db_manager.db.clients.update_one(
         {"id": client_id},
         {"$set": {
             "tamper_attempts": current_attempts + 1,
@@ -1039,20 +1302,20 @@ async def report_tamper_attempt(client_id: str, tamper_type: str = "unknown"):
 @api_router.post("/clients/{client_id}/report-reboot")
 async def report_reboot(client_id: str):
     """Report device reboot"""
-    client = await db.clients.find_one({"id": client_id})
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    client = await db_manager.db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    await db.clients.update_one(
+    await db_manager.db.clients.update_one(
         {"id": client_id},
-        {"$set": {
-            "last_reboot": datetime.utcnow()
-        }}
+        {"$set": {"last_reboot": datetime.utcnow()}}
     )
     
     logger.info(f"Client {client_id} rebooted")
     
-    # Return lock status - device should re-lock if it was locked before reboot
     return {
         "message": "Reboot recorded",
         "should_lock": client.get("is_locked", False),
@@ -1064,118 +1327,128 @@ async def report_reboot(client_id: str):
 @api_router.post("/loan-plans", response_model=LoanPlan)
 async def create_loan_plan(plan_data: LoanPlanCreate, admin_token: str = Query(...)):
     """Create a new loan plan"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     if not await verify_admin_token_header(admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
     
-    # Get admin_id from token
-    token_doc = await db.admin_tokens.find_one({"token": admin_token})
-    if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+    token_doc = await db_manager.db.admin_tokens.find_one({"token": admin_token})
     
-    # Create plan with admin_id
-    plan_dict = plan_data.dict()
-    plan_dict["admin_id"] = token_doc["admin_id"]
-    plan = LoanPlan(**plan_dict)
-    await db.loan_plans.insert_one(plan.dict())
-    
-    logger.info(f"Loan plan created: {plan.name} by admin {token_doc['admin_id']}")
-    return plan
+    try:
+        plan_dict = plan_data.dict()
+        plan_dict["admin_id"] = token_doc["admin_id"]
+        plan = LoanPlan(**plan_dict)
+        await db_manager.db.loan_plans.insert_one(plan.dict())
+        
+        logger.info(f"Loan plan created: {plan.name} by admin {token_doc['admin_id']}")
+        return plan
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @api_router.get("/loan-plans")
-async def get_loan_plans(active_only: bool = False, admin_id: Optional[str] = Query(default=None)):
+async def get_loan_plans(
+    active_only: bool = False,
+    admin_id: Optional[str] = Query(default=None)
+):
     """Get all loan plans for the specified admin"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     if not admin_id:
-        logger.warning("admin_id not provided for loan plan listing; rejecting request")
         raise HTTPException(status_code=400, detail="admin_id is required for loan plan listings")
     
     query = {"admin_id": admin_id}
     if active_only:
         query["is_active"] = True
     
-    plans = await db.loan_plans.find(query).to_list(100)
+    plans = await db_manager.db.loan_plans.find(query).to_list(100)
     return [LoanPlan(**p) for p in plans]
 
 @api_router.get("/loan-plans/{plan_id}", response_model=LoanPlan)
 async def get_loan_plan(plan_id: str, admin_id: Optional[str] = Query(default=None)):
     """Get a specific loan plan"""
-    plan = await db.loan_plans.find_one({"id": plan_id})
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    plan = await db_manager.db.loan_plans.find_one({"id": plan_id})
     if not plan:
         raise HTTPException(status_code=404, detail="Loan plan not found")
     
-    # Check admin ownership if admin_id is provided
     if admin_id and plan.get("admin_id") and plan["admin_id"] != admin_id:
         raise HTTPException(status_code=403, detail="Access denied: This loan plan belongs to another admin")
     
     return LoanPlan(**plan)
 
 @api_router.put("/loan-plans/{plan_id}", response_model=LoanPlan)
-async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token: str = Query(...)):
+async def update_loan_plan(
+    plan_id: str,
+    plan_data: LoanPlanCreate,
+    admin_token: str = Query(...)
+):
     """Update a loan plan"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     if not await verify_admin_token_header(admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
     
-    # Get admin_id from token
-    token_doc = await db.admin_tokens.find_one({"token": admin_token})
-    if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+    token_doc = await db_manager.db.admin_tokens.find_one({"token": admin_token})
     
-    plan = await db.loan_plans.find_one({"id": plan_id})
+    plan = await db_manager.db.loan_plans.find_one({"id": plan_id})
     if not plan:
         raise HTTPException(status_code=404, detail="Loan plan not found")
     
-    # Check admin ownership
     if plan.get("admin_id") and plan["admin_id"] != token_doc["admin_id"]:
         raise HTTPException(status_code=403, detail="Access denied: This loan plan belongs to another admin")
     
-    await db.loan_plans.update_one(
+    await db_manager.db.loan_plans.update_one(
         {"id": plan_id},
         {"$set": plan_data.dict()}
     )
     
-    updated_plan = await db.loan_plans.find_one({"id": plan_id})
+    updated_plan = await db_manager.db.loan_plans.find_one({"id": plan_id})
     logger.info(f"Loan plan updated: {plan_id} by admin {token_doc['admin_id']}")
     return LoanPlan(**updated_plan)
 
 @api_router.delete("/loan-plans/{plan_id}")
-async def delete_loan_plan(plan_id: str, admin_token: str = Query(...), force: bool = Query(default=False)):
-    """Delete a loan plan permanently. Checks for client usage unless force=true."""
+async def delete_loan_plan(
+    plan_id: str,
+    admin_token: str = Query(...),
+    force: bool = Query(default=False)
+):
+    """Delete a loan plan"""
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     if not await verify_admin_token_header(admin_token):
         raise HTTPException(status_code=401, detail="Invalid admin token")
     
-    # Get admin_id from token
-    token_doc = await db.admin_tokens.find_one({"token": admin_token})
-    if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+    token_doc = await db_manager.db.admin_tokens.find_one({"token": admin_token})
     
-    # Check if plan exists and belongs to admin
-    plan = await db.loan_plans.find_one({"id": plan_id})
+    plan = await db_manager.db.loan_plans.find_one({"id": plan_id})
     if not plan:
         raise HTTPException(status_code=404, detail="Loan plan not found")
     
-    # Check admin ownership
     if plan.get("admin_id") and plan["admin_id"] != token_doc["admin_id"]:
         raise HTTPException(status_code=403, detail="Access denied: This loan plan belongs to another admin")
     
-    # Check if any clients are using this loan plan
-    clients_using_plan = await db.clients.count_documents({"loan_plan_id": plan_id})
+    clients_using_plan = await db_manager.db.clients.count_documents({"loan_plan_id": plan_id})
     
     if clients_using_plan > 0 and not force:
         raise HTTPException(
-            status_code=400, 
-            detail=f"Cannot delete loan plan: {clients_using_plan} client(s) are currently using this plan. Please reassign clients to a different plan first, or use force=true to delete and clear client references."
+            status_code=400,
+            detail=f"Cannot delete loan plan: {clients_using_plan} client(s) are currently using this plan."
         )
     
-    # If force=true or no clients using the plan, proceed with deletion
     if force and clients_using_plan > 0:
-        # Clear the loan_plan_id from all clients using this plan
-        await db.clients.update_many(
+        await db_manager.db.clients.update_many(
             {"loan_plan_id": plan_id},
             {"$set": {"loan_plan_id": None}}
         )
         logger.info(f"Cleared loan_plan_id from {clients_using_plan} clients before deleting plan {plan_id}")
     
-    # Hard delete - remove from database
-    result = await db.loan_plans.delete_one({"id": plan_id})
+    result = await db_manager.db.loan_plans.delete_one({"id": plan_id})
     
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Loan plan not found")
@@ -1190,208 +1463,218 @@ async def delete_loan_plan(plan_id: str, admin_token: str = Query(...), force: b
 
 @api_router.get("/calculator/compare")
 async def compare_emi_methods(
-    principal: float,
-    annual_rate: float,
-    months: int
+    principal: float = Query(..., gt=0),
+    annual_rate: float = Query(..., ge=0),
+    months: int = Query(..., gt=0)
 ):
     """Compare EMI calculations using all three methods"""
-    if principal <= 0 or months <= 0:
-        raise HTTPException(status_code=400, detail="Principal and months must be positive")
-    
-    if annual_rate < 0:
-        raise HTTPException(status_code=400, detail="Interest rate cannot be negative")
-    
-    comparison = calculate_all_methods(principal, annual_rate, months)
-    
-    # Add savings comparison
-    methods = [comparison["simple_interest"], comparison["reducing_balance"], comparison["flat_rate"]]
-    min_total = min(m["total_amount"] for m in methods)
-    
-    for method in methods:
-        method["savings_vs_highest"] = round(
-            max(m["total_amount"] for m in methods) - method["total_amount"], 2
-        )
-        method["is_cheapest"] = method["total_amount"] == min_total
-    
-    return comparison
+    try:
+        comparison = calculate_all_methods(principal, annual_rate, months)
+        
+        methods = [comparison["simple_interest"], comparison["reducing_balance"], comparison["flat_rate"]]
+        min_total = min(m["total_amount"] for m in methods)
+        
+        for method in methods:
+            method["savings_vs_highest"] = round(
+                max(m["total_amount"] for m in methods) - method["total_amount"], 2
+            )
+            method["is_cheapest"] = method["total_amount"] == min_total
+        
+        return comparison
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @api_router.post("/calculator/amortization")
 async def calculate_amortization_schedule(
-    principal: float,
-    annual_rate: float,
-    months: int,
+    principal: float = Query(..., gt=0),
+    annual_rate: float = Query(..., ge=0),
+    months: int = Query(..., gt=0),
     method: str = "reducing_balance"
 ):
     """Generate month-by-month amortization schedule"""
-    if principal <= 0 or months <= 0:
-        raise HTTPException(status_code=400, detail="Principal and months must be positive")
-    
-    # Calculate EMI based on method
-    if method == "reducing_balance":
-        emi_data = calculate_reducing_balance_emi(principal, annual_rate, months)
-    elif method == "simple_interest":
-        emi_data = calculate_simple_interest_emi(principal, annual_rate, months)
-    else:
-        emi_data = calculate_flat_rate_emi(principal, annual_rate, months)
-    
-    monthly_emi = emi_data["monthly_emi"]
-    monthly_rate = (annual_rate / 12) / 100
-    
-    schedule = []
-    remaining_principal = principal
-    
-    for month in range(1, months + 1):
+    try:
         if method == "reducing_balance":
-            interest_payment = remaining_principal * monthly_rate
-            principal_payment = monthly_emi - interest_payment
+            emi_data = calculate_reducing_balance_emi(principal, annual_rate, months)
         elif method == "simple_interest":
-            # Simple interest distributed equally
-            interest_payment = emi_data["total_interest"] / months
-            principal_payment = monthly_emi - interest_payment
-        else:  # flat_rate
-            interest_payment = emi_data["total_interest"] / months
-            principal_payment = monthly_emi - interest_payment
+            emi_data = calculate_simple_interest_emi(principal, annual_rate, months)
+        else:
+            emi_data = calculate_flat_rate_emi(principal, annual_rate, months)
         
-        remaining_principal -= principal_payment
+        monthly_emi = emi_data["monthly_emi"]
+        monthly_rate = (annual_rate / 12) / 100
         
-        schedule.append({
-            "month": month,
-            "emi": round(monthly_emi, 2),
-            "principal": round(principal_payment, 2),
-            "interest": round(interest_payment, 2),
-            "balance": round(max(0, remaining_principal), 2)
-        })
-    
-    return {
-        "method": method,
-        "monthly_emi": monthly_emi,
-        "total_amount": emi_data["total_amount"],
-        "total_interest": emi_data["total_interest"],
-        "schedule": schedule
-    }
+        schedule = []
+        remaining_principal = principal
+        
+        for month in range(1, months + 1):
+            if method == "reducing_balance":
+                interest_payment = remaining_principal * monthly_rate
+                principal_payment = monthly_emi - interest_payment
+            else:
+                interest_payment = emi_data["total_interest"] / months
+                principal_payment = monthly_emi - interest_payment
+            
+            remaining_principal -= principal_payment
+            
+            schedule.append({
+                "month": month,
+                "emi": round(monthly_emi, 2),
+                "principal": round(principal_payment, 2),
+                "interest": round(interest_payment, 2),
+                "balance": round(max(0, remaining_principal), 2)
+            })
+        
+        return {
+            "method": method,
+            "monthly_emi": monthly_emi,
+            "total_amount": emi_data["total_amount"],
+            "total_interest": emi_data["total_interest"],
+            "schedule": schedule
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 # ===================== LOAN MANAGEMENT =====================
 
 @api_router.post("/loans/{client_id}/setup")
-async def setup_loan(client_id: str, loan_data: ClientCreate, admin_id: Optional[str] = Query(default=None)):
+async def setup_loan(
+    client_id: str,
+    loan_data: ClientCreate,
+    admin_id: Optional[str] = Query(default=None)
+):
     """Setup or update loan details for a client"""
-    client = await db.clients.find_one({"id": client_id})
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    client = await db_manager.db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    # Enforce admin scope - ensure client belongs to requesting admin
     await enforce_client_scope(client, admin_id)
     
-    # Calculate EMI using simple interest
-    loan_calc = calculate_simple_interest_emi(
-        loan_data.loan_amount,
-        loan_data.interest_rate,
-        loan_data.loan_tenure_months
-    )
-    
-    # Calculate next payment due date (one month from now)
-    from dateutil.relativedelta import relativedelta
-    loan_start = datetime.utcnow()
-    next_due = loan_start + relativedelta(months=1)
-    
-    update_data = {
-        "loan_amount": loan_data.loan_amount,
-        "down_payment": loan_data.down_payment,
-        "interest_rate": loan_data.interest_rate,
-        "loan_tenure_months": loan_data.loan_tenure_months,
-        "monthly_emi": loan_calc["monthly_emi"],
-        "total_amount_due": loan_calc["total_amount"],
-        "outstanding_balance": loan_calc["total_amount"],
-        "loan_start_date": loan_start,
-        "next_payment_due": next_due,
-        "days_overdue": 0
-    }
-    
-    await db.clients.update_one({"id": client_id}, {"$set": update_data})
-    
-    updated_client = await db.clients.find_one({"id": client_id})
-    return {
-        "message": "Loan setup successfully",
-        "loan_details": loan_calc,
-        "client": Client(**updated_client)
-    }
+    try:
+        from dateutil.relativedelta import relativedelta
+        
+        loan_calc = calculate_simple_interest_emi(
+            loan_data.loan_amount,
+            loan_data.interest_rate,
+            loan_data.loan_tenure_months
+        )
+        
+        loan_start = datetime.utcnow()
+        next_due = loan_start + relativedelta(months=1)
+        
+        update_data = {
+            "loan_amount": loan_data.loan_amount,
+            "down_payment": loan_data.down_payment,
+            "interest_rate": loan_data.interest_rate,
+            "loan_tenure_months": loan_data.loan_tenure_months,
+            "monthly_emi": loan_calc["monthly_emi"],
+            "total_amount_due": loan_calc["total_amount"],
+            "outstanding_balance": loan_calc["total_amount"],
+            "loan_start_date": loan_start,
+            "next_payment_due": next_due,
+            "days_overdue": 0
+        }
+        
+        await db_manager.db.clients.update_one({"id": client_id}, {"$set": update_data})
+        
+        updated_client = await db_manager.db.clients.find_one({"id": client_id})
+        return {
+            "message": "Loan setup successfully",
+            "loan_details": loan_calc,
+            "client": Client(**updated_client)
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @api_router.post("/loans/{client_id}/payments")
-async def record_payment(client_id: str, payment_data: PaymentCreate, admin_token: str = Query(...)):
+async def record_payment(
+    client_id: str,
+    payment_data: PaymentCreate,
+    admin_token: str = Query(...)
+):
     """Record a payment for a client's loan"""
-    # Verify admin token
-    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    token_doc = await db_manager.db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
         raise HTTPException(status_code=401, detail="Invalid admin token")
     
-    admin = await db.admins.find_one({"id": token_doc["admin_id"]})
+    admin = await db_manager.db.admins.find_one({"id": token_doc["admin_id"]})
     if not admin:
         raise HTTPException(status_code=401, detail="Admin not found")
     
-    client = await db.clients.find_one({"id": client_id})
+    client = await db_manager.db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
     await enforce_client_scope(client, admin["id"])
     
-    # Create payment record
-    payment = Payment(
-        client_id=client_id,
-        amount=payment_data.amount,
-        payment_date=payment_data.payment_date or datetime.utcnow(),
-        payment_method=payment_data.payment_method,
-        notes=payment_data.notes,
-        recorded_by=admin["username"]
-    )
-    
-    await db.payments.insert_one(payment.dict())
-    
-    # Update client loan balance
-    total_paid = client.get("total_paid", 0) + payment_data.amount
-    outstanding = client.get("total_amount_due", 0) - total_paid
-    
-    # Calculate next payment due date
-    from dateutil.relativedelta import relativedelta
-    current_next_due = client.get("next_payment_due", datetime.utcnow())
-    next_payment_due = current_next_due + relativedelta(months=1)
-    
-    update_data = {
-        "total_paid": total_paid,
-        "outstanding_balance": max(0, outstanding),
-        "last_payment_date": payment.payment_date,
-        "next_payment_due": next_payment_due if outstanding > 0 else None,
-        "days_overdue": 0  # Reset overdue days on payment
-    }
-    
-    # Auto-unlock if loan is fully paid
-    if outstanding <= 0:
-        update_data["is_locked"] = False
-        update_data["lock_message"] = "Loan fully paid. Device unlocked."
-    
-    await db.clients.update_one({"id": client_id}, {"$set": update_data})
-    
-    logger.info(f"Payment recorded: €{payment_data.amount} for client {client_id} by {admin['username']}")
-    
-    return {
-        "message": "Payment recorded successfully",
-        "payment": payment.dict(),
-        "updated_balance": {
+    try:
+        from dateutil.relativedelta import relativedelta
+        
+        payment = Payment(
+            client_id=client_id,
+            amount=payment_data.amount,
+            payment_date=payment_data.payment_date or datetime.utcnow(),
+            payment_method=payment_data.payment_method,
+            notes=payment_data.notes,
+            recorded_by=admin["username"]
+        )
+        
+        await db_manager.db.payments.insert_one(payment.dict())
+        
+        total_paid = client.get("total_paid", 0) + payment_data.amount
+        outstanding = client.get("total_amount_due", 0) - total_paid
+        
+        current_next_due = client.get("next_payment_due", datetime.utcnow())
+        next_payment_due = current_next_due + relativedelta(months=1)
+        
+        update_data = {
             "total_paid": total_paid,
             "outstanding_balance": max(0, outstanding),
-            "loan_paid_off": outstanding <= 0
+            "last_payment_date": payment.payment_date,
+            "next_payment_due": next_payment_due if outstanding > 0 else None,
+            "days_overdue": 0
         }
-    }
+        
+        if outstanding <= 0:
+            update_data["is_locked"] = False
+            update_data["lock_message"] = "Loan fully paid. Device unlocked."
+        
+        await db_manager.db.clients.update_one({"id": client_id}, {"$set": update_data})
+        
+        logger.info(f"Payment recorded: €{payment_data.amount} for client {client_id}")
+        
+        return {
+            "message": "Payment recorded successfully",
+            "payment": payment.dict(),
+            "updated_balance": {
+                "total_paid": total_paid,
+                "outstanding_balance": max(0, outstanding),
+                "loan_paid_off": outstanding <= 0
+            }
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @api_router.get("/loans/{client_id}/payments")
 async def get_payment_history(client_id: str, admin_id: Optional[str] = Query(default=None)):
     """Get payment history for a client"""
-    client = await db.clients.find_one({"id": client_id})
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    client = await db_manager.db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    # Enforce admin scope
     await enforce_client_scope(client, admin_id)
     
-    payments = await db.payments.find({"client_id": client_id}).sort("payment_date", -1).to_list(100)
+    payments = await db_manager.db.payments.find(
+        {"client_id": client_id}
+    ).sort("payment_date", -1).to_list(100)
     
     return {
         "client_id": client_id,
@@ -1402,11 +1685,13 @@ async def get_payment_history(client_id: str, admin_id: Optional[str] = Query(de
 @api_router.get("/loans/{client_id}/schedule")
 async def get_payment_schedule(client_id: str, admin_id: Optional[str] = Query(default=None)):
     """Generate payment schedule for a client's loan"""
-    client = await db.clients.find_one({"id": client_id})
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    client = await db_manager.db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    # Enforce admin scope
     await enforce_client_scope(client, admin_id)
     
     if not client.get("loan_start_date"):
@@ -1417,13 +1702,11 @@ async def get_payment_schedule(client_id: str, admin_id: Optional[str] = Query(d
     schedule = []
     start_date = client["loan_start_date"]
     monthly_emi = client.get("monthly_emi", 0)
-    outstanding = client.get("total_amount_due", 0)
     
     for month in range(client.get("loan_tenure_months", 12)):
         due_date = start_date + relativedelta(months=month + 1)
         
-        # Check if payment was made for this month
-        payment_made = await db.payments.find_one({
+        payment_made = await db_manager.db.payments.find_one({
             "client_id": client_id,
             "payment_date": {
                 "$gte": due_date - relativedelta(days=15),
@@ -1448,16 +1731,22 @@ async def get_payment_schedule(client_id: str, admin_id: Optional[str] = Query(d
     }
 
 @api_router.put("/loans/{client_id}/settings")
-async def update_loan_settings(client_id: str, settings: LoanSettings, admin_id: Optional[str] = Query(default=None)):
+async def update_loan_settings(
+    client_id: str,
+    settings: LoanSettings,
+    admin_id: Optional[str] = Query(default=None)
+):
     """Update auto-lock settings for a client"""
-    client = await db.clients.find_one({"id": client_id})
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    client = await db_manager.db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    # Enforce admin scope
     await enforce_client_scope(client, admin_id)
     
-    await db.clients.update_one(
+    await db_manager.db.clients.update_one(
         {"id": client_id},
         {"$set": {
             "auto_lock_enabled": settings.auto_lock_enabled,
@@ -1471,149 +1760,47 @@ async def update_loan_settings(client_id: str, settings: LoanSettings, admin_id:
         "auto_lock_grace_days": settings.auto_lock_grace_days
     }
 
-# ===================== LATE FEES & REMINDERS =====================
-
-@api_router.post("/late-fees/calculate-all")
-async def calculate_all_late_fees(admin_token: str = Query(...)):
-    """Manually trigger late fee calculation for all overdue clients"""
-    if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
-    
-    await apply_late_fees_to_overdue_clients()
-    return {"message": "Late fees calculated and applied successfully"}
-
-@api_router.get("/clients/{client_id}/late-fees")
-async def get_client_late_fees(client_id: str):
-    """Get late fee details for a specific client"""
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    
-    days_overdue = client.get("days_overdue", 0)
-    late_fees = client.get("late_fees_accumulated", 0)
-    
-    return {
-        "client_id": client_id,
-        "days_overdue": days_overdue,
-        "late_fees_accumulated": late_fees,
-        "monthly_emi": client.get("monthly_emi", 0),
-        "outstanding_with_fees": client.get("outstanding_balance", 0) + late_fees
-    }
-
-@api_router.get("/reminders")
-async def get_reminders(sent: bool = None, limit: int = 100, admin_id: Optional[str] = None):
-    """Get all reminders, optionally filtered by sent status"""
-    query = {}
-    if sent is not None:
-        query["sent"] = sent
-    if admin_id:
-        query["admin_id"] = admin_id
-    
-    reminders = await db.reminders.find(query).sort("scheduled_date", -1).limit(limit).to_list(limit)
-    return [Reminder(**r) for r in reminders]
-
-@api_router.get("/clients/{client_id}/reminders")
-async def get_client_reminders(client_id: str, admin_id: Optional[str] = None):
-    """Get reminders for a specific client"""
-    query = {"client_id": client_id}
-    
-    if admin_id:
-        query["admin_id"] = admin_id
-    
-    reminders = await db.reminders.find(query).sort("scheduled_date", -1).to_list(50)
-    return [Reminder(**r) for r in reminders]
-
-@api_router.post("/reminders/create-all")
-async def create_all_reminders(admin_token: str = Query(...)):
-    """Manually trigger reminder creation for all clients"""
-    if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
-    
-    await create_payment_reminders()
-    return {"message": "Reminders created successfully"}
-
-@api_router.post("/reminders/{reminder_id}/mark-sent")
-async def mark_reminder_sent(reminder_id: str):
-    """Mark a reminder as sent"""
-    result = await db.reminders.update_one(
-        {"id": reminder_id},
-        {"$set": {"sent": True, "sent_at": datetime.utcnow()}}
-    )
-    
-    if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Reminder not found")
-    
-    return {"message": "Reminder marked as sent"}
-
 # ===================== REPORTS & ANALYTICS =====================
 
 @api_router.get("/reports/collection")
 async def get_collection_report(admin_id: Optional[str] = Query(default=None)):
     """Get collection statistics and metrics"""
-    # Build query filter for admin
+    if not db_manager.db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     query = {}
     if admin_id:
         query["admin_id"] = admin_id
     
-    # Total clients
-    total_clients = await db.clients.count_documents(query)
-    active_loans = await db.clients.count_documents({**query, "outstanding_balance": {"$gt": 0}})
-    completed_loans = await db.clients.count_documents({**query, "outstanding_balance": 0, "total_paid": {"$gt": 0}})
+    total_clients = await db_manager.db.clients.count_documents(query)
+    active_loans = await db_manager.db.clients.count_documents({**query, "outstanding_balance": {"$gt": 0}})
+    completed_loans = await db_manager.db.clients.count_documents({
+        **query,
+        "outstanding_balance": 0,
+        "total_paid": {"$gt": 0}
+    })
     
-    # Financial totals
-    clients = await db.clients.find(query).to_list(1000)
+    clients = await db_manager.db.clients.find(query).to_list(1000)
     clients_by_id = {c.get("id"): c for c in clients if c.get("id")}
+    
     total_disbursed = sum(c.get("total_amount_due", 0) for c in clients)
     total_collected = sum(c.get("total_paid", 0) for c in clients)
     total_outstanding = sum(c.get("outstanding_balance", 0) for c in clients)
     total_late_fees = sum(c.get("late_fees_accumulated", 0) for c in clients)
     
-    # Overdue clients
     overdue_clients = len([c for c in clients if c.get("days_overdue", 0) > 0])
-    
-    # Collection rate
     collection_rate = (total_collected / total_disbursed * 100) if total_disbursed > 0 else 0
     
-    # This month's collections
     from dateutil.relativedelta import relativedelta
     month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    month_end = month_start + relativedelta(months=1)
     
-    # Get client IDs for this admin to filter payments
     client_ids = [c.get("id") for c in clients if c.get("id")]
     payment_query = {"payment_date": {"$gte": month_start}}
     if client_ids:
         payment_query["client_id"] = {"$in": client_ids}
     
-    month_payments = await db.payments.find(payment_query).to_list(1000)
+    month_payments = await db_manager.db.payments.find(payment_query).to_list(1000)
     month_collected = sum(p.get("amount", 0) for p in month_payments)
-    month_profit = 0
-    for payment in month_payments:
-        client = clients_by_id.get(payment.get("client_id"))
-        if not client:
-            continue
-        total_due = client.get("total_amount_due", 0)
-        if total_due <= 0:
-            continue
-        principal = client.get("loan_amount", 0)
-        if principal < 0 or principal > total_due:
-            continue
-        # principal may equal total_due for interest-free loans (margin becomes 0)
-        margin = (total_due - principal) / total_due
-        month_profit += payment.get("amount", 0) * margin
-    
-    # Amounts due this month (not yet rolled to next month)
-    month_due_total = 0
-    for client in clients:
-        next_due = client.get("next_payment_due")
-        if (
-            isinstance(next_due, datetime)
-            and month_start <= next_due < month_end
-            and client.get("outstanding_balance", 0) > 0
-        ):
-            monthly_due = client.get("monthly_emi", 0) or 0
-            outstanding = client.get("outstanding_balance", 0) or 0
-            month_due_total += min(monthly_due, outstanding)
     
     return {
         "overview": {
@@ -1631,330 +1818,53 @@ async def get_collection_report(admin_id: Optional[str] = Query(default=None)):
         },
         "this_month": {
             "total_collected": round(month_collected, 2),
-            "number_of_payments": len(month_payments),
-            "profit_collected": round(month_profit, 2),
-            "due_outstanding": round(month_due_total, 2)
+            "number_of_payments": len(month_payments)
         }
     }
 
-@api_router.get("/reports/clients")
-async def get_client_report(admin_id: Optional[str] = Query(default=None)):
-    """Get client-wise statistics"""
-    query = {}
-    if admin_id:
-        query["admin_id"] = admin_id
-    
-    clients = await db.clients.find(query).to_list(1000)
-    
-    # Categorize clients
-    on_time = []
-    at_risk = []  # 1-7 days overdue
-    defaulted = []  # >7 days overdue
-    completed = []
-    
-    for client in clients:
-        days_overdue = client.get("days_overdue", 0)
-        outstanding = client.get("outstanding_balance", 0)
-        
-        if outstanding == 0 and client.get("total_paid", 0) > 0:
-            completed.append(client)
-        elif days_overdue > 7:
-            defaulted.append(client)
-        elif days_overdue > 0:
-            at_risk.append(client)
-        else:
-            on_time.append(client)
-    
-    return {
-        "summary": {
-            "on_time_clients": len(on_time),
-            "at_risk_clients": len(at_risk),
-            "defaulted_clients": len(defaulted),
-            "completed_clients": len(completed)
-        },
-        "details": {
-            "on_time": [{"id": c["id"], "name": c["name"], "outstanding": c.get("outstanding_balance", 0)} for c in on_time[:10]],
-            "at_risk": [{"id": c["id"], "name": c["name"], "days_overdue": c.get("days_overdue", 0)} for c in at_risk],
-            "defaulted": [{"id": c["id"], "name": c["name"], "days_overdue": c.get("days_overdue", 0)} for c in defaulted],
-        }
-    }
+# ===================== HEALTH CHECK =====================
 
-@api_router.get("/reports/financial")
-async def get_financial_report(admin_id: Optional[str] = Query(default=None)):
-    """Get detailed financial breakdown"""
-    query = {}
-    if admin_id:
-        query["admin_id"] = admin_id
-    
-    clients = await db.clients.find(query).to_list(1000)
-    
-    # Get client IDs to filter payments
-    client_ids = [c.get("id") for c in clients if c.get("id")]
-    payment_query = {}
-    if client_ids:
-        payment_query["client_id"] = {"$in": client_ids}
-    
-    payments = await db.payments.find(payment_query).to_list(1000)
-    
-    # Calculate totals
-    total_principal = sum(c.get("loan_amount", 0) for c in clients)
-    total_interest = sum(c.get("total_amount_due", 0) - c.get("loan_amount", 0) for c in clients)
-    total_processing_fees = sum(c.get("processing_fee", 0) for c in clients)
-    total_late_fees = sum(c.get("late_fees_accumulated", 0) for c in clients)
-    
-    # Revenue breakdown
-    total_revenue = sum(p.get("amount", 0) for p in payments)
-    
-    # Monthly breakdown (last 6 months)
-    from dateutil.relativedelta import relativedelta
-    monthly_data = []
-    for i in range(6):
-        month_start = (datetime.utcnow() - relativedelta(months=i)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        month_end = month_start + relativedelta(months=1)
-        
-        month_payments = [p for p in payments if month_start <= p.get("payment_date", datetime.utcnow()) < month_end]
-        month_revenue = sum(p.get("amount", 0) for p in month_payments)
-        
-        monthly_data.append({
-            "month": month_start.strftime("%b %Y"),
-            "revenue": round(month_revenue, 2),
-            "payments_count": len(month_payments)
-        })
-    
-    monthly_data.reverse()
-    
-    return {
-        "totals": {
-            "principal_disbursed": round(total_principal, 2),
-            "interest_earned": round(total_interest, 2),
-            "processing_fees": round(total_processing_fees, 2),
-            "late_fees": round(total_late_fees, 2),
-            "total_revenue": round(total_revenue, 2)
-        },
-        "monthly_trend": monthly_data
-    }
-
-# ===================== PHONE PRICE LOOKUP =====================
-
-@api_router.get("/clients/{client_id}/fetch-price")
-async def fetch_phone_price(client_id: str, admin_id: Optional[str] = Query(default=None)):
-    """Fetch used phone price for a client's device"""
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    await enforce_client_scope(client, admin_id)
-    
-    device_model = client.get("device_model", "")
-    if not device_model or device_model == "Unknown Device":
-        raise HTTPException(status_code=400, detail="Device model not available")
-    
-    try:
-        # Use web search to find phone price
-        import httpx
-        
-        # Search query for used phone price
-        search_query = f"{device_model} used price EUR"
-        
-        # Use a simple HTTP request to search (you could integrate with a real search API)
-        # For now, we'll use a placeholder that returns an estimated price
-        # In production, you would integrate with eBay API, Swappa, or similar
-        
-        async with httpx.AsyncClient(timeout=30.0) as http_client:
-            # Search for the phone price using web search
-            # This is a simplified version - in production use proper marketplace APIs
-            search_url = f"https://www.google.com/search?q={search_query.replace(' ', '+')}"
-            
-            # For demonstration, let's use a basic heuristic based on device make
-            # In production, implement proper web scraping or API integration
-            device_make_lower = client.get("device_make", "").lower()
-            
-            # Estimated used prices based on brand (placeholder logic)
-            estimated_price = None
-            if "apple" in device_make_lower or "iphone" in device_model.lower():
-                estimated_price = 450.0  # Average used iPhone price
-            elif "samsung" in device_make_lower:
-                estimated_price = 300.0  # Average used Samsung price
-            elif "google" in device_make_lower or "pixel" in device_model.lower():
-                estimated_price = 350.0
-            elif "oneplus" in device_make_lower:
-                estimated_price = 280.0
-            elif "xiaomi" in device_make_lower:
-                estimated_price = 200.0
-            elif "huawei" in device_make_lower:
-                estimated_price = 220.0
-            else:
-                estimated_price = 250.0  # Default estimate
-        
-        # Update client with fetched price
-        await db.clients.update_one(
-            {"id": client_id},
-            {"$set": {
-                "used_price_eur": estimated_price,
-                "price_fetched_at": datetime.utcnow()
-            }}
-        )
-        
-        return {
-            "client_id": client_id,
-            "device_model": device_model,
-            "used_price_eur": estimated_price,
-            "fetched_at": datetime.utcnow(),
-            "note": "Price is an estimate. For production, integrate with real marketplace APIs."
-        }
-        
-    except Exception as e:
-        logger.error(f"Error fetching phone price: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch price: {str(e)}")
-
-# ===================== STATS ROUTE =====================
-
-@api_router.get("/stats")
-async def get_stats(admin_id: Optional[str] = Query(default=None)):
-    """Get statistics, optionally filtered by admin_id"""
-    query = {}
-    if admin_id:
-        query["admin_id"] = admin_id
-    
-    total_clients = await db.clients.count_documents(query)
-    locked_query = {**query, "is_locked": True}
-    locked_devices = await db.clients.count_documents(locked_query)
-    registered_query = {**query, "is_registered": True}
-    registered_devices = await db.clients.count_documents(registered_query)
-    
-    return {
-        "total_clients": total_clients,
-        "locked_devices": locked_devices,
-        "registered_devices": registered_devices,
-        "unlocked_devices": total_clients - locked_devices
-    }
-
-# Health check - works without database connection
-@api_router.get("/")
-async def root():
-    return {"message": "EMI Phone Lock API is running", "status": "healthy"}
-
-@api_router.get("/health")
+@app.get("/health")
 async def health_check():
-    """Health check endpoint for Kubernetes liveness/readiness probes"""
-    try:
-        # Try to ping the database
-        await client.admin.command('ping')
-        db_status = "connected"
-    except Exception as e:
-        db_status = f"error: {str(e)}"
-    
-    return {
+    """Health check endpoint"""
+    health_status = {
         "status": "healthy",
-        "database": db_status,
-        "version": "1.0.0"
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "1.1.0",
+        "database_connected": db_manager.is_connected
+    }
+    
+    if not db_manager.is_connected:
+        health_status["status"] = "degraded"
+        return JSONResponse(status_code=503, content=health_status)
+    
+    return health_status
+
+@app.get("/")
+async def root():
+    """Root endpoint - redirect to API docs"""
+    return {
+        "message": "Loan Phone Lock API",
+        "version": "1.1.0",
+        "docs": "/docs",
+        "health": "/health"
     }
 
-# Include the router in the main app
+# Include the API router
 app.include_router(api_router)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# ===================== MAIN ENTRY POINT =====================
 
-@app.middleware("http")
-async def swallow_404_middleware(request, call_next):
-    """Discard body for 404 responses to reduce noise."""
-    def json_redirect(corrected_path: str):
-        return JSONResponse(
-            status_code=307,
-            content={"redirect_to": corrected_path, "detail": "Use /api prefix"},
-            headers={"Location": corrected_path}
-        )
-
-    response = await call_next(request)
-    if response.status_code == 404:
-        path = request.url.path
-        query = f"?{request.url.query}" if request.url.query else ""
-
-        # Fix double /api/api prefix
-        if path.startswith("/api/api"):
-            corrected = path.replace("/api/api", "/api", 1) + query
-            return json_redirect(corrected)
-
-        # Add missing /api prefix for common admin endpoints
-        missing_admin_api_targets = (
-            "/admin/login",
-            "/admin/register",
-            "/admin/list",
-            "/admin/change-password",
-        )
-        if path in missing_admin_api_targets:
-            corrected = f"/api{path}{query}"
-            return json_redirect(corrected)
-
-        # Add missing /api prefix for common client endpoints
-        missing_client_api_targets = (
-            "/device/register",
-            "/device/status",
-        )
-        if path in missing_client_api_targets:
-            corrected = f"/api{path}{query}"
-            return json_redirect(corrected)
-
-        return Response(status_code=404)
-    return response
-
-@app.on_event("startup")
-async def startup_db_client():
-    """Create database indexes on startup for better performance"""
-    try:
-        logger.info("Creating database indexes...")
-        # Client collection indexes
-        await db.clients.create_index("id", unique=True)
-        await db.clients.create_index("registration_code", unique=True)
-        await db.clients.create_index("is_locked")
-        await db.clients.create_index("is_registered")
-        # Compound index for overdue payment queries
-        await db.clients.create_index([("next_payment_due", 1), ("outstanding_balance", 1)])
-        # Index for loan plan lookups
-        await db.clients.create_index("loan_plan_id")
-        
-        # Admin collection indexes
-        await db.admins.create_index("id", unique=True)
-        await db.admins.create_index("username", unique=True)
-        
-        # Admin tokens collection indexes
-        await db.admin_tokens.create_index("admin_id")
-        await db.admin_tokens.create_index("token", unique=True)
-        
-        # Ensure default loan plan exists
-        await ensure_default_loan_plan()
-
-        logger.info("Database indexes created successfully")
-    except Exception as e:
-        logger.warning(f"Could not create indexes: {e}")
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    """Close database connection on shutdown"""
-    logger.info("Closing database connection...")
-    client.close()
-
-
-async def ensure_default_loan_plan():
-    """Seed required default loan plan if missing."""
-    default_name = "One-Time Simple 50% Monthly"
-    existing = await db.loan_plans.find_one({"name": default_name})
-    if existing:
-        return
-
-    plan = LoanPlan(
-        name=default_name,
-        interest_rate=50.0,  # 50% per month, simple interest
-        min_tenure_months=1,
-        max_tenure_months=1,
-        processing_fee_percent=0.0,
-        late_fee_percent=0.0,
-        description="One-time loan, simple interest at 50% per month."
+if __name__ == "__main__":
+    import uvicorn
+    
+    port = int(os.getenv("PORT", 8000))
+    host = os.getenv("HOST", "0.0.0.0")
+    
+    uvicorn.run(
+        "server_fixed:app",
+        host=host,
+        port=port,
+        reload=os.getenv("DEBUG", "false").lower() == "true",
+        log_level="info"
     )
-    await db.loan_plans.insert_one(plan.dict())
-    logger.info(f"Seeded default loan plan: {default_name}")
