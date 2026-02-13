@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
+import { getErrorMessage } from '../../src/utils/errorHandler';
 
 interface Client {
   id: string;
@@ -176,17 +177,21 @@ export default function AddLoan() {
       // Create new client if needed
       if (clientMode === 'new') {
         const adminId = await AsyncStorage.getItem('admin_id');
+        const newClientData = {
+          name: newClientName.trim(),
+          phone: newClientPhone.trim(),
+          email: newClientEmail.trim(),
+          admin_id: adminId || null,
+        };
+        
+        console.log('Creating new client for loan:', newClientData);
         const clientResponse = await fetch(`${API_URL}/api/clients`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: newClientName.trim(),
-            phone: newClientPhone.trim(),
-            email: newClientEmail.trim(),
-            admin_id: adminId || null,
-          }),
+          body: JSON.stringify(newClientData),
         });
 
+        console.log('Client creation response status:', clientResponse.status);
         if (!clientResponse.ok) {
           // Try to get error message from response
           let errorMessage = `Failed to create client (${clientResponse.status})`;
@@ -194,9 +199,11 @@ export default function AddLoan() {
             const contentType = clientResponse.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
               const errorData = await clientResponse.json();
+              console.error('Client creation error data:', errorData);
               errorMessage = errorData?.detail || errorData?.message || errorMessage;
             } else {
               const errorText = await clientResponse.text();
+              console.error('Client creation error text:', errorText.substring(0, 200));
               // If it's an HTML error page, just use the status code
               if (errorText.toLowerCase().includes('<!doctype') || errorText.toLowerCase().includes('<html')) {
                 errorMessage = `Server error (${clientResponse.status}). Please check backend connection.`;
@@ -212,21 +219,26 @@ export default function AddLoan() {
         }
 
         const newClient = await clientResponse.json();
+        console.log('New client created successfully:', newClient.id);
         clientId = newClient.id;
       }
 
       // Setup loan for the client
       const adminId = await AsyncStorage.getItem('admin_id');
+      const loanData = {
+        loan_amount: loanAmountNum,
+        interest_rate: interestRateNum,
+        loan_tenure_months: tenureNum,
+      };
+      
+      console.log('Setting up loan for client:', clientId, loanData);
       const loanResponse = await fetch(`${API_URL}/api/loans/${clientId}/setup?admin_id=${adminId || ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          loan_amount: loanAmountNum,
-          interest_rate: interestRateNum,
-          loan_tenure_months: tenureNum,
-        }),
+        body: JSON.stringify(loanData),
       });
 
+      console.log('Loan setup response status:', loanResponse.status);
       if (!loanResponse.ok) {
         // Try to get error message from response
         let errorMessage = `Failed to setup loan (${loanResponse.status})`;
@@ -234,9 +246,11 @@ export default function AddLoan() {
           const contentType = loanResponse.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
             const errorData = await loanResponse.json();
+            console.error('Loan setup error data:', errorData);
             errorMessage = errorData?.detail || errorData?.message || errorMessage;
           } else {
             const errorText = await loanResponse.text();
+            console.error('Loan setup error text:', errorText.substring(0, 200));
             // If it's an HTML error page, just use the status code
             if (errorText.toLowerCase().includes('<!doctype') || errorText.toLowerCase().includes('<html')) {
               errorMessage = `Server error (${loanResponse.status}). Please check backend connection.`;
@@ -251,9 +265,10 @@ export default function AddLoan() {
         throw new Error(errorMessage);
       }
 
-      const loanData = await loanResponse.json();
+      const loanResponseData = await loanResponse.json();
+      console.log('Loan setup successful:', loanResponseData);
       
-      const monthlyEmi = loanData?.loan_details?.monthly_emi;
+      const monthlyEmi = loanResponseData?.loan_details?.monthly_emi;
       const emiText = (typeof monthlyEmi === 'number' && !isNaN(monthlyEmi)) 
         ? `€${monthlyEmi.toFixed(2)}` 
         : 'N/A';
@@ -266,18 +281,8 @@ export default function AddLoan() {
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error: any) {
+      const errorMessage = getErrorMessage(error, 'Failed to add loan. Please try again.');
       console.error('Add loan error:', error);
-      let errorMessage = 'Something went wrong';
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      } else if (error?.detail) {
-        errorMessage = error.detail;
-      }
       
       Alert.alert(
         language === 'et' ? 'Viga' : 'Error',

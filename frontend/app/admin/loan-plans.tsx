@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '../../src/constants/api';
+import { getErrorMessage } from '../../src/utils/errorHandler';
 
 
 interface LoanPlan {
@@ -129,7 +130,7 @@ export default function LoanPlans() {
       setShowModal(false);
       fetchPlans();
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', getErrorMessage(error, 'Failed to save plan'));
     } finally {
       setActionLoading(false);
     }
@@ -163,7 +164,7 @@ export default function LoanPlans() {
       // Update local state immediately for better UX
       setPlans(plans.map(p => p.id === plan.id ? { ...p, is_active: newActiveState } : p));
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', getErrorMessage(error, 'Failed to update plan'));
     }
   };
 
@@ -179,11 +180,13 @@ export default function LoanPlans() {
           onPress: async () => {
             try {
               const token = await AsyncStorage.getItem('admin_token');
+              console.log('Attempting to delete plan:', plan.id, plan.name);
               const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${token}`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
               });
               
+              console.log('Delete plan response status:', response.status);
               if (!response.ok) {
                 const contentType = response.headers.get('content-type');
                 let errorMessage = `Failed to delete plan (${response.status})`;
@@ -222,13 +225,26 @@ export default function LoanPlans() {
               }
               
               // Remove from local state immediately for better UX
-              setPlans(prevPlans => prevPlans.filter(p => p.id !== plan.id));
+              setPlans(prevPlans => {
+                console.log('Deleting plan from local state:', plan.id, 'Current plans count:', prevPlans.length);
+                const filtered = prevPlans.filter(p => {
+                  const keep = p.id !== plan.id;
+                  if (!keep) {
+                    console.log('Filtering out plan:', p.id, p.name);
+                  }
+                  return keep;
+                });
+                console.log('After filter, plans count:', filtered.length, 'Filtered out:', prevPlans.length - filtered.length);
+                return filtered;
+              });
               
+              console.log('Plan deletion completed successfully');
               Alert.alert('Success', 'Plan deleted successfully');
             } catch (error: any) {
               // On error, refresh to ensure consistency
+              console.error('Delete plan error:', error);
               await fetchPlans();
-              Alert.alert('Error', error.message);
+              Alert.alert('Error', getErrorMessage(error, 'Failed to delete plan'));
             }
           },
         },
@@ -253,7 +269,12 @@ export default function LoanPlans() {
       const result = await response.json();
       
       // Remove from local state immediately for better UX
-      setPlans(prevPlans => prevPlans.filter(p => p.id !== plan.id));
+      console.log('Force deleting plan from local state:', plan.id);
+      setPlans(prevPlans => {
+        const filtered = prevPlans.filter(p => p.id !== plan.id);
+        console.log('After force delete filter, plans count:', filtered.length);
+        return filtered;
+      });
       
       const clientsAffected = result.clients_affected || 0;
       const message = clientsAffected > 0 
@@ -264,7 +285,7 @@ export default function LoanPlans() {
     } catch (error: any) {
       // On error, refresh to ensure consistency
       await fetchPlans();
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', getErrorMessage(error, 'Failed to delete plan'));
     }
   };
 

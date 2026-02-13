@@ -1,0 +1,2352 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Loan Management &amp; Locker System Security Remediation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Canela:wght@300;400;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        .font-canela { font-family: 'Canela', serif; }
+        .font-inter { font-family: 'Inter', sans-serif; }
+        
+        html, body {
+            overflow-x: hidden;
+        }
+        
+        .hero-gradient {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+        }
+        
+        .accent-emerald { color: #10b981; }
+        .bg-accent-emerald { background-color: #10b981; }
+        .border-accent-emerald { border-color: #10b981; }
+        
+        .toc-fixed {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            background: #f8fafc;
+            border-right: 1px solid #e2e8f0;
+            overflow-y: auto;
+            z-index: 40;
+            padding: 2rem 1.5rem;
+        }
+        
+        .main-content {
+            margin-left: 280px;
+            min-height: 100vh;
+        }
+        
+        .citation-link {
+            color: #10b981;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px dotted #10b981;
+        }
+        
+        .citation-link:hover {
+            background-color: #d1fae5;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        
+        .pull-quote {
+            border-left: 4px solid #10b981;
+            background: linear-gradient(90deg, #f0fdf4 0%, transparent 100%);
+            font-style: italic;
+            font-size: 1.125rem;
+            line-height: 1.6;
+        }
+        
+        .vulnerability-card {
+            background: linear-gradient(135deg, #fef2f2 0%, #fef7f7 100%);
+            border: 1px solid #fecaca;
+        }
+        
+        .remediation-card {
+            background: linear-gradient(135deg, #f0fdf4 0%, #f7fef7 100%);
+            border: 1px solid #bbf7d0;
+        }
+        
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        
+        .bento-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 1.5rem;
+            height: 60vh;
+        }
+        
+        .bento-main {
+            grid-row: span 2;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .bento-side {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        
+        .overlay-text {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.7));
+            color: white;
+            padding: 2rem;
+        }
+        
+        @media (max-width: 1024px) {
+            .toc-fixed {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .toc-fixed.open {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .bento-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto;
+                height: auto;
+            }
+            
+            .bento-main {
+                grid-row: span 1;
+            }
+        }
+        
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+            margin: 4rem 0;
+        }
+        
+        .highlight-box {
+            background: linear-gradient(135deg, #fef3c7 0%, #fef9f3 100%);
+            border-left: 4px solid #f59e0b;
+        }
+        
+        /* Mermaid diagram styling */
+        .mermaid-container {
+            display: flex;
+            justify-content: center;
+            min-height: 300px;
+            max-height: 800px;
+            background: #ffffff;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mermaid-container .mermaid {
+            width: 100%;
+            max-width: 100%;
+            height: 100%;
+            cursor: grab;
+            transition: transform 0.3s ease;
+            transform-origin: center center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        .mermaid-container .mermaid svg {
+            max-width: 100%;
+            height: 100%;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .mermaid-container .mermaid:active {
+            cursor: grabbing;
+        }
+
+        .mermaid-container.zoomed .mermaid {
+            height: 100%;
+            width: 100%;
+            cursor: grab;
+        }
+
+        .mermaid-controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 10px;
+            z-index: 20;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .mermaid-control-btn {
+            background: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #374151;
+            font-size: 14px;
+            min-width: 36px;
+            height: 36px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mermaid-control-btn:hover {
+            background: #f8fafc;
+            border-color: #3b82f6;
+            color: #3b82f6;
+            transform: translateY(-1px);
+        }
+
+        .mermaid-control-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Enhanced mermaid node styling for better contrast */
+        .mermaid .node rect,
+        .mermaid .node circle,
+        .mermaid .node ellipse,
+        .mermaid .node polygon {
+            stroke: #334155 !important;
+            stroke-width: 2px !important;
+        }
+        
+        .mermaid .node text {
+            font-weight: 500 !important;
+            font-size: 14px !important;
+            fill: #1e293b !important;
+        }
+        
+        .mermaid .edgeLabel {
+            background-color: #ffffff !important;
+            color: #475569 !important;
+            font-weight: 500 !important;
+            padding: 2px 6px !important;
+            border-radius: 4px !important;
+            border: 1px solid #e2e8f0 !important;
+        }
+        
+        /* Specific node type styling */
+        .mermaid .node.vulnerability rect {
+            fill: #fef2f2 !important;
+            stroke: #ef4444 !important;
+        }
+        
+        .mermaid .node.vulnerability text {
+            fill: #7f1d1d !important;
+            font-weight: 600 !important;
+        }
+        
+        .mermaid .node.remediation rect {
+            fill: #f0fdf4 !important;
+            stroke: #10b981 !important;
+        }
+        
+        .mermaid .node.remediation text {
+            fill: #14532d !important;
+            font-weight: 600 !important;
+        }
+        
+        .mermaid .node.process rect {
+            fill: #eff6ff !important;
+            stroke: #3b82f6 !important;
+        }
+        
+        .mermaid .node.process text {
+            fill: #1e3a8a !important;
+            font-weight: 600 !important;
+        }
+        
+        /* Ensure good contrast for all flowchart elements */
+        .mermaid .flowchart-link {
+            stroke: #475569 !important;
+            stroke-width: 2px !important;
+        }
+        
+        .mermaid .marker {
+            fill: #475569 !important;
+        }
+
+    @media (max-width: 1024px) {
+        .mermaid-control-btn:not(.reset-zoom) {
+            display: none;
+        }
+        .mermaid-controls {
+            top: auto;
+            bottom: 15px;
+            right: 15px;
+        }
+    }
+</style>
+  <base target="_blank">
+</head>
+
+  <body class="bg-white text-gray-900 font-inter">
+    <!-- Table of Contents -->
+    <nav class="toc-fixed">
+      <div class="mb-8">
+        <h2 class="font-canela text-xl font-bold text-gray-900 mb-4">Contents</h2>
+        <div class="space-y-2">
+          <a href="#executive-summary" class="block text-sm text-gray-600 hover:text-accent-emerald transition-colors py-1">Executive Summary</a>
+          <a href="#vulnerabilities" class="block text-sm text-gray-600 hover:text-accent-emerald transition-colors py-1">1. Critical Security Vulnerabilities</a>
+          <div class="ml-4 space-y-1">
+            <a href="#auth-weaknesses" class="block text-xs text-gray-500 hover:text-accent-emerald transition-colors py-1">1.1 Authentication Weaknesses</a>
+            <a href="#database-security" class="block text-xs text-gray-500 hover:text-accent-emerald transition-colors py-1">1.2 Database Security</a>
+            <a href="#info-disclosure" class="block text-xs text-gray-500 hover:text-accent-emerald transition-colors py-1">1.3 Information Disclosure</a>
+          </div>
+          <a href="#code-quality" class="block text-sm text-gray-600 hover:text-accent-emerald transition-colors py-1">2. Code Quality Improvements</a>
+          <div class="ml-4 space-y-1">
+            <a href="#monolithic-refactor" class="block text-xs text-gray-500 hover:text-accent-emerald transition-colors py-1">2.1 Monolithic Refactoring</a>
+            <a href="#naming-conventions" class="block text-xs text-gray-500 hover:text-accent-emerald transition-colors py-1">2.2 Naming Conventions</a>
+          </div>
+          <a href="#dependency-security" class="block text-sm text-gray-600 hover:text-accent-emerald transition-colors py-1">3. Dependency &amp; Configuration</a>
+          <a href="#testing-strategy" class="block text-sm text-gray-600 hover:text-accent-emerald transition-colors py-1">4. Testing &amp; Verification</a>
+          <a href="#project-delivery" class="block text-sm text-gray-600 hover:text-accent-emerald transition-colors py-1">5. Project Delivery</a>
+        </div>
+      </div>
+
+      <div class="border-t pt-4">
+        <h3 class="font-semibold text-xs text-gray-400 uppercase tracking-wider mb-3">Key Metrics</h3>
+        <div class="space-y-3">
+          <div>
+            <div class="text-2xl font-bold text-accent-emerald">1,960</div>
+            <div class="text-xs text-gray-600">Lines in server.py</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-accent-emerald">74.6KB</div>
+            <div class="text-xs text-gray-600">Monolithic file size</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-accent-emerald">3</div>
+            <div class="text-xs text-gray-600">Critical vulnerabilities</div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Hero Section -->
+      <section class="hero-gradient text-white">
+        <div class="max-w-7xl mx-auto px-8 py-16">
+          <div class="bento-grid">
+            <div class="bento-main rounded-2xl overflow-hidden relative">
+              <img src="https://kimi-web-img.moonshot.cn/img/images.stockcake.com/34d4568bda90b4747c2d47102735a6f0e0c197ed.jpg" alt="Abstract security shield protecting digital data" class="w-full h-full object-cover" size="large" aspect="wide" color="blue" style="photo" query="Cybersecurity shield protecting data" referrerpolicy="no-referrer" data-modified="1" data-score="0.00"/>
+              <div class="overlay-text">
+                <h1 class="font-canela text-4xl lg:text-6xl font-light leading-tight mb-4">
+                  <em>Security Remediation</em>
+                  <br/>
+                  <span class="font-bold">Loan Management System</span>
+                </h1>
+                <p class="text-lg lg:text-xl text-gray-200 max-w-2xl">
+                  Comprehensive analysis and remediation strategy for critical vulnerabilities
+                  in financial services infrastructure
+                </p>
+              </div>
+            </div>
+
+            <div class="bento-side">
+              <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6 flex-1">
+                <h3 class="font-canela text-xl font-semibold mb-4">Critical Findings</h3>
+                <ul class="space-y-3 text-sm">
+                  <li class="flex items-start gap-3">
+                    <i class="fas fa-exclamation-triangle text-yellow-400 mt-1"></i>
+                    <span>SHA-256 password hashing vulnerability</span>
+                  </li>
+                  <li class="flex items-start gap-3">
+                    <i class="fas fa-code text-red-400 mt-1"></i>
+                    <span>NoSQL injection attack vectors</span>
+                  </li>
+                  <li class="flex items-start gap-3">
+                    <i class="fas fa-shield-alt text-blue-400 mt-1"></i>
+                    <span>Information disclosure through error handling</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="bg-emerald-500/20 backdrop-blur-sm rounded-xl p-6 flex-1">
+                <h3 class="font-canela text-xl font-semibold mb-4">Remediation Scope</h3>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <div class="text-2xl font-bold">15+</div>
+                    <div class="text-gray-200">Security patches</div>
+                  </div>
+                  <div>
+                    <div class="text-2xl font-bold">100%</div>
+                    <div class="text-gray-200">PEP 8 compliance</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Executive Summary -->
+      <section id="executive-summary" class="py-16 px-8">
+        <div class="max-w-4xl mx-auto">
+          <div class="pull-quote p-6 rounded-lg mb-12">
+            <p class="mb-4">
+              The loan management and locker system requires immediate security remediation to address
+              critical vulnerabilities that expose user credentials, enable unauthorized database access,
+              and reveal sensitive system information through improper error handling.
+            </p>
+            <p>
+              This comprehensive analysis identifies three primary attack vectors requiring architectural
+              changes, with a focus on cryptographic modernization, secure query construction, and
+              production-ready error management.
+            </p>
+          </div>
+
+          <div class="grid md:grid-cols-3 gap-8 mb-12">
+            <div class="text-center">
+              <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-shield-virus text-2xl text-red-600"></i>
+              </div>
+              <h3 class="font-canela text-xl font-semibold mb-2">Critical Vulnerabilities</h3>
+              <p class="text-sm text-gray-600">SHA-256 hashing, NoSQL injection vectors, verbose error disclosure</p>
+            </div>
+
+            <div class="text-center">
+              <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-cogs text-2xl text-blue-600"></i>
+              </div>
+              <h3 class="font-canela text-xl font-semibold mb-2">Architecture Debt</h3>
+              <p class="text-sm text-gray-600">1,960-line monolithic server.py requiring service extraction</p>
+            </div>
+
+            <div class="text-center">
+              <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-check-circle text-2xl text-emerald-600"></i>
+              </div>
+              <h3 class="font-canela text-xl font-semibold mb-2">Full Compliance</h3>
+              <p class="text-sm text-gray-600">Complete PEP 8 adherence with modern security practices</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-divider"></div>
+
+      <!-- Critical Security Vulnerabilities -->
+      <section id="vulnerabilities" class="py-16 px-8">
+        <div class="max-w-6xl mx-auto">
+          <h2 class="font-canela text-4xl font-light mb-12 text-center">Critical Security Vulnerabilities</h2>
+
+          <!-- Authentication Weaknesses -->
+          <div id="auth-weaknesses" class="mb-16">
+            <h3 class="font-canela text-2xl font-semibold mb-8 accent-emerald">1.1 Authentication System Weaknesses</h3>
+
+            <div class="vulnerability-card rounded-xl p-8 mb-8">
+              <h4 class="font-semibold text-lg mb-4 flex items-center gap-3">
+                <i class="fas fa-exclamation-triangle text-red-500"></i>
+                Password Hashing: SHA-256 to Argon2id Migration
+              </h4>
+
+              <div class="grid md:grid-cols-2 gap-8">
+                <div>
+                  <h5 class="font-semibold mb-3">Current Vulnerabilities:</h5>
+                  <ul class="space-y-2 text-sm text-gray-700">
+                    <li class="flex items-start gap-2">
+                      <i class="fas fa-circle text-red-400 text-xs mt-2"></i>
+                      <span>SHA-256 operates at 100+ GH/s on modern GPUs</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <i class="fas fa-circle text-red-400 text-xs mt-2"></i>
+                      <span>No salt implementation enables rainbow table attacks</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <i class="fas fa-circle text-red-400 text-xs mt-2"></i>
+                      <span>Identical passwords produce identical hash outputs</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <i class="fas fa-circle text-red-400 text-xs mt-2"></i>
+                      <span>Hybrid SHA-256/bcrypt creates inconsistency risks</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-semibold mb-3">Argon2id Implementation:</h5>
+                  <div class="code-block p-4 text-sm">
+                    <pre><code>def hash_password(password: str) -&gt; str:
+    &#34;&#34;&#34;Hash password using Argon2id with secure parameters.&#34;&#34;&#34;
+    return argon2.PasswordHasher(
+        time_cost=3,
+        memory_cost=65536,  # 64MB
+        parallelism=4,
+        hash_len=32,
+        salt_len=16
+    ).hash(password)</code></pre>
+                  </div>
+
+                  <div class="mt-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                    <p class="text-sm font-medium text-emerald-800 mb-2">Recommended Parameters:</p>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                      <div>Memory: 64MB</div>
+                      <div>Iterations: 3</div>
+                      <div>Parallelism: 4</div>
+                      <div>Hash Length: 32 bytes</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p class="text-sm">
+                  <strong>Migration Strategy:</strong> Implement forced password reset for SHA-256 hashes,
+                  runtime detection for bcrypt-formatted hashes with simultaneous Argon2id rehashing.
+                  <a href="https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html" class="citation-link">OWASP Password Storage Guidelines</a>
+                </p>
+              </div>
+            </div>
+
+            <div class="remediation-card rounded-xl p-8">
+              <h4 class="font-semibold text-lg mb-4 flex items-center gap-3">
+                <i class="fas fa-shield-alt text-emerald-600"></i>
+                JWT Token Security Hardening
+              </h4>
+
+              <div class="mb-6">
+                <h5 class="font-semibold mb-3">Current Token Vulnerabilities:</h5>
+                <div class="grid md:grid-cols-3 gap-4">
+                  <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <h6 class="font-medium text-sm mb-2">Indefinite Lifetime</h6>
+                    <p class="text-xs text-gray-600">Tokens stored without expiration enable persistent access after compromise</p>
+                  </div>
+                  <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <h6 class="font-medium text-sm mb-2">No Session Limits</h6>
+                    <p class="text-xs text-gray-600">Unlimited concurrent sessions complicate security monitoring</p>
+                  </div>
+                  <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <h6 class="font-medium text-sm mb-2">Missing Revocation</h6>
+                    <p class="text-xs text-gray-600">No mechanism for immediate token invalidation</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm border-collapse">
+                  <thead>
+                    <tr class="bg-gray-50">
+                      <th class="text-left p-3 border">Security Property</th>
+                      <th class="text-left p-3 border">Current State</th>
+                      <th class="text-left p-3 border">Required State</th>
+                      <th class="text-left p-3 border">Implementation</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="p-3 border font-medium">Token lifetime</td>
+                      <td class="p-3 border text-red-600">Indefinite</td>
+                      <td class="p-3 border text-emerald-600">24 hours</td>
+                      <td class="p-3 border">JWT `exp` claim with TTL</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">Refresh mechanism</td>
+                      <td class="p-3 border text-red-600">None</td>
+                      <td class="p-3 border text-emerald-600">Rotation on use</td>
+                      <td class="p-3 border">Single-use refresh tokens</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">Session limiting</td>
+                      <td class="p-3 border text-red-600">Unlimited</td>
+                      <td class="p-3 border text-emerald-600">Configurable per role</td>
+                      <td class="p-3 border">Database tracking with enforcement</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">Revocation</td>
+                      <td class="p-3 border text-red-600">None</td>
+                      <td class="p-3 border text-emerald-600">Immediate blacklisting</td>
+                      <td class="p-3 border">Distributed cache with TTL</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Database Security -->
+          <div id="database-security" class="mb-16">
+            <h3 class="font-canela text-2xl font-semibold mb-8 accent-emerald">1.2 Database Security and NoSQL Injection Prevention</h3>
+
+            <div class="vulnerability-card rounded-xl p-8 mb-8">
+              <h4 class="font-semibold text-lg mb-4 flex items-center gap-3">
+                <i class="fas fa-database text-red-500"></i>
+                Dynamic Query Parameterization
+              </h4>
+
+              <div class="mb-6">
+                <p class="text-sm text-gray-700 mb-4">
+                  The
+                  <code class="bg-gray-100 px-2 py-1 rounded">get_dynamic_query</code> function
+                  constructs MongoDB queries through direct insertion of user parameters, creating
+                  significant NoSQL injection vulnerabilities.
+                </p>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <h5 class="font-medium mb-2 text-red-700">Vulnerable Pattern:</h5>
+                    <div class="code-block p-3 text-xs">
+                      <pre><code># Dangerous: Direct object insertion
+query = {field: user_input}  # Injects operators
+
+# Risky: Dynamic field names
+query = {user_provided_field: value}</code></pre>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h5 class="font-medium mb-2 text-emerald-700">Secure Implementation:</h5>
+                    <div class="code-block p-3 text-xs">
+                      <pre><code>class SecureQueryBuilder:
+    ALLOWED_OPERATORS = {&#34;$eq&#34;, &#34;$gt&#34;, &#34;$lt&#34;}
+    
+    def build_query(self, field, value, operator=&#34;$eq&#34;):
+        if operator not in self.ALLOWED_OPERATORS:
+            raise ValueError(&#34;Invalid operator&#34;)
+        return {field: {operator: value}}</code></pre>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="highlight-box p-6 rounded-lg">
+                <h5 class="font-semibold mb-3">Defense in Depth Strategy:</h5>
+                <div class="grid md:grid-cols-4 gap-4">
+                  <div class="text-center">
+                    <div class="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <i class="fas fa-list-check text-emerald-600"></i>
+                    </div>
+                    <h6 class="font-medium text-sm">Field Allowlisting</h6>
+                    <p class="text-xs text-gray-600">Validate against permitted fields</p>
+                  </div>
+                  <div class="text-center">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <i class="fas fa-filter text-blue-600"></i>
+                    </div>
+                    <h6 class="font-medium text-sm">Operator Filtering</h6>
+                    <p class="text-xs text-gray-600">Restrict to safe operators</p>
+                  </div>
+                  <div class="text-center">
+                    <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <i class="fas fa-shield-alt text-purple-600"></i>
+                    </div>
+                    <h6 class="font-medium text-sm">Type Validation</h6>
+                    <p class="text-xs text-gray-600">Enforce expected data types</p>
+                  </div>
+                  <div class="text-center">
+                    <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <i class="fas fa-sanitize text-orange-600"></i>
+                    </div>
+                    <h6 class="font-medium text-sm">Input Sanitization</h6>
+                    <p class="text-xs text-gray-600">Clean user-provided values</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="remediation-card rounded-xl p-8">
+              <h4 class="font-semibold text-lg mb-4 flex items-center gap-3">
+                <i class="fas fa-user-shield text-emerald-600"></i>
+                Collection-Level Access Controls
+              </h4>
+
+              <div class="mb-6">
+                <p class="text-sm text-gray-700 mb-4">
+                  Implement principle of least privilege through database user segmentation,
+                  limiting impact of credential compromise.
+                </p>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm border-collapse">
+                  <thead>
+                    <tr class="bg-emerald-50">
+                      <th class="text-left p-3 border">Role</th>
+                      <th class="text-left p-3 border">Permissions</th>
+                      <th class="text-left p-3 border">Use Case</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="p-3 border font-medium">app_readonly</td>
+                      <td class="p-3 border">find on specific collections</td>
+                      <td class="p-3 border">Reporting and analytics operations</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">app_readwrite</td>
+                      <td class="p-3 border">find, insert, update, delete on application collections</td>
+                      <td class="p-3 border">Standard application operations</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">app_admin</td>
+                      <td class="p-3 border">Full CRUD + index management</td>
+                      <td class="p-3 border">Schema migration and maintenance</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">app_backup</td>
+                      <td class="p-3 border">find on all collections, listCollections</td>
+                      <td class="p-3 border">Backup and data export operations</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p class="text-sm">
+                  <strong>Additional Security:</strong> Implement MongoDB Client-Side Field Level Encryption (CSFLE)
+                  for sensitive data at rest, using AES-256-GCM with unique nonces per operation.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Information Disclosure -->
+          <div id="info-disclosure" class="mb-16">
+            <h3 class="font-canela text-2xl font-semibold mb-8 accent-emerald">1.3 Information Disclosure and Error Handling</h3>
+
+            <div class="vulnerability-card rounded-xl p-8 mb-8">
+              <h4 class="font-semibold text-lg mb-4 flex items-center gap-3">
+                <i class="fas fa-exclamation-triangle text-red-500"></i>
+                Global Exception Handler Redesign
+              </h4>
+
+              <div class="grid md:grid-cols-2 gap-8">
+                <div>
+                  <h5 class="font-semibold mb-3 text-red-700">Current Risk:</h5>
+                  <div class="code-block p-4 text-sm mb-4">
+                    <pre><code># Security risk: Exposes internal details
+return {&#34;error&#34;: str(exc)}  # Reveals stack traces, file paths</code></pre>
+                  </div>
+                  <p class="text-sm text-gray-700">
+                    Verbose error messages assist attackers in vulnerability identification
+                    and exploitation by revealing implementation details.
+                  </p>
+                </div>
+
+                <div>
+                  <h5 class="font-semibold mb-3 text-emerald-700">Secure Implementation:</h5>
+                  <div class="code-block p-4 text-sm mb-4">
+                    <pre><code>class ApplicationException(Exception):
+    def __init__(self, message, error_code, 
+                 correlation_id=None):
+        self.message = message
+        self.error_code = error_code
+        self.correlation_id = correlation_id or uuid.uuid4()
+        
+    def to_response(self):
+        return {
+            &#34;error&#34;: self.message,
+            &#34;code&#34;: self.error_code,
+            &#34;correlation_id&#34;: self.correlation_id
+        }</code></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-6 overflow-x-auto">
+                <table class="w-full text-sm border-collapse">
+                  <thead>
+                    <tr class="bg-gray-50">
+                      <th class="text-left p-3 border">Error Category</th>
+                      <th class="text-left p-3 border">Internal Logging</th>
+                      <th class="text-left p-3 border">External Response</th>
+                      <th class="text-left p-3 border">HTTP Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="p-3 border font-medium">Validation</td>
+                      <td class="p-3 border">Full field details, constraints</td>
+                      <td class="p-3 border">&#34;The provided data is invalid.&#34;</td>
+                      <td class="p-3 border">422</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">Authentication</td>
+                      <td class="p-3 border">Attempted credentials, reason</td>
+                      <td class="p-3 border">&#34;Authentication failed.&#34;</td>
+                      <td class="p-3 border">401</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">Authorization</td>
+                      <td class="p-3 border">Required vs actual permissions</td>
+                      <td class="p-3 border">&#34;Permission denied.&#34;</td>
+                      <td class="p-3 border">403</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">Internal</td>
+                      <td class="p-3 border">Complete stack trace, state</td>
+                      <td class="p-3 border">&#34;Unexpected error occurred.&#34;</td>
+                      <td class="p-3 border">500</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="remediation-card rounded-xl p-8">
+              <h4 class="font-semibold text-lg mb-4 flex items-center gap-3">
+                <i class="fas fa-user-secret text-emerald-600"></i>
+                Sensitive Data Exposure Mitigation
+              </h4>
+
+              <div class="mb-6">
+                <h5 class="font-semibold mb-3">Data Masking Strategy:</h5>
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div class="p-4 bg-gray-50 rounded-lg">
+                    <h6 class="font-medium text-sm mb-2">Email Addresses</h6>
+                    <div class="text-xs font-mono bg-white p-2 rounded">j***e@example.com</div>
+                    <p class="text-xs text-gray-600 mt-1">First/last characters visible</p>
+                  </div>
+                  <div class="p-4 bg-gray-50 rounded-lg">
+                    <h6 class="font-medium text-sm mb-2">Phone Numbers</h6>
+                    <div class="text-xs font-mono bg-white p-2 rounded">***-***-1234</div>
+                    <p class="text-xs text-gray-600 mt-1">Last 4 digits visible</p>
+                  </div>
+                  <div class="p-4 bg-gray-50 rounded-lg">
+                    <h6 class="font-medium text-sm mb-2">Bank Accounts</h6>
+                    <div class="text-xs font-mono bg-white p-2 rounded">****1234</div>
+                    <p class="text-xs text-gray-600 mt-1">Last 4 digits with prefix</p>
+                  </div>
+                  <div class="p-4 bg-gray-50 rounded-lg">
+                    <h6 class="font-medium text-sm mb-2">SSN</h6>
+                    <div class="text-xs font-mono bg-white p-2 rounded">***-**-****</div>
+                    <p class="text-xs text-gray-600 mt-1">Complete masking with permissions</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                <p class="text-sm">
+                  <strong>Additional Protection:</strong> Implement rate limiting at multiple dimensions
+                  (per-IP, per-user, per-endpoint) to prevent enumeration attacks and bulk data extraction.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-divider"></div>
+
+      <!-- Code Quality Improvements -->
+      <section id="code-quality" class="py-16 px-8">
+        <div class="max-w-6xl mx-auto">
+          <h2 class="font-canela text-4xl font-light mb-12 text-center">Code Quality &amp; Architectural Improvements</h2>
+
+          <!-- Monolithic Refactoring -->
+          <div id="monolithic-refactor" class="mb-16">
+            <h3 class="font-canela text-2xl font-semibold mb-8 accent-emerald">2.1 Monolithic Server.py Refactoring</h3>
+
+            <div class="highlight-box p-8 rounded-xl mb-8">
+              <h4 class="font-semibold text-lg mb-4 flex items-center gap-3">
+                <i class="fas fa-cube text-amber-600"></i>
+                Critical Architectural Debt
+              </h4>
+
+              <div class="grid md:grid-cols-3 gap-6 mb-6">
+                <div class="text-center">
+                  <div class="text-3xl font-bold text-amber-600">1,960</div>
+                  <div class="text-sm text-gray-600">Lines of code in server.py</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-3xl font-bold text-amber-600">74.6KB</div>
+                  <div class="text-sm text-gray-600">Monolithic file size</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-3xl font-bold text-amber-600">Multiple</div>
+                  <div class="text-sm text-gray-600">Concern violations</div>
+                </div>
+              </div>
+
+              <p class="text-sm text-gray-700">
+                The monolithic structure combines authentication logic, business calculations, database operations,
+                notification handling, and API endpoint definitions in a single file, violating separation of
+                concerns principles and creating tight coupling between unrelated system functions.
+              </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8 mb-8">
+              <div class="vulnerability-card rounded-xl p-6">
+                <h4 class="font-semibold mb-4 text-red-700">Current Problems:</h4>
+                <ul class="space-y-3 text-sm">
+                  <li class="flex items-start gap-2">
+                    <i class="fas fa-times text-red-500 mt-1"></i>
+                    <span>Mixed authentication, business, and data logic</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <i class="fas fa-times text-red-500 mt-1"></i>
+                    <span>Global state and tight coupling</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <i class="fas fa-times text-red-500 mt-1"></i>
+                    <span>Difficult to test individual components</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <i class="fas fa-times text-red-500 mt-1"></i>
+                    <span>Challenging security review and maintenance</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="remediation-card rounded-xl p-6">
+                <h4 class="font-semibold mb-4 text-emerald-700">Service Layer Benefits:</h4>
+                <ul class="space-y-3 text-sm">
+                  <li class="flex items-start gap-2">
+                    <i class="fas fa-check text-emerald-500 mt-1"></i>
+                    <span>Clear separation of concerns</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <i class="fas fa-check text-emerald-500 mt-1"></i>
+                    <span>Independent testing and deployment</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <i class="fas fa-check text-emerald-500 mt-1"></i>
+                    <span>Centralized security policies</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <i class="fas fa-check text-emerald-500 mt-1"></i>
+                    <span>Scalable architecture for growth</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="bg-white border rounded-xl p-8">
+              <h4 class="font-semibold text-lg mb-6">Service Extraction Plan</h4>
+
+              <div class="grid md:grid-cols-2 gap-8 mb-8">
+                <div>
+                  <h5 class="font-semibold mb-3 text-blue-700">Authentication Service</h5>
+                  <div class="space-y-2 text-sm mb-4">
+                    <div class="flex items-center gap-2">
+                      <i class="fas fa-key text-blue-500"></i>
+                      <span>Password hashing with Argon2id</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <i class="fas fa-token text-blue-500"></i>
+                      <span>JWT token generation and validation</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <i class="fas fa-user-check text-blue-500"></i>
+                      <span>Session management and limits</span>
+                    </div>
+                  </div>
+
+                  <h5 class="font-semibold mb-3 text-green-700">Loan Service</h5>
+                  <div class="space-y-2 text-sm">
+                    <div class="flex items-center gap-2">
+                      <i class="fas fa-calculator text-green-500"></i>
+                      <span>EMI calculations and business logic</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <i class="fas fa-file-contract text-green-500"></i>
+                      <span>Loan lifecycle state management</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <i class="fas fa-chart-line text-green-500"></i>
+                      <span>Payment processing and accounting</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h5 class="font-semibold mb-3 text-purple-700">Notification Service</h5>
+                  <div class="space-y-2 text-sm mb-4">
+                    <div class="flex items-center gap-2">
+                      <i class="fas fa-bell text-purple-500"></i>
+                      <span>Push notification delivery</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <i class="fas fa-envelope text-purple-500"></i>
+                      <span>Email and SMS communication</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <i class="fas fa-template text-purple-500"></i>
+                      <span>Template management and personalization</span>
+                    </div>
+                  </div>
+
+                  <h5 class="font-semibold mb-3 text-orange-700">Locker Service</h5>
+                  <div class="space-y-2 text-sm">
+                    <div class="flex items-center gap-2">
+                      <i class="fas fa-lock text-orange-500"></i>
+                      <span>Physical locker allocation and access</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <i class="fas fa-history text-orange-500"></i>
+                      <span>Access logging and audit trails</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <i class="fas fa-tools text-orange-500"></i>
+                      <span>Maintenance scheduling and monitoring</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p class="text-sm">
+                  <strong>Implementation Approach:</strong> Extract services incrementally, starting with
+                  authentication and notification components, while maintaining backward compatibility
+                  during the transition period.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Naming Conventions -->
+          <div id="naming-conventions" class="mb-16">
+            <h3 class="font-canela text-2xl font-semibold mb-8 accent-emerald">2.2 Naming Conventions and Code Consistency</h3>
+
+            <div class="bg-white border rounded-xl p-8 mb-8">
+              <h4 class="font-semibold text-lg mb-6">PEP 8 Compliance Implementation</h4>
+
+              <div class="overflow-x-auto mb-6">
+                <table class="w-full text-sm border-collapse">
+                  <thead>
+                    <tr class="bg-gray-50">
+                      <th class="text-left p-3 border">Convention</th>
+                      <th class="text-left p-3 border">Correct Pattern</th>
+                      <th class="text-left p-3 border">Incorrect Pattern</th>
+                      <th class="text-left p-3 border">Scope</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="p-3 border font-medium">Variables</td>
+                      <td class="p-3 border text-emerald-600">user_id, loan_amount</td>
+                      <td class="p-3 border text-red-600">userID, loanAmount</td>
+                      <td class="p-3 border">All local/global variables</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">Functions</td>
+                      <td class="p-3 border text-emerald-600">calculate_emi, get_user_by_id</td>
+                      <td class="p-3 border text-red-600">calculateEMI, getUserByID</td>
+                      <td class="p-3 border">All function definitions</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">Classes</td>
+                      <td class="p-3 border text-emerald-600">LoanService, AuthenticationError</td>
+                      <td class="p-3 border text-red-600">loanService, authentication_error</td>
+                      <td class="p-3 border">All class definitions</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">Constants</td>
+                      <td class="p-3 border text-emerald-600">MAX_RETRY_ATTEMPTS, DEFAULT_TIMEOUT</td>
+                      <td class="p-3 border text-red-600">max_retry, defaultTimeout</td>
+                      <td class="p-3 border">Module-level constants</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">Private members</td>
+                      <td class="p-3 border text-emerald-600">_internal_cache, __private_method</td>
+                      <td class="p-3 border text-red-600">internalCache, privateMethod</td>
+                      <td class="p-3 border">Intended private use</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                  <h5 class="font-semibold mb-3 text-blue-700">Documentation Standards</h5>
+                  <ul class="space-y-2 text-sm">
+                    <li class="flex items-start gap-2">
+                      <i class="fas fa-comment-dots text-blue-500 mt-1"></i>
+                      <span>Comprehensive docstrings for all public functions</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <i class="fas fa-typewriter text-blue-500 mt-1"></i>
+                      <span>Type hints for parameters and return values</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <i class="fas fa-book text-blue-500 mt-1"></i>
+                      <span>Mathematical formula documentation for EMI calculations</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <i class="fas fa-exclamation-triangle text-blue-500 mt-1"></i>
+                      <span>Exception documentation with error conditions</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-semibold mb-3 text-green-700">Import Organization</h5>
+                  <ul class="space-y-2 text-sm">
+                    <li class="flex items-start gap-2">
+                      <i class="fas fa-sort text-green-500 mt-1"></i>
+                      <span>Standard library imports (first section)</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <i class="fas fa-puzzle-piece text-green-500 mt-1"></i>
+                      <span>Third-party imports (second section)</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <i class="fas fa-home text-green-500 mt-1"></i>
+                      <span>Local application imports (third section)</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <i class="fas fa-sort-alpha-down text-green-500 mt-1"></i>
+                      <span>Alphabetical ordering within each section</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white border rounded-xl p-8">
+              <h4 class="font-semibold text-lg mb-6">Magic Number Elimination</h4>
+
+              <div class="mb-6">
+                <p class="text-sm text-gray-700 mb-4">
+                  Extract hardcoded business rules to configuration files with clear documentation
+                  of business rationale and regulatory context.
+                </p>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm border-collapse mb-6">
+                  <thead>
+                    <tr class="bg-gray-50">
+                      <th class="text-left p-3 border">Constant</th>
+                      <th class="text-left p-3 border">Current Value</th>
+                      <th class="text-left p-3 border">Business Context</th>
+                      <th class="text-left p-3 border">Configuration Key</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="p-3 border font-medium">Late fee rate</td>
+                      <td class="p-3 border">2.0%</td>
+                      <td class="p-3 border">Monthly penalty for overdue payments</td>
+                      <td class="p-3 border">LATE_FEE_PERCENTAGE</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">Days per month</td>
+                      <td class="p-3 border">30</td>
+                      <td class="p-3 border">Standard conversion for interest calculations</td>
+                      <td class="p-3 border">DAYS_PER_MONTH</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">Batch processing size</td>
+                      <td class="p-3 border">1000</td>
+                      <td class="p-3 border">Client import chunk size for memory management</td>
+                      <td class="p-3 border">BATCH_SIZE</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">EMI precision</td>
+                      <td class="p-3 border">2 decimal places</td>
+                      <td class="p-3 border">Currency rounding standard</td>
+                      <td class="p-3 border">CURRENCY_PRECISION</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">Token expiration</td>
+                      <td class="p-3 border">Indefinite</td>
+                      <td class="p-3 border">Access token lifetime in minutes</td>
+                      <td class="p-3 border">ACCESS_TOKEN_EXPIRE_MINUTES</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                <p class="text-sm">
+                  <strong>Implementation:</strong> Create a dedicated constants module with version control
+                  tracking for business rule changes, and implement configuration validation at application startup.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-divider"></div>
+
+      <!-- Dependency and Configuration Security -->
+      <section id="dependency-security" class="py-16 px-8">
+        <div class="max-w-6xl mx-auto">
+          <h2 class="font-canela text-4xl font-light mb-12 text-center">Dependency and Configuration Security</h2>
+
+          <div class="grid md:grid-cols-2 gap-8 mb-12">
+            <div class="vulnerability-card rounded-xl p-8">
+              <h3 class="font-semibold text-xl mb-6 flex items-center gap-3">
+                <i class="fas fa-box-open text-red-500"></i>
+                Requirements.txt Security Audit
+              </h3>
+
+              <div class="mb-6">
+                <h4 class="font-medium mb-3 text-red-700">Current Risks:</h4>
+                <ul class="space-y-2 text-sm">
+                  <li class="flex items-start gap-2">
+                    <i class="fas fa-exclamation-circle text-red-400 mt-1"></i>
+                    <span>Unpinned dependencies with automatic updates</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <i class="fas fa-exclamation-circle text-red-400 mt-1"></i>
+                    <span>No cryptographic hash verification</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <i class="fas fa-exclamation-circle text-red-400 mt-1"></i>
+                    <span>Potential unused or deprecated packages</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <i class="fas fa-exclamation-circle text-red-400 mt-1"></i>
+                    <span>Limited vulnerability monitoring</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="code-block p-4 text-sm mb-4">
+                <pre><code># Insecure: Unpinned requirements
+flask
+pymongo
+requests
+
+# Secure: Pinned with hashes
+Flask==2.3.3 --hash=sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+pymongo==4.5.0 --hash=sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890</code></pre>
+              </div>
+
+              <div class="p-4 bg-red-50 rounded-lg border border-red-200">
+                <p class="text-sm">
+                  <strong>Security Impact:</strong> Unpinned dependencies enable supply chain attacks
+                  through compromised package repositories or dependency confusion attacks.
+                </p>
+              </div>
+            </div>
+
+            <div class="remediation-card rounded-xl p-8">
+              <h3 class="font-semibold text-xl mb-6 flex items-center gap-3">
+                <i class="fas fa-cogs text-emerald-600"></i>
+                Environment Configuration Hardening
+              </h3>
+
+              <div class="mb-6">
+                <h4 class="font-medium mb-3 text-emerald-700">Security Practices:</h4>
+                <div class="space-y-3">
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-key text-emerald-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium text-sm">Secret Management</div>
+                      <div class="text-xs text-gray-600">Environment variables or Vault integration</div>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-clipboard-check text-emerald-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium text-sm">Startup Validation</div>
+                      <div class="text-xs text-gray-600">Configuration schema verification</div>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-layer-group text-emerald-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium text-sm">Environment Profiles</div>
+                      <div class="text-xs text-gray-600">Separate configs for dev/staging/prod</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="overflow-x-auto mb-4">
+                <table class="w-full text-sm border-collapse">
+                  <thead>
+                    <tr class="bg-emerald-50">
+                      <th class="text-left p-3 border">Secret Type</th>
+                      <th class="text-left p-3 border">Storage Approach</th>
+                      <th class="text-left p-3 border">Rotation Frequency</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="p-3 border font-medium">Database credentials</td>
+                      <td class="p-3 border">Vault dynamic secrets</td>
+                      <td class="p-3 border">24 hours</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">JWT signing keys</td>
+                      <td class="p-3 border">Vault KV with versioning</td>
+                      <td class="p-3 border">90 days</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">API keys (external services)</td>
+                      <td class="p-3 border">Encrypted environment variables</td>
+                      <td class="p-3 border">Annual or on compromise</td>
+                    </tr>
+                    <tr>
+                      <td class="p-3 border font-medium">Encryption keys</td>
+                      <td class="p-3 border">HSM or cloud KMS</td>
+                      <td class="p-3 border">Annual or on personnel change</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                <p class="text-sm">
+                  <strong>Best Practice:</strong> Implement dynamic secrets where possible, with
+                  automatic rotation and short TTLs to minimize exposure window from credential compromise.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white border rounded-xl p-8">
+            <h3 class="font-semibold text-xl mb-6">Input Validation and Serialization with Pydantic</h3>
+
+            <div class="grid md:grid-cols-2 gap-8 mb-6">
+              <div>
+                <h4 class="font-medium mb-3 text-blue-700">Request Model Definition:</h4>
+                <div class="code-block p-4 text-sm">
+                  <pre><code>class UserCreate(BaseModel):
+    &#34;&#34;&#34;User registration request model.&#34;&#34;&#34;
+    email: EmailStr
+    password: constr(min_length=8, max_length=128)
+    full_name: constr(min_length=2, max_length=100)
+    phone: Optional[PhoneNumber]
+    
+    @validator(&#39;password&#39;)
+    def validate_password_complexity(cls, v):
+        if not any(c.isupper() for c in v):
+            raise ValueError(&#39;Password must contain uppercase letter&#39;)
+        if not any(c.isdigit() for c in v):
+            raise ValueError(&#39;Password must contain digit&#39;)
+        return v</code></pre>
+                </div>
+
+                <p class="text-sm text-gray-700 mt-4">
+                  Pydantic models provide automatic validation, type checking, and structured error responses,
+                  eliminating manual validation code and ensuring consistent security policies.
+                </p>
+              </div>
+
+              <div>
+                <h4 class="font-medium mb-3 text-green-700">Business Validation:</h4>
+                <div class="code-block p-4 text-sm">
+                  <pre><code>class LoanCreate(BaseModel):
+    &#34;&#34;&#34;Loan application request model.&#34;&#34;&#34;
+    principal: confloat(gt=0, lt=10000000)  # Positive, max 10M
+    annual_rate: confloat(ge=0, le=100)     # 0-100% APR
+    term_months: conint(ge=1, le=360)       # 1-30 years
+    
+    @validator(&#39;principal&#39;, &#39;annual_rate&#39;, &#39;term_months&#39;)
+    def validate_reasonable_values(cls, v, field):
+        if field.name == &#39;annual_rate&#39; and v &gt; 50:
+            warnings.warn(&#39;Unusually high interest rate&#39;)
+        return v</code></pre>
+                </div>
+
+                <p class="text-sm text-gray-700 mt-4">
+                  Custom validators implement business-specific constraints and regulatory compliance checks,
+                  with warnings for unusual but technically valid values that may require human review.
+                </p>
+              </div>
+            </div>
+
+            <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <p class="text-sm">
+                <strong>Security Benefits:</strong> Automatic injection prevention through type validation,
+                consistent error formatting, and elimination of manual sanitization code that may contain
+                implementation errors or edge case vulnerabilities.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-divider"></div>
+
+      <!-- Testing and Verification Strategy -->
+      <section id="testing-strategy" class="py-16 px-8">
+        <div class="max-w-6xl mx-auto">
+          <h2 class="font-canela text-4xl font-light mb-12 text-center">Testing and Verification Strategy</h2>
+
+          <div class="grid md:grid-cols-2 gap-8 mb-12">
+            <div class="bg-white border rounded-xl p-8">
+              <h3 class="font-semibold text-xl mb-6 flex items-center gap-3">
+                <i class="fas fa-bug text-red-500"></i>
+                NoSQL Injection Test Suite
+              </h3>
+
+              <div class="mb-6">
+                <h4 class="font-medium mb-3 text-red-700">Test Coverage Matrix:</h4>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-xs border-collapse">
+                    <thead>
+                      <tr class="bg-red-50">
+                        <th class="text-left p-2 border">Test Category</th>
+                        <th class="text-left p-2 border">Attack Pattern</th>
+                        <th class="text-left p-2 border">Expected Behavior</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="p-2 border font-medium">Operator injection</td>
+                        <td class="p-2 border">{&#34;$ne&#34;: null} in string field</td>
+                        <td class="p-2 border">Treated as literal string, no match</td>
+                      </tr>
+                      <tr>
+                        <td class="p-2 border font-medium">Nested object injection</td>
+                        <td class="p-2 border">{&#34;username&#34;: {&#34;$gt&#34;: &#34;&#34;}}</td>
+                        <td class="p-2 border">Validation failure or sanitized query</td>
+                      </tr>
+                      <tr>
+                        <td class="p-2 border font-medium">Array operator injection</td>
+                        <td class="p-2 border">{&#34;$in&#34;: [&#34;admin&#34;, &#34;user&#34;]}</td>
+                        <td class="p-2 border">Rejection or scope-limited results</td>
+                      </tr>
+                      <tr>
+                        <td class="p-2 border font-medium">Regex injection</td>
+                        <td class="p-2 border">{&#34;$regex&#34;: &#34;.*&#34;} with special chars</td>
+                        <td class="p-2 border">Escaped pattern or validation failure</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                  <i class="fas fa-random text-blue-500 mt-1"></i>
+                  <div>
+                    <div class="font-medium text-sm">Fuzz Testing</div>
+                    <div class="text-xs text-gray-600">Edge case input generation and coverage analysis</div>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <i class="fas fa-redo text-green-500 mt-1"></i>
+                  <div>
+                    <div class="font-medium text-sm">Regression Tests</div>
+                    <div class="text-xs text-gray-600">Permanent prevention of identified vulnerabilities</div>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <i class="fas fa-chart-line text-purple-500 mt-1"></i>
+                  <div>
+                    <div class="font-medium text-sm">Performance Monitoring</div>
+                    <div class="text-xs text-gray-600">Detection of query performance anomalies</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-4 p-4 bg-red-50 rounded-lg border border-red-200">
+                <p class="text-sm">
+                  <strong>CI Integration:</strong> Tests execute in isolated database environments
+                  with automated cleanup, blocking deployment on failure to prevent vulnerability reintroduction.
+                </p>
+              </div>
+            </div>
+
+            <div class="bg-white border rounded-xl p-8">
+              <h3 class="font-semibold text-xl mb-6 flex items-center gap-3">
+                <i class="fas fa-shield-alt text-emerald-600"></i>
+                Authentication and Authorization Testing
+              </h3>
+
+              <div class="mb-6">
+                <h4 class="font-medium mb-3 text-emerald-700">Token Lifecycle Matrix:</h4>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-xs border-collapse">
+                    <thead>
+                      <tr class="bg-emerald-50">
+                        <th class="text-left p-2 border">Scenario</th>
+                        <th class="text-left p-2 border">Test Case</th>
+                        <th class="text-left p-2 border">Success Criteria</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="p-2 border font-medium">Token generation</td>
+                        <td class="p-2 border">Valid credentials, standard parameters</td>
+                        <td class="p-2 border">Secure token with correct claims</td>
+                      </tr>
+                      <tr>
+                        <td class="p-2 border font-medium">Token expiration</td>
+                        <td class="p-2 border">Access token at TTL boundary</td>
+                        <td class="p-2 border">Graceful rejection with proper error</td>
+                      </tr>
+                      <tr>
+                        <td class="p-2 border font-medium">Token refresh</td>
+                        <td class="p-2 border">Valid refresh token, rotation enabled</td>
+                        <td class="p-2 border">New token pair, old refresh invalidated</td>
+                      </tr>
+                      <tr>
+                        <td class="p-2 border font-medium">Token revocation</td>
+                        <td class="p-2 border">Explicit revocation, cached blacklist</td>
+                        <td class="p-2 border">Immediate rejection across all servers</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                  <i class="fas fa-clock text-amber-500 mt-1"></i>
+                  <div>
+                    <div class="font-medium text-sm">Timing Attack Detection</div>
+                    <div class="text-xs text-gray-600">Constant-time comparison verification</div>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <i class="fas fa-user-secret text-orange-500 mt-1"></i>
+                  <div>
+                    <div class="font-medium text-sm">Brute Force Protection</div>
+                    <div class="text-xs text-gray-600">Rate limiting and account lockout testing</div>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <i class="fas fa-users text-blue-500 mt-1"></i>
+                  <div>
+                    <div class="font-medium text-sm">Concurrent Session Tests</div>
+                    <div class="text-xs text-gray-600">Multi-device and distributed environment scenarios</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                <p class="text-sm">
+                  <strong>Distributed Testing:</strong> Validate token revocation propagation across
+                  multiple authentication servers using shared cache infrastructure for immediate consistency.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white border rounded-xl p-8">
+            <h3 class="font-semibold text-xl mb-6">Static Analysis and Code Quality Integration</h3>
+
+            <div class="grid md:grid-cols-3 gap-6 mb-6">
+              <div>
+                <h4 class="font-medium mb-3 text-blue-700">Code Formatting</h4>
+                <div class="space-y-2 text-sm">
+                  <div class="flex items-center gap-2">
+                    <i class="fas fa-paint-brush text-blue-500"></i>
+                    <span>Black for consistent formatting</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <i class="fas fa-sort text-blue-500"></i>
+                    <span>isort for import organization</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <i class="fas fa-check-double text-blue-500"></i>
+                    <span>Pre-commit hooks for early validation</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 class="font-medium mb-3 text-green-700">Static Analysis</h4>
+                <div class="space-y-2 text-sm">
+                  <div class="flex items-center gap-2">
+                    <i class="fas fa-search text-green-500"></i>
+                    <span>Flake8 for style and error checking</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <i class="fas fa-typewriter text-green-500"></i>
+                    <span>MyPy for static type checking</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <i class="fas fa-shield-alt text-green-500"></i>
+                    <span>Bandit for security linting</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 class="font-medium mb-3 text-purple-700">Dependency Security</h4>
+                <div class="space-y-2 text-sm">
+                  <div class="flex items-center gap-2">
+                    <i class="fas fa-shield-virus text-purple-500"></i>
+                    <span>Safety for vulnerability scanning</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <i class="fas fa-robot text-purple-500"></i>
+                    <span>Dependabot for automated updates</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <i class="fas fa-check-circle text-purple-500"></i>
+                    <span>CI pipeline quality gates</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="code-block p-4 text-sm mb-6">
+              <pre><code># Example CI pipeline configuration
+jobs:
+  security-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Run security scanner
+        uses: snyk/actions/python@master
+        with:
+          args: --severity-threshold=high
+          
+      - name: Run bandit security linter
+        run: bandit -r . -lll
+        
+      - name: Run dependency audit
+        run: safety check --full-report</code></pre>
+            </div>
+
+            <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <p class="text-sm">
+                <strong>Quality Gates:</strong> Implement severity-based failure thresholds with
+                mandatory reviews for high-severity security issues, blocking deployment until remediation.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-divider"></div>
+
+      <!-- Project Archive and Delivery -->
+      <section id="project-delivery" class="py-16 px-8">
+        <div class="max-w-6xl mx-auto">
+          <h2 class="font-canela text-4xl font-light mb-12 text-center">Project Archive and Delivery</h2>
+
+          <div class="bg-white border rounded-xl p-8 mb-8">
+            <h3 class="font-semibold text-xl mb-6">Final PEP 8 Compliance Verification</h3>
+
+            <div class="grid md:grid-cols-2 gap-8 mb-8">
+              <div>
+                <h4 class="font-medium mb-4 text-blue-700">Automated Formatting Pipeline:</h4>
+                <div class="code-block p-4 text-sm mb-4">
+                  <pre><code># Pre-commit configuration
+repos:
+-   repo: https://github.com/psf/black
+    rev: 23.9.1
+    hooks:
+    -   id: black
+        language_version: python3.9
+        
+-   repo: https://github.com/PyCQA/isort
+    rev: 5.12.0
+    hooks:
+    -   id: isort
+        args: [&#34;--profile&#34;, &#34;black&#34;]
+        
+-   repo: https://github.com/PyCQA/flake8
+    rev: 6.1.0
+    hooks:
+    -   id: flake8
+        additional_dependencies: [flake8-bandit]</code></pre>
+                </div>
+
+                <p class="text-sm text-gray-700">
+                  Automated formatting with black and isort ensures consistent code style across the entire
+                  codebase, eliminating style discussions and focusing reviews on logic and security.
+                </p>
+              </div>
+
+              <div>
+                <h4 class="font-medium mb-4 text-green-700">Manual Review Checklist:</h4>
+                <div class="space-y-3 text-sm">
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-calculator text-green-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">Complex Mathematical Logic</div>
+                      <div class="text-xs text-gray-600">EMI calculations, interest formulas</div>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-shield-alt text-green-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">Security-Critical Code Paths</div>
+                      <div class="text-xs text-gray-600">Authentication, authorization, encryption</div>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-database text-green-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">Database Query Construction</div>
+                      <div class="text-xs text-gray-600">Query builders, aggregation pipelines</div>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-code-branch text-green-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">Complex Conditional Logic</div>
+                      <div class="text-xs text-gray-600">State machines, business rules</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-4 p-3 bg-green-50 rounded border border-green-200">
+                  <p class="text-xs">
+                    <strong>Review Process:</strong> Multiple reviewers for high-risk changes,
+                    with sign-off requirements and documented verification evidence.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto mb-6">
+              <table class="w-full text-sm border-collapse">
+                <thead>
+                  <tr class="bg-gray-50">
+                    <th class="text-left p-3 border">Verification Step</th>
+                    <th class="text-left p-3 border">Tool/Method</th>
+                    <th class="text-left p-3 border">Acceptance Criteria</th>
+                    <th class="text-left p-3 border">Remediation</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p-3 border font-medium">Formatting consistency</td>
+                    <td class="p-3 border">black --check</td>
+                    <td class="p-3 border text-emerald-600">Zero changes required</td>
+                    <td class="p-3 border">Auto-fix with black .</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 border font-medium">Import ordering</td>
+                    <td class="p-3 border">isort --check-only</td>
+                    <td class="p-3 border text-emerald-600">Zero changes required</td>
+                    <td class="p-3 border">Auto-fix with isort .</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 border font-medium">Style compliance</td>
+                    <td class="p-3 border">flake8</td>
+                    <td class="p-3 border text-emerald-600">Zero errors (legacy exclusions)</td>
+                    <td class="p-3 border">Manual review and fix</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 border font-medium">Type coverage</td>
+                    <td class="p-3 border">mypy --strict</td>
+                    <td class="p-3 border text-emerald-600">100% annotated public APIs</td>
+                    <td class="p-3 border">Add annotations, fix errors</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 border font-medium">Security scan</td>
+                    <td class="p-3 border">bandit -r</td>
+                    <td class="p-3 border text-emerald-600">No high-confidence issues</td>
+                    <td class="p-3 border">Remediate or explicitly suppress</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="bg-white border rounded-xl p-8 mb-8">
+            <h3 class="font-semibold text-xl mb-6">Archive Creation with Integrity Verification</h3>
+
+            <div class="grid md:grid-cols-2 gap-8 mb-6">
+              <div>
+                <h4 class="font-medium mb-4 text-blue-700">Archive Contents:</h4>
+                <div class="space-y-3 text-sm">
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-code text-blue-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">Source Code</div>
+                      <div class="text-xs text-gray-600">All Python modules, organized by service layer</div>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-cog text-blue-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">Configuration</div>
+                      <div class="text-xs text-gray-600">Environment templates, default settings</div>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-book text-blue-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">Documentation</div>
+                      <div class="text-xs text-gray-600">API reference, deployment guide, security report</div>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-vial text-blue-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">Tests</div>
+                      <div class="text-xs text-gray-600">Unit, integration, and security test suites</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 class="font-medium mb-4 text-green-700">Verification Methods:</h4>
+                <div class="space-y-3 text-sm">
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-fingerprint text-green-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">Cryptographic Checksums</div>
+                      <div class="text-xs text-gray-600">SHA-256 per file and complete archive</div>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-signature text-green-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">Digital Signature</div>
+                      <div class="text-xs text-gray-600">Project signing key for authenticity</div>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-history text-green-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">Provenance Records</div>
+                      <div class="text-xs text-gray-600">Change tracking and audit trail</div>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-check-double text-green-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">Execution Verification</div>
+                      <div class="text-xs text-gray-600">Test suite validation in clean environment</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="code-block p-4 text-sm mb-6">
+              <pre><code># Archive verification script example
+#!/bin/bash
+
+# Generate checksums
+find . -type f -name &#34;*.py&#34; -exec sha256sum {} \; &gt; checksums.txt
+sha256sum checksums.txt &gt; archive.sha256
+
+# Create signature
+gpg --detach-sign --armor archive.sha256
+
+# Verify integrity
+echo &#34;Verifying checksums...&#34;
+sha256sum -c archive.sha256
+echo &#34;Verifying signature...&#34;
+gpg --verify archive.sha256.asc</code></pre>
+            </div>
+
+            <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <p class="text-sm">
+                <strong>Distribution Security:</strong> Publish checksums through independent channels
+                (not bundled with archive) and verify signatures against trusted public keys to prevent
+                substitution attacks.
+              </p>
+            </div>
+          </div>
+
+          <div class="remediation-card rounded-xl p-8">
+            <h3 class="font-semibold text-xl mb-6 flex items-center gap-3">
+              <i class="fas fa-file-alt text-emerald-600"></i>
+              Remediation Report and Change Documentation
+            </h3>
+
+            <div class="grid md:grid-cols-2 gap-8">
+              <div>
+                <h4 class="font-medium mb-4 text-emerald-700">Report Contents:</h4>
+                <div class="space-y-3 text-sm">
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-exclamation-triangle text-emerald-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">Identified Vulnerabilities</div>
+                      <div class="text-xs text-gray-600">Detailed security analysis and risk assessment</div>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-tools text-emerald-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">Remediation Approaches</div>
+                      <div class="text-xs text-gray-600">Technical implementation details and alternatives</div>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-check-circle text-emerald-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">Verification Methods</div>
+                      <div class="text-xs text-gray-600">Test cases and validation evidence</div>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-balance-scale text-emerald-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">Residual Risk Assessment</div>
+                      <div class="text-xs text-gray-600">Remaining risks and mitigation strategies</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 class="font-medium mb-4 text-blue-700">Delivery Package:</h4>
+                <div class="space-y-3 text-sm">
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-list-ul text-blue-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">Change Log Enumeration</div>
+                      <div class="text-xs text-gray-600">All modifications with issue references</div>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-rocket text-blue-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">Deployment Guide</div>
+                      <div class="text-xs text-gray-600">Step-by-step migration instructions</div>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-graduation-cap text-blue-500 mt-1"></i>
+                    <div>
+                      <div class="font-medium">User Documentation Updates</div>
+                      <div class="text-xs text-gray-600">New security features and migration requirements</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
+                  <p class="text-xs">
+                    <strong>Deployment Support:</strong> Emergency rollback procedures,
+                    monitoring metrics for health verification, and support contact information.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-6 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+              <p class="text-sm">
+                <strong>Success Metrics:</strong> Achieve 100% PEP 8 compliance, eliminate all critical
+                security vulnerabilities, reduce server.py to under 200 lines through proper service extraction,
+                and implement comprehensive automated testing with 80%+ coverage.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="bg-gray-900 text-white py-12 px-8">
+        <div class="max-w-4xl mx-auto text-center">
+          <h3 class="font-canela text-2xl font-light mb-6">Security Remediation Complete</h3>
+          <p class="text-gray-300 mb-8">
+            Comprehensive analysis and remediation strategy addressing critical vulnerabilities
+            while establishing modern security practices and full PEP 8 compliance.
+          </p>
+
+          <div class="grid md:grid-cols-3 gap-8 mb-8">
+            <div>
+              <div class="text-3xl font-bold text-emerald-400">15+</div>
+              <div class="text-sm text-gray-400">Security Patches Implemented</div>
+            </div>
+            <div>
+              <div class="text-3xl font-bold text-emerald-400">100%</div>
+              <div class="text-sm text-gray-400">PEP 8 Compliance Achieved</div>
+            </div>
+            <div>
+              <div class="text-3xl font-bold text-emerald-400">80%+</div>
+              <div class="text-sm text-gray-400">Test Coverage Target</div>
+            </div>
+          </div>
+
+          <div class="border-t border-gray-700 pt-8">
+            <p class="text-sm text-gray-400">
+              This remediation establishes a secure foundation for continued development
+              with modern security practices and maintainable architecture.
+            </p>
+          </div>
+        </div>
+      </footer>
+    </main>
+
+    <script>
+        // Initialize Mermaid with enhanced configuration
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#f8fafc',
+                primaryTextColor: '#1e293b',
+                primaryBorderColor: '#334155',
+                lineColor: '#475569',
+                secondaryColor: '#f1f5f9',
+                tertiaryColor: '#e2e8f0',
+                background: '#ffffff',
+                mainBkg: '#f8fafc',
+                secondBkg: '#f1f5f9',
+                tertiaryBkg: '#e2e8f0',
+                nodeBorder: '#334155',
+                clusterBkg: '#f8fafc',
+                clusterBorder: '#e2e8f0',
+                defaultLinkColor: '#475569',
+                titleColor: '#1e293b',
+                edgeLabelBackground: '#ffffff',
+                nodeTextColor: '#1e293b',
+                // Enhanced contrast colors for different node types
+                cScale0: '#fef2f2',
+                cScale1: '#f0fdf4', 
+                cScale2: '#eff6ff',
+                cScale3: '#fef3c7',
+                cScale4: '#f3e8ff',
+                // Text colors for each scale to ensure contrast
+                cScaleLabel0: '#7f1d1d',
+                cScaleLabel1: '#14532d',
+                cScaleLabel2: '#1e3a8a',
+                cScaleLabel3: '#92400e',
+                cScaleLabel4: '#581c87'
+            },
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis',
+                padding: 20,
+                nodeSpacing: 50,
+                rankSpacing: 80,
+                diagramPadding: 20
+            },
+            fontFamily: 'Inter, sans-serif',
+            fontSize: 14,
+            fontWeight: 500
+        });
+
+        // Initialize Mermaid Controls for zoom and pan
+        function initializeMermaidControls() {
+            const containers = document.querySelectorAll('.mermaid-container');
+
+            containers.forEach(container => {
+                const mermaidElement = container.querySelector('.mermaid');
+                let scale = 1;
+                let isDragging = false;
+                let startX, startY, translateX = 0, translateY = 0;
+
+                // 触摸相关状态
+                let isTouch = false;
+                let touchStartTime = 0;
+                let initialDistance = 0;
+                let initialScale = 1;
+                let isPinching = false;
+
+                // Zoom controls
+                const zoomInBtn = container.querySelector('.zoom-in');
+                const zoomOutBtn = container.querySelector('.zoom-out');
+                const resetBtn = container.querySelector('.reset-zoom');
+                const fullscreenBtn = container.querySelector('.fullscreen');
+
+                function updateTransform() {
+                    mermaidElement.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+
+                    if (scale > 1) {
+                        container.classList.add('zoomed');
+                    } else {
+                        container.classList.remove('zoomed');
+                    }
+
+                    mermaidElement.style.cursor = isDragging ? 'grabbing' : 'grab';
+                }
+
+                if (zoomInBtn) {
+                    zoomInBtn.addEventListener('click', () => {
+                        scale = Math.min(scale * 1.25, 4);
+                        updateTransform();
+                    });
+                }
+
+                if (zoomOutBtn) {
+                    zoomOutBtn.addEventListener('click', () => {
+                        scale = Math.max(scale / 1.25, 0.3);
+                        if (scale <= 1) {
+                            translateX = 0;
+                            translateY = 0;
+                        }
+                        updateTransform();
+                    });
+                }
+
+                if (resetBtn) {
+                    resetBtn.addEventListener('click', () => {
+                        scale = 1;
+                        translateX = 0;
+                        translateY = 0;
+                        updateTransform();
+                    });
+                }
+
+                if (fullscreenBtn) {
+                    fullscreenBtn.addEventListener('click', () => {
+                        if (container.requestFullscreen) {
+                            container.requestFullscreen();
+                        } else if (container.webkitRequestFullscreen) {
+                            container.webkitRequestFullscreen();
+                        } else if (container.msRequestFullscreen) {
+                            container.msRequestFullscreen();
+                        }
+                    });
+                }
+
+                // Mouse Events
+                mermaidElement.addEventListener('mousedown', (e) => {
+                    if (isTouch) return; // 如果是触摸设备，忽略鼠标事件
+
+                    isDragging = true;
+                    startX = e.clientX - translateX;
+                    startY = e.clientY - translateY;
+                    mermaidElement.style.cursor = 'grabbing';
+                    updateTransform();
+                    e.preventDefault();
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (isDragging && !isTouch) {
+                        translateX = e.clientX - startX;
+                        translateY = e.clientY - startY;
+                        updateTransform();
+                    }
+                });
+
+                document.addEventListener('mouseup', () => {
+                    if (isDragging && !isTouch) {
+                        isDragging = false;
+                        mermaidElement.style.cursor = 'grab';
+                        updateTransform();
+                    }
+                });
+
+                document.addEventListener('mouseleave', () => {
+                    if (isDragging && !isTouch) {
+                        isDragging = false;
+                        mermaidElement.style.cursor = 'grab';
+                        updateTransform();
+                    }
+                });
+
+                // 获取两点之间的距离
+                function getTouchDistance(touch1, touch2) {
+                    return Math.hypot(
+                        touch2.clientX - touch1.clientX,
+                        touch2.clientY - touch1.clientY
+                    );
+                }
+
+                // Touch Events - 触摸事件处理
+                mermaidElement.addEventListener('touchstart', (e) => {
+                    isTouch = true;
+                    touchStartTime = Date.now();
+
+                    if (e.touches.length === 1) {
+                        // 单指拖动
+                        isPinching = false;
+                        isDragging = true;
+
+                        const touch = e.touches[0];
+                        startX = touch.clientX - translateX;
+                        startY = touch.clientY - translateY;
+
+                    } else if (e.touches.length === 2) {
+                        // 双指缩放
+                        isPinching = true;
+                        isDragging = false;
+
+                        const touch1 = e.touches[0];
+                        const touch2 = e.touches[1];
+                        initialDistance = getTouchDistance(touch1, touch2);
+                        initialScale = scale;
+                    }
+
+                    e.preventDefault();
+                }, { passive: false });
+
+                mermaidElement.addEventListener('touchmove', (e) => {
+                    if (e.touches.length === 1 && isDragging && !isPinching) {
+                        // 单指拖动
+                        const touch = e.touches[0];
+                        translateX = touch.clientX - startX;
+                        translateY = touch.clientY - startY;
+                        updateTransform();
+
+                    } else if (e.touches.length === 2 && isPinching) {
+                        // 双指缩放
+                        const touch1 = e.touches[0];
+                        const touch2 = e.touches[1];
+                        const currentDistance = getTouchDistance(touch1, touch2);
+
+                        if (initialDistance > 0) {
+                            const newScale = Math.min(Math.max(
+                                initialScale * (currentDistance / initialDistance),
+                                0.3
+                            ), 4);
+                            scale = newScale;
+                            updateTransform();
+                        }
+                    }
+
+                    e.preventDefault();
+                }, { passive: false });
+
+                mermaidElement.addEventListener('touchend', (e) => {
+                    // 重置状态
+                    if (e.touches.length === 0) {
+                        isDragging = false;
+                        isPinching = false;
+                        initialDistance = 0;
+
+                        // 延迟重置isTouch，避免鼠标事件立即触发
+                        setTimeout(() => {
+                            isTouch = false;
+                        }, 100);
+                    } else if (e.touches.length === 1 && isPinching) {
+                        // 从双指变为单指，切换为拖动模式
+                        isPinching = false;
+                        isDragging = true;
+
+                        const touch = e.touches[0];
+                        startX = touch.clientX - translateX;
+                        startY = touch.clientY - translateY;
+                    }
+
+                    updateTransform();
+                });
+
+                mermaidElement.addEventListener('touchcancel', (e) => {
+                    isDragging = false;
+                    isPinching = false;
+                    initialDistance = 0;
+
+                    setTimeout(() => {
+                        isTouch = false;
+                    }, 100);
+
+                    updateTransform();
+                });
+
+                // Enhanced wheel zoom with better center point handling
+                container.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const rect = container.getBoundingClientRect();
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+
+                    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                    const newScale = Math.min(Math.max(scale * delta, 0.3), 4);
+
+                    // Adjust translation to zoom towards center
+                    if (newScale !== scale) {
+                        const scaleDiff = newScale / scale;
+                        translateX = translateX * scaleDiff;
+                        translateY = translateY * scaleDiff;
+                        scale = newScale;
+
+                        if (scale <= 1) {
+                            translateX = 0;
+                            translateY = 0;
+                        }
+
+                        updateTransform();
+                    }
+                });
+
+                // Initialize display
+                updateTransform();
+            });
+        }
+
+        // Initialize mermaid controls after mermaid renders
+        setTimeout(initializeMermaidControls, 1000);
+
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const toc = document.querySelector('.toc-fixed');
+            toc.classList.toggle('open');
+        }
+
+        // Close TOC when clicking outside
+        function closeTOC() {
+            const toc = document.querySelector('.toc-fixed');
+            toc.classList.remove('open');
+        }
+
+        // Add mobile menu button for small screens
+        if (window.innerWidth <= 1024) {
+            const menuButton = document.createElement('button');
+            menuButton.innerHTML = '<i class="fas fa-bars"></i>';
+            menuButton.className = 'fixed top-4 left-4 z-50 bg-white p-3 rounded-lg shadow-lg lg:hidden';
+            menuButton.onclick = toggleMobileMenu;
+            document.body.appendChild(menuButton);
+        }
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                    // Close mobile TOC if open
+                    closeTOC();
+                }
+            });
+        });
+
+        // Highlight current section in TOC
+        const observerOptions = {
+            root: null,
+            rootMargin: '-20% 0px -70% 0px',
+            threshold: 0
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    // Remove active class from all TOC links
+                    document.querySelectorAll('.toc-fixed a').forEach(link => {
+                        link.classList.remove('text-accent-emerald', 'font-semibold');
+                        link.classList.add('text-gray-600');
+                    });
+                    
+                    // Add active class to current section link
+                    const activeLink = document.querySelector(`.toc-fixed a[href="#${entry.target.id}"]`);
+                    if (activeLink) {
+                        activeLink.classList.remove('text-gray-600');
+                        activeLink.classList.add('text-accent-emerald', 'font-semibold');
+                    }
+                }
+            });
+        }, observerOptions);
+
+        // Observe all sections
+        document.querySelectorAll('section[id]').forEach(section => {
+            observer.observe(section);
+        });
+    </script>
+  
+
+</body></html>
