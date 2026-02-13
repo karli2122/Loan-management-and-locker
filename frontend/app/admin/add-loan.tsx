@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
+import { getErrorMessage } from '../../src/utils/errorHandler';
 
 interface Client {
   id: string;
@@ -266,18 +267,8 @@ export default function AddLoan() {
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error: any) {
+      const errorMessage = getErrorMessage(error, 'Failed to add loan. Please try again.');
       console.error('Add loan error:', error);
-      let errorMessage = 'Something went wrong';
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      } else if (error?.detail) {
-        errorMessage = error.detail;
-      }
       
       Alert.alert(
         language === 'et' ? 'Viga' : 'Error',

@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '../../src/constants/api';
+import { getErrorMessage } from '../../src/utils/errorHandler';
 
 
 interface LoanPlan {
@@ -129,7 +130,7 @@ export default function LoanPlans() {
       setShowModal(false);
       fetchPlans();
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', getErrorMessage(error, 'Failed to save plan'));
     } finally {
       setActionLoading(false);
     }
@@ -163,7 +164,7 @@ export default function LoanPlans() {
       // Update local state immediately for better UX
       setPlans(plans.map(p => p.id === plan.id ? { ...p, is_active: newActiveState } : p));
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', getErrorMessage(error, 'Failed to update plan'));
     }
   };
 
@@ -228,7 +229,7 @@ export default function LoanPlans() {
             } catch (error: any) {
               // On error, refresh to ensure consistency
               await fetchPlans();
-              Alert.alert('Error', error.message);
+              Alert.alert('Error', getErrorMessage(error, 'Failed to delete plan'));
             }
           },
         },
@@ -264,7 +265,7 @@ export default function LoanPlans() {
     } catch (error: any) {
       // On error, refresh to ensure consistency
       await fetchPlans();
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', getErrorMessage(error, 'Failed to delete plan'));
     }
   };
 
