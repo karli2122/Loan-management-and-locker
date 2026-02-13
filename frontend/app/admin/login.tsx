@@ -36,8 +36,15 @@ export default function AdminLogin() {
       if (stay === 'true') {
         const token = await AsyncStorage.getItem('admin_token');
         if (token) {
-          router.replace('/admin/(tabs)');
-          return;
+          try {
+            const res = await fetch(`${API_URL}/api/admin/verify/${token}`);
+            if (res.ok) {
+              router.replace('/admin/(tabs)');
+              return;
+            }
+          } catch (_) {}
+          // Token invalid or expired — clear stored auth
+          await AsyncStorage.multiRemove(['admin_token', 'admin_stay_signed_in']);
         }
       }
     };
