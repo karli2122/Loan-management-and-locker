@@ -788,8 +788,11 @@ async def update_client(client_id: str, update_data: ClientUpdate, admin_token: 
     return Client(**updated_client)
 
 @api_router.post("/clients/{client_id}/allow-uninstall")
-async def allow_uninstall(client_id: str):
+async def allow_uninstall(client_id: str, admin_token: str):
     """Signal device to allow app uninstallation - must be called before deletion"""
+    if not await verify_admin_token_header(admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
