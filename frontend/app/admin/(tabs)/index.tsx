@@ -119,9 +119,7 @@ export default function Dashboard() {
         <View style={{flex: 1}}>
           <Text style={styles.greeting}>{t('welcomeBack')}</Text>
           <Text style={styles.username}>
-            {username === 'karli1987'
-              ? 'Admin'
-              : firstName || username || 'Admin'}
+            {firstName || username || 'Admin'}
           </Text>
         </View>
         <View style={styles.langSwitcher}>

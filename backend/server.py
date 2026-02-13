@@ -613,6 +613,8 @@ class AdminResponse(BaseModel):
     role: str
     is_super_admin: bool
     token: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 class LoanPlan(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -917,7 +919,9 @@ async def login_admin(login_data: AdminLogin):
         username=admin["username"], 
         role=admin.get("role", "user"),
         is_super_admin=admin.get("is_super_admin", False),
-        token=token
+        token=token,
+        first_name=admin.get("first_name"),
+        last_name=admin.get("last_name")
     )
 
 @api_router.get("/admin/verify/{token}")

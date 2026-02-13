@@ -532,7 +532,11 @@ export default function AdminSettings() {
             </View>
             <View style={styles.userInfo}>
               <Text style={styles.userName}>{editFirstName} {editLastName}</Text>
-              <Text style={styles.userRole}>{language === 'et' ? 'Administraator' : 'Administrator'}</Text>
+              <Text style={styles.userRole}>
+                {currentUserRole === 'admin' 
+                  ? (language === 'et' ? 'Administraator' : 'Administrator') 
+                  : (language === 'et' ? 'Kasutaja' : 'User')}
+              </Text>
             </View>
           </View>
 
