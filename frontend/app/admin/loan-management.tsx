@@ -233,8 +233,9 @@ export default function LoanManagement() {
   const handleLockUnlock = async (shouldLock: boolean) => {
     setActionLoading(true);
     try {
+      const token = await AsyncStorage.getItem('admin_token');
       const endpoint = shouldLock ? 'lock' : 'unlock';
-      const response = await fetch(`${API_BASE_URL}/api/clients/${id}/${endpoint}`, {
+      const response = await fetch(`${API_BASE_URL}/api/clients/${id}/${endpoint}?admin_token=${token}`, {
         method: 'POST',
       });
 
