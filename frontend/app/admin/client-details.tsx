@@ -108,7 +108,8 @@ export default function ClientDetails() {
         onPress: async () => {
           setActionLoading(true);
           try {
-            const response = await fetch(`${API_BASE_URL}/api/clients/${id}/unlock`, {
+            const token = await AsyncStorage.getItem('admin_token');
+            const response = await fetch(`${API_BASE_URL}/api/clients/${id}/unlock?admin_token=${token}`, {
               method: 'POST',
             });
             if (!response.ok) throw new Error('Failed to unlock device');
