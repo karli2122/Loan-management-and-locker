@@ -1147,7 +1147,7 @@ async def calculate_amortization_schedule(
 # ===================== LOAN MANAGEMENT =====================
 
 @api_router.post("/loans/{client_id}/setup")
-async def setup_loan(client_id: str, loan_data: ClientCreate):
+async def setup_loan(client_id: str, loan_data: LoanSetupRequest):
     """Setup or update loan details for a client"""
     client = await db.clients.find_one({"id": client_id})
     if not client:
