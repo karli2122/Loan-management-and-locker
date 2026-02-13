@@ -66,8 +66,8 @@ export default {
           backgroundColor: "#0F172A"
         }
       ],
-      // Device Admin plugin for Client app only
-      ...(IS_ADMIN_APP ? [] : ["emi-device-admin"])
+      // Device Admin plugin for Client app only (native builds only, not in dev)
+      // ...(IS_ADMIN_APP ? [] : ["emi-device-admin"])
     ],
     experiments: {
       typedRoutes: true
