@@ -1,10 +1,10 @@
 /**
  * API utility functions for consistent endpoint URL generation
- * HARDCODED URL to fix APK build issues with environment variables
+ * Uses environment variable with fallback for APK builds
  */
 
-// Hardcoded base URL - environment variables are unreliable in EAS builds
-const BASE_URL = 'https://apkdebug.preview.emergentagent.com';
+// Use environment variable, fallback to current deployment URL
+const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://api-token-migration.preview.emergentagent.com';
 
 export const getBaseUrl = (): string => {
   return BASE_URL;
