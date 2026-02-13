@@ -1,1316 +1,358 @@
 #!/usr/bin/env python3
 """
-Backend API Testing for EMI Phone Lock System
-Focus: Loan Setup API endpoint testing
-UPDATED: Specific focus on Loan Setup API as requested
+Backend API Authentication Testing Script
+Tests all newly secured endpoints that require admin_token authentication
 """
 
 import requests
 import json
 import sys
-from datetime import datetime, timedelta
+from typing import Optional, Dict, Any
 
-# Get backend URL from frontend env
-def get_backend_url():
-    try:
-        with open('/app/frontend/.env', 'r') as f:
-            for line in f:
-                if line.startswith('EXPO_PUBLIC_BACKEND_URL='):
-                    return line.split('=', 1)[1].strip().strip('"')
-        return "https://apkdebug.preview.emergentagent.com"  # fallback
-    except:
-        return "https://apkdebug.preview.emergentagent.com"  # fallback
+# Configuration
+BASE_URL = "https://api-token-migration.preview.emergentagent.com/api"
+ADMIN_USERNAME = "karli1987"
+ADMIN_PASSWORD = "nasvakas123"
 
-BACKEND_URL = f"{get_backend_url()}/api"
-
-class EMIBackendTester:
+class APITester:
     def __init__(self):
-        self.base_url = BACKEND_URL
-        self.admin_token = None
-        self.client_id = None
-        self.registration_code = None
-        self.test_results = []
+        self.admin_token: Optional[str] = None
+        self.test_client_id: Optional[str] = None
+        self.session = requests.Session()
+        self.session.timeout = 30
+        self.results = {
+            "passed": 0,
+            "failed": 0,
+            "errors": []
+        }
+    
+    def log(self, message: str, level: str = "INFO"):
+        """Log test messages"""
+        prefix = f"[{level}]"
+        print(f"{prefix} {message}")
+    
+    def test_result(self, test_name: str, expected: bool, actual: bool, details: str = ""):
+        """Record test result"""
+        if expected == actual:
+            self.results["passed"] += 1
+            self.log(f"✅ {test_name}: PASS {details}")
+        else:
+            self.results["failed"] += 1
+            error_msg = f"❌ {test_name}: FAIL - Expected {expected}, got {actual} {details}"
+            self.log(error_msg, "ERROR")
+            self.results["errors"].append(error_msg)
+    
+    def make_request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
+        """Make HTTP request with error handling"""
+        url = f"{BASE_URL}{endpoint}"
+        try:
+            response = self.session.request(method, url, **kwargs)
+            self.log(f"{method} {endpoint} -> {response.status_code}")
+            return response
+        except Exception as e:
+            self.log(f"Request failed: {method} {endpoint} - {str(e)}", "ERROR")
+            raise
+    
+    def test_admin_login(self) -> bool:
+        """Test admin login and get token"""
+        self.log("=== Testing Admin Login ===")
         
-    def log_test(self, test_name, success, message, response_data=None):
-        """Log test results"""
-        status = "✅ PASS" if success else "❌ FAIL"
-        print(f"{status} {test_name}: {message}")
+        login_data = {
+            "username": ADMIN_USERNAME,
+            "password": ADMIN_PASSWORD
+        }
         
-        self.test_results.append({
-            "test": test_name,
-            "success": success,
-            "message": message,
-            "response_data": response_data
-        })
+        response = self.make_request("POST", "/admin/login", json=login_data)
         
-    def test_health_check(self):
-        """Test basic API health"""
-        try:
-            response = requests.get(f"{self.base_url}/")
-            if response.status_code == 200:
-                self.log_test("Health Check", True, "API is running")
-                return True
-            else:
-                self.log_test("Health Check", False, f"Status: {response.status_code}")
-                return False
-        except Exception as e:
-            self.log_test("Health Check", False, f"Connection error: {str(e)}")
-            return False
-    
-    def test_admin_registration(self):
-        """Test admin registration"""
-        try:
-            admin_data = {
-                "username": f"admin_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                "password": "SecurePass123!"
-            }
-            
-            response = requests.post(f"{self.base_url}/admin/register", json=admin_data)
-            
-            if response.status_code == 200:
-                data = response.json()
-                self.admin_token = data.get("token")
-                self.log_test("Admin Registration", True, f"Admin registered with token: {self.admin_token[:10]}...")
-                return True
-            else:
-                self.log_test("Admin Registration", False, f"Status: {response.status_code}, Response: {response.text}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Admin Registration", False, f"Error: {str(e)}")
-            return False
-    
-    def test_admin_login(self):
-        """Test admin login with existing admin"""
-        try:
-            # First create an admin
-            admin_data = {
-                "username": f"logintest_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                "password": "LoginPass123!"
-            }
-            
-            # Register
-            reg_response = requests.post(f"{self.base_url}/admin/register", json=admin_data)
-            if reg_response.status_code != 200:
-                self.log_test("Admin Login", False, "Failed to create test admin for login")
-                return False
-            
-            # Login
-            login_response = requests.post(f"{self.base_url}/admin/login", json=admin_data)
-            
-            if login_response.status_code == 200:
-                data = login_response.json()
-                token = data.get("token")
-                self.log_test("Admin Login", True, f"Login successful with token: {token[:10]}...")
-                return True
-            else:
-                self.log_test("Admin Login", False, f"Status: {login_response.status_code}, Response: {login_response.text}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Admin Login", False, f"Error: {str(e)}")
-            return False
-    
-    def test_admin_token_verification(self):
-        """Test admin token verification"""
-        if not self.admin_token:
-            self.log_test("Admin Token Verification", False, "No admin token available")
-            return False
-            
-        try:
-            response = requests.get(f"{self.base_url}/admin/verify/{self.admin_token}")
-            
-            if response.status_code == 200:
-                data = response.json()
-                if data.get("valid"):
-                    self.log_test("Admin Token Verification", True, f"Token valid for admin: {data.get('admin_id')}")
-                    return True
-                else:
-                    self.log_test("Admin Token Verification", False, "Token marked as invalid")
-                    return False
-            else:
-                self.log_test("Admin Token Verification", False, f"Status: {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Admin Token Verification", False, f"Error: {str(e)}")
-            return False
-    
-    def test_create_client(self):
-        """Test client creation"""
-        try:
-            client_data = {
-                "name": "John Smith",
-                "phone": "+1234567890",
-                "email": "john.smith@example.com",
-                "emi_amount": 15000.0,
-                "emi_due_date": "2024-02-15"
-            }
-            
-            response = requests.post(f"{self.base_url}/clients", json=client_data)
-            
-            if response.status_code == 200:
-                data = response.json()
-                self.client_id = data.get("id")
-                self.registration_code = data.get("registration_code")
-                self.log_test("Create Client", True, f"Client created with ID: {self.client_id}, Registration Code: {self.registration_code}")
-                return True
-            else:
-                self.log_test("Create Client", False, f"Status: {response.status_code}, Response: {response.text}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Create Client", False, f"Error: {str(e)}")
-            return False
-    
-    def test_get_all_clients(self):
-        """Test getting all clients"""
-        try:
-            response = requests.get(f"{self.base_url}/clients")
-            
-            if response.status_code == 200:
-                data = response.json()
-                client_count = len(data)
-                self.log_test("Get All Clients", True, f"Retrieved {client_count} clients")
-                return True
-            else:
-                self.log_test("Get All Clients", False, f"Status: {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Get All Clients", False, f"Error: {str(e)}")
-            return False
-    
-    def test_get_single_client(self):
-        """Test getting single client"""
-        if not self.client_id:
-            self.log_test("Get Single Client", False, "No client ID available")
-            return False
-            
-        try:
-            response = requests.get(f"{self.base_url}/clients/{self.client_id}")
-            
-            if response.status_code == 200:
-                data = response.json()
-                self.log_test("Get Single Client", True, f"Retrieved client: {data.get('name')}")
-                return True
-            else:
-                self.log_test("Get Single Client", False, f"Status: {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Get Single Client", False, f"Error: {str(e)}")
-            return False
-    
-    def test_update_client(self):
-        """Test client update"""
-        if not self.client_id:
-            self.log_test("Update Client", False, "No client ID available")
-            return False
-            
-        try:
-            update_data = {
-                "name": "John Smith Updated",
-                "emi_amount": 16000.0
-            }
-            
-            response = requests.put(f"{self.base_url}/clients/{self.client_id}", json=update_data)
-            
-            if response.status_code == 200:
-                data = response.json()
-                self.log_test("Update Client", True, f"Client updated: {data.get('name')}, EMI: {data.get('emi_amount')}")
-                return True
-            else:
-                self.log_test("Update Client", False, f"Status: {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Update Client", False, f"Error: {str(e)}")
-            return False
-    
-    def test_device_registration(self):
-        """Test device registration"""
-        if not self.registration_code:
-            self.log_test("Device Registration", False, "No registration code available")
-            return False
-            
-        try:
-            device_data = {
-                "registration_code": self.registration_code,
-                "device_id": "DEVICE123456789",
-                "device_model": "Samsung Galaxy S21"
-            }
-            
-            response = requests.post(f"{self.base_url}/device/register", json=device_data)
-            
-            if response.status_code == 200:
-                data = response.json()
-                self.log_test("Device Registration", True, f"Device registered for client: {data.get('client_id')}")
-                return True
-            else:
-                self.log_test("Device Registration", False, f"Status: {response.status_code}, Response: {response.text}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Device Registration", False, f"Error: {str(e)}")
-            return False
-    
-    def test_lock_device(self):
-        """Test device locking"""
-        if not self.client_id:
-            self.log_test("Lock Device", False, "No client ID available")
-            return False
-            
-        try:
-            lock_message = "Your device has been locked due to overdue EMI payment."
-            response = requests.post(f"{self.base_url}/clients/{self.client_id}/lock?message={lock_message}")
-            
-            if response.status_code == 200:
-                self.log_test("Lock Device", True, "Device locked successfully")
-                return True
-            else:
-                self.log_test("Lock Device", False, f"Status: {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Lock Device", False, f"Error: {str(e)}")
-            return False
-    
-    def test_unlock_device(self):
-        """Test device unlocking"""
-        if not self.client_id:
-            self.log_test("Unlock Device", False, "No client ID available")
-            return False
-            
-        try:
-            response = requests.post(f"{self.base_url}/clients/{self.client_id}/unlock")
-            
-            if response.status_code == 200:
-                self.log_test("Unlock Device", True, "Device unlocked successfully")
-                return True
-            else:
-                self.log_test("Unlock Device", False, f"Status: {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Unlock Device", False, f"Error: {str(e)}")
-            return False
-    
-    def test_send_warning(self):
-        """Test sending warning message"""
-        if not self.client_id:
-            self.log_test("Send Warning", False, "No client ID available")
-            return False
-            
-        try:
-            warning_message = "Your EMI payment is due in 3 days. Please make payment to avoid device lock."
-            response = requests.post(f"{self.base_url}/clients/{self.client_id}/warning?message={warning_message}")
-            
-            if response.status_code == 200:
-                self.log_test("Send Warning", True, "Warning sent successfully")
-                return True
-            else:
-                self.log_test("Send Warning", False, f"Status: {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Send Warning", False, f"Error: {str(e)}")
-            return False
-    
-    def test_device_status(self):
-        """Test getting device status"""
-        if not self.client_id:
-            self.log_test("Device Status", False, "No client ID available")
-            return False
-            
-        try:
-            response = requests.get(f"{self.base_url}/device/status/{self.client_id}")
-            
-            if response.status_code == 200:
-                data = response.json()
-                self.log_test("Device Status", True, f"Status retrieved - Locked: {data.get('is_locked')}, Warning: {data.get('warning_message')}")
-                return True
-            else:
-                self.log_test("Device Status", False, f"Status: {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Device Status", False, f"Error: {str(e)}")
-            return False
-    
-    def test_location_update(self):
-        """Test location update"""
-        if not self.client_id:
-            self.log_test("Location Update", False, "No client ID available")
-            return False
-            
-        try:
-            location_data = {
-                "client_id": self.client_id,
-                "latitude": 37.7749,
-                "longitude": -122.4194
-            }
-            
-            response = requests.post(f"{self.base_url}/device/location", json=location_data)
-            
-            if response.status_code == 200:
-                self.log_test("Location Update", True, "Location updated successfully")
-                return True
-            else:
-                self.log_test("Location Update", False, f"Status: {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Location Update", False, f"Error: {str(e)}")
-            return False
-    
-    def test_clear_warning(self):
-        """Test clearing warning message"""
-        if not self.client_id:
-            self.log_test("Clear Warning", False, "No client ID available")
-            return False
-            
-        try:
-            response = requests.post(f"{self.base_url}/device/clear-warning/{self.client_id}")
-            
-            if response.status_code == 200:
-                self.log_test("Clear Warning", True, "Warning cleared successfully")
-                return True
-            else:
-                self.log_test("Clear Warning", False, f"Status: {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Clear Warning", False, f"Error: {str(e)}")
-            return False
-    
-    def test_stats(self):
-        """Test stats endpoint"""
-        try:
-            response = requests.get(f"{self.base_url}/stats")
-            
-            if response.status_code == 200:
-                data = response.json()
-                self.log_test("Stats", True, f"Stats retrieved - Total: {data.get('total_clients')}, Locked: {data.get('locked_devices')}, Registered: {data.get('registered_devices')}")
-                return True
-            else:
-                self.log_test("Stats", False, f"Status: {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Stats", False, f"Error: {str(e)}")
-            return False
-    
-    def test_admin_management_login(self):
-        """Test login with existing admin for management tests"""
-        try:
-            # Login with existing admin credentials
-            login_data = {
-                "username": "karli1987",
-                "password": "nasvakas123"
-            }
-            
-            response = requests.post(f"{self.base_url}/admin/login", json=login_data)
-            
-            if response.status_code == 200:
-                data = response.json()
-                self.admin_token = data.get("token")
-                self.log_test("Admin Management Login", True, f"Successfully logged in as {data.get('username')}")
-                return True
-            else:
-                self.log_test("Admin Management Login", False, f"Status: {response.status_code}, Response: {response.text}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Admin Management Login", False, f"Error: {str(e)}")
-            return False
-    
-    def test_list_admins_api(self):
-        """Test GET /api/admin/list endpoint"""
-        if not self.admin_token:
-            self.log_test("List Admins API", False, "No admin token available")
-            return False
-            
-        try:
-            # Test with valid token
-            params = {"admin_token": self.admin_token}
-            response = requests.get(f"{self.base_url}/admin/list", params=params)
-            
-            if response.status_code == 200:
-                admins = response.json()
-                self.log_test("List Admins API - Valid Token", True, f"Retrieved {len(admins)} admin(s)")
-                
-                # Verify response structure
-                if admins and isinstance(admins, list):
-                    first_admin = admins[0]
-                    required_fields = ["id", "username", "created_at"]
-                    if all(field in first_admin for field in required_fields):
-                        self.log_test("List Admins API - Response Structure", True, "Response contains required fields")
-                    else:
-                        self.log_test("List Admins API - Response Structure", False, f"Missing required fields. Got: {list(first_admin.keys())}")
-                
-                # Test with invalid token
-                params = {"admin_token": "invalid_token"}
-                response = requests.get(f"{self.base_url}/admin/list", params=params)
-                
-                if response.status_code == 401:
-                    self.log_test("List Admins API - Invalid Token", True, "Correctly rejected invalid token")
-                else:
-                    self.log_test("List Admins API - Invalid Token", False, f"Should have rejected invalid token, got status {response.status_code}")
-                
-                return True
-            else:
-                self.log_test("List Admins API - Valid Token", False, f"Status: {response.status_code}, Response: {response.text}")
-                return False
-                
-        except Exception as e:
-            self.log_test("List Admins API", False, f"Error: {str(e)}")
-            return False
-    
-    def test_create_admin_management(self):
-        """Test POST /api/admin/register endpoint with comprehensive scenarios"""
-        if not self.admin_token:
-            self.log_test("Create Admin Management", False, "No admin token available")
-            return False
-        
-        created_admin_id = None
-        
-        try:
-            # Test 1: Create admin with valid data
-            admin_data = {
-                "username": f"testadmin_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                "password": "securepass123"
-            }
-            
-            params = {"admin_token": self.admin_token}
-            response = requests.post(f"{self.base_url}/admin/register", json=admin_data, params=params)
-            
-            if response.status_code == 200:
-                data = response.json()
-                created_admin_id = data.get("id")
-                self.log_test("Create Admin - Valid Data", True, f"Successfully created admin {data.get('username')}")
-            else:
-                self.log_test("Create Admin - Valid Data", False, f"Status: {response.status_code}, Response: {response.text}")
-            
-            # Test 2: Create admin with short password (should fail)
-            admin_data_short = {
-                "username": f"testadmin2_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                "password": "123"  # Less than 6 characters
-            }
-            
-            response = requests.post(f"{self.base_url}/admin/register", json=admin_data_short, params=params)
-            
-            # Note: The backend doesn't validate password length in the current implementation
-            # This test documents the current behavior
-            if response.status_code == 200:
-                self.log_test("Create Admin - Short Password", False, "Should have rejected short password but didn't (validation missing)")
-            else:
-                self.log_test("Create Admin - Short Password", True, "Correctly rejected short password")
-            
-            # Test 3: Create admin with duplicate username (should fail)
-            duplicate_data = {
-                "username": "karli1987",  # Existing username
-                "password": "validpass123"
-            }
-            
-            response = requests.post(f"{self.base_url}/admin/register", json=duplicate_data, params=params)
-            
-            if response.status_code == 400:
-                self.log_test("Create Admin - Duplicate Username", True, "Correctly rejected duplicate username")
-            else:
-                self.log_test("Create Admin - Duplicate Username", False, f"Should have rejected duplicate username, got status {response.status_code}")
-            
-            # Test 4: Create admin without token (should fail)
-            response = requests.post(f"{self.base_url}/admin/register", json=admin_data)
-            
-            if response.status_code == 401:
-                self.log_test("Create Admin - No Token", True, "Correctly rejected request without token")
-            else:
-                self.log_test("Create Admin - No Token", False, f"Should have rejected request without token, got status {response.status_code}")
-            
-            return created_admin_id
-            
-        except Exception as e:
-            self.log_test("Create Admin Management", False, f"Error: {str(e)}")
-            return None
-    
-    def test_change_password_api(self):
-        """Test POST /api/admin/change-password endpoint"""
-        if not self.admin_token:
-            self.log_test("Change Password API", False, "No admin token available")
-            return False
-            
-        try:
-            # Test 1: Change password with correct current password
-            password_data = {
-                "current_password": "nasvakas123",
-                "new_password": "newpassword123"
-            }
-            
-            params = {"admin_token": self.admin_token}
-            response = requests.post(f"{self.base_url}/admin/change-password", json=password_data, params=params)
-            
-            if response.status_code == 200:
-                self.log_test("Change Password - Valid", True, "Successfully changed password")
-                
-                # Change it back for other tests
-                password_data_back = {
-                    "current_password": "newpassword123",
-                    "new_password": "nasvakas123"
-                }
-                requests.post(f"{self.base_url}/admin/change-password", json=password_data_back, params=params)
-            else:
-                self.log_test("Change Password - Valid", False, f"Status: {response.status_code}, Response: {response.text}")
-            
-            # Test 2: Change password with wrong current password
-            wrong_password_data = {
-                "current_password": "wrongpassword",
-                "new_password": "newpassword123"
-            }
-            
-            response = requests.post(f"{self.base_url}/admin/change-password", json=wrong_password_data, params=params)
-            
-            if response.status_code == 401:
-                self.log_test("Change Password - Wrong Current", True, "Correctly rejected wrong current password")
-            else:
-                self.log_test("Change Password - Wrong Current", False, f"Should have rejected wrong password, got status {response.status_code}")
-            
-            # Test 3: Change password with short new password
-            short_password_data = {
-                "current_password": "nasvakas123",
-                "new_password": "123"  # Less than 6 characters
-            }
-            
-            response = requests.post(f"{self.base_url}/admin/change-password", json=short_password_data, params=params)
-            
-            # Note: The backend doesn't validate new password length in the current implementation
-            if response.status_code == 200:
-                self.log_test("Change Password - Short New Password", False, "Should have rejected short new password but didn't (validation missing)")
-                # Change back to original
-                password_data_back = {
-                    "current_password": "123",
-                    "new_password": "nasvakas123"
-                }
-                requests.post(f"{self.base_url}/admin/change-password", json=password_data_back, params=params)
-            else:
-                self.log_test("Change Password - Short New Password", True, "Correctly rejected short new password")
-            
-            # Test 4: Change password without token
-            response = requests.post(f"{self.base_url}/admin/change-password", json=password_data)
-            
-            if response.status_code == 422:  # FastAPI validation error for missing query param
-                self.log_test("Change Password - No Token", True, "Correctly rejected request without token")
-            else:
-                self.log_test("Change Password - No Token", False, f"Should have rejected request without token, got status {response.status_code}")
-            
+        if response.status_code == 200:
+            data = response.json()
+            self.admin_token = data.get("token")
+            self.test_result("Admin Login", True, True, f"Token: {self.admin_token[:20]}...")
             return True
-            
-        except Exception as e:
-            self.log_test("Change Password API", False, f"Error: {str(e)}")
+        else:
+            self.test_result("Admin Login", True, False, f"Status: {response.status_code}")
             return False
     
-    def test_delete_admin_api(self, test_admin_id=None):
-        """Test DELETE /api/admin/{admin_id} endpoint"""
+    def get_test_client(self) -> bool:
+        """Get a client for testing"""
+        self.log("=== Getting Test Client ===")
+        
         if not self.admin_token:
-            self.log_test("Delete Admin API", False, "No admin token available")
+            self.log("No admin token available", "ERROR")
             return False
-            
-        try:
-            # First get current admin ID to test self-deletion prevention
-            params = {"admin_token": self.admin_token}
-            response = requests.get(f"{self.base_url}/admin/list", params=params)
-            
-            current_admin_id = None
-            if response.status_code == 200:
-                admins = response.json()
-                # Find the current admin (karli1987)
-                for admin in admins:
-                    if admin.get("username") == "karli1987":
-                        current_admin_id = admin.get("id")
-                        break
-            
-            # Test 1: Try to delete own account (should fail)
-            if current_admin_id:
-                response = requests.delete(f"{self.base_url}/admin/{current_admin_id}", params=params)
-                
-                if response.status_code == 400:
-                    self.log_test("Delete Admin - Self Deletion", True, "Correctly prevented self-deletion")
-                else:
-                    self.log_test("Delete Admin - Self Deletion", False, f"Should have prevented self-deletion, got status {response.status_code}")
-            
-            # Test 2: Delete a test admin (if we created one)
-            if test_admin_id:
-                response = requests.delete(f"{self.base_url}/admin/{test_admin_id}", params=params)
-                
-                if response.status_code == 200:
-                    self.log_test("Delete Admin - Test Admin", True, "Successfully deleted test admin")
-                else:
-                    self.log_test("Delete Admin - Test Admin", False, f"Status: {response.status_code}, Response: {response.text}")
-            
-            # Test 3: Delete non-existent admin
-            fake_admin_id = "non-existent-admin-id"
-            response = requests.delete(f"{self.base_url}/admin/{fake_admin_id}", params=params)
-            
-            if response.status_code == 404:
-                self.log_test("Delete Admin - Non-existent", True, "Correctly handled non-existent admin")
+        
+        response = self.make_request("GET", f"/clients?admin_token={self.admin_token}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            clients = data.get("clients", [])
+            if clients:
+                self.test_client_id = clients[0]["id"]
+                self.log(f"Using client: {clients[0]['name']} (ID: {self.test_client_id})")
+                return True
             else:
-                self.log_test("Delete Admin - Non-existent", False, f"Should have returned 404 for non-existent admin, got status {response.status_code}")
-            
-            # Test 4: Delete admin without token
-            response = requests.delete(f"{self.base_url}/admin/{fake_admin_id}")
-            
-            if response.status_code == 422:  # FastAPI validation error for missing query param
-                self.log_test("Delete Admin - No Token", True, "Correctly rejected request without token")
-            else:
-                self.log_test("Delete Admin - No Token", False, f"Should have rejected request without token, got status {response.status_code}")
-            
-            return True
-            
-        except Exception as e:
-            self.log_test("Delete Admin API", False, f"Error: {str(e)}")
+                # Create a test client if none exist
+                return self.create_test_client()
+        else:
+            self.log(f"Failed to get clients: {response.status_code}", "ERROR")
             return False
     
-    def test_delete_client_comprehensive(self):
-        """Comprehensive Delete Client functionality testing as requested"""
-        print("\n" + "="*60)
-        print("🗑️  COMPREHENSIVE DELETE CLIENT TESTING")
-        print("="*60)
+    def create_test_client(self) -> bool:
+        """Create a test client"""
+        self.log("Creating test client...")
         
-        # Step 1: Login as admin (karli1987/nasvakas123) to get token
-        print("\n1. SETUP - Admin Login")
-        try:
-            login_data = {
-                "username": "karli1987",
-                "password": "nasvakas123"
-            }
-            
-            response = requests.post(f"{self.base_url}/admin/login", json=login_data)
-            if response.status_code == 200:
-                admin_data = response.json()
-                admin_token = admin_data.get("token")
-                self.log_test("Delete Test - Admin Login", True, f"Admin token obtained: {admin_token[:20]}...")
-            else:
-                self.log_test("Delete Test - Admin Login", False, f"Status {response.status_code}: {response.text}")
-                return False
-        except Exception as e:
-            self.log_test("Delete Test - Admin Login", False, f"Error: {str(e)}")
+        client_data = {
+            "name": "Auth Test Client",
+            "phone": "+1234567890",
+            "email": "test@example.com",
+            "emi_amount": 100.0,
+            "loan_amount": 1000.0
+        }
+        
+        response = self.make_request("POST", f"/clients?admin_token={self.admin_token}", json=client_data)
+        
+        if response.status_code == 200:
+            data = response.json()
+            self.test_client_id = data.get("id")
+            self.log(f"Created test client: {self.test_client_id}")
+            return True
+        else:
+            self.log(f"Failed to create client: {response.status_code}", "ERROR")
             return False
-        
-        # Step 2: Create a test client for deletion
-        print("\n2. SETUP - Create Test Client")
-        try:
-            client_data = {
-                "name": "John Doe Test Client",
-                "phone": "+1234567890",
-                "email": "john.doe.test@example.com",
-                "emi_amount": 15000.0,
-                "emi_due_date": "2024-02-15"
-            }
-            
-            response = requests.post(f"{self.base_url}/clients", json=client_data)
-            if response.status_code == 200:
-                client = response.json()
-                test_client_id = client.get("id")
-                self.log_test("Delete Test - Create Client", True, f"Test client created with ID: {test_client_id}")
-            else:
-                self.log_test("Delete Test - Create Client", False, f"Status {response.status_code}: {response.text}")
-                return False
-        except Exception as e:
-            self.log_test("Delete Test - Create Client", False, f"Error: {str(e)}")
-            return False
-        
-        # Step 3: Get initial stats for comparison
-        print("\n3. SETUP - Get Initial Stats")
-        try:
-            response = requests.get(f"{self.base_url}/stats")
-            if response.status_code == 200:
-                initial_stats = response.json()
-                initial_total = initial_stats.get("total_clients", 0)
-                self.log_test("Delete Test - Initial Stats", True, f"Initial total clients: {initial_total}")
-            else:
-                self.log_test("Delete Test - Initial Stats", False, f"Status {response.status_code}: {response.text}")
-                initial_total = None
-        except Exception as e:
-            self.log_test("Delete Test - Initial Stats", False, f"Error: {str(e)}")
-            initial_total = None
-        
-        # Step 4: Verify client exists before deletion
-        print("\n4. VERIFICATION - Client Exists")
-        try:
-            response = requests.get(f"{self.base_url}/clients/{test_client_id}")
-            if response.status_code == 200:
-                client = response.json()
-                self.log_test("Delete Test - Client Exists", True, f"Client verified: {client.get('name')}")
-            else:
-                self.log_test("Delete Test - Client Exists", False, f"Status {response.status_code}: {response.text}")
-        except Exception as e:
-            self.log_test("Delete Test - Client Exists", False, f"Error: {str(e)}")
-        
-        # Step 5: DELETE CLIENT - Success Case
-        print("\n5. DELETE CLIENT - Success Case")
-        try:
-            response = requests.delete(f"{self.base_url}/clients/{test_client_id}")
-            if response.status_code == 200:
-                result = response.json()
-                expected_message = "Client deleted successfully"
-                if result.get("message") == expected_message:
-                    self.log_test("Delete Test - Success Case", True, f"Client deletion successful: {result.get('message')}")
-                else:
-                    self.log_test("Delete Test - Success Case", False, f"Expected '{expected_message}', got '{result.get('message')}'")
-            else:
-                self.log_test("Delete Test - Success Case", False, f"Status {response.status_code}: {response.text}")
-                return False
-        except Exception as e:
-            self.log_test("Delete Test - Success Case", False, f"Error: {str(e)}")
-            return False
-        
-        # Step 6: Verify client no longer exists
-        print("\n6. VERIFICATION - Client Deleted")
-        try:
-            response = requests.get(f"{self.base_url}/clients/{test_client_id}")
-            if response.status_code == 404:
-                self.log_test("Delete Test - Client Not Found", True, "Deleted client returns 404 as expected")
-            else:
-                self.log_test("Delete Test - Client Not Found", False, f"Expected 404, got {response.status_code}")
-        except Exception as e:
-            self.log_test("Delete Test - Client Not Found", False, f"Error: {str(e)}")
-        
-        # Step 7: Verify stats updated
-        print("\n7. VERIFICATION - Stats Updated")
-        if initial_total is not None:
-            try:
-                response = requests.get(f"{self.base_url}/stats")
-                if response.status_code == 200:
-                    updated_stats = response.json()
-                    updated_total = updated_stats.get("total_clients", 0)
-                    if updated_total == initial_total - 1:
-                        self.log_test("Delete Test - Stats Updated", True, f"Stats updated correctly: {initial_total} → {updated_total}")
-                    else:
-                        self.log_test("Delete Test - Stats Updated", False, f"Expected {initial_total - 1}, got {updated_total}")
-                else:
-                    self.log_test("Delete Test - Stats Updated", False, f"Status {response.status_code}: {response.text}")
-            except Exception as e:
-                self.log_test("Delete Test - Stats Updated", False, f"Error: {str(e)}")
-        
-        # Step 8: Verify client not in clients list
-        print("\n8. VERIFICATION - Client Not in List")
-        try:
-            response = requests.get(f"{self.base_url}/clients")
-            if response.status_code == 200:
-                clients = response.json()
-                client_ids = [c.get("id") for c in clients]
-                if test_client_id not in client_ids:
-                    self.log_test("Delete Test - Not in List", True, "Deleted client not in clients list")
-                else:
-                    self.log_test("Delete Test - Not in List", False, "Deleted client still appears in clients list")
-            else:
-                self.log_test("Delete Test - Not in List", False, f"Status {response.status_code}: {response.text}")
-        except Exception as e:
-            self.log_test("Delete Test - Not in List", False, f"Error: {str(e)}")
-        
-        # Step 9: ERROR CASES - Delete non-existent client
-        print("\n9. ERROR CASE - Delete Non-existent Client")
-        try:
-            fake_client_id = "non-existent-client-id-12345"
-            response = requests.delete(f"{self.base_url}/clients/{fake_client_id}")
-            if response.status_code == 404:
-                result = response.json()
-                if "not found" in result.get("detail", "").lower():
-                    self.log_test("Delete Test - Non-existent Client", True, f"Non-existent client returns 404: {result.get('detail')}")
-                else:
-                    self.log_test("Delete Test - Non-existent Client", False, f"Expected 'not found' message, got: {result.get('detail')}")
-            else:
-                self.log_test("Delete Test - Non-existent Client", False, f"Expected 404, got {response.status_code}")
-        except Exception as e:
-            self.log_test("Delete Test - Non-existent Client", False, f"Error: {str(e)}")
-        
-        # Step 10: ERROR CASES - Delete with invalid client ID formats
-        print("\n10. ERROR CASE - Invalid Client ID Formats")
-        invalid_ids = ["", "123", "invalid-format", "null", "undefined"]
-        
-        for invalid_id in invalid_ids:
-            try:
-                response = requests.delete(f"{self.base_url}/clients/{invalid_id}")
-                if response.status_code == 404:
-                    self.log_test(f"Delete Test - Invalid ID '{invalid_id}'", True, "Returns 404 as expected")
-                else:
-                    self.log_test(f"Delete Test - Invalid ID '{invalid_id}'", False, f"Expected 404, got {response.status_code}")
-            except Exception as e:
-                self.log_test(f"Delete Test - Invalid ID '{invalid_id}'", False, f"Error: {str(e)}")
-        
-        # Step 11: Try to delete the same client again (double deletion)
-        print("\n11. ERROR CASE - Double Deletion")
-        try:
-            response = requests.delete(f"{self.base_url}/clients/{test_client_id}")
-            if response.status_code == 404:
-                self.log_test("Delete Test - Double Deletion", True, "Double deletion returns 404 as expected")
-            else:
-                self.log_test("Delete Test - Double Deletion", False, f"Expected 404, got {response.status_code}")
-        except Exception as e:
-            self.log_test("Delete Test - Double Deletion", False, f"Error: {str(e)}")
-        
-        print("\n" + "="*60)
-        print("🗑️  DELETE CLIENT TESTING COMPLETED")
-        print("="*60)
-        
-        return True
 
-    def test_delete_client(self):
-        """Test client deletion (run last to clean up)"""
-        if not self.client_id:
-            self.log_test("Delete Client", False, "No client ID available")
-            return False
-            
-        try:
-            response = requests.delete(f"{self.base_url}/clients/{self.client_id}")
-            
-            if response.status_code == 200:
-                self.log_test("Delete Client", True, "Client deleted successfully")
-                return True
-            else:
-                self.log_test("Delete Client", False, f"Status: {response.status_code}")
-                return False
-                
-        except Exception as e:
-            self.log_test("Delete Client", False, f"Error: {str(e)}")
-            return False
-    
+    def test_lock_device_with_token(self):
+        """Test lock device WITH admin token"""
+        self.log("=== Testing Lock Device WITH Token ===")
+        
+        response = self.make_request(
+            "POST", 
+            f"/clients/{self.test_client_id}/lock?admin_token={self.admin_token}&message=Test lock message"
+        )
+        
+        expected_success = response.status_code == 200
+        self.test_result("Lock Device WITH Token", True, expected_success, f"Status: {response.status_code}")
+
+    def test_lock_device_without_token(self):
+        """Test lock device WITHOUT admin token"""
+        self.log("=== Testing Lock Device WITHOUT Token ===")
+        
+        response = self.make_request("POST", f"/clients/{self.test_client_id}/lock")
+        
+        expected_auth_error = response.status_code in [401, 422]
+        self.test_result("Lock Device WITHOUT Token", True, expected_auth_error, f"Status: {response.status_code}")
+
+    def test_unlock_device_with_token(self):
+        """Test unlock device WITH admin token"""
+        self.log("=== Testing Unlock Device WITH Token ===")
+        
+        response = self.make_request(
+            "POST", 
+            f"/clients/{self.test_client_id}/unlock?admin_token={self.admin_token}"
+        )
+        
+        expected_success = response.status_code == 200
+        self.test_result("Unlock Device WITH Token", True, expected_success, f"Status: {response.status_code}")
+
+    def test_unlock_device_without_token(self):
+        """Test unlock device WITHOUT admin token"""
+        self.log("=== Testing Unlock Device WITHOUT Token ===")
+        
+        response = self.make_request("POST", f"/clients/{self.test_client_id}/unlock")
+        
+        expected_auth_error = response.status_code in [401, 422]
+        self.test_result("Unlock Device WITHOUT Token", True, expected_auth_error, f"Status: {response.status_code}")
+
+    def test_warning_with_token(self):
+        """Test warning WITH admin token"""
+        self.log("=== Testing Warning WITH Token ===")
+        
+        response = self.make_request(
+            "POST", 
+            f"/clients/{self.test_client_id}/warning?message=Test warning&admin_token={self.admin_token}"
+        )
+        
+        expected_success = response.status_code == 200
+        self.test_result("Warning WITH Token", True, expected_success, f"Status: {response.status_code}")
+
+    def test_warning_without_token(self):
+        """Test warning WITHOUT admin token"""
+        self.log("=== Testing Warning WITHOUT Token ===")
+        
+        response = self.make_request(
+            "POST", 
+            f"/clients/{self.test_client_id}/warning?message=Test warning"
+        )
+        
+        expected_auth_error = response.status_code in [401, 422]
+        self.test_result("Warning WITHOUT Token", True, expected_auth_error, f"Status: {response.status_code}")
+
+    def test_update_client_with_token(self):
+        """Test update client WITH admin token"""
+        self.log("=== Testing Update Client WITH Token ===")
+        
+        update_data = {"name": "Updated Test Client"}
+        
+        response = self.make_request(
+            "PUT", 
+            f"/clients/{self.test_client_id}?admin_token={self.admin_token}",
+            json=update_data
+        )
+        
+        expected_success = response.status_code == 200
+        self.test_result("Update Client WITH Token", True, expected_success, f"Status: {response.status_code}")
+
+    def test_update_client_without_token(self):
+        """Test update client WITHOUT admin token"""
+        self.log("=== Testing Update Client WITHOUT Token ===")
+        
+        update_data = {"name": "Should Not Update"}
+        
+        response = self.make_request(
+            "PUT", 
+            f"/clients/{self.test_client_id}",
+            json=update_data
+        )
+        
+        expected_auth_error = response.status_code in [401, 422]
+        self.test_result("Update Client WITHOUT Token", True, expected_auth_error, f"Status: {response.status_code}")
+
+    def test_allow_uninstall_with_token(self):
+        """Test allow uninstall WITH admin token"""
+        self.log("=== Testing Allow Uninstall WITH Token ===")
+        
+        response = self.make_request(
+            "POST", 
+            f"/clients/{self.test_client_id}/allow-uninstall?admin_token={self.admin_token}"
+        )
+        
+        expected_success = response.status_code == 200
+        self.test_result("Allow Uninstall WITH Token", True, expected_success, f"Status: {response.status_code}")
+
+    def test_allow_uninstall_without_token(self):
+        """Test allow uninstall WITHOUT admin token"""
+        self.log("=== Testing Allow Uninstall WITHOUT Token ===")
+        
+        response = self.make_request("POST", f"/clients/{self.test_client_id}/allow-uninstall")
+        
+        expected_auth_error = response.status_code in [401, 422]
+        self.test_result("Allow Uninstall WITHOUT Token", True, expected_auth_error, f"Status: {response.status_code}")
+
+    def test_reports_clients_with_token(self):
+        """Test reports/clients WITH admin token"""
+        self.log("=== Testing Reports/Clients WITH Token ===")
+        
+        response = self.make_request("GET", f"/reports/clients?admin_token={self.admin_token}")
+        
+        expected_success = response.status_code == 200
+        self.test_result("Reports/Clients WITH Token", True, expected_success, f"Status: {response.status_code}")
+
+    def test_reports_clients_without_token(self):
+        """Test reports/clients WITHOUT admin token"""
+        self.log("=== Testing Reports/Clients WITHOUT Token ===")
+        
+        response = self.make_request("GET", "/reports/clients")
+        
+        expected_auth_error = response.status_code in [401, 422]
+        self.test_result("Reports/Clients WITHOUT Token", True, expected_auth_error, f"Status: {response.status_code}")
+
+    def test_reports_financial_with_token(self):
+        """Test reports/financial WITH admin token"""
+        self.log("=== Testing Reports/Financial WITH Token ===")
+        
+        response = self.make_request("GET", f"/reports/financial?admin_token={self.admin_token}")
+        
+        expected_success = response.status_code == 200
+        self.test_result("Reports/Financial WITH Token", True, expected_success, f"Status: {response.status_code}")
+
+    def test_reports_financial_without_token(self):
+        """Test reports/financial WITHOUT admin token"""
+        self.log("=== Testing Reports/Financial WITHOUT Token ===")
+        
+        response = self.make_request("GET", "/reports/financial")
+        
+        expected_auth_error = response.status_code in [401, 422]
+        self.test_result("Reports/Financial WITHOUT Token", True, expected_auth_error, f"Status: {response.status_code}")
+
+    def test_delete_client_without_token(self):
+        """Test delete client WITHOUT admin token"""
+        self.log("=== Testing Delete Client WITHOUT Token ===")
+        
+        response = self.make_request("DELETE", f"/clients/{self.test_client_id}")
+        
+        expected_auth_error = response.status_code in [401, 422]
+        self.test_result("Delete Client WITHOUT Token", True, expected_auth_error, f"Status: {response.status_code}")
+
     def run_all_tests(self):
-        """Run all tests in sequence"""
-        print(f"🚀 Starting EMI Backend API Tests")
-        print(f"Backend URL: {self.base_url}")
-        print("=" * 60)
+        """Run all authentication tests"""
+        self.log("🚀 Starting Backend Authentication Tests")
+        self.log(f"Target URL: {BASE_URL}")
         
-        # Test sequence following the complete flow
-        tests = [
-            self.test_health_check,
-            self.test_admin_registration,
-            self.test_admin_login,
-            self.test_admin_token_verification,
-            self.test_create_client,
-            self.test_get_all_clients,
-            self.test_get_single_client,
-            self.test_update_client,
-            self.test_device_registration,
-            self.test_lock_device,
-            self.test_unlock_device,
-            self.test_send_warning,
-            self.test_device_status,
-            self.test_location_update,
-            self.test_clear_warning,
-            self.test_stats,
-            self.test_delete_client
-        ]
-        
-        # Admin Management API Tests (specific focus)
-        admin_management_tests = [
-            self.test_admin_management_login,
-            self.test_list_admins_api,
-            self.test_change_password_api,
-        ]
-        
-        # Run admin management tests and get created admin ID for deletion test
-        print("\n" + "="*60)
-        print("🔐 ADMIN MANAGEMENT API TESTS")
-        print("="*60)
-        
-        admin_passed = 0
-        admin_failed = 0
-        created_admin_id = None
-        
-        for test in admin_management_tests:
-            if test():
-                admin_passed += 1
-            else:
-                admin_failed += 1
-            print()
-        
-        # Test admin creation and deletion
-        created_admin_id = self.test_create_admin_management()
-        if created_admin_id:
-            admin_passed += 1
-        else:
-            admin_failed += 1
-        print()
-        
-        # Test admin deletion with the created admin ID
-        if self.test_delete_admin_api(created_admin_id):
-            admin_passed += 1
-        else:
-            admin_failed += 1
-        print()
-        
-        print("="*60)
-        print(f"🔐 Admin Management Tests: {admin_passed} passed, {admin_failed} failed")
-        print("="*60)
-        
-        # Run regular backend tests
-        print("\n" + "="*60)
-        print("🚀 REGULAR BACKEND API TESTS")
-        print("="*60)
-        
-        passed = 0
-        failed = 0
-        
-        for test in tests:
-            if test():
-                passed += 1
-            else:
-                failed += 1
-            print()  # Add spacing between tests
-        
-        print("=" * 60)
-        print(f"📊 Overall Test Summary: {passed + admin_passed} passed, {failed + admin_failed} failed")
-        print(f"   - Admin Management: {admin_passed} passed, {admin_failed} failed")
-        print(f"   - Regular Backend: {passed} passed, {failed} failed")
-        
-        total_failed = failed + admin_failed
-        if total_failed > 0:
-            print("\n❌ Failed Tests:")
-            for result in self.test_results:
-                if not result["success"]:
-                    print(f"  - {result['test']}: {result['message']}")
-        
-        return total_failed == 0
-
-    def run_delete_client_test_only(self):
-        """Run only the comprehensive delete client test"""
-        print(f"🚀 Starting Delete Client Functionality Test")
-        print(f"Backend URL: {self.base_url}")
-        print("=" * 60)
-        
-        success = self.test_delete_client_comprehensive()
-        
-        # Count results
-        passed = sum(1 for result in self.test_results if result["success"])
-        failed = sum(1 for result in self.test_results if not result["success"])
-        
-        print(f"\n📊 Delete Client Test Summary: {passed} passed, {failed} failed")
-        
-        if failed > 0:
-            print("\n❌ Failed Tests:")
-            for result in self.test_results:
-                if not result["success"]:
-                    print(f"  - {result['test']}: {result['message']}")
-        
-        return failed == 0
-
-    def test_advanced_loan_management_apis(self):
-        """Test the 3 new API groups: Reports & Analytics, Late Fee Management, Payment Reminders"""
-        print("\n" + "="*80)
-        print("🏦 ADVANCED LOAN MANAGEMENT SYSTEM API TESTS")
-        print("="*80)
-        
-        # Login with test admin credentials first
-        print("\n1. SETUP - Admin Login for Advanced APIs")
-        try:
-            login_data = {
-                "username": "karli1987",
-                "password": "nasvakas123"
-            }
-            
-            response = requests.post(f"{self.base_url}/admin/login", json=login_data)
-            if response.status_code == 200:
-                admin_data = response.json()
-                admin_token = admin_data.get("token")
-                self.log_test("Advanced APIs - Admin Login", True, f"Admin token obtained for testing")
-            else:
-                self.log_test("Advanced APIs - Admin Login", False, f"Status {response.status_code}: {response.text}")
-                return False
-        except Exception as e:
-            self.log_test("Advanced APIs - Admin Login", False, f"Error: {str(e)}")
+        # Step 1: Admin login
+        if not self.test_admin_login():
+            self.log("Cannot proceed without admin token", "ERROR")
             return False
         
-        # Create test client with loan data
-        print("\n2. SETUP - Create Test Client with Loan Data")
-        try:
-            client_data = {
-                "name": "Maria Rodriguez",
-                "phone": "+34612345678",
-                "email": "maria.rodriguez@email.com",
-                "loan_amount": 800.0,
-                "down_payment": 200.0,
-                "interest_rate": 12.0,
-                "loan_tenure_months": 12,
-                "emi_amount": 75.0,
-                "emi_due_date": "2024-02-15"
-            }
-            
-            response = requests.post(f"{self.base_url}/clients", json=client_data)
-            if response.status_code == 200:
-                client = response.json()
-                test_client_id = client.get("id")
-                self.log_test("Advanced APIs - Create Test Client", True, f"Test client created: {test_client_id}")
-                
-                # Setup loan for the client
-                loan_setup_data = {
-                    "name": "Maria Rodriguez",
-                    "phone": "+34612345678", 
-                    "email": "maria.rodriguez@email.com",
-                    "loan_amount": 800.0,
-                    "down_payment": 200.0,
-                    "interest_rate": 12.0,
-                    "loan_tenure_months": 12
-                }
-                
-                setup_response = requests.post(f"{self.base_url}/loans/{test_client_id}/setup", json=loan_setup_data)
-                if setup_response.status_code == 200:
-                    self.log_test("Advanced APIs - Loan Setup", True, "Test loan setup successful")
-                else:
-                    self.log_test("Advanced APIs - Loan Setup", False, f"Loan setup failed: {setup_response.text}")
-                
-            else:
-                self.log_test("Advanced APIs - Create Test Client", False, f"Status {response.status_code}: {response.text}")
-                return False
-        except Exception as e:
-            self.log_test("Advanced APIs - Create Test Client", False, f"Error: {str(e)}")
+        # Step 2: Get test client
+        if not self.get_test_client():
+            self.log("Cannot proceed without test client", "ERROR")
             return False
         
-        # Test Reports & Analytics APIs
-        print("\n3. REPORTS & ANALYTICS APIs")
+        # Step 3: Run all endpoint tests
+        self.test_lock_device_with_token()
+        self.test_lock_device_without_token()
         
-        # Test Collection Report
-        try:
-            response = requests.get(f"{self.base_url}/reports/collection")
-            if response.status_code == 200:
-                data = response.json()
-                required_keys = ["overview", "financial", "this_month"]
-                if all(key in data for key in required_keys):
-                    self.log_test("Reports - Collection Report", True, f"Collection report retrieved with all required sections")
-                    print(f"   📊 Total Clients: {data['overview'].get('total_clients', 'N/A')}")
-                    print(f"   📊 Active Loans: {data['overview'].get('active_loans', 'N/A')}")
-                    print(f"   📊 Collection Rate: {data['financial'].get('collection_rate', 'N/A')}%")
-                else:
-                    missing = [k for k in required_keys if k not in data]
-                    self.log_test("Reports - Collection Report", False, f"Missing keys: {missing}")
-            else:
-                self.log_test("Reports - Collection Report", False, f"Status {response.status_code}: {response.text}")
-        except Exception as e:
-            self.log_test("Reports - Collection Report", False, f"Error: {str(e)}")
+        self.test_unlock_device_with_token()
+        self.test_unlock_device_without_token()
         
-        # Test Client Report
-        try:
-            response = requests.get(f"{self.base_url}/reports/clients")
-            if response.status_code == 200:
-                data = response.json()
-                required_keys = ["summary", "details"]
-                if all(key in data for key in required_keys):
-                    self.log_test("Reports - Client Report", True, f"Client report retrieved with categorization")
-                    print(f"   📊 On-time Clients: {data['summary'].get('on_time_clients', 'N/A')}")
-                    print(f"   📊 At-risk Clients: {data['summary'].get('at_risk_clients', 'N/A')}")
-                    print(f"   📊 Defaulted Clients: {data['summary'].get('defaulted_clients', 'N/A')}")
-                else:
-                    missing = [k for k in required_keys if k not in data]
-                    self.log_test("Reports - Client Report", False, f"Missing keys: {missing}")
-            else:
-                self.log_test("Reports - Client Report", False, f"Status {response.status_code}: {response.text}")
-        except Exception as e:
-            self.log_test("Reports - Client Report", False, f"Error: {str(e)}")
+        self.test_warning_with_token()
+        self.test_warning_without_token()
         
-        # Test Financial Report
-        try:
-            response = requests.get(f"{self.base_url}/reports/financial")
-            if response.status_code == 200:
-                data = response.json()
-                required_keys = ["totals", "monthly_trend"]
-                if all(key in data for key in required_keys):
-                    self.log_test("Reports - Financial Report", True, f"Financial report retrieved with trend data")
-                    print(f"   📊 Total Revenue: €{data['totals'].get('total_revenue', 'N/A')}")
-                    print(f"   📊 Principal Disbursed: €{data['totals'].get('principal_disbursed', 'N/A')}")
-                    print(f"   📊 Monthly Trend Records: {len(data.get('monthly_trend', []))}")
-                else:
-                    missing = [k for k in required_keys if k not in data]
-                    self.log_test("Reports - Financial Report", False, f"Missing keys: {missing}")
-            else:
-                self.log_test("Reports - Financial Report", False, f"Status {response.status_code}: {response.text}")
-        except Exception as e:
-            self.log_test("Reports - Financial Report", False, f"Error: {str(e)}")
+        self.test_update_client_with_token()
+        self.test_update_client_without_token()
         
-        # Test Late Fee Management APIs
-        print("\n4. LATE FEE MANAGEMENT APIs")
+        self.test_allow_uninstall_with_token()
+        self.test_allow_uninstall_without_token()
         
-        # Test Calculate All Late Fees (requires admin token)
-        try:
-            response = requests.post(f"{self.base_url}/late-fees/calculate-all?admin_token={admin_token}")
-            if response.status_code == 200:
-                data = response.json()
-                self.log_test("Late Fees - Calculate All", True, f"Late fees calculation triggered: {data.get('message', 'Success')}")
-            else:
-                self.log_test("Late Fees - Calculate All", False, f"Status {response.status_code}: {response.text}")
-        except Exception as e:
-            self.log_test("Late Fees - Calculate All", False, f"Error: {str(e)}")
+        self.test_reports_clients_with_token()
+        self.test_reports_clients_without_token()
         
-        # Test Get Client Late Fees
-        try:
-            response = requests.get(f"{self.base_url}/clients/{test_client_id}/late-fees")
-            if response.status_code == 200:
-                data = response.json()
-                required_keys = ["client_id", "days_overdue", "late_fees_accumulated", "monthly_emi", "outstanding_with_fees"]
-                if all(key in data for key in required_keys):
-                    self.log_test("Late Fees - Client Late Fees", True, f"Client late fees retrieved successfully")
-                    print(f"   📊 Days Overdue: {data.get('days_overdue', 'N/A')}")
-                    print(f"   📊 Late Fees: €{data.get('late_fees_accumulated', 'N/A')}")
-                    print(f"   📊 Outstanding with Fees: €{data.get('outstanding_with_fees', 'N/A')}")
-                else:
-                    missing = [k for k in required_keys if k not in data]
-                    self.log_test("Late Fees - Client Late Fees", False, f"Missing keys: {missing}")
-            else:
-                self.log_test("Late Fees - Client Late Fees", False, f"Status {response.status_code}: {response.text}")
-        except Exception as e:
-            self.log_test("Late Fees - Client Late Fees", False, f"Error: {str(e)}")
+        self.test_reports_financial_with_token()
+        self.test_reports_financial_without_token()
         
-        # Test Payment Reminders APIs
-        print("\n5. PAYMENT REMINDERS APIs")
+        self.test_delete_client_without_token()
         
-        # Test Get All Reminders
-        try:
-            response = requests.get(f"{self.base_url}/reminders")
-            if response.status_code == 200:
-                data = response.json()
-                self.log_test("Reminders - Get All", True, f"All reminders retrieved ({len(data)} reminders)")
-                
-                # Test with filters
-                response_unsent = requests.get(f"{self.base_url}/reminders?sent=false")
-                if response_unsent.status_code == 200:
-                    unsent_data = response_unsent.json()
-                    self.log_test("Reminders - Get Unsent", True, f"Unsent reminders retrieved ({len(unsent_data)} unsent)")
-                
-                response_sent = requests.get(f"{self.base_url}/reminders?sent=true")
-                if response_sent.status_code == 200:
-                    sent_data = response_sent.json()
-                    self.log_test("Reminders - Get Sent", True, f"Sent reminders retrieved ({len(sent_data)} sent)")
-                
-            else:
-                self.log_test("Reminders - Get All", False, f"Status {response.status_code}: {response.text}")
-        except Exception as e:
-            self.log_test("Reminders - Get All", False, f"Error: {str(e)}")
+        # Summary
+        self.print_summary()
+        return self.results["failed"] == 0
+
+    def print_summary(self):
+        """Print test summary"""
+        total = self.results["passed"] + self.results["failed"]
+        self.log("=" * 60)
+        self.log("🏁 TEST SUMMARY")
+        self.log(f"Total Tests: {total}")
+        self.log(f"✅ Passed: {self.results['passed']}")
+        self.log(f"❌ Failed: {self.results['failed']}")
         
-        # Test Get Client Reminders
-        try:
-            response = requests.get(f"{self.base_url}/clients/{test_client_id}/reminders")
-            if response.status_code == 200:
-                data = response.json()
-                self.log_test("Reminders - Client Reminders", True, f"Client reminders retrieved ({len(data)} reminders)")
-                
-                # Store a reminder ID for testing mark-sent
-                test_reminder_id = None
-                if data and len(data) > 0:
-                    test_reminder_id = data[0].get("id")
-                
-            else:
-                self.log_test("Reminders - Client Reminders", False, f"Status {response.status_code}: {response.text}")
-        except Exception as e:
-            self.log_test("Reminders - Client Reminders", False, f"Error: {str(e)}")
+        if self.results["failed"] > 0:
+            self.log("\n🔍 FAILED TESTS:")
+            for error in self.results["errors"]:
+                self.log(f"  {error}")
         
-        # Test Create All Reminders (requires admin token)
-        try:
-            response = requests.post(f"{self.base_url}/reminders/create-all?admin_token={admin_token}")
-            if response.status_code == 200:
-                data = response.json()
-                self.log_test("Reminders - Create All", True, f"Reminders creation triggered: {data.get('message', 'Success')}")
-            else:
-                self.log_test("Reminders - Create All", False, f"Status {response.status_code}: {response.text}")
-        except Exception as e:
-            self.log_test("Reminders - Create All", False, f"Error: {str(e)}")
-        
-        # Test Mark Reminder as Sent
-        try:
-            # Get reminders to find one to mark as sent
-            get_response = requests.get(f"{self.base_url}/reminders?sent=false")
-            if get_response.status_code == 200:
-                reminders = get_response.json()
-                if reminders and len(reminders) > 0:
-                    test_reminder_id = reminders[0].get("id")
-                    
-                    # Mark reminder as sent
-                    response = requests.post(f"{self.base_url}/reminders/{test_reminder_id}/mark-sent")
-                    if response.status_code == 200:
-                        data = response.json()
-                        self.log_test("Reminders - Mark Sent", True, f"Reminder marked as sent: {data.get('message', 'Success')}")
-                    else:
-                        self.log_test("Reminders - Mark Sent", False, f"Status {response.status_code}: {response.text}")
-                else:
-                    self.log_test("Reminders - Mark Sent", True, "No unsent reminders found to test with (not a failure)")
-            else:
-                self.log_test("Reminders - Mark Sent", True, "Could not retrieve reminders for testing (not a failure)")
-        except Exception as e:
-            self.log_test("Reminders - Mark Sent", False, f"Error: {str(e)}")
-        
-        # Test Error Handling
-        print("\n6. ERROR HANDLING & AUTHENTICATION")
-        
-        # Test invalid client ID
-        try:
-            invalid_id = "invalid-client-id-12345"
-            response = requests.get(f"{self.base_url}/clients/{invalid_id}/late-fees")
-            if response.status_code == 404:
-                self.log_test("Error Handling - Invalid Client ID (Late Fees)", True, "Invalid client ID properly handled")
-            else:
-                self.log_test("Error Handling - Invalid Client ID (Late Fees)", False, f"Expected 404, got {response.status_code}")
-            
-            response = requests.get(f"{self.base_url}/clients/{invalid_id}/reminders")
-            if response.status_code == 404:
-                self.log_test("Error Handling - Invalid Client ID (Reminders)", True, "Invalid client ID properly handled")
-            else:
-                self.log_test("Error Handling - Invalid Client ID (Reminders)", False, f"Expected 404, got {response.status_code}")
-        except Exception as e:
-            self.log_test("Error Handling - Invalid Client ID", False, f"Error: {str(e)}")
-        
-        # Test authentication requirements
-        try:
-            # Test late fees calculation without token
-            response = requests.post(f"{self.base_url}/late-fees/calculate-all")
-            if response.status_code == 401:
-                self.log_test("Authentication - Late Fees Requires Token", True, "Correctly requires authentication")
-            else:
-                self.log_test("Authentication - Late Fees Requires Token", False, f"Expected 401, got {response.status_code}")
-            
-            # Test reminders creation without token
-            response = requests.post(f"{self.base_url}/reminders/create-all")
-            if response.status_code == 401:
-                self.log_test("Authentication - Reminders Requires Token", True, "Correctly requires authentication")
-            else:
-                self.log_test("Authentication - Reminders Requires Token", False, f"Expected 401, got {response.status_code}")
-        except Exception as e:
-            self.log_test("Authentication - Token Requirements", False, f"Error: {str(e)}")
-        
-        print("\n" + "="*80)
-        print("🏦 ADVANCED LOAN MANAGEMENT API TESTS COMPLETED")
-        print("="*80)
-        
-        return True
+        success_rate = (self.results['passed'] / total * 100) if total > 0 else 0
+        self.log(f"\n📊 Success Rate: {success_rate:.1f}%")
+
+def main():
+    """Main function"""
+    tester = APITester()
+    success = tester.run_all_tests()
+    
+    if success:
+        print("\n🎉 All authentication tests passed!")
+        sys.exit(0)
+    else:
+        print("\n⚠️  Some tests failed - check authentication implementation")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    import sys
-    
-    # Check command line arguments
-    if len(sys.argv) > 1:
-        if sys.argv[1] == "delete-client":
-            tester = EMIBackendTester()
-            success = tester.run_delete_client_test_only()
-            sys.exit(0 if success else 1)
-        elif sys.argv[1] == "advanced-apis":
-            tester = EMIBackendTester()
-            success = tester.test_advanced_loan_management_apis()
-            
-            # Count results for advanced APIs only
-            advanced_results = [r for r in tester.test_results if "Advanced APIs" in r["test"] or "Reports" in r["test"] or "Late Fees" in r["test"] or "Reminders" in r["test"] or "Error Handling" in r["test"] or "Authentication" in r["test"]]
-            passed = sum(1 for result in advanced_results if result["success"])
-            failed = sum(1 for result in advanced_results if not result["success"])
-            
-            print(f"\n📊 Advanced APIs Test Summary: {passed} passed, {failed} failed")
-            
-            if failed > 0:
-                print("\n❌ Failed Tests:")
-                for result in advanced_results:
-                    if not result["success"]:
-                        print(f"  - {result['test']}: {result['message']}")
-            else:
-                print("🎉 All Advanced Loan Management APIs are working correctly!")
-            
-            sys.exit(0 if failed == 0 else 1)
-    
-    # Default: run all tests
-    tester = EMIBackendTester()
-    success = tester.run_all_tests()
-    sys.exit(0 if success else 1)
+    main()
