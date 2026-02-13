@@ -1084,7 +1084,7 @@ async def create_client(client_data: ClientCreate, admin_token: Optional[str] = 
     return client
 
 @api_router.get("/clients")
-async def get_all_clients(skip: int = 0, limit: int = 100, admin_id: Optional[str] = Query(default=None)):
+async def get_all_clients(skip: int = Query(default=0), limit: int = Query(default=100), admin_id: Optional[str] = Query(default=None)):
     """Get all clients with pagination
     
     Args:
@@ -1395,7 +1395,7 @@ async def create_loan_plan(plan_data: LoanPlanCreate, admin_token: str = Query(.
     return plan
 
 @api_router.get("/loan-plans")
-async def get_loan_plans(active_only: bool = False, admin_id: Optional[str] = Query(default=None)):
+async def get_loan_plans(active_only: bool = Query(default=False), admin_id: Optional[str] = Query(default=None)):
     """Get all loan plans for the specified admin"""
     if not admin_id:
         logger.warning("admin_id not provided for loan plan listing; rejecting request")
@@ -1503,9 +1503,9 @@ async def delete_loan_plan(plan_id: str, admin_token: str = Query(...), force: b
 
 @api_router.get("/calculator/compare")
 async def compare_emi_methods(
-    principal: float,
-    annual_rate: float,
-    months: int
+    principal: float = Query(...),
+    annual_rate: float = Query(...),
+    months: int = Query(...)
 ):
     """Compare EMI calculations using all three methods"""
     if principal <= 0 or months <= 0:
@@ -1814,7 +1814,7 @@ async def get_client_late_fees(client_id: str):
     }
 
 @api_router.get("/reminders")
-async def get_reminders(sent: bool = None, limit: int = 100, admin_id: Optional[str] = None):
+async def get_reminders(sent: bool = Query(default=None), limit: int = Query(default=100), admin_id: Optional[str] = Query(default=None)):
     """Get all reminders, optionally filtered by sent status"""
     query = {}
     if sent is not None:
@@ -1826,7 +1826,7 @@ async def get_reminders(sent: bool = None, limit: int = 100, admin_id: Optional[
     return [Reminder(**r) for r in reminders]
 
 @api_router.get("/clients/{client_id}/reminders")
-async def get_client_reminders(client_id: str, admin_id: Optional[str] = None):
+async def get_client_reminders(client_id: str, admin_id: Optional[str] = Query(default=None)):
     """Get reminders for a specific client"""
     query = {"client_id": client_id}
     
