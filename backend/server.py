@@ -160,6 +160,166 @@ def verify_password(password: str, password_hash: str) -> bool:
     except (VerifyMismatchError, InvalidHashError):
         return False
 
+class SecureQueryBuilder:
+    """
+    Secure query builder to prevent NoSQL injection attacks.
+    Implements field allowlisting and operator filtering.
+    """
+    
+    # Allowed fields for each collection
+    ALLOWED_FIELDS = {
+        "clients": {
+            "id", "name", "client_id", "phone", "email", "admin_id", 
+            "is_locked", "auto_lock_enabled", "device_info", "registration_code"
+        },
+        "admins": {
+            "id", "username", "role", "is_super_admin", "first_name", "last_name"
+        },
+        "loans": {
+            "id", "client_id", "admin_id", "status", "principal", "monthly_emi"
+        },
+        "loan_plans": {
+            "id", "name", "admin_id", "is_active", "interest_rate"
+        }
+    }
+    
+    # Allowed MongoDB operators
+    ALLOWED_OPERATORS = {
+        "$eq", "$ne", "$gt", "$gte", "$lt", "$lte", "$in", "$nin"
+    }
+    
+    @classmethod
+    def validate_field(cls, collection: str, field: str) -> bool:
+        """Check if a field is allowed for a collection"""
+        allowed = cls.ALLOWED_FIELDS.get(collection, set())
+        return field in allowed
+    
+    @classmethod
+    def validate_operator(cls, operator: str) -> bool:
+        """Check if an operator is allowed"""
+        return operator in cls.ALLOWED_OPERATORS
+    
+    @classmethod
+    def build_safe_query(cls, collection: str, field: str, value, operator: str = "$eq") -> dict:
+        """
+        Build a safe MongoDB query with validation.
+        
+        Args:
+            collection: Database collection name
+            field: Field to query
+            value: Value to match
+            operator: MongoDB operator (default: $eq)
+            
+        Returns:
+            Safe MongoDB query dict
+            
+        Raises:
+            ValidationException: If field or operator is not allowed
+        """
+        if not cls.validate_field(collection, field):
+            raise ValidationException(f"Field '{field}' is not allowed for querying")
+        
+        if not cls.validate_operator(operator):
+            raise ValidationException(f"Operator '{operator}' is not allowed")
+        
+        # Build query with validated operator
+        if operator == "$eq":
+            return {field: value}
+        else:
+            return {field: {operator: value}}
+    
+    @classmethod
+    def sanitize_query(cls, collection: str, query: dict) -> dict:
+        """
+        Sanitize a MongoDB query by removing disallowed fields and operators.
+        
+        Args:
+            collection: Database collection name
+            query: Query dictionary to sanitize
+            
+        Returns:
+            Sanitized query dictionary
+        """
+        sanitized = {}
+        
+        for field, value in query.items():
+            # Validate field
+            if not cls.validate_field(collection, field):
+                logger.warning(f"Ignoring disallowed field in query: {field}")
+                continue
+            
+            # Check for operator in value
+            if isinstance(value, dict):
+                sanitized_value = {}
+                for op, op_value in value.items():
+                    if cls.validate_operator(op):
+                        sanitized_value[op] = op_value
+                    else:
+                        logger.warning(f"Ignoring disallowed operator in query: {op}")
+                
+                if sanitized_value:
+                    sanitized[field] = sanitized_value
+            else:
+                # Simple equality
+                sanitized[field] = value
+        
+        return sanitized
+
+def mask_email(email: str) -> str:
+    """
+    Mask email address for privacy.
+    Shows only first and last character before @ and domain.
+    
+    Example: john.doe@example.com -> j*******e@example.com
+    """
+    if not email or '@' not in email:
+        return email
+    
+    local, domain = email.split('@', 1)
+    if len(local) <= 2:
+        masked_local = local[0] + '*'
+    else:
+        masked_local = local[0] + '*' * (len(local) - 2) + local[-1]
+    
+    return f"{masked_local}@{domain}"
+
+def mask_phone(phone: str) -> str:
+    """
+    Mask phone number for privacy.
+    Shows only last 4 digits.
+    
+    Example: +1-555-123-4567 -> ***-***-4567
+    """
+    if not phone or len(phone) < 4:
+        return '***'
+    
+    return '***-***-' + phone[-4:]
+
+def mask_sensitive_data(data: dict, fields: list = None) -> dict:
+    """
+    Mask sensitive fields in a dictionary.
+    
+    Args:
+        data: Dictionary containing data to mask
+        fields: List of field names to mask (default: email, phone)
+        
+    Returns:
+        Dictionary with masked sensitive fields
+    """
+    if fields is None:
+        fields = ['email', 'phone']
+    
+    masked_data = data.copy()
+    
+    for field in fields:
+        if field in masked_data and masked_data[field]:
+            if field == 'email':
+                masked_data[field] = mask_email(masked_data[field])
+            elif field == 'phone':
+                masked_data[field] = mask_phone(masked_data[field])
+    
+    return masked_data
+
 def calculate_simple_interest_emi(principal: float, annual_rate: float, months: int) -> dict:
     """Calculate EMI using simple interest formula"""
     # Simple Interest = (P × R × T) / 100
