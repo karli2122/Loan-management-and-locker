@@ -255,7 +255,8 @@ export default function ClientDetails() {
         }
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/clients/${id}`, {
+      const token = await AsyncStorage.getItem('admin_token');
+      const response = await fetch(`${API_BASE_URL}/api/clients/${id}?admin_token=${token}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData),
