@@ -6,71 +6,84 @@
     "admin-development": {
       "developmentClient": true,
       "distribution": "internal",
-      "node": "18.18.0",
       "env": {
-        "APP_MODE": "admin",
-        "EXPO_PUBLIC_BACKEND_URL": "https://apkdebug.preview.emergentagent.com"
+        "APP_MODE": "admin"
       },
       "android": {
-        "buildType": "apk"
-      }
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "node": "20.19.6"
     },
     "admin-preview": {
       "distribution": "internal",
-      "node": "18.18.0",
       "env": {
-        "APP_MODE": "admin",
-        "EXPO_PUBLIC_BACKEND_URL": "https://apkdebug.preview.emergentagent.com"
+        "APP_MODE": "admin"
       },
       "android": {
-        "buildType": "apk"
-      }
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "channel": "preview",
+      "node": "20.19.6"
     },
     "admin-production": {
-      "node": "18.18.0",
+      "distribution": "store",
       "env": {
-        "APP_MODE": "admin",
-        "EXPO_PUBLIC_BACKEND_URL": "https://apkdebug.preview.emergentagent.com"
+        "APP_MODE": "admin"
       },
       "android": {
-        "buildType": "apk"
-      }
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "channel": "production",
+      "node": "20.19.6"
     },
     "client-development": {
       "developmentClient": true,
       "distribution": "internal",
-      "node": "18.18.0",
       "env": {
-        "APP_MODE": "client",
-        "EXPO_PUBLIC_BACKEND_URL": "https://apkdebug.preview.emergentagent.com"
+        "APP_MODE": "client"
       },
       "android": {
-        "buildType": "apk"
-      }
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "node": "20.19.6"
     },
     "client-preview": {
       "distribution": "internal",
-      "node": "18.18.0",
+      "credentialsSource": "remote",
       "env": {
-        "APP_MODE": "client",
-        "EXPO_PUBLIC_BACKEND_URL": "https://apkdebug.preview.emergentagent.com"
+        "APP_MODE": "client"
       },
       "android": {
-        "buildType": "apk"
-      }
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "channel": "preview",
+      "node": "20.19.6"
     },
     "client-production": {
-      "node": "18.18.0",
+      "distribution": "store",
+      "credentialsSource": "remote",
       "env": {
-        "APP_MODE": "client",
-        "EXPO_PUBLIC_BACKEND_URL": "https://apkdebug.preview.emergentagent.com"
+        "APP_MODE": "client"
       },
       "android": {
-        "buildType": "apk"
-      }
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "channel": "production",
+      "node": "20.19.6"
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "./service-account-key.json",
+        "track": "internal"
+      }
+    }
   }
 }

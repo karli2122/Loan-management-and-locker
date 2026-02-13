@@ -2,16 +2,16 @@ const IS_ADMIN_APP = process.env.APP_MODE === 'admin';
 
 export default {
   expo: {
-    name: IS_ADMIN_APP ? "EMI Admin" : "EMI Client",
-    slug: IS_ADMIN_APP ? "emi-admin" : "emi-client",
+    name: IS_ADMIN_APP ? "Loan Admin" : "Loan Client",
+    slug: IS_ADMIN_APP ? "loans" : "client",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
-    scheme: IS_ADMIN_APP ? "emiadmin" : "emiclient",
+    scheme: IS_ADMIN_APP ? "loanadmin" : "loanclient",
     userInterfaceStyle: "dark",
     newArchEnabled: true,
     splash: {
-      image: "./assets/images/splash-icon.png",
+      image: "./assets/images/splash-image.png",
       resizeMode: "contain",
       backgroundColor: "#0F172A"
     },
@@ -24,33 +24,64 @@ export default {
         foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundColor: "#0F172A"
       },
-      package: IS_ADMIN_APP ? "com.emi.admin" : "com.emi.client"
+      package: IS_ADMIN_APP ? "com.emi.admin" : "com.emi.client",
+      versionCode: 1,
+      // Permissions: Admin app needs basic location/network, 
+      // Client app needs elevated permissions for Device Admin protection
+      permissions: IS_ADMIN_APP 
+        ? [
+            "ACCESS_FINE_LOCATION",
+            "ACCESS_COARSE_LOCATION",
+            "INTERNET",
+            "ACCESS_NETWORK_STATE"
+          ]
+        : [
+            // Basic permissions
+            "ACCESS_FINE_LOCATION",
+            "ACCESS_COARSE_LOCATION",
+            "INTERNET",
+            "ACCESS_NETWORK_STATE",
+            // Device Admin and security permissions (required for EMI protection)
+            "BIND_DEVICE_ADMIN",          // Device Admin management
+            "RECEIVE_BOOT_COMPLETED",     // Auto-start on device boot
+            "SYSTEM_ALERT_WINDOW",        // Lock screen overlay
+            "WAKE_LOCK"                   // Prevent device sleep during lock
+          ]
     },
     web: {
       bundler: "metro",
-      output: "server",
-      favicon: "./assets/images/favicon.png"
+      output: "single",
+      favicon: "./assets/images/favicon.png",
+      // Avoid caching 404s via service workers
+      registerServiceWorker: false
     },
     plugins: [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          image: "./assets/images/splash-icon.png",
+          image: "./assets/images/splash-image.png",
           imageWidth: 200,
           resizeMode: "contain",
           backgroundColor: "#0F172A"
         }
-      ]
-      // Note: emi-device-admin is a local Expo module that is auto-linked during prebuild
+      ],
+      // Device Admin plugin for Client app only
+      ...(IS_ADMIN_APP ? [] : ["emi-device-admin"])
     ],
     experiments: {
       typedRoutes: true
     },
     extra: {
       appMode: IS_ADMIN_APP ? "admin" : "client",
+      backendUrl: process.env.EXPO_PUBLIC_BACKEND_URL || "https://api-token-migration.preview.emergentagent.com",
       eas: {
-        projectId: "your-project-id"
+        projectId: IS_ADMIN_APP
+          ? "7be3aec1-6fef-4200-9987-5868c4320a07"
+          : "0cb46d92-e754-4a76-a24b-c69c70ccd850",
+        cli: {
+          appVersionSource: "remote"
+        }
       }
     }
   }
