@@ -1,17 +1,21 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import Response, RedirectResponse, JSONResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import httpx
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 import hashlib
 import secrets
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError, InvalidHashError
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -33,20 +37,288 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[db_name]
 
 # Create the main app
-app = FastAPI(title="EMI Phone Lock API", version="1.0.0")
+app = FastAPI(title="Loan Phone Lock API", version="1.0.0")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
 security = HTTPBasic()
 
+# Custom exception classes for better error handling
+class ApplicationException(Exception):
+    """Base exception class for application errors"""
+    def __init__(self, message: str, error_code: str, correlation_id: str = None):
+        self.message = message
+        self.error_code = error_code
+        self.correlation_id = correlation_id or str(uuid.uuid4())
+        super().__init__(self.message)
+    
+    def to_response(self):
+        return {
+            "error": self.message,
+            "code": self.error_code,
+            "correlation_id": self.correlation_id
+        }
+
+class ValidationException(ApplicationException):
+    """Raised when input validation fails"""
+    def __init__(self, message: str = "The provided data is invalid.", correlation_id: str = None):
+        super().__init__(message, "VALIDATION_ERROR", correlation_id)
+
+class AuthenticationException(ApplicationException):
+    """Raised when authentication fails"""
+    def __init__(self, message: str = "Authentication failed.", correlation_id: str = None):
+        super().__init__(message, "AUTHENTICATION_ERROR", correlation_id)
+
+class AuthorizationException(ApplicationException):
+    """Raised when authorization fails"""
+    def __init__(self, message: str = "Permission denied.", correlation_id: str = None):
+        super().__init__(message, "AUTHORIZATION_ERROR", correlation_id)
+
+# Global exception handler to prevent server crashes
+@app.exception_handler(ApplicationException)
+async def application_exception_handler(request, exc: ApplicationException):
+    """Handle custom application exceptions"""
+    logger.error(f"Application exception [{exc.correlation_id}]: {exc.error_code} - {exc.message}")
+    status_codes = {
+        "VALIDATION_ERROR": 422,
+        "AUTHENTICATION_ERROR": 401,
+        "AUTHORIZATION_ERROR": 403,
+    }
+    status_code = status_codes.get(exc.error_code, 500)
+    return JSONResponse(
+        status_code=status_code,
+        content=exc.to_response()
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    """Handle all unhandled exceptions"""
+    correlation_id = str(uuid.uuid4())
+    # Log full details internally
+    logger.error(f"Unhandled exception [{correlation_id}]: {type(exc).__name__}: {str(exc)}", exc_info=True)
+    # Return sanitized response externally
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "An unexpected error occurred. Please try again later.",
+            "code": "INTERNAL_ERROR",
+            "correlation_id": correlation_id
+        }
+    )
+
 # ===================== HELPER FUNCTIONS =====================
 
+# Initialize Argon2 password hasher with secure parameters
+_argon2_hasher = PasswordHasher(
+    time_cost=3,        # Number of iterations
+    memory_cost=65536,  # 64 MB
+    parallelism=4,      # Number of parallel threads
+    hash_len=32,        # Length of the hash in bytes
+    salt_len=16         # Length of random salt
+)
+
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+    """
+    Hash password using Argon2id with secure parameters.
+    
+    Args:
+        password: Plain text password to hash
+        
+    Returns:
+        Argon2id hash string
+    """
+    return _argon2_hasher.hash(password)
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return hash_password(password) == password_hash
+    """
+    Verify password against stored hash.
+    Supports both Argon2id (new) and SHA-256 (legacy) hashes for migration.
+    
+    Args:
+        password: Plain text password to verify
+        password_hash: Stored password hash
+        
+    Returns:
+        True if password matches, False otherwise
+    """
+    # Check if it's a legacy SHA-256 hash (64 hex characters)
+    if len(password_hash) == 64 and all(c in '0123456789abcdef' for c in password_hash):
+        # Legacy SHA-256 verification
+        legacy_hash = hashlib.sha256(password.encode()).hexdigest()
+        return legacy_hash == password_hash
+    
+    # Try Argon2id verification
+    try:
+        _argon2_hasher.verify(password_hash, password)
+        
+        # Check if hash needs rehashing (parameters changed)
+        if _argon2_hasher.check_needs_rehash(password_hash):
+            logger.info("Password hash needs rehashing with updated parameters")
+        
+        return True
+    except (VerifyMismatchError, InvalidHashError):
+        return False
+
+class SecureQueryBuilder:
+    """
+    Secure query builder to prevent NoSQL injection attacks.
+    Implements field allowlisting and operator filtering.
+    """
+    
+    # Allowed fields for each collection
+    ALLOWED_FIELDS = {
+        "clients": {
+            "id", "name", "client_id", "phone", "email", "admin_id", 
+            "is_locked", "auto_lock_enabled", "device_info", "registration_code"
+        },
+        "admins": {
+            "id", "username", "role", "is_super_admin", "first_name", "last_name"
+        },
+        "loans": {
+            "id", "client_id", "admin_id", "status", "principal", "monthly_emi"
+        },
+        "loan_plans": {
+            "id", "name", "admin_id", "is_active", "interest_rate"
+        }
+    }
+    
+    # Allowed MongoDB operators
+    ALLOWED_OPERATORS = {
+        "$eq", "$ne", "$gt", "$gte", "$lt", "$lte", "$in", "$nin"
+    }
+    
+    @classmethod
+    def validate_field(cls, collection: str, field: str) -> bool:
+        """Check if a field is allowed for a collection"""
+        allowed = cls.ALLOWED_FIELDS.get(collection, set())
+        return field in allowed
+    
+    @classmethod
+    def validate_operator(cls, operator: str) -> bool:
+        """Check if an operator is allowed"""
+        return operator in cls.ALLOWED_OPERATORS
+    
+    @classmethod
+    def build_safe_query(cls, collection: str, field: str, value, operator: str = "$eq") -> dict:
+        """
+        Build a safe MongoDB query with validation.
+        
+        Args:
+            collection: Database collection name
+            field: Field to query
+            value: Value to match
+            operator: MongoDB operator (default: $eq)
+            
+        Returns:
+            Safe MongoDB query dict
+            
+        Raises:
+            ValidationException: If field or operator is not allowed
+        """
+        if not cls.validate_field(collection, field):
+            raise ValidationException(f"Field '{field}' is not allowed for querying")
+        
+        if not cls.validate_operator(operator):
+            raise ValidationException(f"Operator '{operator}' is not allowed")
+        
+        # Build query with validated operator
+        if operator == "$eq":
+            return {field: value}
+        else:
+            return {field: {operator: value}}
+    
+    @classmethod
+    def sanitize_query(cls, collection: str, query: dict) -> dict:
+        """
+        Sanitize a MongoDB query by removing disallowed fields and operators.
+        
+        Args:
+            collection: Database collection name
+            query: Query dictionary to sanitize
+            
+        Returns:
+            Sanitized query dictionary
+        """
+        sanitized = {}
+        
+        for field, value in query.items():
+            # Validate field
+            if not cls.validate_field(collection, field):
+                logger.warning(f"Ignoring disallowed field in query: {field}")
+                continue
+            
+            # Check for operator in value
+            if isinstance(value, dict):
+                sanitized_value = {}
+                for op, op_value in value.items():
+                    if cls.validate_operator(op):
+                        sanitized_value[op] = op_value
+                    else:
+                        logger.warning(f"Ignoring disallowed operator in query: {op}")
+                
+                if sanitized_value:
+                    sanitized[field] = sanitized_value
+            else:
+                # Simple equality
+                sanitized[field] = value
+        
+        return sanitized
+
+def mask_email(email: str) -> str:
+    """
+    Mask email address for privacy.
+    Shows only first and last character before @ and domain.
+    
+    Example: john.doe@example.com -> j*******e@example.com
+    """
+    if not email or '@' not in email:
+        return email
+    
+    local, domain = email.split('@', 1)
+    if len(local) <= 2:
+        masked_local = local[0] + '*'
+    else:
+        masked_local = local[0] + '*' * (len(local) - 2) + local[-1]
+    
+    return f"{masked_local}@{domain}"
+
+def mask_phone(phone: str) -> str:
+    """
+    Mask phone number for privacy.
+    Shows only last 4 digits.
+    
+    Example: +1-555-123-4567 -> ***-***-4567
+    """
+    if not phone or len(phone) < 4:
+        return '***'
+    
+    return '***-***-' + phone[-4:]
+
+def mask_sensitive_data(data: dict, fields: list = None) -> dict:
+    """
+    Mask sensitive fields in a dictionary.
+    
+    Args:
+        data: Dictionary containing data to mask
+        fields: List of field names to mask (default: email, phone)
+        
+    Returns:
+        Dictionary with masked sensitive fields
+    """
+    if fields is None:
+        fields = ['email', 'phone']
+    
+    masked_data = data.copy()
+    
+    for field in fields:
+        if field in masked_data and masked_data[field]:
+            if field == 'email':
+                masked_data[field] = mask_email(masked_data[field])
+            elif field == 'phone':
+                masked_data[field] = mask_phone(masked_data[field])
+    
+    return masked_data
 
 def calculate_simple_interest_emi(principal: float, annual_rate: float, months: int) -> dict:
     """Calculate EMI using simple interest formula"""
@@ -170,6 +442,30 @@ async def apply_late_fees_to_overdue_clients():
     except Exception as e:
         logger.error(f"Late fee calculation error: {str(e)}")
 
+async def send_expo_push_notification(push_token: str, title: str, body: str, data: Optional[dict] = None) -> bool:
+    """Send a push notification via Expo."""
+    if not push_token:
+        return False
+    
+    payload = {
+        "to": push_token,
+        "sound": "default",
+        "title": title,
+        "body": body,
+        "data": data or {}
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=10) as http_client:
+            response = await http_client.post("https://exp.host/--/api/v2/push/send", json=payload)
+            if response.status_code >= httpx.codes.BAD_REQUEST:
+                logger.warning(f"Expo push send failed ({response.status_code})")
+                return False
+        return True
+    except Exception as exc:
+        logger.error(f"Expo push error: {exc}")
+        return False
+
 async def create_payment_reminders():
     """Background job to create payment reminders"""
     try:
@@ -189,11 +485,8 @@ async def create_payment_reminders():
             
             days_until_due = (next_due - datetime.utcnow()).days
             
-            # Create reminders at specific intervals
+            # Create reminders for same-day due dates and 1/3/7-day overdue intervals
             reminder_configs = [
-                (7, "payment_due_7days", "Payment due in 7 days"),
-                (3, "payment_due_3days", "Payment due in 3 days"),
-                (1, "payment_due_1day", "Payment due tomorrow"),
                 (0, "payment_due_today", "Payment due today"),
                 (-1, "payment_overdue_1day", "Payment overdue by 1 day"),
                 (-3, "payment_overdue_3days", "Payment overdue by 3 days"),
@@ -211,13 +504,34 @@ async def create_payment_reminders():
                     
                     if not existing:
                         # Create reminder
+                        admin_scope = client.get("admin_id")
+                        if admin_scope:
+                            admin_exists = await db.admins.find_one({"id": admin_scope})
+                            if not admin_exists:
+                                admin_scope = None
+                        
                         reminder = Reminder(
                             client_id=client["id"],
                             reminder_type=reminder_type,
                             scheduled_date=datetime.utcnow(),
-                            message=f"{message}. Amount: €{client.get('monthly_emi', 0):.2f}"
+                            message=f"{message}. Amount: €{client.get('monthly_emi', 0):.2f}",
+                            admin_id=admin_scope
                         )
                         await db.reminders.insert_one(reminder.dict())
+                        
+                        # Send Expo push notification if token available
+                        push_token = client.get("expo_push_token")
+                        if push_token:
+                            await send_expo_push_notification(
+                                push_token,
+                                "Payment Reminder",
+                                reminder.message,
+                                {
+                                    "client_id": client["id"],
+                                    "reminder_type": reminder_type,
+                                    "admin_id": admin_scope
+                                }
+                            )
                         logger.info(f"Created {reminder_type} reminder for client {client['id']}")
     
     except Exception as e:
@@ -286,6 +600,8 @@ class AdminCreate(BaseModel):
     username: str
     password: str
     role: str = "user"  # "admin" or "user"
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 class AdminLogin(BaseModel):
     username: str
@@ -296,10 +612,6 @@ class AdminResponse(BaseModel):
     username: str
     role: str
     is_super_admin: bool
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
     token: str
 
 class LoanPlan(BaseModel):
@@ -312,6 +624,7 @@ class LoanPlan(BaseModel):
     late_fee_percent: float = 2.0  # Per month
     description: str = ""
     is_active: bool = True
+    admin_id: Optional[str] = None  # Tenant scoping - each admin has their own loan plans
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class LoanPlanCreate(BaseModel):
@@ -331,14 +644,15 @@ class Reminder(BaseModel):
     sent: bool = False
     sent_at: Optional[datetime] = None
     message: str
+    admin_id: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class Client(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    admin_id: Optional[str] = None  # ID of the admin who created this client
     name: str
     phone: str
     email: str = ""  # Made optional with default empty string for backwards compatibility
+    admin_id: Optional[str] = None  # Tenant scoping
     device_id: str = ""
     device_model: str = ""
     device_make: str = ""  # Brand/Manufacturer
@@ -346,6 +660,7 @@ class Client(BaseModel):
     price_fetched_at: Optional[datetime] = None  # When price was last fetched
     lock_mode: str = "device_admin"  # "device_owner" or "device_admin"
     registration_code: str = Field(default_factory=lambda: secrets.token_hex(4).upper())
+    expo_push_token: Optional[str] = None  # Expo push notification token
     
     # Loan Management Fields
     loan_plan_id: Optional[str] = None  # Reference to loan plan
@@ -392,6 +707,7 @@ class Client(BaseModel):
     tamper_attempts: int = 0  # Count of tampering attempts
     last_tamper_attempt: Optional[datetime] = None  # Last tamper attempt timestamp
     last_reboot: Optional[datetime] = None  # Last device reboot timestamp
+    admin_mode_active: bool = False  # Device Admin mode active on device
 
 class Payment(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -420,17 +736,19 @@ class ClientCreate(BaseModel):
     emi_amount: float = 0.0
     emi_due_date: Optional[str] = None
     lock_mode: str = "device_admin"  # "device_owner" or "device_admin"
+    admin_id: Optional[str] = None
     # Loan fields
     loan_amount: float = 0.0
     down_payment: float = 0.0
     interest_rate: float = 10.0  # Default 10% annual
     loan_tenure_months: int = 12
 
-class LoanSetupRequest(BaseModel):
+class LoanSetup(BaseModel):
+    """Model for setting up loan details for an existing client"""
     loan_amount: float
+    interest_rate: float
+    loan_tenure_months: int
     down_payment: float = 0.0
-    interest_rate: float = 10.0
-    loan_tenure_months: int = 12
 
 class ClientUpdate(BaseModel):
     name: Optional[str] = None
@@ -444,6 +762,7 @@ class ClientUpdate(BaseModel):
     device_make: Optional[str] = None
     device_model: Optional[str] = None
     used_price_eur: Optional[float] = None
+    admin_id: Optional[str] = None
 
 class DeviceRegistration(BaseModel):
     registration_code: str
@@ -455,6 +774,11 @@ class LocationUpdate(BaseModel):
     latitude: float
     longitude: float
 
+class PushTokenUpdate(BaseModel):
+    client_id: str
+    push_token: str
+    admin_id: Optional[str] = None
+
 class ClientStatusResponse(BaseModel):
     id: str
     name: str
@@ -463,19 +787,51 @@ class ClientStatusResponse(BaseModel):
     warning_message: str
     emi_amount: float
     emi_due_date: Optional[str]
+    uninstall_allowed: bool = False
 
 # ===================== ADMIN ROUTES =====================
 
+# Token configuration
+TOKEN_EXPIRY_HOURS = 24  # 24-hour token lifetime as per security requirements
+
 async def verify_admin_token_header(token: str) -> bool:
-    """Helper function to verify admin token"""
+    """
+    Helper function to verify admin token.
+    Checks both token existence and expiration.
+    
+    Args:
+        token: The admin token to verify
+        
+    Returns:
+        True if token is valid and not expired, False otherwise
+    """
     token_doc = await db.admin_tokens.find_one({"token": token})
-    return token_doc is not None
+    if not token_doc:
+        return False
+    
+    # Check if token has expired
+    if "expires_at" in token_doc:
+        if datetime.utcnow() > token_doc["expires_at"]:
+            # Token expired, remove it
+            await db.admin_tokens.delete_one({"token": token})
+            return False
+    
+    return True
+
+async def enforce_client_scope(client: dict, admin_id: Optional[str]):
+    """Ensure the requested client belongs to the provided admin scope"""
+    if client.get("admin_id"):
+        if not admin_id or client["admin_id"] != admin_id:
+            raise AuthorizationException("Client not accessible for this admin")
+    elif admin_id:
+        logger.warning(f"Admin {admin_id} attempted to access unassigned client {client['id']}")
+        raise AuthorizationException("Client not assigned to this admin")
 
 @api_router.post("/admin/register", response_model=AdminResponse)
-async def register_admin(admin_data: AdminCreate, admin_token: str = None):
+async def register_admin(admin_data: AdminCreate, admin_token: str = Query(default=None)):
     # Validate password length
     if len(admin_data.password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+        raise ValidationException("Password must be at least 6 characters")
     
     # Check if any admin exists - if yes, require token and check creator's role
     admin_count = await db.admins.count_documents({})
@@ -483,32 +839,41 @@ async def register_admin(admin_data: AdminCreate, admin_token: str = None):
     
     if not is_first_admin:
         if not admin_token:
-            raise HTTPException(status_code=401, detail="Admin token required to register new users")
+            raise AuthenticationException("Admin token required to register new users")
         
         # Get the creator's info
         token_data = await db.admin_tokens.find_one({"token": admin_token})
         if not token_data:
-            raise HTTPException(status_code=401, detail="Invalid admin token")
+            raise AuthenticationException("Invalid admin token")
         
         creator = await db.admins.find_one({"id": token_data["admin_id"]})
         if not creator or creator.get("role") != "admin":
-            raise HTTPException(status_code=403, detail="Only admins can create new users")
+            raise AuthorizationException("Only admins can create new users")
     
     # Check if username already exists
     existing = await db.admins.find_one({"username": admin_data.username})
     if existing:
-        raise HTTPException(status_code=400, detail="Username already exists")
+        raise ValidationException("Username already exists")
     
     admin = Admin(
         username=admin_data.username,
         password_hash=hash_password(admin_data.password),
         role=admin_data.role if not is_first_admin else "admin",
-        is_super_admin=is_first_admin
+        is_super_admin=is_first_admin,
+        first_name=admin_data.first_name,
+        last_name=admin_data.last_name
     )
     await db.admins.insert_one(admin.dict())
     
+    # Generate token with expiration
     token = secrets.token_hex(32)
-    await db.admin_tokens.insert_one({"admin_id": admin.id, "token": token})
+    expires_at = datetime.utcnow() + timedelta(hours=TOKEN_EXPIRY_HOURS)
+    await db.admin_tokens.insert_one({
+        "admin_id": admin.id,
+        "token": token,
+        "created_at": datetime.utcnow(),
+        "expires_at": expires_at
+    })
     
     return AdminResponse(
         id=admin.id, 
@@ -522,12 +887,28 @@ async def register_admin(admin_data: AdminCreate, admin_token: str = None):
 async def login_admin(login_data: AdminLogin):
     admin = await db.admins.find_one({"username": login_data.username})
     if not admin or not verify_password(login_data.password, admin["password_hash"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise AuthenticationException("Invalid credentials")
     
+    # Check if password needs rehashing (for legacy SHA-256 hashes)
+    if len(admin["password_hash"]) == 64:
+        # Legacy SHA-256 hash detected - rehash with Argon2id
+        logger.info(f"Migrating password hash for user {admin['username']} to Argon2id")
+        new_hash = hash_password(login_data.password)
+        await db.admins.update_one(
+            {"id": admin["id"]},
+            {"$set": {"password_hash": new_hash}}
+        )
+    
+    # Generate token with expiration
     token = secrets.token_hex(32)
+    expires_at = datetime.utcnow() + timedelta(hours=TOKEN_EXPIRY_HOURS)
     await db.admin_tokens.update_one(
         {"admin_id": admin["id"]},
-        {"$set": {"token": token}},
+        {"$set": {
+            "token": token,
+            "created_at": datetime.utcnow(),
+            "expires_at": expires_at
+        }},
         upsert=True
     )
     
@@ -541,10 +922,17 @@ async def login_admin(login_data: AdminLogin):
 
 @api_router.get("/admin/verify/{token}")
 async def verify_admin_token(token: str):
+    """Verify if a token is valid and not expired"""
+    is_valid = await verify_admin_token_header(token)
+    if not is_valid:
+        raise AuthenticationException("Invalid or expired token")
+    
     token_doc = await db.admin_tokens.find_one({"token": token})
-    if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    return {"valid": True, "admin_id": token_doc["admin_id"]}
+    return {
+        "valid": True,
+        "admin_id": token_doc["admin_id"],
+        "expires_at": token_doc.get("expires_at").isoformat() if token_doc.get("expires_at") else None
+    }
 
 # ===================== ADMIN MANAGEMENT ROUTES =====================
 
@@ -560,16 +948,16 @@ class AdminListResponse(BaseModel):
     created_at: datetime
 
 @api_router.get("/admin/list")
-async def list_admins(admin_token: str):
+async def list_admins(admin_token: str = Query(...)):
     """List all users (requires admin role)"""
     # Verify token and check if requester is an admin
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     requester = await db.admins.find_one({"id": token_doc["admin_id"]})
     if not requester or requester.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Only admins can view user list")
+        raise AuthorizationException("Only admins can view user list")
     
     admins = await db.admins.find().to_list(100)
     return [{
@@ -581,15 +969,15 @@ async def list_admins(admin_token: str):
     } for a in admins]
 
 @api_router.post("/admin/change-password")
-async def change_password(admin_token: str, password_data: PasswordChange):
+async def change_password(password_data: PasswordChange, admin_token: str = Query(...)):
     """Change admin password"""
     # Validate new password length
     if len(password_data.new_password) < 6:
-        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+        raise ValidationException("New password must be at least 6 characters")
     
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     admin = await db.admins.find_one({"id": token_doc["admin_id"]})
     if not admin:
@@ -597,7 +985,7 @@ async def change_password(admin_token: str, password_data: PasswordChange):
     
     # Verify current password
     if not verify_password(password_data.current_password, admin["password_hash"]):
-        raise HTTPException(status_code=401, detail="Current password is incorrect")
+        raise AuthenticationException("Current password is incorrect")
     
     # Update password
     new_hash = hash_password(password_data.new_password)
@@ -608,86 +996,62 @@ async def change_password(admin_token: str, password_data: PasswordChange):
     
     return {"message": "Password changed successfully"}
 
-class AdminProfileUpdate(BaseModel):
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+class ProfileUpdate(BaseModel):
+    first_name: str
+    last_name: str
     email: Optional[str] = None
     phone: Optional[str] = None
 
-@api_router.put("/admin/profile")
-async def update_admin_profile(update_data: AdminProfileUpdate, admin_token: str):
-    """Update own admin profile (first name, last name, email, phone)"""
+@api_router.put("/admin/update-profile")
+async def update_admin_profile(profile_data: ProfileUpdate, admin_token: str = Query(...)):
+    """Update admin profile information"""
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     admin = await db.admins.find_one({"id": token_doc["admin_id"]})
     if not admin:
         raise HTTPException(status_code=404, detail="Admin not found")
     
-    update_dict = {}
-    
-    if update_data.first_name is not None:
-        update_dict["first_name"] = update_data.first_name.strip() if update_data.first_name else None
-    
-    if update_data.last_name is not None:
-        update_dict["last_name"] = update_data.last_name.strip() if update_data.last_name else None
-    
-    if update_data.email is not None:
-        update_dict["email"] = update_data.email.strip() if update_data.email else None
-    
-    if update_data.phone is not None:
-        update_dict["phone"] = update_data.phone.strip() if update_data.phone else None
-    
-    if update_dict:
-        await db.admins.update_one({"id": admin["id"]}, {"$set": update_dict})
-    
-    updated_admin = await db.admins.find_one({"id": admin["id"]})
-    return {
-        "message": "Profile updated successfully",
-        "first_name": updated_admin.get("first_name"),
-        "last_name": updated_admin.get("last_name"),
-        "email": updated_admin.get("email"),
-        "phone": updated_admin.get("phone")
+    # Update profile fields
+    update_data = {
+        "first_name": profile_data.first_name,
+        "last_name": profile_data.last_name,
     }
+    if profile_data.email:
+        update_data["email"] = profile_data.email
+    if profile_data.phone:
+        update_data["phone"] = profile_data.phone
+    
+    await db.admins.update_one(
+        {"id": admin["id"]},
+        {"$set": update_data}
+    )
+    
+    logger.info(f"Profile updated for admin: {admin['username']}")
+    return {"message": "Profile updated successfully"}
 
-@api_router.get("/admin/profile")
-async def get_admin_profile(admin_token: str):
-    """Get current admin profile"""
-    token_doc = await db.admin_tokens.find_one({"token": admin_token})
-    if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
-    
-    admin = await db.admins.find_one({"id": token_doc["admin_id"]})
-    if not admin:
-        raise HTTPException(status_code=404, detail="Admin not found")
-    
-    return {
-        "id": admin["id"],
-        "username": admin["username"],
-        "role": admin.get("role", "user"),
-        "is_super_admin": admin.get("is_super_admin", False),
-        "first_name": admin.get("first_name"),
-        "last_name": admin.get("last_name"),
-        "email": admin.get("email"),
-        "phone": admin.get("phone")
-    }
+# Alias route for consistency - /admin/profile points to the same handler
+@api_router.put("/admin/profile")
+async def update_admin_profile_alias(profile_data: ProfileUpdate, admin_token: str = Query(...)):
+    """Update admin profile information (alias endpoint)"""
+    return await update_admin_profile(profile_data, admin_token)
 
 @api_router.delete("/admin/{admin_id}")
-async def delete_admin(admin_id: str, admin_token: str):
+async def delete_admin(admin_id: str, admin_token: str = Query(...)):
     """Delete a user (requires admin role, cannot delete yourself, super admin, or last admin)"""
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     # Check if requester is an admin
     requester = await db.admins.find_one({"id": token_doc["admin_id"]})
     if not requester or requester.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Only admins can delete users")
+        raise AuthorizationException("Only admins can delete users")
     
     # Cannot delete yourself
     if token_doc["admin_id"] == admin_id:
-        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+        raise ValidationException("Cannot delete your own account")
     
     # Check if target user is super admin
     target_user = await db.admins.find_one({"id": admin_id})
@@ -695,12 +1059,12 @@ async def delete_admin(admin_id: str, admin_token: str):
         raise HTTPException(status_code=404, detail="User not found")
     
     if target_user.get("is_super_admin", False):
-        raise HTTPException(status_code=403, detail="Cannot delete super admin")
+        raise AuthorizationException("Cannot delete super admin")
     
     # Check if this is the last admin
     admin_count = await db.admins.count_documents({"role": "admin"})
     if admin_count <= 1 and target_user.get("role") == "admin":
-        raise HTTPException(status_code=400, detail="Cannot delete the last admin")
+        raise ValidationException("Cannot delete the last admin")
     
     # Delete user
     result = await db.admins.delete_one({"id": admin_id})
@@ -715,37 +1079,39 @@ async def delete_admin(admin_id: str, admin_token: str):
 # ===================== CLIENT MANAGEMENT ROUTES =====================
 
 @api_router.post("/clients", response_model=Client)
-async def create_client(client_data: ClientCreate, admin_token: str):
-    """Create a new client - requires admin authentication"""
-    token_doc = await db.admin_tokens.find_one({"token": admin_token})
-    if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+async def create_client(client_data: ClientCreate, admin_token: Optional[str] = Query(default=None)):
+    admin_id = client_data.admin_id
     
-    client = Client(**client_data.dict(), admin_id=token_doc["admin_id"])
+    if admin_token:
+        token_doc = await db.admin_tokens.find_one({"token": admin_token})
+        if not token_doc:
+            raise AuthenticationException("Invalid admin token")
+        admin_id = token_doc["admin_id"]
+    
+    client_payload = client_data.dict()
+    if admin_id:
+        client_payload["admin_id"] = admin_id
+    
+    client = Client(**client_payload)
     await db.clients.insert_one(client.dict())
     return client
 
 @api_router.get("/clients")
-async def get_all_clients(admin_token: str, skip: int = 0, limit: int = 100):
-    """Get all clients for the authenticated admin with pagination
+async def get_all_clients(skip: int = Query(default=0), limit: int = Query(default=100), admin_id: Optional[str] = Query(default=None)):
+    """Get all clients with pagination
     
     Args:
-        admin_token: Admin authentication token
         skip: Number of records to skip (default: 0)
         limit: Maximum number of records to return (default: 100, max: 500)
     """
-    token_doc = await db.admin_tokens.find_one({"token": admin_token})
-    if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
-    
-    admin_id = token_doc["admin_id"]
-    
     # Cap limit at 500 to prevent excessive data transfer
     limit = min(limit, 500)
     
-    # Filter by admin_id - only show clients created by this admin
-    # Also include clients with no admin_id (legacy data) for backwards compatibility
-    query = {"$or": [{"admin_id": admin_id}, {"admin_id": None}, {"admin_id": {"$exists": False}}]}
+    if not admin_id:
+        logger.warning("admin_id not provided for client listing; rejecting request")
+        raise ValidationException("admin_id is required for client listings")
+    
+    query = {"admin_id": admin_id}
     
     # Get total count for pagination metadata
     total_count = await db.clients.count_documents(query)
@@ -765,20 +1131,20 @@ async def get_all_clients(admin_token: str, skip: int = 0, limit: int = 100):
     }
 
 @api_router.get("/clients/{client_id}", response_model=Client)
-async def get_client(client_id: str):
+async def get_client(client_id: str, admin_id: Optional[str] = Query(default=None)):
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
+    await enforce_client_scope(client, admin_id)
     return Client(**client)
 
 @api_router.put("/clients/{client_id}", response_model=Client)
-async def update_client(client_id: str, update_data: ClientUpdate, admin_token: str):
-    if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
-    
+async def update_client(client_id: str, update_data: ClientUpdate, admin_id: Optional[str] = Query(default=None)):
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await enforce_client_scope(client, admin_id)
     
     update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
     if update_dict:
@@ -788,14 +1154,12 @@ async def update_client(client_id: str, update_data: ClientUpdate, admin_token: 
     return Client(**updated_client)
 
 @api_router.post("/clients/{client_id}/allow-uninstall")
-async def allow_uninstall(client_id: str, admin_token: str):
+async def allow_uninstall(client_id: str, admin_id: Optional[str] = Query(default=None)):
     """Signal device to allow app uninstallation - must be called before deletion"""
-    if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
-    
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await enforce_client_scope(client, admin_id)
     
     # Mark client as ready for uninstall
     await db.clients.update_one(
@@ -811,13 +1175,11 @@ async def allow_uninstall(client_id: str, admin_token: str):
     }
 
 @api_router.delete("/clients/{client_id}")
-async def delete_client(client_id: str, admin_token: str):
-    if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
-    
+async def delete_client(client_id: str, admin_id: Optional[str] = Query(default=None)):
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await enforce_client_scope(client, admin_id)
     
     # Check if uninstall was allowed first
     if not client.get("uninstall_allowed", False):
@@ -836,13 +1198,11 @@ async def delete_client(client_id: str, admin_token: str):
 # ===================== LOCK CONTROL ROUTES =====================
 
 @api_router.post("/clients/{client_id}/lock")
-async def lock_client_device(client_id: str, message: Optional[str] = None, admin_token: str = None):
-    if not admin_token or not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
-    
+async def lock_client_device(client_id: str, message: Optional[str] = None, admin_id: Optional[str] = Query(default=None)):
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await enforce_client_scope(client, admin_id)
     
     update_data = {"is_locked": True}
     if message:
@@ -852,25 +1212,21 @@ async def lock_client_device(client_id: str, message: Optional[str] = None, admi
     return {"message": "Device locked successfully"}
 
 @api_router.post("/clients/{client_id}/unlock")
-async def unlock_client_device(client_id: str, admin_token: str):
-    if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
-    
+async def unlock_client_device(client_id: str, admin_id: Optional[str] = Query(default=None)):
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await enforce_client_scope(client, admin_id)
     
     await db.clients.update_one({"id": client_id}, {"$set": {"is_locked": False, "warning_message": ""}})
     return {"message": "Device unlocked successfully"}
 
 @api_router.post("/clients/{client_id}/warning")
-async def send_warning(client_id: str, message: str, admin_token: str):
-    if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
-    
+async def send_warning(client_id: str, message: str, admin_id: Optional[str] = Query(default=None)):
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await enforce_client_scope(client, admin_id)
     
     await db.clients.update_one({"id": client_id}, {"$set": {"warning_message": message}})
     return {"message": "Warning sent successfully"}
@@ -884,7 +1240,7 @@ async def register_device(registration: DeviceRegistration):
         raise HTTPException(status_code=404, detail="Invalid registration code")
     
     if client.get("is_registered"):
-        raise HTTPException(status_code=400, detail="Device already registered")
+        raise ValidationException("Device already registered")
     
     # Extract device make (brand) from device_model string
     device_make = registration.device_model.split()[0] if registration.device_model else ""
@@ -916,7 +1272,8 @@ async def get_device_status(client_id: str):
         lock_message=client["lock_message"],
         warning_message=client.get("warning_message", ""),
         emi_amount=client["emi_amount"],
-        emi_due_date=client.get("emi_due_date")
+        emi_due_date=client.get("emi_due_date"),
+        uninstall_allowed=client.get("uninstall_allowed", False)
     )
 
 @api_router.post("/device/location")
@@ -935,6 +1292,25 @@ async def update_device_location(location: LocationUpdate):
     )
     return {"message": "Location updated successfully"}
 
+@api_router.post("/device/push-token")
+async def update_push_token(token_data: PushTokenUpdate):
+    client = await db.clients.find_one({"id": token_data.client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    update_fields = {
+        "expo_push_token": token_data.push_token
+    }
+    
+    if token_data.admin_id:
+        update_fields["admin_id"] = token_data.admin_id
+    
+    await db.clients.update_one(
+        {"id": token_data.client_id},
+        {"$set": update_fields}
+    )
+    return {"message": "Push token updated"}
+
 @api_router.post("/device/clear-warning/{client_id}")
 async def clear_warning(client_id: str):
     client = await db.clients.find_one({"id": client_id})
@@ -943,6 +1319,20 @@ async def clear_warning(client_id: str):
     
     await db.clients.update_one({"id": client_id}, {"$set": {"warning_message": ""}})
     return {"message": "Warning cleared"}
+
+@api_router.post("/device/report-admin-status")
+async def report_admin_status(client_id: str, admin_active: bool):
+    """Report admin mode status from client device"""
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {"admin_mode_active": admin_active}}
+    )
+    
+    return {"message": "Admin mode status updated", "admin_active": admin_active}
 
 # ===================== TAMPER DETECTION =====================
 
@@ -998,41 +1388,70 @@ async def report_reboot(client_id: str):
 # ===================== LOAN PLANS =====================
 
 @api_router.post("/loan-plans", response_model=LoanPlan)
-async def create_loan_plan(plan_data: LoanPlanCreate, admin_token: str):
+async def create_loan_plan(plan_data: LoanPlanCreate, admin_token: str = Query(...)):
     """Create a new loan plan"""
     if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
-    plan = LoanPlan(**plan_data.dict())
+    # Get admin_id from token
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise AuthenticationException("Invalid admin token")
+    
+    # Create plan with admin_id
+    plan_dict = plan_data.dict()
+    plan_dict["admin_id"] = token_doc["admin_id"]
+    plan = LoanPlan(**plan_dict)
     await db.loan_plans.insert_one(plan.dict())
     
-    logger.info(f"Loan plan created: {plan.name}")
+    logger.info(f"Loan plan created: {plan.name} by admin {token_doc['admin_id']}")
     return plan
 
 @api_router.get("/loan-plans")
-async def get_loan_plans(active_only: bool = False):
-    """Get all loan plans"""
-    query = {"is_active": True} if active_only else {}
+async def get_loan_plans(active_only: bool = Query(default=False), admin_id: Optional[str] = Query(default=None)):
+    """Get all loan plans for the specified admin"""
+    if not admin_id:
+        logger.warning("admin_id not provided for loan plan listing; rejecting request")
+        raise ValidationException("admin_id is required for loan plan listings")
+    
+    query = {"admin_id": admin_id}
+    if active_only:
+        query["is_active"] = True
+    
     plans = await db.loan_plans.find(query).to_list(100)
     return [LoanPlan(**p) for p in plans]
 
 @api_router.get("/loan-plans/{plan_id}", response_model=LoanPlan)
-async def get_loan_plan(plan_id: str):
+async def get_loan_plan(plan_id: str, admin_id: Optional[str] = Query(default=None)):
     """Get a specific loan plan"""
     plan = await db.loan_plans.find_one({"id": plan_id})
     if not plan:
         raise HTTPException(status_code=404, detail="Loan plan not found")
+    
+    # Check admin ownership if admin_id is provided
+    if admin_id and plan.get("admin_id") and plan["admin_id"] != admin_id:
+        raise AuthorizationException("Access denied: This loan plan belongs to another admin")
+    
     return LoanPlan(**plan)
 
 @api_router.put("/loan-plans/{plan_id}", response_model=LoanPlan)
-async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token: str):
+async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token: str = Query(...)):
     """Update a loan plan"""
     if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
+    
+    # Get admin_id from token
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise AuthenticationException("Invalid admin token")
     
     plan = await db.loan_plans.find_one({"id": plan_id})
     if not plan:
         raise HTTPException(status_code=404, detail="Loan plan not found")
+    
+    # Check admin ownership
+    if plan.get("admin_id") and plan["admin_id"] != token_doc["admin_id"]:
+        raise AuthorizationException("Access denied: This loan plan belongs to another admin")
     
     await db.loan_plans.update_one(
         {"id": plan_id},
@@ -1040,58 +1459,73 @@ async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token:
     )
     
     updated_plan = await db.loan_plans.find_one({"id": plan_id})
-    logger.info(f"Loan plan updated: {plan_id}")
+    logger.info(f"Loan plan updated: {plan_id} by admin {token_doc['admin_id']}")
     return LoanPlan(**updated_plan)
 
 @api_router.delete("/loan-plans/{plan_id}")
-async def delete_loan_plan(plan_id: str, admin_token: str, permanent: bool = False):
-    """Delete a loan plan - soft delete (deactivate) or permanent delete"""
+async def delete_loan_plan(plan_id: str, admin_token: str = Query(...), force: bool = Query(default=False)):
+    """Delete a loan plan permanently. Checks for client usage unless force=true."""
     if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
-    if permanent:
-        # Check if any clients are using this plan
-        clients_using_plan = await db.clients.count_documents({"loan_plan_id": plan_id})
-        if clients_using_plan > 0:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Cannot delete: {clients_using_plan} client(s) are using this loan plan. Deactivate it instead."
-            )
-        
-        # Permanent delete
-        result = await db.loan_plans.delete_one({"id": plan_id})
-        if result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail="Loan plan not found")
-        
-        logger.info(f"Loan plan permanently deleted: {plan_id}")
-        return {"message": "Loan plan permanently deleted"}
-    else:
-        # Soft delete - just deactivate
-        result = await db.loan_plans.update_one(
-            {"id": plan_id},
-            {"$set": {"is_active": False}}
+    # Get admin_id from token
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise AuthenticationException("Invalid admin token")
+    
+    # Check if plan exists and belongs to admin
+    plan = await db.loan_plans.find_one({"id": plan_id})
+    if not plan:
+        raise HTTPException(status_code=404, detail="Loan plan not found")
+    
+    # Check admin ownership
+    if plan.get("admin_id") and plan["admin_id"] != token_doc["admin_id"]:
+        raise AuthorizationException("Access denied: This loan plan belongs to another admin")
+    
+    # Check if any clients are using this loan plan
+    clients_using_plan = await db.clients.count_documents({"loan_plan_id": plan_id})
+    
+    if clients_using_plan > 0 and not force:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot delete loan plan: {clients_using_plan} client(s) are currently using this plan. Please reassign clients to a different plan first, or use force=true to delete and clear client references."
         )
-        
-        if result.modified_count == 0:
-            raise HTTPException(status_code=404, detail="Loan plan not found")
-        
-        logger.info(f"Loan plan deactivated: {plan_id}")
-        return {"message": "Loan plan deactivated successfully"}
+    
+    # If force=true or no clients using the plan, proceed with deletion
+    if force and clients_using_plan > 0:
+        # Clear the loan_plan_id from all clients using this plan
+        await db.clients.update_many(
+            {"loan_plan_id": plan_id},
+            {"$set": {"loan_plan_id": None}}
+        )
+        logger.info(f"Cleared loan_plan_id from {clients_using_plan} clients before deleting plan {plan_id}")
+    
+    # Hard delete - remove from database
+    result = await db.loan_plans.delete_one({"id": plan_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Loan plan not found")
+    
+    logger.info(f"Loan plan deleted: {plan_id} by admin {token_doc['admin_id']}")
+    return {
+        "message": "Loan plan deleted successfully",
+        "clients_affected": clients_using_plan if force else 0
+    }
 
 # ===================== EMI CALCULATOR =====================
 
 @api_router.get("/calculator/compare")
 async def compare_emi_methods(
-    principal: float,
-    annual_rate: float,
-    months: int
+    principal: float = Query(...),
+    annual_rate: float = Query(...),
+    months: int = Query(...)
 ):
     """Compare EMI calculations using all three methods"""
     if principal <= 0 or months <= 0:
-        raise HTTPException(status_code=400, detail="Principal and months must be positive")
+        raise ValidationException("Principal and months must be positive")
     
     if annual_rate < 0:
-        raise HTTPException(status_code=400, detail="Interest rate cannot be negative")
+        raise ValidationException("Interest rate cannot be negative")
     
     comparison = calculate_all_methods(principal, annual_rate, months)
     
@@ -1116,7 +1550,7 @@ async def calculate_amortization_schedule(
 ):
     """Generate month-by-month amortization schedule"""
     if principal <= 0 or months <= 0:
-        raise HTTPException(status_code=400, detail="Principal and months must be positive")
+        raise ValidationException("Principal and months must be positive")
     
     # Calculate EMI based on method
     if method == "reducing_balance":
@@ -1165,11 +1599,14 @@ async def calculate_amortization_schedule(
 # ===================== LOAN MANAGEMENT =====================
 
 @api_router.post("/loans/{client_id}/setup")
-async def setup_loan(client_id: str, loan_data: LoanSetupRequest):
+async def setup_loan(client_id: str, loan_data: LoanSetup, admin_id: Optional[str] = Query(default=None)):
     """Setup or update loan details for a client"""
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Enforce admin scope - ensure client belongs to requesting admin
+    await enforce_client_scope(client, admin_id)
     
     # Calculate EMI using simple interest
     loan_calc = calculate_simple_interest_emi(
@@ -1206,20 +1643,21 @@ async def setup_loan(client_id: str, loan_data: LoanSetupRequest):
     }
 
 @api_router.post("/loans/{client_id}/payments")
-async def record_payment(client_id: str, payment_data: PaymentCreate, admin_token: str):
+async def record_payment(client_id: str, payment_data: PaymentCreate, admin_token: str = Query(...)):
     """Record a payment for a client's loan"""
     # Verify admin token
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     admin = await db.admins.find_one({"id": token_doc["admin_id"]})
     if not admin:
-        raise HTTPException(status_code=401, detail="Admin not found")
+        raise AuthenticationException("Admin not found")
     
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await enforce_client_scope(client, admin["id"])
     
     # Create payment record
     payment = Payment(
@@ -1270,11 +1708,14 @@ async def record_payment(client_id: str, payment_data: PaymentCreate, admin_toke
     }
 
 @api_router.get("/loans/{client_id}/payments")
-async def get_payment_history(client_id: str):
+async def get_payment_history(client_id: str, admin_id: Optional[str] = Query(default=None)):
     """Get payment history for a client"""
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Enforce admin scope
+    await enforce_client_scope(client, admin_id)
     
     payments = await db.payments.find({"client_id": client_id}).sort("payment_date", -1).to_list(100)
     
@@ -1285,14 +1726,17 @@ async def get_payment_history(client_id: str):
     }
 
 @api_router.get("/loans/{client_id}/schedule")
-async def get_payment_schedule(client_id: str):
+async def get_payment_schedule(client_id: str, admin_id: Optional[str] = Query(default=None)):
     """Generate payment schedule for a client's loan"""
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
+    # Enforce admin scope
+    await enforce_client_scope(client, admin_id)
+    
     if not client.get("loan_start_date"):
-        raise HTTPException(status_code=400, detail="Loan not set up for this client")
+        raise ValidationException("Loan not set up for this client")
     
     from dateutil.relativedelta import relativedelta
     
@@ -1330,11 +1774,14 @@ async def get_payment_schedule(client_id: str):
     }
 
 @api_router.put("/loans/{client_id}/settings")
-async def update_loan_settings(client_id: str, settings: LoanSettings):
+async def update_loan_settings(client_id: str, settings: LoanSettings, admin_id: Optional[str] = Query(default=None)):
     """Update auto-lock settings for a client"""
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Enforce admin scope
+    await enforce_client_scope(client, admin_id)
     
     await db.clients.update_one(
         {"id": client_id},
@@ -1353,10 +1800,10 @@ async def update_loan_settings(client_id: str, settings: LoanSettings):
 # ===================== LATE FEES & REMINDERS =====================
 
 @api_router.post("/late-fees/calculate-all")
-async def calculate_all_late_fees(admin_token: str):
+async def calculate_all_late_fees(admin_token: str = Query(...)):
     """Manually trigger late fee calculation for all overdue clients"""
     if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     await apply_late_fees_to_overdue_clients()
     return {"message": "Late fees calculated and applied successfully"}
@@ -1380,26 +1827,33 @@ async def get_client_late_fees(client_id: str):
     }
 
 @api_router.get("/reminders")
-async def get_reminders(sent: bool = None, limit: int = 100):
+async def get_reminders(sent: bool = Query(default=None), limit: int = Query(default=100), admin_id: Optional[str] = Query(default=None)):
     """Get all reminders, optionally filtered by sent status"""
     query = {}
     if sent is not None:
         query["sent"] = sent
+    if admin_id:
+        query["admin_id"] = admin_id
     
     reminders = await db.reminders.find(query).sort("scheduled_date", -1).limit(limit).to_list(limit)
     return [Reminder(**r) for r in reminders]
 
 @api_router.get("/clients/{client_id}/reminders")
-async def get_client_reminders(client_id: str):
+async def get_client_reminders(client_id: str, admin_id: Optional[str] = Query(default=None)):
     """Get reminders for a specific client"""
-    reminders = await db.reminders.find({"client_id": client_id}).sort("scheduled_date", -1).to_list(50)
+    query = {"client_id": client_id}
+    
+    if admin_id:
+        query["admin_id"] = admin_id
+    
+    reminders = await db.reminders.find(query).sort("scheduled_date", -1).to_list(50)
     return [Reminder(**r) for r in reminders]
 
 @api_router.post("/reminders/create-all")
-async def create_all_reminders(admin_token: str):
+async def create_all_reminders(admin_token: str = Query(...)):
     """Manually trigger reminder creation for all clients"""
     if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     await create_payment_reminders()
     return {"message": "Reminders created successfully"}
@@ -1420,25 +1874,21 @@ async def mark_reminder_sent(reminder_id: str):
 # ===================== REPORTS & ANALYTICS =====================
 
 @api_router.get("/reports/collection")
-async def get_collection_report(admin_token: str):
-    """Get collection statistics and metrics for the authenticated admin"""
-    token_doc = await db.admin_tokens.find_one({"token": admin_token})
-    if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
-    
-    admin_id = token_doc["admin_id"]
-    # Filter by admin_id - include legacy clients without admin_id
-    query = {"$or": [{"admin_id": admin_id}, {"admin_id": None}, {"admin_id": {"$exists": False}}]}
+async def get_collection_report(admin_id: Optional[str] = Query(default=None)):
+    """Get collection statistics and metrics"""
+    # Build query filter for admin
+    query = {}
+    if admin_id:
+        query["admin_id"] = admin_id
     
     # Total clients
     total_clients = await db.clients.count_documents(query)
-    active_query = {**query, "outstanding_balance": {"$gt": 0}}
-    completed_query = {**query, "outstanding_balance": 0, "total_paid": {"$gt": 0}}
-    active_loans = await db.clients.count_documents({"$and": [query, {"outstanding_balance": {"$gt": 0}}]})
-    completed_loans = await db.clients.count_documents({"$and": [query, {"outstanding_balance": 0, "total_paid": {"$gt": 0}}]})
+    active_loans = await db.clients.count_documents({**query, "outstanding_balance": {"$gt": 0}})
+    completed_loans = await db.clients.count_documents({**query, "outstanding_balance": 0, "total_paid": {"$gt": 0}})
     
     # Financial totals
     clients = await db.clients.find(query).to_list(1000)
+    clients_by_id = {c.get("id"): c for c in clients if c.get("id")}
     total_disbursed = sum(c.get("total_amount_due", 0) for c in clients)
     total_collected = sum(c.get("total_paid", 0) for c in clients)
     total_outstanding = sum(c.get("outstanding_balance", 0) for c in clients)
@@ -1453,8 +1903,43 @@ async def get_collection_report(admin_token: str):
     # This month's collections
     from dateutil.relativedelta import relativedelta
     month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    month_payments = await db.payments.find({"payment_date": {"$gte": month_start}}).to_list(1000)
+    month_end = month_start + relativedelta(months=1)
+    
+    # Get client IDs for this admin to filter payments
+    client_ids = [c.get("id") for c in clients if c.get("id")]
+    payment_query = {"payment_date": {"$gte": month_start}}
+    if client_ids:
+        payment_query["client_id"] = {"$in": client_ids}
+    
+    month_payments = await db.payments.find(payment_query).to_list(1000)
     month_collected = sum(p.get("amount", 0) for p in month_payments)
+    month_profit = 0
+    for payment in month_payments:
+        client = clients_by_id.get(payment.get("client_id"))
+        if not client:
+            continue
+        total_due = client.get("total_amount_due", 0)
+        if total_due <= 0:
+            continue
+        principal = client.get("loan_amount", 0)
+        if principal < 0 or principal > total_due:
+            continue
+        # principal may equal total_due for interest-free loans (margin becomes 0)
+        margin = (total_due - principal) / total_due
+        month_profit += payment.get("amount", 0) * margin
+    
+    # Amounts due this month (not yet rolled to next month)
+    month_due_total = 0
+    for client in clients:
+        next_due = client.get("next_payment_due")
+        if (
+            isinstance(next_due, datetime)
+            and month_start <= next_due < month_end
+            and client.get("outstanding_balance", 0) > 0
+        ):
+            monthly_due = client.get("monthly_emi", 0) or 0
+            outstanding = client.get("outstanding_balance", 0) or 0
+            month_due_total += min(monthly_due, outstanding)
     
     return {
         "overview": {
@@ -1472,19 +1957,19 @@ async def get_collection_report(admin_token: str):
         },
         "this_month": {
             "total_collected": round(month_collected, 2),
-            "number_of_payments": len(month_payments)
+            "number_of_payments": len(month_payments),
+            "profit_collected": round(month_profit, 2),
+            "due_outstanding": round(month_due_total, 2)
         }
     }
 
 @api_router.get("/reports/clients")
-async def get_client_report(admin_token: str):
-    """Get client-wise statistics filtered by admin"""
-    token_doc = await db.admin_tokens.find_one({"token": admin_token})
-    if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+async def get_client_report(admin_id: Optional[str] = Query(default=None)):
+    """Get client-wise statistics"""
+    query = {}
+    if admin_id:
+        query["admin_id"] = admin_id
     
-    admin_id = token_doc["admin_id"]
-    query = {"$or": [{"admin_id": admin_id}, {"admin_id": None}, {"admin_id": {"$exists": False}}]}
     clients = await db.clients.find(query).to_list(1000)
     
     # Categorize clients
@@ -1521,19 +2006,21 @@ async def get_client_report(admin_token: str):
     }
 
 @api_router.get("/reports/financial")
-async def get_financial_report(admin_token: str):
-    """Get detailed financial breakdown filtered by admin"""
-    token_doc = await db.admin_tokens.find_one({"token": admin_token})
-    if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+async def get_financial_report(admin_id: Optional[str] = Query(default=None)):
+    """Get detailed financial breakdown"""
+    query = {}
+    if admin_id:
+        query["admin_id"] = admin_id
     
-    admin_id = token_doc["admin_id"]
-    query = {"$or": [{"admin_id": admin_id}, {"admin_id": None}, {"admin_id": {"$exists": False}}]}
     clients = await db.clients.find(query).to_list(1000)
     
-    # Get client IDs for filtering payments
-    client_ids = [c["id"] for c in clients]
-    payments = await db.payments.find({"client_id": {"$in": client_ids}}).to_list(1000)
+    # Get client IDs to filter payments
+    client_ids = [c.get("id") for c in clients if c.get("id")]
+    payment_query = {}
+    if client_ids:
+        payment_query["client_id"] = {"$in": client_ids}
+    
+    payments = await db.payments.find(payment_query).to_list(1000)
     
     # Calculate totals
     total_principal = sum(c.get("loan_amount", 0) for c in clients)
@@ -1576,15 +2063,16 @@ async def get_financial_report(admin_token: str):
 # ===================== PHONE PRICE LOOKUP =====================
 
 @api_router.get("/clients/{client_id}/fetch-price")
-async def fetch_phone_price(client_id: str):
+async def fetch_phone_price(client_id: str, admin_id: Optional[str] = Query(default=None)):
     """Fetch used phone price for a client's device"""
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    await enforce_client_scope(client, admin_id)
     
     device_model = client.get("device_model", "")
     if not device_model or device_model == "Unknown Device":
-        raise HTTPException(status_code=400, detail="Device model not available")
+        raise ValidationException("Device model not available")
     
     try:
         # Use web search to find phone price
@@ -1647,10 +2135,17 @@ async def fetch_phone_price(client_id: str):
 # ===================== STATS ROUTE =====================
 
 @api_router.get("/stats")
-async def get_stats():
-    total_clients = await db.clients.count_documents({})
-    locked_devices = await db.clients.count_documents({"is_locked": True})
-    registered_devices = await db.clients.count_documents({"is_registered": True})
+async def get_stats(admin_id: Optional[str] = Query(default=None)):
+    """Get statistics, optionally filtered by admin_id"""
+    query = {}
+    if admin_id:
+        query["admin_id"] = admin_id
+    
+    total_clients = await db.clients.count_documents(query)
+    locked_query = {**query, "is_locked": True}
+    locked_devices = await db.clients.count_documents(locked_query)
+    registered_query = {**query, "is_registered": True}
+    registered_devices = await db.clients.count_documents(registered_query)
     
     return {
         "total_clients": total_clients,
@@ -1683,26 +2178,6 @@ async def health_check():
 # Include the router in the main app
 app.include_router(api_router)
 
-# Add middleware to handle duplicate /api/ paths
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import RedirectResponse
-
-class FixDuplicateAPIMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        # Check if path has duplicate /api/api/
-        if request.url.path.startswith("/api/api/"):
-            # Fix the path by removing duplicate /api/
-            fixed_path = request.url.path.replace("/api/api/", "/api/", 1)
-            logger.warning(f"Fixed duplicate API path: {request.url.path} -> {fixed_path}")
-            # Redirect to correct path
-            return RedirectResponse(url=fixed_path, status_code=307)
-        
-        response = await call_next(request)
-        return response
-
-app.add_middleware(FixDuplicateAPIMiddleware)
-
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -1710,6 +2185,49 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def swallow_404_middleware(request, call_next):
+    """Discard body for 404 responses to reduce noise."""
+    def json_redirect(corrected_path: str):
+        return JSONResponse(
+            status_code=307,
+            content={"redirect_to": corrected_path, "detail": "Use /api prefix"},
+            headers={"Location": corrected_path}
+        )
+
+    response = await call_next(request)
+    if response.status_code == 404:
+        path = request.url.path
+        query = f"?{request.url.query}" if request.url.query else ""
+
+        # Fix double /api/api prefix
+        if path.startswith("/api/api"):
+            corrected = path.replace("/api/api", "/api", 1) + query
+            return json_redirect(corrected)
+
+        # Add missing /api prefix for common admin endpoints
+        missing_admin_api_targets = (
+            "/admin/login",
+            "/admin/register",
+            "/admin/list",
+            "/admin/change-password",
+        )
+        if path in missing_admin_api_targets:
+            corrected = f"/api{path}{query}"
+            return json_redirect(corrected)
+
+        # Add missing /api prefix for common client endpoints
+        missing_client_api_targets = (
+            "/device/register",
+            "/device/status",
+        )
+        if path in missing_client_api_targets:
+            corrected = f"/api{path}{query}"
+            return json_redirect(corrected)
+
+        return Response(status_code=404)
+    return response
 
 @app.on_event("startup")
 async def startup_db_client():
@@ -1734,6 +2252,9 @@ async def startup_db_client():
         await db.admin_tokens.create_index("admin_id")
         await db.admin_tokens.create_index("token", unique=True)
         
+        # Ensure default loan plan exists
+        await ensure_default_loan_plan()
+
         logger.info("Database indexes created successfully")
     except Exception as e:
         logger.warning(f"Could not create indexes: {e}")
@@ -1743,3 +2264,23 @@ async def shutdown_db_client():
     """Close database connection on shutdown"""
     logger.info("Closing database connection...")
     client.close()
+
+
+async def ensure_default_loan_plan():
+    """Seed required default loan plan if missing."""
+    default_name = "One-Time Simple 50% Monthly"
+    existing = await db.loan_plans.find_one({"name": default_name})
+    if existing:
+        return
+
+    plan = LoanPlan(
+        name=default_name,
+        interest_rate=50.0,  # 50% per month, simple interest
+        min_tenure_months=1,
+        max_tenure_months=1,
+        processing_fee_percent=0.0,
+        late_fee_percent=0.0,
+        description="One-time loan, simple interest at 50% per month."
+    )
+    await db.loan_plans.insert_one(plan.dict())
+    logger.info(f"Seeded default loan plan: {default_name}")
