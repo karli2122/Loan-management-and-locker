@@ -426,6 +426,12 @@ class ClientCreate(BaseModel):
     interest_rate: float = 10.0  # Default 10% annual
     loan_tenure_months: int = 12
 
+class LoanSetupRequest(BaseModel):
+    loan_amount: float
+    down_payment: float = 0.0
+    interest_rate: float = 10.0
+    loan_tenure_months: int = 12
+
 class ClientUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
