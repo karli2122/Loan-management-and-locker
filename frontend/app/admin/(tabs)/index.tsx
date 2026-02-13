@@ -57,7 +57,7 @@ export default function Dashboard() {
   });
 
   const fetchStats = async () => {
-    const baseUrl = API_URL || 'https://apkdebug.preview.emergentagent.com';
+    const baseUrl = API_URL || 'https://api-token-migration.preview.emergentagent.com';
     try {
       const adminId = await AsyncStorage.getItem('admin_id');
       if (!adminId) {
