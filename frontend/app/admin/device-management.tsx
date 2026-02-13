@@ -34,7 +34,12 @@ export default function DeviceManagement() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/stats`);
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+      const adminId = await AsyncStorage.getItem('admin_id');
+      const url = adminId 
+        ? `${API_URL}/api/stats?admin_id=${adminId}` 
+        : `${API_URL}/api/stats`;
+      const response = await fetch(url);
       const data = await response.json();
       setStats(data);
     } catch (error) {
