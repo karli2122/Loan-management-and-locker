@@ -743,6 +743,13 @@ class ClientCreate(BaseModel):
     interest_rate: float = 10.0  # Default 10% annual
     loan_tenure_months: int = 12
 
+class LoanSetup(BaseModel):
+    """Model for setting up loan details for an existing client"""
+    loan_amount: float
+    interest_rate: float
+    loan_tenure_months: int
+    down_payment: float = 0.0
+
 class ClientUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
@@ -1023,6 +1030,12 @@ async def update_admin_profile(profile_data: ProfileUpdate, admin_token: str = Q
     
     logger.info(f"Profile updated for admin: {admin['username']}")
     return {"message": "Profile updated successfully"}
+
+# Alias route for consistency - /admin/profile points to the same handler
+@api_router.put("/admin/profile")
+async def update_admin_profile_alias(profile_data: ProfileUpdate, admin_token: str = Query(...)):
+    """Update admin profile information (alias endpoint)"""
+    return await update_admin_profile(profile_data, admin_token)
 
 @api_router.delete("/admin/{admin_id}")
 async def delete_admin(admin_id: str, admin_token: str = Query(...)):
@@ -1586,7 +1599,7 @@ async def calculate_amortization_schedule(
 # ===================== LOAN MANAGEMENT =====================
 
 @api_router.post("/loans/{client_id}/setup")
-async def setup_loan(client_id: str, loan_data: ClientCreate, admin_id: Optional[str] = Query(default=None)):
+async def setup_loan(client_id: str, loan_data: LoanSetup, admin_id: Optional[str] = Query(default=None)):
     """Setup or update loan details for a client"""
     client = await db.clients.find_one({"id": client_id})
     if not client:
