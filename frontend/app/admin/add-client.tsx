@@ -61,7 +61,19 @@ export default function AddClient() {
       }
 
       if (!response.ok) {
-        throw new Error(data.detail || 'Failed to create client');
+        // Handle different error response formats
+        let errorMessage = 'Failed to create client';
+        if (data.detail) {
+          if (typeof data.detail === 'string') {
+            errorMessage = data.detail;
+          } else if (Array.isArray(data.detail)) {
+            // Pydantic validation errors
+            errorMessage = data.detail.map((err: any) => err.msg || err.message || JSON.stringify(err)).join(', ');
+          } else if (typeof data.detail === 'object') {
+            errorMessage = data.detail.msg || data.detail.message || JSON.stringify(data.detail);
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const client = data;
