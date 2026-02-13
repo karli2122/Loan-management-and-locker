@@ -400,8 +400,21 @@ metadata:
   test_sequence: 1
   run_ui: false
 
+  - task: "Loan Setup API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "Found critical bug: POST /api/loans/{client_id}/setup was using ClientCreate model (requiring name, phone, email) instead of a dedicated LoanSetupRequest model. Fixed by creating LoanSetupRequest(BaseModel) with only loan_amount, down_payment, interest_rate, loan_tenure_months. Also fixed fork URL mismatch in frontend api.ts (was hardcoded to old apkdebug URL, updated to api-token-migration URL). Manually verified with curl - loan setup now returns 200 with correct EMI calculation."
+
 test_plan:
-  current_focus: []
+  current_focus:
+    - "Loan Setup API"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
