@@ -50,6 +50,28 @@ class TestAdminLogin:
         print(f"✅ Login successful - Admin ID: {data['id']}, Token length: {len(data['token'])}")
         return data
     
+    def test_login_returns_first_name_and_last_name(self):
+        """POST /api/admin/login MUST return first_name and last_name fields"""
+        response = requests.post(
+            f"{BASE_URL}/api/admin/login",
+            json={"username": TEST_USERNAME, "password": TEST_PASSWORD}
+        )
+        
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+        
+        data = response.json()
+        
+        # CRITICAL NEW ASSERTION: AdminResponse model now includes first_name and last_name
+        assert "first_name" in data, "Response MUST contain 'first_name' field (AdminResponse model update)"
+        assert "last_name" in data, "Response MUST contain 'last_name' field (AdminResponse model update)"
+        
+        # These fields are optional, so they can be None but must exist in response
+        first_name = data.get("first_name")
+        last_name = data.get("last_name")
+        
+        print(f"✅ Login returns first_name={first_name}, last_name={last_name}")
+        print(f"   Full response keys: {list(data.keys())}")
+    
     def test_login_invalid_credentials(self):
         """POST /api/admin/login with invalid credentials returns 401"""
         response = requests.post(
