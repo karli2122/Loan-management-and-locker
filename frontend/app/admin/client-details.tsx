@@ -132,8 +132,9 @@ export default function ClientDetails() {
     }
     setActionLoading(true);
     try {
+      const token = await AsyncStorage.getItem('admin_token');
       const response = await fetch(
-        `${API_BASE_URL}/api/clients/${id}/warning?message=${encodeURIComponent(warningMessage)}`,
+        `${API_BASE_URL}/api/clients/${id}/warning?message=${encodeURIComponent(warningMessage)}&admin_token=${token}`,
         { method: 'POST' }
       );
       if (!response.ok) throw new Error('Failed to send warning');
