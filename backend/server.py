@@ -1477,9 +1477,15 @@ async def get_collection_report(admin_token: str):
     }
 
 @api_router.get("/reports/clients")
-async def get_client_report():
-    """Get client-wise statistics"""
-    clients = await db.clients.find().to_list(1000)
+async def get_client_report(admin_token: str):
+    """Get client-wise statistics filtered by admin"""
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    admin_id = token_doc["admin_id"]
+    query = {"$or": [{"admin_id": admin_id}, {"admin_id": None}, {"admin_id": {"$exists": False}}]}
+    clients = await db.clients.find(query).to_list(1000)
     
     # Categorize clients
     on_time = []
