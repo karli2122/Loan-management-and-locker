@@ -11,21 +11,6 @@ buildscript {
   }
 }
 
-afterEvaluate {
-  publishing {
-    publications {
-      release(MavenPublication) {
-        from components.release
-      }
-    }
-    repositories {
-      maven {
-        url = mavenLocal().url
-      }
-    }
-  }
-}
-
 android {
   compileSdkVersion safeExtGet("compileSdkVersion", 34)
 
