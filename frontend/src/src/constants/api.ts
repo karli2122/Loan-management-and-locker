@@ -7,7 +7,7 @@ function normalize(url: string) {
   return clean;
 }
 
-export const FALLBACK_BACKEND = 'https://api-token-migration.preview.emergentagent.com';
+export const FALLBACK_BACKEND = 'https://auth-security-fix-5.preview.emergentagent.com';
 
 const rawCandidate =
   process.env.EXPO_PUBLIC_BACKEND_URL ||
