@@ -223,11 +223,17 @@ export default function LoanPlans() {
               }
               
               // Remove from local state immediately for better UX
-              setPlans(prevPlans => prevPlans.filter(p => p.id !== plan.id));
+              console.log('Deleting plan from local state:', plan.id, 'Current plans count:', plans.length);
+              setPlans(prevPlans => {
+                const filtered = prevPlans.filter(p => p.id !== plan.id);
+                console.log('After filter, plans count:', filtered.length);
+                return filtered;
+              });
               
               Alert.alert('Success', 'Plan deleted successfully');
             } catch (error: any) {
               // On error, refresh to ensure consistency
+              console.error('Delete plan error:', error);
               await fetchPlans();
               Alert.alert('Error', getErrorMessage(error, 'Failed to delete plan'));
             }
@@ -254,7 +260,12 @@ export default function LoanPlans() {
       const result = await response.json();
       
       // Remove from local state immediately for better UX
-      setPlans(prevPlans => prevPlans.filter(p => p.id !== plan.id));
+      console.log('Force deleting plan from local state:', plan.id);
+      setPlans(prevPlans => {
+        const filtered = prevPlans.filter(p => p.id !== plan.id);
+        console.log('After force delete filter, plans count:', filtered.length);
+        return filtered;
+      });
       
       const clientsAffected = result.clients_affected || 0;
       const message = clientsAffected > 0 

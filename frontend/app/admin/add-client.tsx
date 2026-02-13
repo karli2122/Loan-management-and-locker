@@ -76,34 +76,42 @@ export default function AddClient() {
     setLoading(true);
     try {
       const adminId = await AsyncStorage.getItem('admin_id');
+      const requestBody = {
+        ...form,
+        emi_amount: parseFloat(form.emi_amount) || 0,
+        admin_id: adminId || undefined,
+      };
+      
+      console.log('Creating client with data:', requestBody);
       const response = await fetch(`${baseUrl}/api/clients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          emi_amount: parseFloat(form.emi_amount) || 0,
-          admin_id: adminId || undefined,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      console.log('Create client response status:', response.status);
       if (!response.ok) {
         let detail = 'Failed to create client';
         try {
           const error = await response.json();
+          console.error('Create client error:', error);
           detail = error?.detail || detail;
-        } catch {
+        } catch (e) {
+          console.error('Error parsing error response:', e);
           // non-JSON error
         }
         throw new Error(detail);
       }
 
       const client = await response.json();
+      console.log('Client created successfully:', client.id);
       Alert.alert(
         t('success'),
         `${t('clientCreated')}\n\n${t('registrationCode')}: ${client.registration_code}\n\n${t('shareCodeMessage')}`,
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error: any) {
+      console.error('Add client error:', error);
       // Extract meaningful error message from various error formats
       let errorMessage = 'Something went wrong';
       
