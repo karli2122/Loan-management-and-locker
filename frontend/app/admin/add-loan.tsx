@@ -15,7 +15,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
-import { API_BASE_URL } from '../../src/utils/api';
+import API_URL from '../../src/constants/api';
+import { getErrorMessage } from '../../src/utils/errorHandler';
 
 interface Client {
   id: string;
@@ -67,8 +68,9 @@ export default function AddLoan() {
 
   const fetchClients = async () => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/api/clients?limit=500&admin_token=${adminToken}`);
+      const adminId = await AsyncStorage.getItem('admin_id');
+      const query = adminId ? `?limit=500&admin_id=${adminId}` : '?limit=500';
+      const response = await fetch(`${API_URL}/api/clients${query}`);
       if (response.ok) {
         const data = await response.json();
         const clientList = data?.clients || (Array.isArray(data) ? data : []);
@@ -83,9 +85,14 @@ export default function AddLoan() {
 
   const fetchLoanPlans = async () => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
-      console.log('Fetching loan plans from:', `${API_BASE_URL}/api/loan-plans?active_only=true`);
-      const response = await fetch(`${API_BASE_URL}/api/loan-plans?active_only=true&admin_token=${adminToken}`);
+      const adminId = await AsyncStorage.getItem('admin_id');
+      if (!adminId) {
+        console.error('Admin ID not found');
+        return;
+      }
+      
+      console.log('Fetching loan plans from:', `${API_URL}/api/loan-plans?active_only=true&admin_id=${adminId}`);
+      const response = await fetch(`${API_URL}/api/loan-plans?active_only=true&admin_id=${adminId}`);
       console.log('Loan plans response status:', response.status);
       if (response.ok) {
         const data = await response.json();
@@ -166,37 +173,43 @@ export default function AddLoan() {
     setLoading(true);
     try {
       let clientId = selectedClient?.id;
-      const adminToken = await AsyncStorage.getItem('admin_token');
 
       // Create new client if needed
       if (clientMode === 'new') {
+        const adminId = await AsyncStorage.getItem('admin_id');
         const newClientData = {
           name: newClientName.trim(),
           phone: newClientPhone.trim(),
           email: newClientEmail.trim(),
+          admin_id: adminId || null,
         };
         
         console.log('Creating new client for loan:', newClientData);
-        const clientResponse = await fetch(`${API_BASE_URL}/api/clients?admin_token=${adminToken}`, {
+        const clientResponse = await fetch(`${API_URL}/api/clients`, {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(newClientData),
         });
 
         console.log('Client creation response status:', clientResponse.status);
         if (!clientResponse.ok) {
+          // Try to get error message from response
           let errorMessage = `Failed to create client (${clientResponse.status})`;
           try {
-            const errorData = await clientResponse.json();
-            console.error('Client creation error data:', errorData);
-            if (errorData.detail) {
-              if (typeof errorData.detail === 'string') {
-                errorMessage = errorData.detail;
-              } else if (Array.isArray(errorData.detail)) {
-                errorMessage = errorData.detail.map((err: any) => err.msg || err.message || JSON.stringify(err)).join(', ');
+            const contentType = clientResponse.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const errorData = await clientResponse.json();
+              console.error('Client creation error data:', errorData);
+              errorMessage = errorData?.detail || errorData?.message || errorMessage;
+            } else {
+              const errorText = await clientResponse.text();
+              console.error('Client creation error text:', errorText.substring(0, 200));
+              // If it's an HTML error page, just use the status code
+              if (errorText.toLowerCase().includes('<!doctype') || errorText.toLowerCase().includes('<html')) {
+                errorMessage = `Server error (${clientResponse.status}). Please check backend connection.`;
+              } else if (errorText && errorText.length < 200) {
+                // Only use text if it's short and likely a real error message
+                errorMessage = errorText;
               }
             }
           } catch (parseError) {
@@ -211,6 +224,7 @@ export default function AddLoan() {
       }
 
       // Setup loan for the client
+      const adminId = await AsyncStorage.getItem('admin_id');
       const loanData = {
         loan_amount: loanAmountNum,
         interest_rate: interestRateNum,
@@ -218,26 +232,31 @@ export default function AddLoan() {
       };
       
       console.log('Setting up loan for client:', clientId, loanData);
-      const loanResponse = await fetch(`${API_BASE_URL}/api/loans/${clientId}/setup?admin_token=${adminToken}`, {
+      const loanResponse = await fetch(`${API_URL}/api/loans/${clientId}/setup?admin_id=${adminId || ''}`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loanData),
       });
 
       console.log('Loan setup response status:', loanResponse.status);
       if (!loanResponse.ok) {
+        // Try to get error message from response
         let errorMessage = `Failed to setup loan (${loanResponse.status})`;
         try {
-          const errorData = await loanResponse.json();
-          console.error('Loan setup error data:', errorData);
-          if (errorData.detail) {
-            if (typeof errorData.detail === 'string') {
-              errorMessage = errorData.detail;
-            } else if (Array.isArray(errorData.detail)) {
-              errorMessage = errorData.detail.map((err: any) => err.msg || err.message || JSON.stringify(err)).join(', ');
+          const contentType = loanResponse.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await loanResponse.json();
+            console.error('Loan setup error data:', errorData);
+            errorMessage = errorData?.detail || errorData?.message || errorMessage;
+          } else {
+            const errorText = await loanResponse.text();
+            console.error('Loan setup error text:', errorText.substring(0, 200));
+            // If it's an HTML error page, just use the status code
+            if (errorText.toLowerCase().includes('<!doctype') || errorText.toLowerCase().includes('<html')) {
+              errorMessage = `Server error (${loanResponse.status}). Please check backend connection.`;
+            } else if (errorText && errorText.length < 200) {
+              // Only use text if it's short and likely a real error message
+              errorMessage = errorText;
             }
           }
         } catch (parseError) {
@@ -262,13 +281,8 @@ export default function AddLoan() {
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error: any) {
+      const errorMessage = getErrorMessage(error, 'Failed to add loan. Please try again.');
       console.error('Add loan error:', error);
-      let errorMessage = 'Failed to add loan. Please try again.';
-      if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-      }
       
       Alert.alert(
         language === 'et' ? 'Viga' : 'Error',

@@ -17,7 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
-import { getApiUrl } from '../../src/utils/api';
+import API_URL, { API_BASE_URL, buildApiUrl } from '../../src/constants/api';
+import { devicePolicy } from '../../src/utils/DevicePolicy';
 
 export default function ClientRegister() {
   const router = useRouter();
@@ -25,6 +26,7 @@ export default function ClientRegister() {
   const [registrationCode, setRegistrationCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingRegistration, setCheckingRegistration] = useState(true);
+  const baseUrl = API_URL || API_BASE_URL;
 
   useEffect(() => {
     checkExistingRegistration();
@@ -34,15 +36,14 @@ export default function ClientRegister() {
     try {
       const clientId = await AsyncStorage.getItem('client_id');
       if (clientId) {
-        const statusUrl = getApiUrl(`api/device/status/${clientId}`);
-        console.log('Checking device status:', statusUrl);
-        const response = await fetch(statusUrl);
+        const response = await fetch(buildApiUrl(`device/status/${clientId}`), {
+          headers: { Accept: 'application/json' },
+        });
         if (response.ok) {
           router.replace('/client/home');
           return;
-        } else {
-          await AsyncStorage.removeItem('client_id');
         }
+        await AsyncStorage.removeItem('client_id');
       }
     } catch (error) {
       console.error('Error checking registration:', error);
@@ -51,121 +52,99 @@ export default function ClientRegister() {
     }
   };
 
-  const navigateToHome = () => {
-    console.log('Navigating to home...');
-    router.replace('/client/home');
-  };
-
   const handleRegister = async () => {
-    if (!registrationCode.trim()) {
+    const code = registrationCode.trim().toUpperCase();
+    if (!code) {
       Alert.alert(t('error'), t('fillAllFields'));
       return;
     }
 
     setLoading(true);
     try {
-      const deviceId = Device.osBuildId || Device.osInternalBuildId || `device_${Date.now()}`;
+      const deviceId = Device.osBuildId || Device.osInternalBuildId || 'unknown';
       const deviceModel = `${Device.brand || ''} ${Device.modelName || 'Unknown Device'}`.trim();
 
-      const registerUrl = getApiUrl('api/device/register');
-      console.log('Registering device at:', registerUrl);
+      const parseJson = async (resp: Response) => {
+        const text = await resp.text();
+        try {
+          return text ? JSON.parse(text) : null;
+        } catch {
+          return { raw: text };
+        }
+      };
 
-      const response = await fetch(registerUrl, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          registration_code: registrationCode.toUpperCase(),
-          device_id: deviceId,
-          device_model: deviceModel,
-        }),
-      });
+      // Try primary /api path, then fallback to base without /api to avoid 404s from double/missing prefix
+      const attemptRegister = async (url: string) =>
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            registration_code: code,
+            device_id: deviceId,
+            device_model: deviceModel,
+          }),
+        });
 
-      console.log('Registration response status:', response.status);
-      
-      const responseText = await response.text();
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (e) {
-        console.error('Parse error:', responseText.substring(0, 200));
-        throw new Error('Server error. Please try again.');
+      let response = await attemptRegister(buildApiUrl('device/register'));
+      if (response.status === 404) {
+        response = await attemptRegister(`${baseUrl}/device/register`);
+      }
+
+      const data = await parseJson(response);
+
+      // Check for incorrect code based on HTTP status codes only
+      // 404 = code not found (invalid registration code)
+      // 400 = bad request (invalid format or already registered)
+      if (response.status === 404 || response.status === 400) {
+        Alert.alert(
+          t('error'),
+          language === 'et' ? 'Vale kood' : 'Incorrect code'
+        );
+        return;
       }
 
       if (!response.ok) {
-        // If already registered, try to navigate to home
-        if (data.detail && data.detail.includes('already registered')) {
-          const existingClientId = await AsyncStorage.getItem('client_id');
-          if (existingClientId) {
-            Alert.alert(
-              t('success'), 
-              'Device already registered!',
-              [{ text: 'OK', onPress: navigateToHome }]
-            );
-            return;
-          }
-        }
-        throw new Error(data.detail || 'Registration failed');
+        const message = data?.detail || data?.raw || 'Registration failed';
+        throw new Error(message);
       }
 
-      // Save client ID
-      await AsyncStorage.setItem('client_id', data.client_id);
-      console.log('Client ID saved:', data.client_id);
-      
-      // Store client data including lock_mode
-      if (data.client) {
-        await AsyncStorage.setItem('client_data', JSON.stringify(data.client));
-      }
-      
-      // Request Device Admin permissions on Android
-      if (Platform.OS === 'android') {
-        const { NativeModules } = require('react-native');
-        const EMIDeviceAdmin = NativeModules.EMIDeviceAdmin;
-        
-        console.log('EMIDeviceAdmin native module:', !!EMIDeviceAdmin);
-        
-        if (EMIDeviceAdmin) {
-          // Show success and then request admin
-          Alert.alert(
-            t('success'),
-            'Device registered successfully!\n\nNext, we need to enable Device Admin to protect your device. Please tap "Enable Protection" and then "Activate" on the system screen.',
-            [
-              {
-                text: 'Enable Protection',
-                onPress: async () => {
-                  try {
-                    console.log('Calling EMIDeviceAdmin.requestAdmin()...');
-                    const result = await EMIDeviceAdmin.requestAdmin();
-                    console.log('EMIDeviceAdmin.requestAdmin result:', result);
-                  } catch (e) {
-                    console.log('Device Admin request error:', e);
-                    Alert.alert('Error', `Failed to enable Device Admin: ${e}`);
-                  }
-                  navigateToHome();
-                }
-              }
-            ],
-            { cancelable: false }
-          );
-        } else {
-          console.log('EMIDeviceAdmin native module not available');
-          Alert.alert(
-            t('success'), 
-            'Device registered!\n\nNote: Device Admin features require a production APK build.',
-            [{ text: 'OK', onPress: navigateToHome }]
-          );
-        }
-      } else {
-        // Non-Android platform
+      const clientId = data?.client_id;
+      if (!clientId) {
         Alert.alert(
-          t('success'), 
-          t('deviceRegisteredSuccess'), 
-          [{ text: 'OK', onPress: navigateToHome }]
+          t('error'),
+          language === 'et' ? 'Vale kood' : 'Incorrect code'
         );
+        return;
+      }
+
+      // Registration successful - save client data
+      await AsyncStorage.setItem('client_id', clientId);
+      
+      // Store client data
+      const clientData = data?.client;
+      if (clientData) {
+        await AsyncStorage.setItem('client_data', JSON.stringify(clientData));
       }
       
+      // Mark device as registered for autostart on boot
+      await devicePolicy.setRegistered(true);
+      
+      // Show registration successful message
+      Alert.alert(
+        t('success'),
+        language === 'et' 
+          ? 'Registreerimine õnnestus!'
+          : 'Registration successful!',
+        [
+          {
+            text: t('ok'),
+            onPress: () => {
+              // Navigate to home screen - it will handle admin permission prompt
+              router.replace('/client/home');
+            },
+          },
+        ]
+      );
     } catch (error: any) {
       console.error('Registration error:', error);
       Alert.alert(t('error'), error.message || 'Registration failed');
@@ -187,15 +166,12 @@ export default function ClientRegister() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.keyboardView}
+          >
+            <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.topBar}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
             <View style={styles.langSwitcher}>
               <TouchableOpacity
                 style={[styles.langButton, language === 'et' && styles.langButtonActive]}
@@ -233,16 +209,6 @@ export default function ClientRegister() {
                 autoCapitalize="characters"
                 maxLength={8}
               />
-            </View>
-
-            <View style={styles.deviceInfo}>
-              <Ionicons name="information-circle" size={20} color="#3B82F6" />
-              <View style={styles.deviceInfoContent}>
-                <Text style={styles.deviceInfoTitle}>{t('deviceInformation')}</Text>
-                <Text style={styles.deviceInfoText}>
-                  {Device.brand} {Device.modelName}
-                </Text>
-              </View>
             </View>
 
             <TouchableOpacity
@@ -299,14 +265,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#1E293B',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   langSwitcher: {
     flexDirection: 'row',
@@ -374,28 +332,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     padding: 16,
     letterSpacing: 8,
-  },
-  deviceInfo: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    gap: 12,
-  },
-  deviceInfoContent: {
-    flex: 1,
-  },
-  deviceInfoTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#3B82F6',
-    marginBottom: 4,
-  },
-  deviceInfoText: {
-    fontSize: 14,
-    color: '#94A3B8',
   },
   button: {
     flexDirection: 'row',

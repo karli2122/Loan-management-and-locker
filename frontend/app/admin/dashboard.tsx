@@ -11,9 +11,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getApiUrl, API_BASE_URL } from '../../src/utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
+import API_URL from '../../src/constants/api';
 
 
 interface LoanStats {
@@ -46,8 +46,12 @@ export default function Dashboard() {
 
   const fetchStats = async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/api/reports/collection?admin_token=${token}`);
+      const adminId = await AsyncStorage.getItem('admin_id');
+      if (!adminId) {
+        console.error('Admin ID not found');
+        return;
+      }
+      const response = await fetch(`${API_URL}/api/reports/collection?admin_id=${adminId}`);
       const data = await response.json();
       
       setLoanStats({
@@ -265,7 +269,7 @@ export default function Dashboard() {
             <View style={[styles.actionIcon, { backgroundColor: '#14B8A6' }]}>
               <Ionicons name="calculator" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>{language === 'et' ? 'EMI kalkulaator' : 'EMI Calculator'}</Text>
+            <Text style={styles.actionTitle}>{language === 'et' ? 'Laenukalkulaator' : 'Loan Calculator'}</Text>
             <Text style={styles.actionDescription}>{language === 'et' ? 'Arvuta laenumaksed' : 'Calculate loan payments'}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>

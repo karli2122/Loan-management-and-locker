@@ -14,8 +14,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getApiUrl, API_BASE_URL } from '../../src/utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import API_URL from '../../src/constants/api';
+import { getErrorMessage } from '../../src/utils/errorHandler';
 
 
 interface LoanPlan {
@@ -54,7 +55,12 @@ export default function LoanPlans() {
 
   const fetchPlans = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/loan-plans`);
+      const adminId = await AsyncStorage.getItem('admin_id');
+      if (!adminId) {
+        Alert.alert('Error', 'Admin session not found');
+        return;
+      }
+      const response = await fetch(`${API_URL}/api/loan-plans?admin_id=${adminId}`);
       const data = await response.json();
       setPlans(data);
     } catch (error) {
@@ -109,8 +115,8 @@ export default function LoanPlans() {
       };
 
       const url = editingPlan
-        ? `${API_BASE_URL}/api/loan-plans/${editingPlan.id}?admin_token=${token}`
-        : `${API_BASE_URL}/api/loan-plans?admin_token=${token}`;
+        ? `${API_URL}/api/loan-plans/${editingPlan.id}?admin_token=${token}`
+        : `${API_URL}/api/loan-plans?admin_token=${token}`;
 
       const response = await fetch(url, {
         method: editingPlan ? 'PUT' : 'POST',
@@ -124,7 +130,7 @@ export default function LoanPlans() {
       setShowModal(false);
       fetchPlans();
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', getErrorMessage(error, 'Failed to save plan'));
     } finally {
       setActionLoading(false);
     }
@@ -133,33 +139,39 @@ export default function LoanPlans() {
   const handleToggleActive = async (plan: LoanPlan) => {
     try {
       const token = await AsyncStorage.getItem('admin_token');
+      const newActiveState = !plan.is_active;
       
-      if (plan.is_active) {
-        // Deactivate
-        const response = await fetch(`${API_BASE_URL}/api/loan-plans/${plan.id}?admin_token=${token}`, {
-          method: 'DELETE',
-        });
-        if (!response.ok) throw new Error('Failed to deactivate plan');
-      } else {
-        // Reactivate by updating
-        const response = await fetch(`${API_BASE_URL}/api/loan-plans/${plan.id}?admin_token=${token}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...plan, is_active: true }),
-        });
-        if (!response.ok) throw new Error('Failed to activate plan');
+      const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${token}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name: plan.name,
+          interest_rate: plan.interest_rate,
+          min_tenure_months: plan.min_tenure_months,
+          max_tenure_months: plan.max_tenure_months,
+          processing_fee_percent: plan.processing_fee_percent,
+          late_fee_percent: plan.late_fee_percent,
+          description: plan.description,
+          is_active: newActiveState 
+        }),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Toggle error:', errorText);
+        throw new Error('Failed to update plan');
       }
 
-      fetchPlans();
+      // Update local state immediately for better UX
+      setPlans(plans.map(p => p.id === plan.id ? { ...p, is_active: newActiveState } : p));
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', getErrorMessage(error, 'Failed to update plan'));
     }
   };
 
   const handleDeletePlan = (plan: LoanPlan) => {
     Alert.alert(
-      'Delete Loan Plan',
-      `Are you sure you want to permanently delete "${plan.name}"?\n\nThis action cannot be undone.`,
+      'Delete Plan',
+      `Are you sure you want to delete "${plan.name}"? This cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -168,26 +180,113 @@ export default function LoanPlans() {
           onPress: async () => {
             try {
               const token = await AsyncStorage.getItem('admin_token');
-              const response = await fetch(
-                `${API_BASE_URL}/api/loan-plans/${plan.id}?admin_token=${token}&permanent=true`,
-                { method: 'DELETE' }
-              );
+              console.log('Attempting to delete plan:', plan.id, plan.name);
+              const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${token}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+              });
               
-              const data = await response.json();
-              
+              console.log('Delete plan response status:', response.status);
               if (!response.ok) {
-                throw new Error(data.detail || 'Failed to delete plan');
+                const contentType = response.headers.get('content-type');
+                let errorMessage = `Failed to delete plan (${response.status})`;
+                
+                if (contentType && contentType.includes('application/json')) {
+                  const errorData = await response.json();
+                  errorMessage = errorData?.detail || errorMessage;
+                  
+                  // Check if error is about clients using the plan
+                  if (response.status === 400 && errorData?.detail?.includes('client(s) are currently using this plan')) {
+                    // Extract number of clients from error message
+                    const match = errorData.detail.match(/(\d+) client\(s\)/);
+                    const clientCount = match ? match[1] : 'some';
+                    
+                    // Show option to force delete
+                    Alert.alert(
+                      'Loan Plan In Use',
+                      `${clientCount} client(s) are currently using this plan. Do you want to:\n\n• Cancel and reassign clients first (recommended)\n• Force delete and remove plan reference from clients`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Force Delete',
+                          style: 'destructive',
+                          onPress: () => handleForceDeletePlan(plan),
+                        },
+                      ]
+                    );
+                    return;
+                  }
+                } else {
+                  const errorText = await response.text();
+                  console.error('Delete error:', response.status, errorText);
+                }
+                
+                throw new Error(errorMessage);
               }
               
-              Alert.alert('Success', 'Loan plan deleted successfully');
-              fetchPlans();
+              // Remove from local state immediately for better UX
+              setPlans(prevPlans => {
+                console.log('Deleting plan from local state:', plan.id, 'Current plans count:', prevPlans.length);
+                const filtered = prevPlans.filter(p => {
+                  const keep = p.id !== plan.id;
+                  if (!keep) {
+                    console.log('Filtering out plan:', p.id, p.name);
+                  }
+                  return keep;
+                });
+                console.log('After filter, plans count:', filtered.length, 'Filtered out:', prevPlans.length - filtered.length);
+                return filtered;
+              });
+              
+              console.log('Plan deletion completed successfully');
+              Alert.alert('Success', 'Plan deleted successfully');
             } catch (error: any) {
-              Alert.alert('Error', error.message);
+              // On error, refresh to ensure consistency
+              console.error('Delete plan error:', error);
+              await fetchPlans();
+              Alert.alert('Error', getErrorMessage(error, 'Failed to delete plan'));
             }
           },
         },
       ]
     );
+  };
+
+  const handleForceDeletePlan = async (plan: LoanPlan) => {
+    try {
+      const token = await AsyncStorage.getItem('admin_token');
+      const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${token}&force=true`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Force delete error:', response.status, errorText);
+        throw new Error(`Failed to delete plan (${response.status})`);
+      }
+      
+      const result = await response.json();
+      
+      // Remove from local state immediately for better UX
+      console.log('Force deleting plan from local state:', plan.id);
+      setPlans(prevPlans => {
+        const filtered = prevPlans.filter(p => p.id !== plan.id);
+        console.log('After force delete filter, plans count:', filtered.length);
+        return filtered;
+      });
+      
+      const clientsAffected = result.clients_affected || 0;
+      const message = clientsAffected > 0 
+        ? `Plan deleted successfully. ${clientsAffected} client(s) had their loan plan reference removed.`
+        : 'Plan deleted successfully';
+      
+      Alert.alert('Success', message);
+    } catch (error: any) {
+      // On error, refresh to ensure consistency
+      await fetchPlans();
+      Alert.alert('Error', getErrorMessage(error, 'Failed to delete plan'));
+    }
   };
 
   if (loading) {
@@ -251,7 +350,7 @@ export default function LoanPlans() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleDeletePlan(plan)}
-                    style={styles.iconButton}
+                    style={[styles.iconButton, { backgroundColor: '#EF444420' }]}
                   >
                     <Ionicons name="trash-outline" size={20} color="#EF4444" />
                   </TouchableOpacity>
@@ -265,7 +364,7 @@ export default function LoanPlans() {
               <View style={styles.planDetails}>
                 <View style={styles.detailItem}>
                   <Ionicons name="trending-up" size={16} color="#4F46E5" />
-                  <Text style={styles.detailLabel}>Interest Rate</Text>
+                  <Text style={styles.detailLabel}>Monthly Interest Rate</Text>
                   <Text style={styles.detailValue}>{plan.interest_rate}%</Text>
                 </View>
 
@@ -315,7 +414,7 @@ export default function LoanPlans() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Interest Rate (% per year) *</Text>
+                <Text style={styles.inputLabel}>Monthly Interest Rate (%) *</Text>
                 <TextInput
                   style={styles.input}
                   value={interestRate}

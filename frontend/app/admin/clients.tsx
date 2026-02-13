@@ -11,9 +11,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getApiUrl, API_BASE_URL } from '../../src/utils/api';
-import { useLanguage } from '../../src/context/LanguageContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLanguage } from '../../src/context/LanguageContext';
+import API_URL from '../../src/constants/api';
 
 
 interface Client {
@@ -41,9 +41,10 @@ export default function ClientsList() {
 
   const fetchClients = async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const adminId = await AsyncStorage.getItem('admin_id');
+      const query = adminId ? `?limit=500&admin_id=${adminId}` : '?limit=500';
       // Fetch with pagination - get first 500 records (increased limit for admin panel)
-      const response = await fetch(`${API_BASE_URL}/api/clients?limit=500&admin_token=${token}`);
+      const response = await fetch(`${API_URL}/api/clients${query}`);
       const data = await response.json();
       
       // Handle both old and new API response format
@@ -64,21 +65,22 @@ export default function ClientsList() {
   };
 
   const applyFilters = (clientList: Client[], query: string, filterType: string) => {
-    let filtered = clientList;
+    // Filter out null/undefined clients
+    let filtered = clientList.filter(c => c && c.name && c.phone);
 
     if (query) {
       filtered = filtered.filter(
         (c) =>
-          c.name.toLowerCase().includes(query.toLowerCase()) ||
-          c.phone.includes(query) ||
-          c.email.toLowerCase().includes(query.toLowerCase())
+          (c.name && c.name.toLowerCase().includes(query.toLowerCase())) ||
+          (c.phone && c.phone.includes(query)) ||
+          (c.email && c.email.toLowerCase().includes(query.toLowerCase()))
       );
     }
 
     if (filterType === 'locked') {
-      filtered = filtered.filter((c) => c.is_locked);
+      filtered = filtered.filter((c) => c.is_locked === true);
     } else if (filterType === 'unlocked') {
-      filtered = filtered.filter((c) => !c.is_locked);
+      filtered = filtered.filter((c) => c.is_locked === false || c.is_locked === undefined);
     }
 
     setFilteredClients(filtered);
@@ -107,45 +109,52 @@ export default function ClientsList() {
     }
   };
 
-  const renderClient = ({ item }: { item: Client }) => (
-    <TouchableOpacity
-      style={styles.clientCard}
-      onPress={() => router.push({ pathname: '/admin/client-details', params: { id: item.id } })}
-    >
-      <View style={styles.clientInfo}>
-        <View style={styles.clientHeader}>
-          <Text style={styles.clientName}>{item.name}</Text>
-          <View style={[styles.statusBadge, item.is_locked ? styles.lockedBadge : styles.unlockedBadge]}>
-            <Ionicons
-              name={item.is_locked ? 'lock-closed' : 'lock-open'}
-              size={12}
-              color={item.is_locked ? '#EF4444' : '#10B981'}
-            />
-            <Text style={[styles.statusText, item.is_locked ? styles.lockedText : styles.unlockedText]}>
-              {item.is_locked ? t('locked') : t('unlocked')}
-            </Text>
+  const renderClient = ({ item }: { item: Client }) => {
+    // Defensive null checks
+    if (!item || !item.id) {
+      return null;
+    }
+    
+    return (
+      <TouchableOpacity
+        style={styles.clientCard}
+        onPress={() => router.push({ pathname: '/admin/client-details', params: { id: item.id } })}
+      >
+        <View style={styles.clientInfo}>
+          <View style={styles.clientHeader}>
+            <Text style={styles.clientName}>{item.name || 'N/A'}</Text>
+            <View style={[styles.statusBadge, item.is_locked ? styles.lockedBadge : styles.unlockedBadge]}>
+              <Ionicons
+                name={item.is_locked ? 'lock-closed' : 'lock-open'}
+                size={12}
+                color={item.is_locked ? '#EF4444' : '#10B981'}
+              />
+              <Text style={[styles.statusText, item.is_locked ? styles.lockedText : styles.unlockedText]}>
+                {item.is_locked ? t('locked') : t('unlocked')}
+              </Text>
+            </View>
           </View>
+          <Text style={styles.clientPhone}>{item.phone || 'N/A'}</Text>
+          <View style={styles.clientMeta}>
+            <Text style={styles.emiAmount}>{t('emi')}: €{(item.emi_amount || 0).toLocaleString()}</Text>
+            {item.is_registered ? (
+              <View style={styles.registeredBadge}>
+                <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                <Text style={styles.registeredText}>{t('registered')}</Text>
+              </View>
+            ) : (
+              <View style={styles.pendingBadge}>
+                <Ionicons name="time" size={14} color="#F59E0B" />
+                <Text style={styles.pendingText}>{t('pending')}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.regCode}>{t('code')}: {item.registration_code || 'N/A'}</Text>
         </View>
-        <Text style={styles.clientPhone}>{item.phone}</Text>
-        <View style={styles.clientMeta}>
-          <Text style={styles.emiAmount}>{t('emi')}: €{item.emi_amount.toLocaleString()}</Text>
-          {item.is_registered ? (
-            <View style={styles.registeredBadge}>
-              <Ionicons name="checkmark-circle" size={14} color="#10B981" />
-              <Text style={styles.registeredText}>{t('registered')}</Text>
-            </View>
-          ) : (
-            <View style={styles.pendingBadge}>
-              <Ionicons name="time" size={14} color="#F59E0B" />
-              <Text style={styles.pendingText}>{t('pending')}</Text>
-            </View>
-          )}
-        </View>
-        <Text style={styles.regCode}>{t('code')}: {item.registration_code}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color="#64748B" />
-    </TouchableOpacity>
-  );
+        <Ionicons name="chevron-forward" size={20} color="#64748B" />
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>

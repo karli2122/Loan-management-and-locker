@@ -13,14 +13,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getApiUrl, API_BASE_URL } from '../../src/utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
+import API_URL from '../../src/constants/api';
 
 
 interface LoanDetails {
   loan_amount: number;
-  down_payment: number;
   interest_rate: number;
   loan_tenure_months: number;
   monthly_emi: number;
@@ -61,6 +60,7 @@ export default function LoanManagement() {
   const [loanDetails, setLoanDetails] = useState<LoanDetails | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [schedule, setSchedule] = useState<any[]>([]);
+  const [adminId, setAdminId] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -69,12 +69,17 @@ export default function LoanManagement() {
   const [setupLoanModal, setSetupLoanModal] = useState(false);
   const [recordPaymentModal, setRecordPaymentModal] = useState(false);
   const [settingsModal, setSettingsModal] = useState(false);
+  const [editLoanModal, setEditLoanModal] = useState(false);
   
   // Loan setup form
   const [loanAmount, setLoanAmount] = useState('');
-  const [downPayment, setDownPayment] = useState('');
   const [interestRate, setInterestRate] = useState('10');
   const [tenure, setTenure] = useState('12');
+  
+  // Edit loan form
+  const [editLoanAmount, setEditLoanAmount] = useState('');
+  const [editInterestRate, setEditInterestRate] = useState('');
+  const [editTenure, setEditTenure] = useState('');
   
   // Payment form
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -89,17 +94,28 @@ export default function LoanManagement() {
     fetchData();
   }, [id]);
 
+  const getAdminId = async () => {
+    if (adminId) return adminId;
+    const stored = await AsyncStorage.getItem('admin_id');
+    if (stored) {
+      setAdminId(stored);
+      return stored;
+    }
+    return null;
+  };
+
   const fetchData = async () => {
     try {
+      const scope = await getAdminId();
+      const adminQuery = scope ? `?admin_id=${scope}` : '';
       // Fetch client details
-      const clientRes = await fetch(`${API_BASE_URL}/api/clients/${id}`);
+      const clientRes = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`);
       const clientData = await clientRes.json();
       setClient(clientData);
       
       // Extract loan details from client
       setLoanDetails({
         loan_amount: clientData.loan_amount || 0,
-        down_payment: clientData.down_payment || 0,
         interest_rate: clientData.interest_rate || 10,
         loan_tenure_months: clientData.loan_tenure_months || 12,
         monthly_emi: clientData.monthly_emi || 0,
@@ -119,12 +135,12 @@ export default function LoanManagement() {
       
       // Fetch payment history
       if (clientData.loan_start_date) {
-        const paymentsRes = await fetch(`${API_BASE_URL}/api/loans/${id}/payments`);
+        const paymentsRes = await fetch(`${API_URL}/api/loans/${id}/payments${adminQuery}`);
         const paymentsData = await paymentsRes.json();
         setPayments(paymentsData.payments || []);
         
         // Fetch payment schedule
-        const scheduleRes = await fetch(`${API_BASE_URL}/api/loans/${id}/schedule`);
+        const scheduleRes = await fetch(`${API_URL}/api/loans/${id}/schedule${adminQuery}`);
         const scheduleData = await scheduleRes.json();
         setSchedule(scheduleData.schedule || []);
       }
@@ -137,20 +153,18 @@ export default function LoanManagement() {
   };
 
   const handleSetupLoan = async () => {
-    if (!loanAmount || !downPayment) {
+    if (!loanAmount) {
       Alert.alert(t('error'), t('fillAllFields'));
       return;
     }
 
     setActionLoading(true);
     try {
-      const token = await AsyncStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/api/loans/${id}/setup?admin_token=${token}`, {
+      const response = await fetch(`${API_URL}/api/loans/${id}/setup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           loan_amount: parseFloat(loanAmount),
-          down_payment: parseFloat(downPayment),
           interest_rate: parseFloat(interestRate),
           loan_tenure_months: parseInt(tenure),
         }),
@@ -159,8 +173,48 @@ export default function LoanManagement() {
       if (!response.ok) throw new Error('Failed to setup loan');
       
       const data = await response.json();
-      Alert.alert(t('success'), `Loan setup successfully!\nMonthly EMI: €${data.loan_details.monthly_emi}`);
+      Alert.alert(t('success'), `Loan setup successfully!\nMonthly Payment: €${data.loan_details.monthly_emi}`);
       setSetupLoanModal(false);
+      fetchData();
+    } catch (error: any) {
+      Alert.alert(t('error'), error.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const openEditLoanModal = () => {
+    if (loanDetails) {
+      setEditLoanAmount(loanDetails.loan_amount.toString());
+      setEditInterestRate(loanDetails.interest_rate.toString());
+      setEditTenure(loanDetails.loan_tenure_months.toString());
+      setEditLoanModal(true);
+    }
+  };
+
+  const handleEditLoan = async () => {
+    if (!editLoanAmount || !editInterestRate || !editTenure) {
+      Alert.alert(t('error'), t('fillAllFields'));
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/loans/${id}/update`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          loan_amount: parseFloat(editLoanAmount),
+          interest_rate: parseFloat(editInterestRate),
+          loan_tenure_months: parseInt(editTenure),
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update loan');
+      
+      const data = await response.json();
+      Alert.alert(t('success'), `Loan updated successfully!\nNew Monthly Payment: €${data.loan_details?.monthly_emi || 'N/A'}`);
+      setEditLoanModal(false);
       fetchData();
     } catch (error: any) {
       Alert.alert(t('error'), error.message);
@@ -178,7 +232,7 @@ export default function LoanManagement() {
     setActionLoading(true);
     try {
       const token = await AsyncStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/api/loans/${id}/payments?admin_token=${token}`, {
+      const response = await fetch(`${API_URL}/api/loans/${id}/payments?admin_token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -209,7 +263,9 @@ export default function LoanManagement() {
   const handleUpdateSettings = async () => {
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/loans/${id}/settings`, {
+      const scope = await getAdminId();
+      const adminQuery = scope ? `?admin_id=${scope}` : '';
+      const response = await fetch(`${API_URL}/api/loans/${id}/settings${adminQuery}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -233,9 +289,10 @@ export default function LoanManagement() {
   const handleLockUnlock = async (shouldLock: boolean) => {
     setActionLoading(true);
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const scope = await getAdminId();
+      const adminQuery = scope ? `?admin_id=${scope}` : '';
       const endpoint = shouldLock ? 'lock' : 'unlock';
-      const response = await fetch(`${API_BASE_URL}/api/clients/${id}/${endpoint}?admin_token=${token}`, {
+      const response = await fetch(`${API_URL}/api/clients/${id}/${endpoint}${adminQuery}`, {
         method: 'POST',
       });
 
@@ -288,13 +345,21 @@ export default function LoanManagement() {
               <Ionicons name="cash" size={28} color="#10B981" />
               <Text style={styles.summaryTitle}>Loan Overview</Text>
             </View>
-            {!loanDetails?.loan_start_date && (
+            {!loanDetails?.loan_start_date ? (
               <TouchableOpacity
                 style={styles.setupButton}
                 onPress={() => setSetupLoanModal(true)}
               >
                 <Ionicons name="add-circle" size={20} color="#4F46E5" />
                 <Text style={styles.setupButtonText}>Setup Loan</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={openEditLoanModal}
+              >
+                <Ionicons name="create-outline" size={20} color="#4F46E5" />
+                <Text style={styles.editButtonText}>Edit</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -326,7 +391,7 @@ export default function LoanManagement() {
                   </Text>
                 </View>
                 <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Monthly EMI</Text>
+                  <Text style={styles.summaryLabel}>Monthly Payment</Text>
                   <Text style={styles.summaryValue}>€{loanDetails.monthly_emi.toFixed(2)}</Text>
                 </View>
               </View>
@@ -344,7 +409,7 @@ export default function LoanManagement() {
             <View style={styles.noLoanContainer}>
               <Ionicons name="information-circle" size={48} color="#64748B" />
               <Text style={styles.noLoanText}>No loan configured</Text>
-              <Text style={styles.noLoanSubtext}>Tap "Setup Loan" to get started</Text>
+              <Text style={styles.noLoanSubtext}>{'Tap "Setup Loan" to get started'}</Text>
             </View>
           )}
         </View>
@@ -450,19 +515,7 @@ export default function LoanManagement() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Down Payment (€)</Text>
-              <TextInput
-                style={styles.input}
-                value={downPayment}
-                onChangeText={setDownPayment}
-                placeholder="200"
-                keyboardType="decimal-pad"
-                placeholderTextColor="#64748B"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Interest Rate (%)</Text>
+              <Text style={styles.inputLabel}>Monthly Interest Rate (%)</Text>
               <TextInput
                 style={styles.input}
                 value={interestRate}
@@ -645,6 +698,71 @@ export default function LoanManagement() {
           </View>
         </View>
       </Modal>
+
+      {/* Edit Loan Modal */}
+      <Modal visible={editLoanModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Edit Loan</Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Loan Amount (€)</Text>
+              <TextInput
+                style={styles.input}
+                value={editLoanAmount}
+                onChangeText={setEditLoanAmount}
+                placeholder="1000"
+                keyboardType="decimal-pad"
+                placeholderTextColor="#64748B"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Monthly Interest Rate (%)</Text>
+              <TextInput
+                style={styles.input}
+                value={editInterestRate}
+                onChangeText={setEditInterestRate}
+                placeholder="10"
+                keyboardType="decimal-pad"
+                placeholderTextColor="#64748B"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Tenure (Months)</Text>
+              <TextInput
+                style={styles.input}
+                value={editTenure}
+                onChangeText={setEditTenure}
+                placeholder="12"
+                keyboardType="number-pad"
+                placeholderTextColor="#64748B"
+              />
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={() => setEditLoanModal(false)}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalConfirmButton]}
+                onPress={handleEditLoan}
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.modalButtonText}>Save Changes</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -735,6 +853,20 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   setupButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4F46E5',
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#4F46E520',
+    borderRadius: 8,
+  },
+  editButtonText: {
     fontSize: 13,
     fontWeight: '600',
     color: '#4F46E5',

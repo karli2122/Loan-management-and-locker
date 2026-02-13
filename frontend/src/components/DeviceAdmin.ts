@@ -1,6 +1,6 @@
 import { NativeModules, Platform } from 'react-native';
 
-const { DeviceAdmin } = NativeModules;
+const { EMIDeviceAdmin, DeviceAdmin } = NativeModules;
 
 export interface DeviceAdminAPI {
   isDeviceAdminActive(): Promise<boolean>;
@@ -30,4 +30,6 @@ const MockDeviceAdmin: DeviceAdminAPI = {
 };
 
 // Use real module on Android, mock on other platforms
-export default (Platform.OS === 'android' && DeviceAdmin ? DeviceAdmin : MockDeviceAdmin) as DeviceAdminAPI;
+const nativeAdmin = EMIDeviceAdmin || DeviceAdmin;
+
+export default (Platform.OS === 'android' && nativeAdmin ? nativeAdmin : MockDeviceAdmin) as DeviceAdminAPI;

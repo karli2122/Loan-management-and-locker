@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+"import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -154,7 +154,7 @@ export default function AddClient() {
       >
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Ionicons name=\"arrow-back\" size={24} color=\"#fff\" />
           </TouchableOpacity>
           <Text style={styles.title}>{t('addNewClient')}</Text>
           <View style={styles.placeholder} />
@@ -164,11 +164,11 @@ export default function AddClient() {
           <View style={styles.form}>
             <Text style={styles.label}>{t('fullName')} *</Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="person" size={20} color="#64748B" style={styles.inputIcon} />
+              <Ionicons name=\"person\" size={20} color=\"#64748B\" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder={t('enterClientName')}
-                placeholderTextColor="#64748B"
+                placeholderTextColor=\"#64748B\"
                 value={form.name}
                 onChangeText={(text) => setForm({ ...form, name: text })}
               />
@@ -176,28 +176,28 @@ export default function AddClient() {
 
             <Text style={styles.label}>{t('phoneNumber')} *</Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="call" size={20} color="#64748B" style={styles.inputIcon} />
+              <Ionicons name=\"call\" size={20} color=\"#64748B\" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder={t('enterPhone')}
-                placeholderTextColor="#64748B"
+                placeholderTextColor=\"#64748B\"
                 value={form.phone}
                 onChangeText={(text) => setForm({ ...form, phone: text })}
-                keyboardType="phone-pad"
+                keyboardType=\"phone-pad\"
               />
             </View>
 
             <Text style={styles.label}>{t('emailAddress')} *</Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="mail" size={20} color="#64748B" style={styles.inputIcon} />
+              <Ionicons name=\"mail\" size={20} color=\"#64748B\" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder={t('enterEmail')}
-                placeholderTextColor="#64748B"
+                placeholderTextColor=\"#64748B\"
                 value={form.email}
                 onChangeText={(text) => setForm({ ...form, email: text })}
-                keyboardType="email-address"
-                autoCapitalize="none"
+                keyboardType=\"email-address\"
+                autoCapitalize=\"none\"
               />
             </View>
 
@@ -207,20 +207,20 @@ export default function AddClient() {
               <TextInput
                 style={styles.input}
                 placeholder={t('enterEmiAmount')}
-                placeholderTextColor="#64748B"
+                placeholderTextColor=\"#64748B\"
                 value={form.emi_amount}
                 onChangeText={(text) => setForm({ ...form, emi_amount: text })}
-                keyboardType="numeric"
+                keyboardType=\"numeric\"
               />
             </View>
 
             <Text style={styles.label}>{t('emiDueDate')}</Text>
             <TouchableOpacity style={styles.inputContainer} onPress={openDatePicker}>
-              <Ionicons name="calendar" size={20} color="#64748B" style={styles.inputIcon} />
+              <Ionicons name=\"calendar\" size={20} color=\"#64748B\" style={styles.inputIcon} />
               <Text style={[styles.input, { paddingVertical: 18 }, !form.emi_due_date && { color: '#64748B' }]}>
                 {form.emi_due_date || 'DD/MM/YYYY'}
               </Text>
-              <Ionicons name="chevron-down" size={20} color="#64748B" />
+              <Ionicons name=\"chevron-down\" size={20} color=\"#64748B\" />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -229,17 +229,17 @@ export default function AddClient() {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color=\"#fff\" />
               ) : (
                 <>
-                  <Ionicons name="person-add" size={20} color="#fff" />
+                  <Ionicons name=\"person-add\" size={20} color=\"#fff\" />
                   <Text style={styles.submitButtonText}>{t('createClient')}</Text>
                 </>
               )}
             </TouchableOpacity>
 
             <View style={styles.infoBox}>
-              <Ionicons name="information-circle" size={20} color="#3B82F6" />
+              <Ionicons name=\"information-circle\" size={20} color=\"#3B82F6\" />
               <Text style={styles.infoText}>
                 {t('registrationCodeInfo')}
               </Text>
@@ -249,7 +249,7 @@ export default function AddClient() {
       </KeyboardAvoidingView>
 
       {/* Date Picker Modal */}
-      <Modal visible={showDatePicker} transparent animationType="slide">
+      <Modal visible={showDatePicker} transparent animationType=\"slide\">
         <View style={styles.datePickerOverlay}>
           <View style={styles.datePickerContent}>
             <View style={styles.datePickerHeader}>
@@ -257,7 +257,7 @@ export default function AddClient() {
                 {language === 'et' ? 'Vali kuupäev' : 'Select Date'}
               </Text>
               <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                <Ionicons name="close" size={24} color="#fff" />
+                <Ionicons name=\"close\" size={24} color=\"#fff\" />
               </TouchableOpacity>
             </View>
 
@@ -269,14 +269,14 @@ export default function AddClient() {
                   style={styles.datePickerArrow}
                   onPress={() => setSelectedYear(selectedYear - 1)}
                 >
-                  <Ionicons name="chevron-back" size={20} color="#4F46E5" />
+                  <Ionicons name=\"chevron-back\" size={20} color=\"#4F46E5\" />
                 </TouchableOpacity>
                 <Text style={styles.datePickerValue}>{selectedYear}</Text>
                 <TouchableOpacity 
                   style={styles.datePickerArrow}
                   onPress={() => setSelectedYear(selectedYear + 1)}
                 >
-                  <Ionicons name="chevron-forward" size={20} color="#4F46E5" />
+                  <Ionicons name=\"chevron-forward\" size={20} color=\"#4F46E5\" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -289,14 +289,14 @@ export default function AddClient() {
                   style={styles.datePickerArrow}
                   onPress={() => setSelectedMonth(selectedMonth === 0 ? 11 : selectedMonth - 1)}
                 >
-                  <Ionicons name="chevron-back" size={20} color="#4F46E5" />
+                  <Ionicons name=\"chevron-back\" size={20} color=\"#4F46E5\" />
                 </TouchableOpacity>
                 <Text style={styles.datePickerValue}>{months[selectedMonth]}</Text>
                 <TouchableOpacity 
                   style={styles.datePickerArrow}
                   onPress={() => setSelectedMonth(selectedMonth === 11 ? 0 : selectedMonth + 1)}
                 >
-                  <Ionicons name="chevron-forward" size={20} color="#4F46E5" />
+                  <Ionicons name=\"chevron-forward\" size={20} color=\"#4F46E5\" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -309,14 +309,14 @@ export default function AddClient() {
                   style={styles.datePickerArrow}
                   onPress={() => setSelectedDay(selectedDay === 1 ? getDaysInMonth(selectedYear, selectedMonth) : selectedDay - 1)}
                 >
-                  <Ionicons name="chevron-back" size={20} color="#4F46E5" />
+                  <Ionicons name=\"chevron-back\" size={20} color=\"#4F46E5\" />
                 </TouchableOpacity>
                 <Text style={styles.datePickerValue}>{selectedDay}</Text>
                 <TouchableOpacity 
                   style={styles.datePickerArrow}
                   onPress={() => setSelectedDay(selectedDay >= getDaysInMonth(selectedYear, selectedMonth) ? 1 : selectedDay + 1)}
                 >
-                  <Ionicons name="chevron-forward" size={20} color="#4F46E5" />
+                  <Ionicons name=\"chevron-forward\" size={20} color=\"#4F46E5\" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -546,3 +546,5 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 });
+"
+  

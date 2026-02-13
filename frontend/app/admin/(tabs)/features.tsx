@@ -46,14 +46,14 @@ export default function FeaturesTab() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={[]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
           {language === 'et' ? 'Funktsioonid' : 'Features'}
         </Text>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         <View style={styles.userCard}>
           <View style={styles.userAvatar}>
             <Text style={styles.userAvatarText}>{username.charAt(0).toUpperCase()}</Text>
@@ -130,7 +130,7 @@ export default function FeaturesTab() {
           </View>
           <View style={styles.featureInfo}>
             <Text style={styles.featureTitle}>
-              {language === 'et' ? 'EMI kalkulaator' : 'EMI Calculator'}
+              {language === 'et' ? 'Laenukalkulaator' : 'Loan Calculator'}
             </Text>
             <Text style={styles.featureDescription}>
               {language === 'et' ? 'Arvuta laenumaksed' : 'Calculate loan payments'}
@@ -218,6 +218,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0F172A',
+  },
+  contentContainer: {
+    paddingBottom: 96,
   },
   header: {
     paddingHorizontal: 16,

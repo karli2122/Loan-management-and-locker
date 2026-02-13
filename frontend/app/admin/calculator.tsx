@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getApiUrl, API_BASE_URL } from '../../src/utils/api';
+import API_URL from '../../src/constants/api';
 
 
 export default function Calculator() {
@@ -26,7 +26,7 @@ export default function Calculator() {
     setLoading(true);
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/calculator/compare?principal=${principal}&annual_rate=${rate}&months=${months}`
+        `${API_URL}/api/calculator/compare?principal=${principal}&annual_rate=${rate}&months=${months}`
       );
       const data = await response.json();
       setResults(data);
@@ -51,7 +51,7 @@ export default function Calculator() {
       
       <View style={styles.methodDetails}>
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Monthly EMI</Text>
+          <Text style={styles.detailLabel}>Monthly Payment</Text>
           <Text style={styles.detailValue}>€{method.monthly_emi}</Text>
         </View>
         <View style={styles.detailRow}>
@@ -82,7 +82,7 @@ export default function Calculator() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>EMI Calculator</Text>
+        <Text style={styles.headerTitle}>Loan Calculator</Text>
         <View style={{ width: 40 }} />
       </View>
 

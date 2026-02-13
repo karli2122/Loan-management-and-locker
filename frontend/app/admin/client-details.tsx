@@ -10,13 +10,24 @@ import {
   TextInput,
   Modal,
   Linking,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getApiUrl, API_BASE_URL } from '../../src/utils/api';
-import { useLanguage } from '../../src/context/LanguageContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLanguage } from '../../src/context/LanguageContext';
+import API_URL from '../../src/constants/api';
+
+interface LoanDetails {
+  loan_amount: number;
+  total_amount_due: number;
+  total_paid: number;
+  outstanding_balance: number;
+  monthly_emi: number;
+  next_payment_due: string | null;
+  days_overdue: number;
+}
 
 
 interface Client {
@@ -44,28 +55,61 @@ interface Client {
   tamper_attempts: number;
   last_tamper_attempt: string | null;
   last_reboot: string | null;
+  admin_mode_active?: boolean;
+  uninstall_allowed?: boolean;
+  // Loan fields
+  loan_amount?: number;
+  total_amount_due?: number;
+  total_paid?: number;
+  outstanding_balance?: number;
+  monthly_emi?: number;
+  next_payment_due?: string | null;
+  days_overdue?: number;
+  loan_start_date?: string | null;
 }
 
 export default function ClientDetails() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const [adminId, setAdminId] = useState<string | null>(null);
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [fetchingPrice, setFetchingPrice] = useState(false);
   const [warningModal, setWarningModal] = useState(false);
   const [lockModal, setLockModal] = useState(false);
+  const [paymentModal, setPaymentModal] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [paymentNotes, setPaymentNotes] = useState('');
   const [editDeviceModal, setEditDeviceModal] = useState(false);
   const [warningMessage, setWarningMessage] = useState('');
   const [lockMessage, setLockMessage] = useState('');
   const [editDeviceMake, setEditDeviceMake] = useState('');
   const [editDeviceModel, setEditDeviceModel] = useState('');
   const [editDevicePrice, setEditDevicePrice] = useState('');
+  
+  const getAdminScope = async () => {
+    if (adminId) return adminId;
+    const stored = await AsyncStorage.getItem('admin_id');
+    if (stored) {
+      setAdminId(stored);
+      return stored;
+    }
+    return null;
+  };
+
+  const buildAdminQuery = async (hasQuery = false) => {
+    const scope = await getAdminScope();
+    return scope ? `${hasQuery ? '&' : '?'}admin_id=${scope}` : '';
+  };
 
   const fetchClient = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/clients/${id}`);
+      const scope = await getAdminScope();
+      const adminQuery = scope ? `?admin_id=${scope}` : '';
+      const response = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`);
       if (!response.ok) throw new Error('Client not found');
       const data = await response.json();
       setClient(data);
@@ -85,8 +129,8 @@ export default function ClientDetails() {
   const handleLock = async () => {
     setActionLoading(true);
     try {
-      const token = await AsyncStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/api/clients/${id}/lock?message=${encodeURIComponent(lockMessage)}&admin_token=${token}`, {
+      const adminQuery = await buildAdminQuery(true);
+      const response = await fetch(`${API_URL}/api/clients/${id}/lock?message=${encodeURIComponent(lockMessage)}${adminQuery}`, {
         method: 'POST',
       });
       if (!response.ok) throw new Error('Failed to lock device');
@@ -108,8 +152,8 @@ export default function ClientDetails() {
         onPress: async () => {
           setActionLoading(true);
           try {
-            const token = await AsyncStorage.getItem('admin_token');
-            const response = await fetch(`${API_BASE_URL}/api/clients/${id}/unlock?admin_token=${token}`, {
+            const adminQuery = await buildAdminQuery();
+            const response = await fetch(`${API_URL}/api/clients/${id}/unlock${adminQuery}`, {
               method: 'POST',
             });
             if (!response.ok) throw new Error('Failed to unlock device');
@@ -132,9 +176,9 @@ export default function ClientDetails() {
     }
     setActionLoading(true);
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const adminQuery = await buildAdminQuery(true);
       const response = await fetch(
-        `${API_BASE_URL}/api/clients/${id}/warning?message=${encodeURIComponent(warningMessage)}&admin_token=${token}`,
+        `${API_URL}/api/clients/${id}/warning?message=${encodeURIComponent(warningMessage)}${adminQuery}`,
         { method: 'POST' }
       );
       if (!response.ok) throw new Error('Failed to send warning');
@@ -161,8 +205,8 @@ export default function ClientDetails() {
           onPress: async () => {
             setActionLoading(true);
             try {
-              const token = await AsyncStorage.getItem('admin_token');
-              const response = await fetch(`${API_BASE_URL}/api/clients/${id}/allow-uninstall?admin_token=${token}`, {
+              const adminQuery = await buildAdminQuery();
+              const response = await fetch(`${API_URL}/api/clients/${id}/allow-uninstall${adminQuery}`, {
                 method: 'POST',
               });
               if (!response.ok) throw new Error('Failed to allow uninstall');
@@ -186,13 +230,13 @@ export default function ClientDetails() {
       {
         text: t('delete'),
         style: 'destructive',
-        onPress: async () => {
-          setActionLoading(true);
-          try {
-            const token = await AsyncStorage.getItem('admin_token');
-            const response = await fetch(`${API_BASE_URL}/api/clients/${id}?admin_token=${token}`, {
-              method: 'DELETE',
-            });
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              const adminQuery = await buildAdminQuery();
+              const response = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`, {
+                method: 'DELETE',
+              });
             
             if (!response.ok) {
               const error = await response.json();
@@ -214,7 +258,8 @@ export default function ClientDetails() {
   const handleFetchPrice = async () => {
     setFetchingPrice(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/clients/${id}/fetch-price`);
+      const adminQuery = await buildAdminQuery();
+      const response = await fetch(`${API_URL}/api/clients/${id}/fetch-price${adminQuery}`);
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.detail || 'Failed to fetch price');
@@ -255,8 +300,8 @@ export default function ClientDetails() {
         }
       }
 
-      const token = await AsyncStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/api/clients/${id}?admin_token=${token}`, {
+      const adminQuery = await buildAdminQuery();
+      const response = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData),
@@ -267,6 +312,45 @@ export default function ClientDetails() {
       await fetchClient();
       setEditDeviceModal(false);
       Alert.alert(t('success'), t('deviceInfoUpdated'));
+    } catch (error: any) {
+      Alert.alert(t('error'), error.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRecordPayment = async () => {
+    if (!paymentAmount) {
+      Alert.alert(t('error'), language === 'et' ? 'Palun sisesta summa' : 'Please enter payment amount');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('admin_token');
+      const response = await fetch(`${API_URL}/api/loans/${id}/payments?admin_token=${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: parseFloat(paymentAmount),
+          payment_method: paymentMethod,
+          notes: paymentNotes,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to record payment');
+      
+      const data = await response.json();
+      Alert.alert(
+        t('success'),
+        language === 'et' 
+          ? `Makse salvestatud!\n\nMakstud: €${data.payment.amount}\nJääk: €${data.updated_balance.outstanding_balance.toFixed(2)}`
+          : `Payment recorded!\n\nPaid: €${data.payment.amount}\nOutstanding: €${data.updated_balance.outstanding_balance.toFixed(2)}`
+      );
+      setPaymentModal(false);
+      setPaymentAmount('');
+      setPaymentNotes('');
+      fetchClient();
     } catch (error: any) {
       Alert.alert(t('error'), error.message);
     } finally {
@@ -314,18 +398,44 @@ export default function ClientDetails() {
             <Text style={styles.avatarText}>{client.name.charAt(0).toUpperCase()}</Text>
           </View>
           <Text style={styles.clientName}>{client.name}</Text>
-          <View style={[styles.statusBadge, client.is_locked ? styles.lockedBadge : styles.unlockedBadge]}>
+        <View style={[styles.statusBadge, client.is_locked ? styles.lockedBadge : styles.unlockedBadge]}>
+          <Ionicons
+            name={client.is_locked ? 'lock-closed' : 'lock-open'}
+            size={14}
+            color={client.is_locked ? '#EF4444' : '#10B981'}
+          />
+          <Text style={[styles.statusText, client.is_locked ? styles.lockedText : styles.unlockedText]}>
+            {client.is_locked ? t('locked') : t('unlocked')}
+          </Text>
+        </View>
+        {/* Admin Mode Status Badge */}
+        {client.is_registered && (
+          <View style={[styles.statusBadge, client.admin_mode_active ? styles.adminModeBadge : styles.adminModeOffBadge]}>
             <Ionicons
-              name={client.is_locked ? 'lock-closed' : 'lock-open'}
+              name={client.admin_mode_active ? 'shield-checkmark' : 'shield'}
               size={14}
-              color={client.is_locked ? '#EF4444' : '#10B981'}
+              color={client.admin_mode_active ? '#3B82F6' : '#F59E0B'}
             />
-            <Text style={[styles.statusText, client.is_locked ? styles.lockedText : styles.unlockedText]}>
-              {client.is_locked ? t('locked') : t('unlocked')}
+            <Text style={[styles.statusText, client.admin_mode_active ? styles.adminModeText : styles.adminModeOffText]}>
+              {client.admin_mode_active 
+                ? (language === 'et' ? 'Admin režiim SEES' : 'Admin mode ON')
+                : (language === 'et' ? 'Admin režiim VÄLJAS' : 'Admin mode OFF')}
             </Text>
           </View>
+        )}
+        <View style={styles.regCodeRow}>
           <Text style={styles.regCode}>{t('registrationCode')}: {client.registration_code}</Text>
+          <TouchableOpacity
+            style={styles.copyButton}
+            onPress={async () => {
+              await Share.share({ message: client.registration_code });
+            }}
+          >
+            <Ionicons name="copy" size={18} color="#94A3B8" />
+            <Text style={styles.copyText}>{t('copy')}</Text>
+          </TouchableOpacity>
         </View>
+      </View>
 
         {/* Contact Info */}
         <View style={styles.section}>
@@ -440,9 +550,83 @@ export default function ClientDetails() {
           </View>
         )}
 
+        {/* Loan Overview Section */}
+        {client.loan_start_date && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{language === 'et' ? 'Laenu ülevaade' : 'Loan Overview'}</Text>
+              <TouchableOpacity 
+                style={styles.recordPaymentBtn}
+                onPress={() => {
+                  setPaymentAmount(client.monthly_emi?.toFixed(2) || '');
+                  setPaymentModal(true);
+                }}
+              >
+                <Ionicons name="card" size={16} color="#10B981" />
+                <Text style={styles.recordPaymentBtnText}>{language === 'et' ? 'Lisa makse' : 'Record Payment'}</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {/* Loan Progress */}
+            <View style={styles.loanProgressCard}>
+              <View style={styles.loanProgressBar}>
+                <View 
+                  style={[
+                    styles.loanProgressFill, 
+                    { width: `${client.total_amount_due ? (client.total_paid || 0) / client.total_amount_due * 100 : 0}%` }
+                  ]} 
+                />
+              </View>
+              <Text style={styles.loanProgressText}>
+                {client.total_amount_due ? ((client.total_paid || 0) / client.total_amount_due * 100).toFixed(1) : 0}% {language === 'et' ? 'makstud' : 'paid'}
+              </Text>
+            </View>
+            
+            <View style={styles.loanStatsGrid}>
+              <View style={styles.loanStatItem}>
+                <Text style={styles.loanStatLabel}>{language === 'et' ? 'Laen kokku' : 'Total Loan'}</Text>
+                <Text style={styles.loanStatValue}>€{(client.total_amount_due || 0).toFixed(2)}</Text>
+              </View>
+              <View style={styles.loanStatItem}>
+                <Text style={styles.loanStatLabel}>{language === 'et' ? 'Makstud' : 'Paid'}</Text>
+                <Text style={[styles.loanStatValue, { color: '#10B981' }]}>€{(client.total_paid || 0).toFixed(2)}</Text>
+              </View>
+              <View style={styles.loanStatItem}>
+                <Text style={styles.loanStatLabel}>{language === 'et' ? 'Jääk' : 'Outstanding'}</Text>
+                <Text style={[styles.loanStatValue, { color: '#EF4444' }]}>€{(client.outstanding_balance || 0).toFixed(2)}</Text>
+              </View>
+              <View style={styles.loanStatItem}>
+                <Text style={styles.loanStatLabel}>{language === 'et' ? 'Kuumakse' : 'Monthly Payment'}</Text>
+                <Text style={styles.loanStatValue}>€{(client.monthly_emi || 0).toFixed(2)}</Text>
+              </View>
+            </View>
+            
+            {(client.days_overdue || 0) > 0 && (
+              <View style={styles.overdueAlert}>
+                <Ionicons name="warning" size={20} color="#EF4444" />
+                <Text style={styles.overdueAlertText}>
+                  {client.days_overdue} {language === 'et' ? 'päeva üle tähtaja' : 'days overdue'}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Action Buttons */}
         <View style={styles.actionsSection}>
           <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
+          
+          {/* Record Payment Button (if no loan_start_date, show option to go to loan management) */}
+          {!client.loan_start_date && (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.setupLoanButton]}
+              onPress={() => router.push(`/admin/loan-management?id=${client.id}`)}
+              disabled={actionLoading}
+            >
+              <Ionicons name="wallet" size={20} color="#fff" />
+              <Text style={styles.actionButtonText}>{language === 'et' ? 'Seadista laen' : 'Setup Loan'}</Text>
+            </TouchableOpacity>
+          )}
           
           <TouchableOpacity
             style={[styles.actionButton, client.is_locked ? styles.unlockButton : styles.lockButton]}
@@ -474,6 +658,85 @@ export default function ClientDetails() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Payment Modal */}
+      <Modal visible={paymentModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{language === 'et' ? 'Salvesta makse' : 'Record Payment'}</Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>{language === 'et' ? 'Summa (€)' : 'Amount (€)'}</Text>
+              <TextInput
+                style={styles.paymentInput}
+                value={paymentAmount}
+                onChangeText={setPaymentAmount}
+                placeholder={(client.monthly_emi || 0).toFixed(2)}
+                keyboardType="decimal-pad"
+                placeholderTextColor="#64748B"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>{language === 'et' ? 'Makseviis' : 'Payment Method'}</Text>
+              <View style={styles.methodButtons}>
+                {['cash', 'bank_transfer', 'card'].map((method) => (
+                  <TouchableOpacity
+                    key={method}
+                    style={[
+                      styles.methodButton,
+                      paymentMethod === method && styles.methodButtonActive
+                    ]}
+                    onPress={() => setPaymentMethod(method)}
+                  >
+                    <Text style={[
+                      styles.methodButtonText,
+                      paymentMethod === method && styles.methodButtonTextActive
+                    ]}>
+                      {method === 'cash' ? (language === 'et' ? 'Sularaha' : 'Cash') :
+                       method === 'bank_transfer' ? (language === 'et' ? 'Ülekanne' : 'Transfer') :
+                       (language === 'et' ? 'Kaart' : 'Card')}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>{language === 'et' ? 'Märkmed (valikuline)' : 'Notes (Optional)'}</Text>
+              <TextInput
+                style={[styles.paymentInput, styles.textArea]}
+                value={paymentNotes}
+                onChangeText={setPaymentNotes}
+                placeholder={language === 'et' ? 'Makse märkmed...' : 'Payment notes...'}
+                placeholderTextColor="#64748B"
+                multiline
+                numberOfLines={3}
+              />
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={() => setPaymentModal(false)}
+              >
+                <Text style={styles.modalCancelText}>{t('cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.paymentConfirmButton]}
+                onPress={handleRecordPayment}
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>{language === 'et' ? 'Salvesta' : 'Record'}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Warning Modal */}
       <Modal visible={warningModal} transparent animationType="fade">
@@ -702,6 +965,14 @@ const styles = StyleSheet.create({
   unlockedBadge: {
     backgroundColor: 'rgba(16, 185, 129, 0.2)',
   },
+  adminModeBadge: {
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    marginTop: 6,
+  },
+  adminModeOffBadge: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    marginTop: 6,
+  },
   statusText: {
     fontSize: 14,
     fontWeight: '600',
@@ -712,9 +983,37 @@ const styles = StyleSheet.create({
   unlockedText: {
     color: '#10B981',
   },
+  adminModeText: {
+    color: '#3B82F6',
+  },
+  adminModeOffText: {
+    color: '#F59E0B',
+  },
+  regCodeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
   regCode: {
     fontSize: 14,
     color: '#64748B',
+  },
+  copyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+    gap: 6,
+  },
+  copyText: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '600',
   },
   section: {
     marginBottom: 20,
@@ -970,5 +1269,127 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#94A3B8',
     marginBottom: 8,
+  },
+  // Loan section styles
+  recordPaymentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#10B98120',
+    borderRadius: 8,
+  },
+  recordPaymentBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  loanProgressCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  loanProgressBar: {
+    height: 8,
+    backgroundColor: '#0F172A',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  loanProgressFill: {
+    height: '100%',
+    backgroundColor: '#10B981',
+    borderRadius: 4,
+  },
+  loanProgressText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 6,
+    textAlign: 'right',
+  },
+  loanStatsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 16,
+    gap: 16,
+  },
+  loanStatItem: {
+    flex: 1,
+    minWidth: '40%',
+  },
+  loanStatLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  loanStatValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  overdueAlert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#EF444420',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  overdueAlertText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  setupLoanButton: {
+    backgroundColor: '#4F46E5',
+  },
+  // Payment modal styles
+  paymentInput: {
+    backgroundColor: '#0F172A',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 16,
+    color: '#fff',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  methodButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  methodButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#0F172A',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+    alignItems: 'center',
+  },
+  methodButtonActive: {
+    backgroundColor: '#10B98120',
+    borderColor: '#10B981',
+  },
+  methodButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  methodButtonTextActive: {
+    color: '#10B981',
+  },
+  paymentConfirmButton: {
+    backgroundColor: '#10B981',
   },
 });

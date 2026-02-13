@@ -13,12 +13,12 @@ interface Translations {
 const translations: Translations = {
   // Home Screen
   appTitle: {
-    et: 'EMI Lukustussüsteem',
-    en: 'EMI Lock System',
+    et: 'Laenu lukustussüsteem',
+    en: 'Loan Lock System',
   },
   appSubtitle: {
-    et: 'Telefoni lukustuslahendus EMI jaoks',
-    en: 'Phone Lock Management for EMI',
+    et: 'Telefoni lukustuslahendus laenude jaoks',
+    en: 'Phone Lock Management for Loans',
   },
   selectMode: {
     et: 'Vali režiim',
@@ -37,12 +37,12 @@ const translations: Translations = {
     en: 'Client Device',
   },
   clientDescription: {
-    et: 'Registreeri oma seade, vaata EMI staatust ja halda oma kontot',
-    en: 'Register your device, view EMI status, and manage your account',
+    et: 'Registreeri oma seade, vaata laenu staatust ja halda oma kontot',
+    en: 'Register your device, view loan status, and manage your account',
   },
   secureSystem: {
-    et: 'Turvaline EMI haldussüsteem',
-    en: 'Secure EMI Management System',
+    et: 'Turvaline laenuhaldussüsteem',
+    en: 'Secure Loan Management System',
   },
 
   // Admin Login
@@ -66,6 +66,10 @@ const translations: Translations = {
     et: 'Logi sisse',
     en: 'Sign In',
   },
+  login: {
+    et: 'Logi sisse',
+    en: 'Login',
+  },
   error: {
     et: 'Viga',
     en: 'Error',
@@ -73,6 +77,14 @@ const translations: Translations = {
   fillAllFields: {
     et: 'Palun täida kõik väljad',
     en: 'Please fill in all fields',
+  },
+  ok: {
+    et: 'OK',
+    en: 'OK',
+  },
+  retry: {
+    et: 'Proovi uuesti',
+    en: 'Retry',
   },
 
   // Dashboard
@@ -103,6 +115,14 @@ const translations: Translations = {
   quickActions: {
     et: 'Kiirtoimingud',
     en: 'Quick Actions',
+  },
+  copy: {
+    et: 'Kopeeri',
+    en: 'Copy',
+  },
+  copied: {
+    et: 'Kood kopeeritud',
+    en: 'Code copied',
   },
   viewClients: {
     et: 'Vaata kliente',
@@ -151,8 +171,8 @@ const translations: Translations = {
     en: 'Locked',
   },
   emi: {
-    et: 'EMI',
-    en: 'EMI',
+    et: 'Laen',
+    en: 'Loan',
   },
   pending: {
     et: 'Ootel',
@@ -193,16 +213,16 @@ const translations: Translations = {
     en: 'Enter email address',
   },
   emiAmount: {
-    et: 'EMI summa',
-    en: 'EMI Amount',
+    et: 'Laenusumma',
+    en: 'Loan Amount',
   },
   enterEmiAmount: {
-    et: 'Sisesta EMI summa',
-    en: 'Enter EMI amount',
+    et: 'Sisesta laenusumma',
+    en: 'Enter loan amount',
   },
   emiDueDate: {
-    et: 'EMI tähtaeg',
-    en: 'EMI Due Date',
+    et: 'Laenu tähtaeg',
+    en: 'Loan Due Date',
   },
   createClient: {
     et: 'Loo klient',
@@ -239,8 +259,8 @@ const translations: Translations = {
     en: 'Contact Information',
   },
   emiDetails: {
-    et: 'EMI andmed',
-    en: 'EMI Details',
+    et: 'Laenu andmed',
+    en: 'Loan Details',
   },
   amount: {
     et: 'Summa',
@@ -360,6 +380,10 @@ const translations: Translations = {
     et: 'Seade registreeritud edukalt!',
     en: 'Device registered successfully!',
   },
+  deviceAdminPermissionPrompt: {
+    et: 'Seade registreeritud! Palun anna järgmises vaates Device Admin õigused, et seadistus lõpule viia.',
+    en: 'Device registered! Please grant Device Admin permission in the next screen to complete setup.',
+  },
   checkingRegistration: {
     et: 'Kontrollin registreerimist...',
     en: 'Checking registration...',
@@ -465,6 +489,12 @@ const translations: Translations = {
   defaultLockMessage: {
     et: 'Teie seade on lukustatud tasumata EMI makse tõttu.',
     en: 'Your device has been locked due to pending EMI payment.',
+  },
+
+  // Stay signed in
+  staySignedIn: {
+    et: 'Hoia sisse logitud',
+    en: 'Stay signed in',
   },
 
   // Settings Screen

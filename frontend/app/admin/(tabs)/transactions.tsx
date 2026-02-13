@@ -10,9 +10,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getApiUrl, API_BASE_URL } from '../../../src/utils/api';
-import { useLanguage } from '../../../src/context/LanguageContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLanguage } from '../../../src/context/LanguageContext';
+import API_URL from '../../../src/constants/api';
 
 
 interface Payment {
@@ -35,13 +35,15 @@ export default function TransactionsTab() {
   const fetchPayments = async () => {
     try {
       // Fetch all clients and extract their payments
-      const token = await AsyncStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/api/clients?limit=500&admin_token=${token}`);
+      const adminId = await AsyncStorage.getItem('admin_id');
+      const query = adminId ? `?limit=500&admin_id=${adminId}` : '?limit=500';
+      const response = await fetch(`${API_URL}/api/clients${query}`);
       const data = await response.json();
       const allPayments: Payment[] = [];
 
       // Extract payments from all clients
-      data.clients.forEach((client: any) => {
+      const clients = data.clients || data;
+      clients.forEach((client: any) => {
         if (client.payments_history && Array.isArray(client.payments_history)) {
           client.payments_history.forEach((payment: any) => {
             allPayments.push({
@@ -114,7 +116,7 @@ export default function TransactionsTab() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={[]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
           {language === 'et' ? 'Tehingud' : 'Transactions'}
@@ -177,6 +179,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: 16,
+    paddingBottom: 96,
   },
   paymentCard: {
     backgroundColor: '#1E293B',
