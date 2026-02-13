@@ -85,7 +85,8 @@ export default function ClientDetails() {
   const handleLock = async () => {
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/clients/${id}/lock?message=${encodeURIComponent(lockMessage)}`, {
+      const token = await AsyncStorage.getItem('admin_token');
+      const response = await fetch(`${API_BASE_URL}/api/clients/${id}/lock?message=${encodeURIComponent(lockMessage)}&admin_token=${token}`, {
         method: 'POST',
       });
       if (!response.ok) throw new Error('Failed to lock device');
