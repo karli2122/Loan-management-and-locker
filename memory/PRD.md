@@ -19,45 +19,43 @@ Mobile application (React Native/Expo) + FastAPI backend for managing EMI (Equat
 
 ## What's Been Implemented
 
-### Session 1-3 (Previous Agents)
+### Previous Sessions
 - Expo build system stabilized
 - Stale URL eradication (multiple rounds)
 - Authentication flow hardened (token validation, 401 handling)
 - Native Kotlin module rewritten (admin mode crash fix)
 - All 13 API endpoints verified operational
 
-### Session 4 (Current - Feb 13, 2026)
-- **Data Segregation (P0)**: Made `/api/stats`, `/api/reports/collection`, `/api/reports/clients` require `admin_id` parameter. Admins now only see their own data.
-- **Stale URL Cleanup (P0)**: Removed dead fallback URLs from `src/constants/api.ts`, `src/utils/api.ts`, `app/admin/(tabs)/index.tsx`
+### Current Session (Feb 13, 2026)
+- **Data Segregation (P0)**: Made `/api/stats`, `/api/reports/collection`, `/api/reports/clients` require `admin_id` parameter
+- **Stale URL Cleanup (P0)**: Removed dead fallback URLs from 5 files: `app.config.js`, `src/constants/api.ts`, `src/utils/api.ts`, `src/src/constants/api.ts`, `app/admin/(tabs)/index.tsx`
 - **Device Management Fix (P0)**: `device-management.tsx` now passes `admin_id` to `/api/stats`
-- **Profit Report Enhancement (P0)**: `/api/reports/financial` now returns admin `first_name`, `last_name`, `username`, `role` in response. PDF export uses this data.
-- **Add Client**: Verified working - POST `/api/clients?admin_token={token}` creates clients correctly
+- **Profit Report Enhancement (P0)**: `/api/reports/financial` now returns admin `first_name`, `last_name`, `username`, `role`
+- **Login API Enhanced (P0)**: `AdminResponse` model now includes `first_name`/`last_name`. Login endpoint returns these from DB
+- **Dashboard Welcome Screen (P0)**: Removed hardcoded `karli1987='Admin'` check. Now shows user's first name
+- **Settings Role Label (P0)**: Shows actual role (Admin/User) instead of hardcoded "Administrator"
+- **Admin Mode Fix (P0)**: AndroidManifest.xml now uses fully qualified receiver class name `expo.modules.emideviceadmin.EMIDeviceAdminReceiver`
 
 ### Testing
-- Backend API: 13/13 tests passed (100%)
-- Test file: `/app/backend/tests/test_emi_admin_api.py`
+- Backend API: 14/14 tests passed (100%) - iteration_2
+- Test files: `/app/backend/tests/test_emi_admin_api.py`
 
 ## Prioritized Backlog
 
-### P0 (Critical)
-- None currently
-
 ### P1 (Important)
 - API Security Audit: Verify all endpoints have proper auth middleware
-- User needs to rebuild APK with `--clear-cache` to get latest fixes
+- User needs to rebuild BOTH admin and client APKs with `--clear-cache`
 
 ### P2 (Nice to have)
-- Frontend URL consolidation into single source of truth
 - Code refactoring for production readiness
 
 ## Key API Endpoints
-- `POST /api/admin/login` - Admin authentication
+- `POST /api/admin/login` - Returns id, username, role, is_super_admin, token, first_name, last_name
 - `GET /api/stats?admin_id={id}` - Device statistics (admin_id REQUIRED)
 - `GET /api/reports/collection?admin_id={id}` - Collection report (admin_id REQUIRED)
 - `GET /api/reports/clients?admin_id={id}` - Client report (admin_id REQUIRED)
-- `GET /api/reports/financial?admin_id={id}` - Financial report (admin_id optional but recommended)
+- `GET /api/reports/financial?admin_id={id}` - Financial report with admin info
 - `POST /api/clients?admin_token={token}` - Create client
-- `GET /api/clients?admin_id={id}` - List clients
 
 ## Credentials
 - Admin: `karli1987` / `nasvakas123`
