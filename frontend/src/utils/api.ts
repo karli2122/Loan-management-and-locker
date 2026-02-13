@@ -4,7 +4,7 @@
  */
 
 // Use environment variable, fallback to current deployment URL
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://api-token-migration.preview.emergentagent.com';
+const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://auth-security-fix-5.preview.emergentagent.com';
 
 export const getBaseUrl = (): string => {
   return BASE_URL;
