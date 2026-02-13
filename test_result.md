@@ -406,11 +406,14 @@ metadata:
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: false
         agent: "main"
         comment: "Found critical bug: POST /api/loans/{client_id}/setup was using ClientCreate model (requiring name, phone, email) instead of a dedicated LoanSetupRequest model. Fixed by creating LoanSetupRequest(BaseModel) with only loan_amount, down_payment, interest_rate, loan_tenure_months. Also fixed fork URL mismatch in frontend api.ts (was hardcoded to old apkdebug URL, updated to api-token-migration URL). Manually verified with curl - loan setup now returns 200 with correct EMI calculation."
+      - working: true
+        agent: "testing"
+        comment: "Comprehensive Loan Setup API testing completed successfully. All 8 test scenarios passed: 1) Health check - API responding correctly, 2) Admin login - token obtained successfully, 3) Client retrieval - found existing client, 4) Loan setup with full parameters (€500, 12%, 6 months) - EMI calculated correctly at €88.33, 5) Loan setup with minimal parameters (€2000 only) - defaults applied correctly (10%, 12 months) giving EMI €183.33, 6) Invalid client ID - proper 404 error returned, 7) Missing loan_amount - proper 422 validation error returned, 8) Existing endpoints (loan plans, client creation) - still working. Minor Security Issue: Endpoint doesn't require authentication - works without admin_token, which may be intentional for public loan calculator functionality but should be reviewed for security implications. Core functionality working perfectly."
 
 test_plan:
   current_focus:
