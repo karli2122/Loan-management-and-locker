@@ -63,6 +63,15 @@ export default function AdminSettings() {
   const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
   const [backupInProgress, setBackupInProgress] = useState(false);
 
+  const handleAuthError = async () => {
+    await AsyncStorage.multiRemove(['admin_token', 'admin_stay_signed_in']);
+    Alert.alert(
+      language === 'et' ? 'Seanss aegunud' : 'Session Expired',
+      language === 'et' ? 'Palun logige uuesti sisse' : 'Please log in again',
+      [{ text: 'OK', onPress: () => router.replace('/admin/login') }]
+    );
+  };
+
   useEffect(() => {
     loadData();
   }, []);
@@ -75,6 +84,17 @@ export default function AdminSettings() {
       const role = await AsyncStorage.getItem('admin_role');
       const firstName = await AsyncStorage.getItem('admin_first_name');
       const lastName = await AsyncStorage.getItem('admin_last_name');
+      
+      // Validate token before proceeding
+      if (token) {
+        try {
+          const verifyRes = await fetch(`${API_URL}/api/admin/verify/${token}`);
+          if (!verifyRes.ok) {
+            await handleAuthError();
+            return;
+          }
+        } catch (_) {}
+      }
       
       // Load Google Drive backup info
       const googleConnectedStr = await AsyncStorage.getItem('google_drive_connected');
