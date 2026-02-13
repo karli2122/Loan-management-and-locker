@@ -11,9 +11,11 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 import hashlib
 import secrets
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError, InvalidHashError
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -42,22 +44,121 @@ api_router = APIRouter(prefix="/api")
 
 security = HTTPBasic()
 
+# Custom exception classes for better error handling
+class ApplicationException(Exception):
+    """Base exception class for application errors"""
+    def __init__(self, message: str, error_code: str, correlation_id: str = None):
+        self.message = message
+        self.error_code = error_code
+        self.correlation_id = correlation_id or str(uuid.uuid4())
+        super().__init__(self.message)
+    
+    def to_response(self):
+        return {
+            "error": self.message,
+            "code": self.error_code,
+            "correlation_id": self.correlation_id
+        }
+
+class ValidationException(ApplicationException):
+    """Raised when input validation fails"""
+    def __init__(self, message: str = "The provided data is invalid.", correlation_id: str = None):
+        super().__init__(message, "VALIDATION_ERROR", correlation_id)
+
+class AuthenticationException(ApplicationException):
+    """Raised when authentication fails"""
+    def __init__(self, message: str = "Authentication failed.", correlation_id: str = None):
+        super().__init__(message, "AUTHENTICATION_ERROR", correlation_id)
+
+class AuthorizationException(ApplicationException):
+    """Raised when authorization fails"""
+    def __init__(self, message: str = "Permission denied.", correlation_id: str = None):
+        super().__init__(message, "AUTHORIZATION_ERROR", correlation_id)
+
 # Global exception handler to prevent server crashes
+@app.exception_handler(ApplicationException)
+async def application_exception_handler(request, exc: ApplicationException):
+    """Handle custom application exceptions"""
+    logger.error(f"Application exception [{exc.correlation_id}]: {exc.error_code} - {exc.message}")
+    status_codes = {
+        "VALIDATION_ERROR": 422,
+        "AUTHENTICATION_ERROR": 401,
+        "AUTHORIZATION_ERROR": 403,
+    }
+    status_code = status_codes.get(exc.error_code, 500)
+    return JSONResponse(
+        status_code=status_code,
+        content=exc.to_response()
+    )
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
-    logger.error(f"Unhandled exception: {str(exc)}")
+    """Handle all unhandled exceptions"""
+    correlation_id = str(uuid.uuid4())
+    # Log full details internally
+    logger.error(f"Unhandled exception [{correlation_id}]: {type(exc).__name__}: {str(exc)}", exc_info=True)
+    # Return sanitized response externally
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error", "error": str(exc)}
+        content={
+            "error": "An unexpected error occurred. Please try again later.",
+            "code": "INTERNAL_ERROR",
+            "correlation_id": correlation_id
+        }
     )
 
 # ===================== HELPER FUNCTIONS =====================
 
+# Initialize Argon2 password hasher with secure parameters
+_argon2_hasher = PasswordHasher(
+    time_cost=3,        # Number of iterations
+    memory_cost=65536,  # 64 MB
+    parallelism=4,      # Number of parallel threads
+    hash_len=32,        # Length of the hash in bytes
+    salt_len=16         # Length of random salt
+)
+
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+    """
+    Hash password using Argon2id with secure parameters.
+    
+    Args:
+        password: Plain text password to hash
+        
+    Returns:
+        Argon2id hash string
+    """
+    return _argon2_hasher.hash(password)
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return hash_password(password) == password_hash
+    """
+    Verify password against stored hash.
+    Supports both Argon2id (new) and SHA-256 (legacy) hashes for migration.
+    
+    Args:
+        password: Plain text password to verify
+        password_hash: Stored password hash
+        
+    Returns:
+        True if password matches, False otherwise
+    """
+    # Check if it's a legacy SHA-256 hash (64 hex characters)
+    if len(password_hash) == 64 and all(c in '0123456789abcdef' for c in password_hash):
+        # Legacy SHA-256 verification
+        legacy_hash = hashlib.sha256(password.encode()).hexdigest()
+        return legacy_hash == password_hash
+    
+    # Try Argon2id verification
+    try:
+        _argon2_hasher.verify(password_hash, password)
+        
+        # Check if hash needs rehashing (parameters changed)
+        if _argon2_hasher.check_needs_rehash(password_hash):
+            logger.info("Password hash needs rehashing with updated parameters")
+        
+        return True
+    except (VerifyMismatchError, InvalidHashError):
+        return False
 
 def calculate_simple_interest_emi(principal: float, annual_rate: float, months: int) -> dict:
     """Calculate EMI using simple interest formula"""
@@ -523,10 +624,32 @@ class ClientStatusResponse(BaseModel):
 
 # ===================== ADMIN ROUTES =====================
 
+# Token configuration
+TOKEN_EXPIRY_HOURS = 24  # 24-hour token lifetime as per security requirements
+
 async def verify_admin_token_header(token: str) -> bool:
-    """Helper function to verify admin token"""
+    """
+    Helper function to verify admin token.
+    Checks both token existence and expiration.
+    
+    Args:
+        token: The admin token to verify
+        
+    Returns:
+        True if token is valid and not expired, False otherwise
+    """
     token_doc = await db.admin_tokens.find_one({"token": token})
-    return token_doc is not None
+    if not token_doc:
+        return False
+    
+    # Check if token has expired
+    if "expires_at" in token_doc:
+        if datetime.utcnow() > token_doc["expires_at"]:
+            # Token expired, remove it
+            await db.admin_tokens.delete_one({"token": token})
+            return False
+    
+    return True
 
 async def enforce_client_scope(client: dict, admin_id: Optional[str]):
     """Ensure the requested client belongs to the provided admin scope"""
@@ -575,8 +698,15 @@ async def register_admin(admin_data: AdminCreate, admin_token: str = Query(defau
     )
     await db.admins.insert_one(admin.dict())
     
+    # Generate token with expiration
     token = secrets.token_hex(32)
-    await db.admin_tokens.insert_one({"admin_id": admin.id, "token": token})
+    expires_at = datetime.utcnow() + timedelta(hours=TOKEN_EXPIRY_HOURS)
+    await db.admin_tokens.insert_one({
+        "admin_id": admin.id,
+        "token": token,
+        "created_at": datetime.utcnow(),
+        "expires_at": expires_at
+    })
     
     return AdminResponse(
         id=admin.id, 
@@ -590,12 +720,28 @@ async def register_admin(admin_data: AdminCreate, admin_token: str = Query(defau
 async def login_admin(login_data: AdminLogin):
     admin = await db.admins.find_one({"username": login_data.username})
     if not admin or not verify_password(login_data.password, admin["password_hash"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise AuthenticationException("Invalid credentials")
     
+    # Check if password needs rehashing (for legacy SHA-256 hashes)
+    if len(admin["password_hash"]) == 64:
+        # Legacy SHA-256 hash detected - rehash with Argon2id
+        logger.info(f"Migrating password hash for user {admin['username']} to Argon2id")
+        new_hash = hash_password(login_data.password)
+        await db.admins.update_one(
+            {"id": admin["id"]},
+            {"$set": {"password_hash": new_hash}}
+        )
+    
+    # Generate token with expiration
     token = secrets.token_hex(32)
+    expires_at = datetime.utcnow() + timedelta(hours=TOKEN_EXPIRY_HOURS)
     await db.admin_tokens.update_one(
         {"admin_id": admin["id"]},
-        {"$set": {"token": token}},
+        {"$set": {
+            "token": token,
+            "created_at": datetime.utcnow(),
+            "expires_at": expires_at
+        }},
         upsert=True
     )
     
@@ -609,10 +755,17 @@ async def login_admin(login_data: AdminLogin):
 
 @api_router.get("/admin/verify/{token}")
 async def verify_admin_token(token: str):
+    """Verify if a token is valid and not expired"""
+    is_valid = await verify_admin_token_header(token)
+    if not is_valid:
+        raise AuthenticationException("Invalid or expired token")
+    
     token_doc = await db.admin_tokens.find_one({"token": token})
-    if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    return {"valid": True, "admin_id": token_doc["admin_id"]}
+    return {
+        "valid": True,
+        "admin_id": token_doc["admin_id"],
+        "expires_at": token_doc.get("expires_at").isoformat() if token_doc.get("expires_at") else None
+    }
 
 # ===================== ADMIN MANAGEMENT ROUTES =====================
 
