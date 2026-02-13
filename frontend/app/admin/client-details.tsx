@@ -189,7 +189,8 @@ export default function ClientDetails() {
         onPress: async () => {
           setActionLoading(true);
           try {
-            const response = await fetch(`${API_BASE_URL}/api/clients/${id}`, {
+            const token = await AsyncStorage.getItem('admin_token');
+            const response = await fetch(`${API_BASE_URL}/api/clients/${id}?admin_token=${token}`, {
               method: 'DELETE',
             });
             
