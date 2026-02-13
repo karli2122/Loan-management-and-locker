@@ -18,22 +18,22 @@ export function isModuleAvailable(): boolean {
   return Platform.OS === 'android' && EMIDeviceAdminModule !== null;
 }
 
-export async function isAdminActive(): Promise<boolean> {
+export async function isDeviceAdminActive(): Promise<boolean> {
   if (!isModuleAvailable()) return false;
   try {
-    return await EMIDeviceAdminModule.isAdminActive();
+    return await EMIDeviceAdminModule.isDeviceAdminActive();
   } catch (e) {
-    console.log('isAdminActive error:', e);
+    console.log('isDeviceAdminActive error:', e);
     return false;
   }
 }
 
-export async function requestAdmin(): Promise<string> {
+export async function requestDeviceAdmin(): Promise<string> {
   if (!isModuleAvailable()) return 'module_not_available';
   try {
-    return await EMIDeviceAdminModule.requestAdmin();
+    return await EMIDeviceAdminModule.requestDeviceAdmin();
   } catch (e) {
-    console.log('requestAdmin error:', e);
+    console.log('requestDeviceAdmin error:', e);
     return 'error';
   }
 }
@@ -45,6 +45,36 @@ export async function lockDevice(): Promise<string> {
   } catch (e) {
     console.log('lockDevice error:', e);
     return 'error';
+  }
+}
+
+export async function preventUninstall(prevent: boolean): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.preventUninstall(prevent);
+  } catch (e) {
+    console.log('preventUninstall error:', e);
+    return 'error';
+  }
+}
+
+export async function allowUninstall(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.allowUninstall();
+  } catch (e) {
+    console.log('allowUninstall error:', e);
+    return 'error';
+  }
+}
+
+export async function isUninstallAllowed(): Promise<boolean> {
+  if (!isModuleAvailable()) return true;
+  try {
+    return await EMIDeviceAdminModule.isUninstallAllowed();
+  } catch (e) {
+    console.log('isUninstallAllowed error:', e);
+    return true;
   }
 }
 
