@@ -1521,10 +1521,19 @@ async def get_client_report(admin_token: str):
     }
 
 @api_router.get("/reports/financial")
-async def get_financial_report():
-    """Get detailed financial breakdown"""
-    clients = await db.clients.find().to_list(1000)
-    payments = await db.payments.find().to_list(1000)
+async def get_financial_report(admin_token: str):
+    """Get detailed financial breakdown filtered by admin"""
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    admin_id = token_doc["admin_id"]
+    query = {"$or": [{"admin_id": admin_id}, {"admin_id": None}, {"admin_id": {"$exists": False}}]}
+    clients = await db.clients.find(query).to_list(1000)
+    
+    # Get client IDs for filtering payments
+    client_ids = [c["id"] for c in clients]
+    payments = await db.payments.find({"client_id": {"$in": client_ids}}).to_list(1000)
     
     # Calculate totals
     total_principal = sum(c.get("loan_amount", 0) for c in clients)
