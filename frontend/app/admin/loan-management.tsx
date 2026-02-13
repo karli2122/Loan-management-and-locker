@@ -144,7 +144,8 @@ export default function LoanManagement() {
 
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/loans/${id}/setup`, {
+      const token = await AsyncStorage.getItem('admin_token');
+      const response = await fetch(`${API_BASE_URL}/api/loans/${id}/setup?admin_token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
