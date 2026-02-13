@@ -836,7 +836,10 @@ async def delete_client(client_id: str, admin_token: str):
 # ===================== LOCK CONTROL ROUTES =====================
 
 @api_router.post("/clients/{client_id}/lock")
-async def lock_client_device(client_id: str, message: Optional[str] = None):
+async def lock_client_device(client_id: str, message: Optional[str] = None, admin_token: str = None):
+    if not admin_token or not await verify_admin_token_header(admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -849,7 +852,10 @@ async def lock_client_device(client_id: str, message: Optional[str] = None):
     return {"message": "Device locked successfully"}
 
 @api_router.post("/clients/{client_id}/unlock")
-async def unlock_client_device(client_id: str):
+async def unlock_client_device(client_id: str, admin_token: str):
+    if not await verify_admin_token_header(admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -858,7 +864,10 @@ async def unlock_client_device(client_id: str):
     return {"message": "Device unlocked successfully"}
 
 @api_router.post("/clients/{client_id}/warning")
-async def send_warning(client_id: str, message: str):
+async def send_warning(client_id: str, message: str, admin_token: str):
+    if not await verify_admin_token_header(admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
