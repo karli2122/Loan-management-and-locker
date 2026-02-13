@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Comprehensive Backend API Testing for EMI Phone Lock System
-Tests all backend endpoints and complete flow
-UPDATED: Added Advanced Loan Management System API Tests
+Backend API Testing for EMI Phone Lock System
+Focus: Loan Setup API endpoint testing
+UPDATED: Specific focus on Loan Setup API as requested
 """
 
 import requests
