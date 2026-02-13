@@ -1876,10 +1876,11 @@ async def mark_reminder_sent(reminder_id: str):
 @api_router.get("/reports/collection")
 async def get_collection_report(admin_id: Optional[str] = Query(default=None)):
     """Get collection statistics and metrics"""
+    if not admin_id:
+        raise ValidationException("admin_id is required for collection reports")
+    
     # Build query filter for admin
-    query = {}
-    if admin_id:
-        query["admin_id"] = admin_id
+    query = {"admin_id": admin_id}
     
     # Total clients
     total_clients = await db.clients.count_documents(query)
@@ -1966,9 +1967,10 @@ async def get_collection_report(admin_id: Optional[str] = Query(default=None)):
 @api_router.get("/reports/clients")
 async def get_client_report(admin_id: Optional[str] = Query(default=None)):
     """Get client-wise statistics"""
-    query = {}
-    if admin_id:
-        query["admin_id"] = admin_id
+    if not admin_id:
+        raise ValidationException("admin_id is required for client reports")
+    
+    query = {"admin_id": admin_id}
     
     clients = await db.clients.find(query).to_list(1000)
     
@@ -2049,7 +2051,20 @@ async def get_financial_report(admin_id: Optional[str] = Query(default=None)):
     
     monthly_data.reverse()
     
-    return {
+    # Fetch admin user details if admin_id provided
+    admin_info = None
+    if admin_id:
+        admin_doc = await db.admins.find_one({"id": admin_id})
+        if admin_doc:
+            admin_info = {
+                "id": admin_doc["id"],
+                "username": admin_doc.get("username", ""),
+                "first_name": admin_doc.get("first_name", ""),
+                "last_name": admin_doc.get("last_name", ""),
+                "role": admin_doc.get("role", "user"),
+            }
+    
+    result = {
         "totals": {
             "principal_disbursed": round(total_principal, 2),
             "interest_earned": round(total_interest, 2),
@@ -2059,6 +2074,11 @@ async def get_financial_report(admin_id: Optional[str] = Query(default=None)):
         },
         "monthly_trend": monthly_data
     }
+    
+    if admin_info:
+        result["admin"] = admin_info
+    
+    return result
 
 # ===================== PHONE PRICE LOOKUP =====================
 
@@ -2136,10 +2156,11 @@ async def fetch_phone_price(client_id: str, admin_id: Optional[str] = Query(defa
 
 @api_router.get("/stats")
 async def get_stats(admin_id: Optional[str] = Query(default=None)):
-    """Get statistics, optionally filtered by admin_id"""
-    query = {}
-    if admin_id:
-        query["admin_id"] = admin_id
+    """Get statistics filtered by admin_id"""
+    if not admin_id:
+        raise ValidationException("admin_id is required for statistics")
+    
+    query = {"admin_id": admin_id}
     
     total_clients = await db.clients.count_documents(query)
     locked_query = {**query, "is_locked": True}
