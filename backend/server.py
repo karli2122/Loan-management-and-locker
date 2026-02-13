@@ -811,7 +811,10 @@ async def allow_uninstall(client_id: str, admin_token: str):
     }
 
 @api_router.delete("/clients/{client_id}")
-async def delete_client(client_id: str):
+async def delete_client(client_id: str, admin_token: str):
+    if not await verify_admin_token_header(admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
