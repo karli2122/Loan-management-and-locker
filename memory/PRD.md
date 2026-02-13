@@ -1,50 +1,64 @@
-# Loan Management & Phone Lock - PRD
+# EMI Device Admin - Product Requirements Document
 
 ## Original Problem Statement
-A loan management application with phone locking capabilities. The system consists of:
-- **Admin App**: For loan administrators to manage clients, loans, payments, and remotely lock/unlock devices
-- **Client App**: Installed on borrower devices, enables Device Admin for payment enforcement (lock on overdue)
-- **Backend**: FastAPI + MongoDB API serving both apps
+Mobile application (React Native/Expo) + FastAPI backend for managing EMI (Equated Monthly Installment) device loans. Admins manage clients, loans, devices, and view financial reports.
 
-The codebase is sourced from: `https://github.com/karli2122/Loan-management-and-locker.git`
+## Core Requirements
+1. Admin authentication with token-based security
+2. Client management (CRUD) with device registration
+3. Loan management with EMI calculations
+4. Device lock/unlock functionality via native Android module
+5. Financial reports and analytics
+6. Multi-admin support with data segregation
 
 ## Architecture
-- **Backend**: FastAPI (`/app/backend/server.py`) on port 8001
-- **Frontend**: Expo/React Native (`/app/frontend/`) — builds separate Admin and Client APKs via `APP_MODE` env variable
-- **Database**: MongoDB (`emi_lock_db`)
-- **Native Module**: `emi-device-admin` (Kotlin Expo module for Android Device Admin)
-
-## Key Features
-1. Admin authentication with token-based auth (Argon2id password hashing)
-2. Client CRUD with admin scoping (data segregation)
-3. Loan management (setup, EMI calculation, payments)
-4. Device lock/unlock control
-5. Device Admin mode (prevent uninstall, auto-lock on overdue payments)
-6. Payment reminders via Expo push notifications
-7. Tamper detection and reporting
-8. Loan plans management
+- **Frontend**: React Native (Expo) - builds as Android APK
+- **Backend**: FastAPI (Python) on port 8001
+- **Database**: MongoDB
+- **Native Module**: emi-device-admin (Kotlin) for Android device admin features
 
 ## What's Been Implemented
-- Full backend API with all CRUD endpoints
-- Admin/Client app differentiation via `APP_MODE`
-- Device Admin native module (`modules/emi-device-admin`)
-- Report admin status endpoint (`POST /api/device/report-admin-status`)
-- EMI calculator with multiple methods (simple, reducing balance, flat rate)
-- Late fee calculation and auto-lock for overdue payments
 
-## Completed Tasks (Feb 13, 2026)
-- **Fixed EAS build failure**: Removed invalid `publishing` block from `modules/emi-device-admin/android/build.gradle` (line 15) that required missing `maven-publish` plugin
-- **Verified admin mode enabling flow**: Backend endpoint, client-side Device Admin request, and admin panel status display all working correctly
-- **Confirmed module auto-links** via `expo-module.config.json` (no plugin entry needed in `app.config.js`)
+### Session 1-3 (Previous Agents)
+- Expo build system stabilized
+- Stale URL eradication (multiple rounds)
+- Authentication flow hardened (token validation, 401 handling)
+- Native Kotlin module rewritten (admin mode crash fix)
+- All 13 API endpoints verified operational
 
-## Known Issues
-- User's installed APK may be stale — must rebuild with `--clear-cache` after code changes
-- `plugins/withDeviceAdmin.js` exists but is redundant with the Expo module approach (potential cleanup)
-- Duplicate `DevicePolicy.ts` files at `src/utils/` and `src/src/utils/`
+### Session 4 (Current - Feb 13, 2026)
+- **Data Segregation (P0)**: Made `/api/stats`, `/api/reports/collection`, `/api/reports/clients` require `admin_id` parameter. Admins now only see their own data.
+- **Stale URL Cleanup (P0)**: Removed dead fallback URLs from `src/constants/api.ts`, `src/utils/api.ts`, `app/admin/(tabs)/index.tsx`
+- **Device Management Fix (P0)**: `device-management.tsx` now passes `admin_id` to `/api/stats`
+- **Profit Report Enhancement (P0)**: `/api/reports/financial` now returns admin `first_name`, `last_name`, `username`, `role` in response. PDF export uses this data.
+- **Add Client**: Verified working - POST `/api/clients?admin_token={token}` creates clients correctly
 
-## Build Commands
-- Admin APK: `APP_MODE=admin eas build --profile admin-production --platform android --clear-cache`
-- Client APK: `eas build --profile client-production --platform android --clear-cache`
+### Testing
+- Backend API: 13/13 tests passed (100%)
+- Test file: `/app/backend/tests/test_emi_admin_api.py`
+
+## Prioritized Backlog
+
+### P0 (Critical)
+- None currently
+
+### P1 (Important)
+- API Security Audit: Verify all endpoints have proper auth middleware
+- User needs to rebuild APK with `--clear-cache` to get latest fixes
+
+### P2 (Nice to have)
+- Frontend URL consolidation into single source of truth
+- Code refactoring for production readiness
+
+## Key API Endpoints
+- `POST /api/admin/login` - Admin authentication
+- `GET /api/stats?admin_id={id}` - Device statistics (admin_id REQUIRED)
+- `GET /api/reports/collection?admin_id={id}` - Collection report (admin_id REQUIRED)
+- `GET /api/reports/clients?admin_id={id}` - Client report (admin_id REQUIRED)
+- `GET /api/reports/financial?admin_id={id}` - Financial report (admin_id optional but recommended)
+- `POST /api/clients?admin_token={token}` - Create client
+- `GET /api/clients?admin_id={id}` - List clients
 
 ## Credentials
 - Admin: `karli1987` / `nasvakas123`
+- Admin ID: `a8c52e87-f8c8-44b3-9371-57393881db18`
