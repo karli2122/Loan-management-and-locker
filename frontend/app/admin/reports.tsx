@@ -192,7 +192,16 @@ export default function Reports() {
     try {
       // Get current user info
       const adminId = await AsyncStorage.getItem('admin_id');
+      const adminFirstName = await AsyncStorage.getItem('admin_first_name') || '';
+      const adminLastName = await AsyncStorage.getItem('admin_last_name') || '';
       const adminUsername = await AsyncStorage.getItem('admin_username') || 'Admin User';
+      
+      // Use name from financial report API if available, otherwise from AsyncStorage
+      const reportAdminName = financialReport?.admin?.first_name && financialReport?.admin?.last_name
+        ? `${financialReport.admin.first_name} ${financialReport.admin.last_name}`
+        : adminFirstName && adminLastName
+        ? `${adminFirstName} ${adminLastName}`
+        : adminUsername;
       
       const summary = getProfitSummary();
       const filteredData = getFilteredMonthlyData();
