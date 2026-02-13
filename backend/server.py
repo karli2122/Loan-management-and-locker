@@ -815,16 +815,16 @@ async def enforce_client_scope(client: dict, admin_id: Optional[str]):
     """Ensure the requested client belongs to the provided admin scope"""
     if client.get("admin_id"):
         if not admin_id or client["admin_id"] != admin_id:
-            raise HTTPException(status_code=403, detail="Client not accessible for this admin")
+            raise AuthorizationException("Client not accessible for this admin")
     elif admin_id:
         logger.warning(f"Admin {admin_id} attempted to access unassigned client {client['id']}")
-        raise HTTPException(status_code=403, detail="Client not assigned to this admin")
+        raise AuthorizationException("Client not assigned to this admin")
 
 @api_router.post("/admin/register", response_model=AdminResponse)
 async def register_admin(admin_data: AdminCreate, admin_token: str = Query(default=None)):
     # Validate password length
     if len(admin_data.password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+        raise ValidationException("Password must be at least 6 characters")
     
     # Check if any admin exists - if yes, require token and check creator's role
     admin_count = await db.admins.count_documents({})
@@ -832,21 +832,21 @@ async def register_admin(admin_data: AdminCreate, admin_token: str = Query(defau
     
     if not is_first_admin:
         if not admin_token:
-            raise HTTPException(status_code=401, detail="Admin token required to register new users")
+            raise AuthenticationException("Admin token required to register new users")
         
         # Get the creator's info
         token_data = await db.admin_tokens.find_one({"token": admin_token})
         if not token_data:
-            raise HTTPException(status_code=401, detail="Invalid admin token")
+            raise AuthenticationException("Invalid admin token")
         
         creator = await db.admins.find_one({"id": token_data["admin_id"]})
         if not creator or creator.get("role") != "admin":
-            raise HTTPException(status_code=403, detail="Only admins can create new users")
+            raise AuthorizationException("Only admins can create new users")
     
     # Check if username already exists
     existing = await db.admins.find_one({"username": admin_data.username})
     if existing:
-        raise HTTPException(status_code=400, detail="Username already exists")
+        raise ValidationException("Username already exists")
     
     admin = Admin(
         username=admin_data.username,
@@ -946,11 +946,11 @@ async def list_admins(admin_token: str = Query(...)):
     # Verify token and check if requester is an admin
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     requester = await db.admins.find_one({"id": token_doc["admin_id"]})
     if not requester or requester.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Only admins can view user list")
+        raise AuthorizationException("Only admins can view user list")
     
     admins = await db.admins.find().to_list(100)
     return [{
@@ -966,11 +966,11 @@ async def change_password(password_data: PasswordChange, admin_token: str = Quer
     """Change admin password"""
     # Validate new password length
     if len(password_data.new_password) < 6:
-        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+        raise ValidationException("New password must be at least 6 characters")
     
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     admin = await db.admins.find_one({"id": token_doc["admin_id"]})
     if not admin:
@@ -978,7 +978,7 @@ async def change_password(password_data: PasswordChange, admin_token: str = Quer
     
     # Verify current password
     if not verify_password(password_data.current_password, admin["password_hash"]):
-        raise HTTPException(status_code=401, detail="Current password is incorrect")
+        raise AuthenticationException("Current password is incorrect")
     
     # Update password
     new_hash = hash_password(password_data.new_password)
@@ -1000,7 +1000,7 @@ async def update_admin_profile(profile_data: ProfileUpdate, admin_token: str = Q
     """Update admin profile information"""
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     admin = await db.admins.find_one({"id": token_doc["admin_id"]})
     if not admin:
@@ -1029,16 +1029,16 @@ async def delete_admin(admin_id: str, admin_token: str = Query(...)):
     """Delete a user (requires admin role, cannot delete yourself, super admin, or last admin)"""
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     # Check if requester is an admin
     requester = await db.admins.find_one({"id": token_doc["admin_id"]})
     if not requester or requester.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Only admins can delete users")
+        raise AuthorizationException("Only admins can delete users")
     
     # Cannot delete yourself
     if token_doc["admin_id"] == admin_id:
-        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+        raise ValidationException("Cannot delete your own account")
     
     # Check if target user is super admin
     target_user = await db.admins.find_one({"id": admin_id})
@@ -1046,12 +1046,12 @@ async def delete_admin(admin_id: str, admin_token: str = Query(...)):
         raise HTTPException(status_code=404, detail="User not found")
     
     if target_user.get("is_super_admin", False):
-        raise HTTPException(status_code=403, detail="Cannot delete super admin")
+        raise AuthorizationException("Cannot delete super admin")
     
     # Check if this is the last admin
     admin_count = await db.admins.count_documents({"role": "admin"})
     if admin_count <= 1 and target_user.get("role") == "admin":
-        raise HTTPException(status_code=400, detail="Cannot delete the last admin")
+        raise ValidationException("Cannot delete the last admin")
     
     # Delete user
     result = await db.admins.delete_one({"id": admin_id})
@@ -1072,7 +1072,7 @@ async def create_client(client_data: ClientCreate, admin_token: Optional[str] = 
     if admin_token:
         token_doc = await db.admin_tokens.find_one({"token": admin_token})
         if not token_doc:
-            raise HTTPException(status_code=401, detail="Invalid admin token")
+            raise AuthenticationException("Invalid admin token")
         admin_id = token_doc["admin_id"]
     
     client_payload = client_data.dict()
@@ -1096,7 +1096,7 @@ async def get_all_clients(skip: int = 0, limit: int = 100, admin_id: Optional[st
     
     if not admin_id:
         logger.warning("admin_id not provided for client listing; rejecting request")
-        raise HTTPException(status_code=400, detail="admin_id is required for client listings")
+        raise ValidationException("admin_id is required for client listings")
     
     query = {"admin_id": admin_id}
     
@@ -1227,7 +1227,7 @@ async def register_device(registration: DeviceRegistration):
         raise HTTPException(status_code=404, detail="Invalid registration code")
     
     if client.get("is_registered"):
-        raise HTTPException(status_code=400, detail="Device already registered")
+        raise ValidationException("Device already registered")
     
     # Extract device make (brand) from device_model string
     device_make = registration.device_model.split()[0] if registration.device_model else ""
@@ -1378,12 +1378,12 @@ async def report_reboot(client_id: str):
 async def create_loan_plan(plan_data: LoanPlanCreate, admin_token: str = Query(...)):
     """Create a new loan plan"""
     if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     # Get admin_id from token
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     # Create plan with admin_id
     plan_dict = plan_data.dict()
@@ -1399,7 +1399,7 @@ async def get_loan_plans(active_only: bool = False, admin_id: Optional[str] = Qu
     """Get all loan plans for the specified admin"""
     if not admin_id:
         logger.warning("admin_id not provided for loan plan listing; rejecting request")
-        raise HTTPException(status_code=400, detail="admin_id is required for loan plan listings")
+        raise ValidationException("admin_id is required for loan plan listings")
     
     query = {"admin_id": admin_id}
     if active_only:
@@ -1417,7 +1417,7 @@ async def get_loan_plan(plan_id: str, admin_id: Optional[str] = Query(default=No
     
     # Check admin ownership if admin_id is provided
     if admin_id and plan.get("admin_id") and plan["admin_id"] != admin_id:
-        raise HTTPException(status_code=403, detail="Access denied: This loan plan belongs to another admin")
+        raise AuthorizationException("Access denied: This loan plan belongs to another admin")
     
     return LoanPlan(**plan)
 
@@ -1425,12 +1425,12 @@ async def get_loan_plan(plan_id: str, admin_id: Optional[str] = Query(default=No
 async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token: str = Query(...)):
     """Update a loan plan"""
     if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     # Get admin_id from token
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     plan = await db.loan_plans.find_one({"id": plan_id})
     if not plan:
@@ -1438,7 +1438,7 @@ async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token:
     
     # Check admin ownership
     if plan.get("admin_id") and plan["admin_id"] != token_doc["admin_id"]:
-        raise HTTPException(status_code=403, detail="Access denied: This loan plan belongs to another admin")
+        raise AuthorizationException("Access denied: This loan plan belongs to another admin")
     
     await db.loan_plans.update_one(
         {"id": plan_id},
@@ -1453,12 +1453,12 @@ async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token:
 async def delete_loan_plan(plan_id: str, admin_token: str = Query(...), force: bool = Query(default=False)):
     """Delete a loan plan permanently. Checks for client usage unless force=true."""
     if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     # Get admin_id from token
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     # Check if plan exists and belongs to admin
     plan = await db.loan_plans.find_one({"id": plan_id})
@@ -1467,7 +1467,7 @@ async def delete_loan_plan(plan_id: str, admin_token: str = Query(...), force: b
     
     # Check admin ownership
     if plan.get("admin_id") and plan["admin_id"] != token_doc["admin_id"]:
-        raise HTTPException(status_code=403, detail="Access denied: This loan plan belongs to another admin")
+        raise AuthorizationException("Access denied: This loan plan belongs to another admin")
     
     # Check if any clients are using this loan plan
     clients_using_plan = await db.clients.count_documents({"loan_plan_id": plan_id})
@@ -1509,10 +1509,10 @@ async def compare_emi_methods(
 ):
     """Compare EMI calculations using all three methods"""
     if principal <= 0 or months <= 0:
-        raise HTTPException(status_code=400, detail="Principal and months must be positive")
+        raise ValidationException("Principal and months must be positive")
     
     if annual_rate < 0:
-        raise HTTPException(status_code=400, detail="Interest rate cannot be negative")
+        raise ValidationException("Interest rate cannot be negative")
     
     comparison = calculate_all_methods(principal, annual_rate, months)
     
@@ -1537,7 +1537,7 @@ async def calculate_amortization_schedule(
 ):
     """Generate month-by-month amortization schedule"""
     if principal <= 0 or months <= 0:
-        raise HTTPException(status_code=400, detail="Principal and months must be positive")
+        raise ValidationException("Principal and months must be positive")
     
     # Calculate EMI based on method
     if method == "reducing_balance":
@@ -1635,11 +1635,11 @@ async def record_payment(client_id: str, payment_data: PaymentCreate, admin_toke
     # Verify admin token
     token_doc = await db.admin_tokens.find_one({"token": admin_token})
     if not token_doc:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     admin = await db.admins.find_one({"id": token_doc["admin_id"]})
     if not admin:
-        raise HTTPException(status_code=401, detail="Admin not found")
+        raise AuthenticationException("Admin not found")
     
     client = await db.clients.find_one({"id": client_id})
     if not client:
@@ -1723,7 +1723,7 @@ async def get_payment_schedule(client_id: str, admin_id: Optional[str] = Query(d
     await enforce_client_scope(client, admin_id)
     
     if not client.get("loan_start_date"):
-        raise HTTPException(status_code=400, detail="Loan not set up for this client")
+        raise ValidationException("Loan not set up for this client")
     
     from dateutil.relativedelta import relativedelta
     
@@ -1790,7 +1790,7 @@ async def update_loan_settings(client_id: str, settings: LoanSettings, admin_id:
 async def calculate_all_late_fees(admin_token: str = Query(...)):
     """Manually trigger late fee calculation for all overdue clients"""
     if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     await apply_late_fees_to_overdue_clients()
     return {"message": "Late fees calculated and applied successfully"}
@@ -1840,7 +1840,7 @@ async def get_client_reminders(client_id: str, admin_id: Optional[str] = None):
 async def create_all_reminders(admin_token: str = Query(...)):
     """Manually trigger reminder creation for all clients"""
     if not await verify_admin_token_header(admin_token):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+        raise AuthenticationException("Invalid admin token")
     
     await create_payment_reminders()
     return {"message": "Reminders created successfully"}
@@ -2059,7 +2059,7 @@ async def fetch_phone_price(client_id: str, admin_id: Optional[str] = Query(defa
     
     device_model = client.get("device_model", "")
     if not device_model or device_model == "Unknown Device":
-        raise HTTPException(status_code=400, detail="Device model not available")
+        raise ValidationException("Device model not available")
     
     try:
         # Use web search to find phone price
