@@ -66,8 +66,7 @@ export default {
           backgroundColor: "#0F172A"
         }
       ],
-      // Device Admin plugin for Client app only (native builds)
-      ...(IS_ADMIN_APP ? [] : ["./modules/emi-device-admin"])
+      // emi-device-admin auto-links via expo-module.config.json (no plugin entry needed)
     ],
     experiments: {
       typedRoutes: true
