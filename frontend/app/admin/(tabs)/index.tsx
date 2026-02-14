@@ -50,6 +50,8 @@ export default function Dashboard() {
   const [username, setUsername] = useState('');
   const [firstName, setFirstName] = useState('');
   const [userRole, setUserRole] = useState('user');
+  const [userCredits, setUserCredits] = useState<number>(5);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [monthStats, setMonthStats] = useState<MonthStats>({
     revenue: 0,
     profit: 0,
