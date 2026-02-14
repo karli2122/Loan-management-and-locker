@@ -2803,6 +2803,207 @@ async def get_client_payment_history(client_id: str):
         "next_payment_due": client.get("next_payment_due").isoformat() if client.get("next_payment_due") else None
     }
 
+# ===================== PAYMENT REMINDER SYSTEM =====================
+
+@api_router.post("/reminders/send-push")
+async def send_payment_reminder_push(admin_token: str = Query(...)):
+    """Send push notifications for all pending payment reminders"""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Get admin details
+    admin_doc = await db.admins.find_one({"id": admin_id})
+    is_super = admin_doc.get("is_super_admin", False) if admin_doc else False
+    
+    # Get all clients with upcoming/overdue payments
+    query = {} if is_super else {"admin_id": admin_id}
+    query["outstanding_balance"] = {"$gt": 0}
+    query["expo_push_token"] = {"$exists": True, "$ne": None}
+    
+    clients = await db.clients.find(query).to_list(1000)
+    
+    notifications_sent = 0
+    notifications_failed = 0
+    
+    for client in clients:
+        push_token = client.get("expo_push_token")
+        if not push_token:
+            continue
+        
+        next_due = client.get("next_payment_due")
+        if not next_due:
+            continue
+        
+        days_until_due = (next_due - datetime.utcnow()).days
+        monthly_emi = client.get("monthly_emi", 0)
+        
+        # Determine reminder type based on days until due
+        title = ""
+        body = ""
+        
+        if days_until_due == 3:
+            title = "Payment Reminder"
+            body = f"Your payment of €{monthly_emi:.2f} is due in 3 days"
+        elif days_until_due == 1:
+            title = "Payment Due Tomorrow"
+            body = f"Your payment of €{monthly_emi:.2f} is due tomorrow"
+        elif days_until_due == 0:
+            title = "Payment Due Today"
+            body = f"Your payment of €{monthly_emi:.2f} is due today"
+        elif days_until_due < 0:
+            days_overdue = abs(days_until_due)
+            title = "Payment Overdue"
+            body = f"Your payment of €{monthly_emi:.2f} is {days_overdue} days overdue"
+        else:
+            continue  # No reminder needed
+        
+        # Send push notification
+        success = await send_expo_push_notification(
+            push_token,
+            title,
+            body,
+            {
+                "type": "payment_reminder",
+                "client_id": client["id"],
+                "amount": monthly_emi,
+                "days_until_due": days_until_due
+            }
+        )
+        
+        if success:
+            notifications_sent += 1
+            # Create notification record for admin
+            if client.get("admin_id"):
+                await db.notifications.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "admin_id": client["admin_id"],
+                    "type": "payment_reminder_sent",
+                    "title": f"Reminder Sent to {client['name']}",
+                    "message": body,
+                    "client_id": client["id"],
+                    "client_name": client["name"],
+                    "is_read": False,
+                    "created_at": datetime.utcnow()
+                })
+        else:
+            notifications_failed += 1
+    
+    return {
+        "message": "Payment reminders processed",
+        "notifications_sent": notifications_sent,
+        "notifications_failed": notifications_failed,
+        "total_clients_processed": len(clients)
+    }
+
+@api_router.get("/reminders/pending")
+async def get_pending_reminders(admin_token: str = Query(...)):
+    """Get list of clients with pending payment reminders"""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    admin_doc = await db.admins.find_one({"id": admin_id})
+    is_super = admin_doc.get("is_super_admin", False) if admin_doc else False
+    
+    query = {} if is_super else {"admin_id": admin_id}
+    query["outstanding_balance"] = {"$gt": 0}
+    query["next_payment_due"] = {"$exists": True}
+    
+    clients = await db.clients.find(query, {
+        "_id": 0, "id": 1, "name": 1, "phone": 1, "monthly_emi": 1,
+        "next_payment_due": 1, "outstanding_balance": 1, "expo_push_token": 1
+    }).to_list(1000)
+    
+    reminders = []
+    now = datetime.utcnow()
+    
+    for client in clients:
+        next_due = client.get("next_payment_due")
+        if not next_due:
+            continue
+        
+        days_until_due = (next_due - now).days
+        
+        reminder_type = "upcoming"
+        if days_until_due < 0:
+            reminder_type = "overdue"
+        elif days_until_due == 0:
+            reminder_type = "due_today"
+        elif days_until_due <= 3:
+            reminder_type = "due_soon"
+        
+        reminders.append({
+            "client_id": client["id"],
+            "client_name": client["name"],
+            "phone": client["phone"],
+            "monthly_emi": client.get("monthly_emi", 0),
+            "outstanding_balance": client.get("outstanding_balance", 0),
+            "next_payment_due": next_due.isoformat() if next_due else None,
+            "days_until_due": days_until_due,
+            "reminder_type": reminder_type,
+            "has_push_token": bool(client.get("expo_push_token"))
+        })
+    
+    # Sort by days until due (most urgent first)
+    reminders.sort(key=lambda x: x["days_until_due"])
+    
+    return {
+        "reminders": reminders,
+        "summary": {
+            "total": len(reminders),
+            "overdue": sum(1 for r in reminders if r["reminder_type"] == "overdue"),
+            "due_today": sum(1 for r in reminders if r["reminder_type"] == "due_today"),
+            "due_soon": sum(1 for r in reminders if r["reminder_type"] == "due_soon"),
+            "upcoming": sum(1 for r in reminders if r["reminder_type"] == "upcoming"),
+            "with_push_token": sum(1 for r in reminders if r["has_push_token"])
+        }
+    }
+
+@api_router.post("/reminders/send-single/{client_id}")
+async def send_single_reminder(client_id: str, admin_token: str = Query(...)):
+    """Send a payment reminder to a specific client"""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    await enforce_client_scope(client, admin_id)
+    
+    push_token = client.get("expo_push_token")
+    if not push_token:
+        raise ValidationException("Client does not have a push token registered")
+    
+    monthly_emi = client.get("monthly_emi", 0)
+    outstanding = client.get("outstanding_balance", 0)
+    next_due = client.get("next_payment_due")
+    
+    days_until_due = (next_due - datetime.utcnow()).days if next_due else 0
+    
+    if days_until_due < 0:
+        title = "Payment Overdue"
+        body = f"Your payment of €{monthly_emi:.2f} is {abs(days_until_due)} days overdue. Outstanding: €{outstanding:.2f}"
+    else:
+        title = "Payment Reminder"
+        body = f"Your payment of €{monthly_emi:.2f} is due. Outstanding balance: €{outstanding:.2f}"
+    
+    success = await send_expo_push_notification(
+        push_token,
+        title,
+        body,
+        {
+            "type": "payment_reminder",
+            "client_id": client_id,
+            "amount": monthly_emi
+        }
+    )
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to send push notification")
+    
+    return {
+        "message": "Reminder sent successfully",
+        "client_id": client_id,
+        "client_name": client["name"]
+    }
+
 @api_router.get("/health")
 async def health_check():
     """Health check endpoint for Kubernetes liveness/readiness probes"""
