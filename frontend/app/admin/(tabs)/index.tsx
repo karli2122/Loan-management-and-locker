@@ -410,6 +410,67 @@ const styles = StyleSheet.create({
   contentContainer: {
     paddingBottom: 140,
   },
+  // Credit Balance Card styles
+  creditBalanceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#F59E0B30',
+  },
+  creditBalanceIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F59E0B20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  creditBalanceInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  creditBalanceLabel: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginBottom: 2,
+  },
+  creditBalanceValue: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#F59E0B',
+  },
+  superAdminIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#10B98120',
+  },
+  superAdminIndicatorText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  lowCreditIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#F59E0B20',
+  },
+  lowCreditIndicatorText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#F59E0B',
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
