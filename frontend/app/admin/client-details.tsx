@@ -72,7 +72,6 @@ export default function ClientDetails() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { t, language } = useLanguage();
-  const [adminId, setAdminId] = useState<string | null>(null);
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
