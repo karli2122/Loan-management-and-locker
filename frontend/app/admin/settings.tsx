@@ -537,6 +537,61 @@ export default function AdminSettings() {
     }
   };
 
+  const handleAssignCredits = async () => {
+    if (!selectedAdmin || !newCreditValue) {
+      Alert.alert(
+        language === 'et' ? 'Viga' : 'Error',
+        language === 'et' ? 'Palun sisesta krediitide arv' : 'Please enter credits amount'
+      );
+      return;
+    }
+
+    const credits = parseInt(newCreditValue, 10);
+    if (isNaN(credits) || credits < 0) {
+      Alert.alert(
+        language === 'et' ? 'Viga' : 'Error',
+        language === 'et' ? 'Krediitide arv peab olema positiivne number' : 'Credits must be a positive number'
+      );
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/admin/credits/assign?admin_token=${adminToken}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target_admin_id: selectedAdmin.id,
+          credits: credits
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || data.error || 'Failed to assign credits');
+      }
+
+      Alert.alert(
+        language === 'et' ? 'Õnnestus' : 'Success',
+        language === 'et' 
+          ? `${credits} krediiti määratud kasutajale ${selectedAdmin.username}` 
+          : `${credits} credits assigned to ${selectedAdmin.username}`
+      );
+
+      setShowCreditModal(false);
+      setSelectedAdmin(null);
+      setNewCreditValue('');
+      await fetchAdminsWithCredits(adminToken!);
+    } catch (error: any) {
+      Alert.alert(
+        language === 'et' ? 'Viga' : 'Error',
+        error.message
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const formatBackupDate = (dateStr: string | null) => {
     if (!dateStr) return language === 'et' ? 'Pole varundatud' : 'Never';
     const date = new Date(dateStr);
