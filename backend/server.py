@@ -1286,6 +1286,78 @@ async def get_silent_clients(
         "cutoff_minutes": minutes
     }
 
+@api_router.get("/clients/export")
+async def export_clients(admin_token: str = Query(...), format: str = Query("json")):
+    """Export all clients data as JSON or CSV format"""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Get admin details to check if super admin
+    admin_doc = await db.admins.find_one({"id": admin_id})
+    is_super = admin_doc.get("is_super_admin", False) if admin_doc else False
+    
+    query = {} if is_super else {"admin_id": admin_id}
+    clients = await db.clients.find(query, {"_id": 0}).to_list(10000)
+    
+    # Sanitize sensitive data
+    export_data = []
+    for client in clients:
+        export_data.append({
+            "id": client.get("id"),
+            "name": client.get("name"),
+            "phone": client.get("phone"),
+            "email": client.get("email"),
+            "device_model": client.get("device_model"),
+            "is_locked": client.get("is_locked"),
+            "loan_amount": client.get("loan_amount", 0),
+            "outstanding_balance": client.get("outstanding_balance", 0),
+            "total_paid": client.get("total_paid", 0),
+            "is_registered": client.get("is_registered"),
+            "days_overdue": client.get("days_overdue", 0),
+            "created_at": client.get("created_at").isoformat() if client.get("created_at") else None
+        })
+    
+    if format == "csv":
+        import csv
+        import io
+        output = io.StringIO()
+        if export_data:
+            writer = csv.DictWriter(output, fieldnames=export_data[0].keys())
+            writer.writeheader()
+            writer.writerows(export_data)
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=clients_export.csv"}
+        )
+    
+    return {"clients": export_data, "total": len(export_data)}
+
+@api_router.get("/clients/locations")
+async def get_client_locations(admin_token: str = Query(...)):
+    """Get all client locations for map display"""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Get admin details to check if super admin
+    admin_doc = await db.admins.find_one({"id": admin_id})
+    is_super = admin_doc.get("is_super_admin", False) if admin_doc else False
+    
+    query = {} if is_super else {"admin_id": admin_id}
+    query["latitude"] = {"$ne": None}
+    query["longitude"] = {"$ne": None}
+    
+    clients = await db.clients.find(query, {
+        "_id": 0, "id": 1, "name": 1, "latitude": 1, "longitude": 1,
+        "is_locked": 1, "is_registered": 1, "phone": 1, "outstanding_balance": 1,
+        "last_location_update": 1
+    }).to_list(10000)
+    
+    # Convert datetime
+    for c in clients:
+        if isinstance(c.get("last_location_update"), datetime):
+            c["last_location_update"] = c["last_location_update"].isoformat()
+    
+    return {"locations": clients}
+
 @api_router.get("/clients/{client_id}", response_model=Client)
 async def get_client(client_id: str, admin_token: str = Query(...)):
     admin_id = await get_admin_id_from_token(admin_token)
