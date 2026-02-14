@@ -848,6 +848,44 @@ export default function ClientHome() {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.actionCard} 
+            onPress={() => router.push('/client/payment-history')}
+            data-testid="payment-history-btn"
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#3B82F6' }]}>
+              <Ionicons name="receipt" size={24} color="#fff" />
+            </View>
+            <View style={styles.actionContent}>
+              <Text style={styles.actionTitle}>
+                {language === 'et' ? 'Maksete ajalugu' : 'Payment History'}
+              </Text>
+              <Text style={styles.actionDescription}>
+                {language === 'et' ? 'Vaata oma makseid' : 'View your payments'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.actionCard} 
+            onPress={() => router.push('/client/support-chat')}
+            data-testid="support-chat-btn"
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#8B5CF6' }]}>
+              <Ionicons name="chatbubbles" size={24} color="#fff" />
+            </View>
+            <View style={styles.actionContent}>
+              <Text style={styles.actionTitle}>
+                {language === 'et' ? 'Tugi' : 'Support Chat'}
+              </Text>
+              <Text style={styles.actionDescription}>
+                {language === 'et' ? 'Võta meiega ühendust' : 'Contact us for help'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
