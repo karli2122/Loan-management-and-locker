@@ -293,8 +293,12 @@ async def preview_contract(client_id: str, admin_token: str = Query(...)):
 
 
 @router.post("/contracts/{client_id}/send-email")
-async def send_contract_email(client_id: str, admin_token: str = Query(...)):
-    """Generate a loan contract PDF and send it to the client's email."""
+async def send_contract_email(client_id: str, admin_token: str = Query(...), test_mode: bool = Query(default=False)):
+    """Generate a loan contract PDF and send it to the client's email.
+    
+    Args:
+        test_mode: If True, sends to the Resend verified email (sandbox workaround) instead of client email.
+    """
     admin_id = await get_admin_id_from_token(admin_token)
     
     # Get client
