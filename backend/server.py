@@ -2398,6 +2398,401 @@ async def get_stats(admin_id: Optional[str] = Query(default=None)):
 async def root():
     return {"message": "EMI Phone Lock API is running", "status": "healthy"}
 
+# ===================== ANALYTICS ENDPOINTS =====================
+
+@api_router.get("/analytics/dashboard")
+async def get_dashboard_analytics(admin_token: str = Query(...)):
+    """Get comprehensive dashboard analytics including trends and activity"""
+    admin = await get_admin_id_from_token(admin_token)
+    admin_id = admin["id"]
+    is_super = admin.get("is_super_admin", False)
+    
+    # Build query based on admin scope
+    client_query = {} if is_super else {"admin_id": admin_id}
+    
+    # Get date ranges
+    now = datetime.utcnow()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_ago = now - timedelta(days=7)
+    month_ago = now - timedelta(days=30)
+    
+    # Get all clients for this admin
+    clients = await db.clients.find(client_query).to_list(10000)
+    
+    # Calculate key metrics
+    total_clients = len(clients)
+    registered_clients = sum(1 for c in clients if c.get("is_registered"))
+    locked_devices = sum(1 for c in clients if c.get("is_locked"))
+    active_loans = sum(1 for c in clients if c.get("outstanding_balance", 0) > 0)
+    overdue_clients = sum(1 for c in clients if c.get("days_overdue", 0) > 0)
+    
+    # Calculate financial totals
+    total_disbursed = sum(c.get("loan_amount", 0) for c in clients)
+    total_collected = sum(c.get("total_paid", 0) for c in clients)
+    total_outstanding = sum(c.get("outstanding_balance", 0) for c in clients)
+    
+    # Recent activity (last 7 days)
+    recent_registrations = sum(1 for c in clients if c.get("registered_at") and c["registered_at"] > week_ago)
+    recent_tamper_attempts = sum(c.get("tamper_attempts", 0) for c in clients if c.get("last_tamper_attempt") and c["last_tamper_attempt"] > week_ago)
+    
+    # Monthly revenue trend (last 6 months)
+    monthly_trend = []
+    for i in range(6):
+        month_start = (now.replace(day=1) - timedelta(days=30*i)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        month_end = (month_start + timedelta(days=32)).replace(day=1)
+        
+        # Get payments for this month
+        payments = await db.payments.find({
+            "payment_date": {"$gte": month_start, "$lt": month_end},
+            **({"client_id": {"$in": [c["id"] for c in clients]}} if not is_super else {})
+        }).to_list(10000)
+        
+        month_revenue = sum(p.get("amount", 0) for p in payments)
+        monthly_trend.insert(0, {
+            "month": month_start.strftime("%b %Y"),
+            "revenue": round(month_revenue, 2),
+            "payments_count": len(payments)
+        })
+    
+    # Device activity log (recent locks/unlocks)
+    activity_log = []
+    for client in sorted(clients, key=lambda x: x.get("last_heartbeat") or datetime.min, reverse=True)[:20]:
+        if client.get("last_heartbeat"):
+            activity_log.append({
+                "client_id": client["id"],
+                "client_name": client["name"],
+                "action": "locked" if client.get("is_locked") else "active",
+                "timestamp": client["last_heartbeat"].isoformat() if client.get("last_heartbeat") else None,
+                "admin_mode": client.get("admin_mode_active", False)
+            })
+    
+    return {
+        "overview": {
+            "total_clients": total_clients,
+            "registered_clients": registered_clients,
+            "locked_devices": locked_devices,
+            "active_loans": active_loans,
+            "overdue_clients": overdue_clients
+        },
+        "financial": {
+            "total_disbursed": round(total_disbursed, 2),
+            "total_collected": round(total_collected, 2),
+            "total_outstanding": round(total_outstanding, 2),
+            "collection_rate": round((total_collected / total_disbursed * 100) if total_disbursed > 0 else 0, 1)
+        },
+        "recent_activity": {
+            "registrations_this_week": recent_registrations,
+            "tamper_attempts_this_week": recent_tamper_attempts
+        },
+        "monthly_trend": monthly_trend,
+        "activity_log": activity_log
+    }
+
+# ===================== BULK OPERATIONS ENDPOINTS =====================
+
+class BulkOperationRequest(BaseModel):
+    client_ids: List[str]
+    action: str  # "lock", "unlock", "warning", "export"
+    message: Optional[str] = None
+
+@api_router.post("/clients/bulk-operation")
+async def bulk_client_operation(request: BulkOperationRequest, admin_token: str = Query(...)):
+    """Perform bulk operations on multiple clients"""
+    admin = await get_admin_id_from_token(admin_token)
+    admin_id = admin["id"]
+    is_super = admin.get("is_super_admin", False)
+    
+    results = {"success": [], "failed": []}
+    
+    for client_id in request.client_ids:
+        try:
+            # Verify client exists and belongs to admin
+            client = await db.clients.find_one({"id": client_id})
+            if not client:
+                results["failed"].append({"id": client_id, "error": "Client not found"})
+                continue
+            
+            if not is_super and client.get("admin_id") != admin_id:
+                results["failed"].append({"id": client_id, "error": "Permission denied"})
+                continue
+            
+            if request.action == "lock":
+                await db.clients.update_one(
+                    {"id": client_id},
+                    {"$set": {
+                        "is_locked": True,
+                        "lock_message": request.message or "Device locked by admin."
+                    }}
+                )
+                results["success"].append({"id": client_id, "action": "locked"})
+                
+            elif request.action == "unlock":
+                await db.clients.update_one(
+                    {"id": client_id},
+                    {"$set": {"is_locked": False}}
+                )
+                results["success"].append({"id": client_id, "action": "unlocked"})
+                
+            elif request.action == "warning":
+                await db.clients.update_one(
+                    {"id": client_id},
+                    {"$set": {"warning_message": request.message or ""}}
+                )
+                results["success"].append({"id": client_id, "action": "warning_sent"})
+                
+        except Exception as e:
+            results["failed"].append({"id": client_id, "error": str(e)})
+    
+    return {
+        "total_processed": len(request.client_ids),
+        "success_count": len(results["success"]),
+        "failed_count": len(results["failed"]),
+        "results": results
+    }
+
+@api_router.get("/clients/export")
+async def export_clients(admin_token: str = Query(...), format: str = Query("json")):
+    """Export all clients data as JSON or CSV format"""
+    admin = await get_admin_id_from_token(admin_token)
+    admin_id = admin["id"]
+    is_super = admin.get("is_super_admin", False)
+    
+    query = {} if is_super else {"admin_id": admin_id}
+    clients = await db.clients.find(query, {"_id": 0}).to_list(10000)
+    
+    # Sanitize sensitive data
+    export_data = []
+    for client in clients:
+        export_data.append({
+            "id": client.get("id"),
+            "name": client.get("name"),
+            "phone": client.get("phone"),
+            "email": client.get("email"),
+            "device_model": client.get("device_model"),
+            "is_locked": client.get("is_locked"),
+            "loan_amount": client.get("loan_amount", 0),
+            "outstanding_balance": client.get("outstanding_balance", 0),
+            "total_paid": client.get("total_paid", 0),
+            "is_registered": client.get("is_registered"),
+            "days_overdue": client.get("days_overdue", 0),
+            "created_at": client.get("created_at").isoformat() if client.get("created_at") else None
+        })
+    
+    if format == "csv":
+        import csv
+        import io
+        output = io.StringIO()
+        if export_data:
+            writer = csv.DictWriter(output, fieldnames=export_data[0].keys())
+            writer.writeheader()
+            writer.writerows(export_data)
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=clients_export.csv"}
+        )
+    
+    return {"clients": export_data, "total": len(export_data)}
+
+# ===================== NOTIFICATIONS ENDPOINTS =====================
+
+class Notification(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    admin_id: str
+    type: str  # "tamper", "heartbeat", "payment", "registration", "system"
+    title: str
+    message: str
+    client_id: Optional[str] = None
+    client_name: Optional[str] = None
+    is_read: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+@api_router.get("/notifications")
+async def get_notifications(admin_token: str = Query(...), limit: int = Query(50), unread_only: bool = Query(False)):
+    """Get notifications for the admin"""
+    admin = await get_admin_id_from_token(admin_token)
+    admin_id = admin["id"]
+    is_super = admin.get("is_super_admin", False)
+    
+    query = {"admin_id": admin_id} if not is_super else {}
+    if unread_only:
+        query["is_read"] = False
+    
+    notifications = await db.notifications.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Convert datetime to ISO string
+    for n in notifications:
+        if isinstance(n.get("created_at"), datetime):
+            n["created_at"] = n["created_at"].isoformat()
+    
+    unread_count = await db.notifications.count_documents({**query, "is_read": False})
+    
+    return {"notifications": notifications, "unread_count": unread_count}
+
+@api_router.post("/notifications/mark-read")
+async def mark_notifications_read(notification_ids: List[str], admin_token: str = Query(...)):
+    """Mark notifications as read"""
+    admin = await get_admin_id_from_token(admin_token)
+    
+    result = await db.notifications.update_many(
+        {"id": {"$in": notification_ids}},
+        {"$set": {"is_read": True}}
+    )
+    
+    return {"marked_read": result.modified_count}
+
+@api_router.post("/notifications/mark-all-read")
+async def mark_all_notifications_read(admin_token: str = Query(...)):
+    """Mark all notifications as read for admin"""
+    admin = await get_admin_id_from_token(admin_token)
+    admin_id = admin["id"]
+    is_super = admin.get("is_super_admin", False)
+    
+    query = {} if is_super else {"admin_id": admin_id}
+    result = await db.notifications.update_many(query, {"$set": {"is_read": True}})
+    
+    return {"marked_read": result.modified_count}
+
+async def create_notification(admin_id: str, type: str, title: str, message: str, client_id: str = None, client_name: str = None):
+    """Helper function to create a notification"""
+    notification = Notification(
+        admin_id=admin_id,
+        type=type,
+        title=title,
+        message=message,
+        client_id=client_id,
+        client_name=client_name
+    )
+    await db.notifications.insert_one(notification.dict())
+    return notification
+
+# ===================== SUPPORT CHAT ENDPOINTS =====================
+
+class SupportMessage(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    client_id: str
+    sender: str  # "client" or "admin"
+    message: str
+    is_read: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class SupportMessageCreate(BaseModel):
+    message: str
+
+@api_router.get("/support/messages/{client_id}")
+async def get_support_messages(client_id: str, admin_token: Optional[str] = Query(None), limit: int = Query(50)):
+    """Get support chat messages for a client"""
+    # Verify access (either admin or client themselves)
+    if admin_token:
+        admin = await get_admin_id_from_token(admin_token)
+    
+    messages = await db.support_messages.find(
+        {"client_id": client_id}, {"_id": 0}
+    ).sort("created_at", 1).limit(limit).to_list(limit)
+    
+    # Convert datetime to ISO string
+    for m in messages:
+        if isinstance(m.get("created_at"), datetime):
+            m["created_at"] = m["created_at"].isoformat()
+    
+    return {"messages": messages}
+
+@api_router.post("/support/messages/{client_id}")
+async def send_support_message(client_id: str, body: SupportMessageCreate, sender: str = Query("client")):
+    """Send a support message"""
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    message = SupportMessage(
+        client_id=client_id,
+        sender=sender,
+        message=body.message
+    )
+    await db.support_messages.insert_one(message.dict())
+    
+    # If client sends a message, notify admin
+    if sender == "client" and client.get("admin_id"):
+        await create_notification(
+            admin_id=client["admin_id"],
+            type="support",
+            title="New Support Message",
+            message=f"New message from {client['name']}: {body.message[:50]}...",
+            client_id=client_id,
+            client_name=client["name"]
+        )
+    
+    return {"id": message.id, "message": "Message sent successfully"}
+
+@api_router.post("/support/messages/{client_id}/mark-read")
+async def mark_support_messages_read(client_id: str, admin_token: str = Query(...)):
+    """Mark all support messages as read for a client"""
+    admin = await get_admin_id_from_token(admin_token)
+    
+    result = await db.support_messages.update_many(
+        {"client_id": client_id, "sender": "client"},
+        {"$set": {"is_read": True}}
+    )
+    
+    return {"marked_read": result.modified_count}
+
+# ===================== PAYMENT HISTORY ENDPOINTS =====================
+
+@api_router.get("/payments/history/{client_id}")
+async def get_payment_history(client_id: str):
+    """Get detailed payment history for a client (accessible to client)"""
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    payments = await db.payments.find(
+        {"client_id": client_id}, {"_id": 0}
+    ).sort("payment_date", -1).to_list(1000)
+    
+    # Convert datetime to ISO string
+    for p in payments:
+        if isinstance(p.get("payment_date"), datetime):
+            p["payment_date"] = p["payment_date"].isoformat()
+        if isinstance(p.get("created_at"), datetime):
+            p["created_at"] = p["created_at"].isoformat()
+    
+    return {
+        "payments": payments,
+        "total_paid": client.get("total_paid", 0),
+        "outstanding_balance": client.get("outstanding_balance", 0),
+        "loan_amount": client.get("loan_amount", 0),
+        "monthly_emi": client.get("monthly_emi", 0),
+        "next_payment_due": client.get("next_payment_due").isoformat() if client.get("next_payment_due") else None
+    }
+
+# ===================== CLIENT LOCATIONS FOR MAP =====================
+
+@api_router.get("/clients/locations")
+async def get_client_locations(admin_token: str = Query(...)):
+    """Get all client locations for map display"""
+    admin = await get_admin_id_from_token(admin_token)
+    admin_id = admin["id"]
+    is_super = admin.get("is_super_admin", False)
+    
+    query = {} if is_super else {"admin_id": admin_id}
+    query["latitude"] = {"$ne": None}
+    query["longitude"] = {"$ne": None}
+    
+    clients = await db.clients.find(query, {
+        "_id": 0, "id": 1, "name": 1, "latitude": 1, "longitude": 1,
+        "is_locked": 1, "is_registered": 1, "phone": 1, "outstanding_balance": 1,
+        "last_location_update": 1
+    }).to_list(10000)
+    
+    # Convert datetime
+    for c in clients:
+        if isinstance(c.get("last_location_update"), datetime):
+            c["last_location_update"] = c["last_location_update"].isoformat()
+    
+    return {"locations": clients}
+
 @api_router.get("/health")
 async def health_check():
     """Health check endpoint for Kubernetes liveness/readiness probes"""
