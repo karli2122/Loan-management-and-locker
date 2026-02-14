@@ -1134,6 +1134,40 @@ async def get_all_clients(skip: int = Query(default=0), limit: int = Query(defau
         }
     }
 
+@api_router.get("/clients/silent")
+async def get_silent_clients(
+    admin_token: str = Query(...),
+    minutes: int = Query(default=5)
+):
+    """Get clients that haven't sent a heartbeat in the specified number of minutes.
+    This detects Clear Data/Cache or device being turned off."""
+    admin = await verify_admin_token(admin_token)
+    cutoff = datetime.utcnow() - timedelta(minutes=minutes)
+    
+    silent_clients = []
+    cursor = db.clients.find(
+        {
+            "admin_id": admin["id"],
+            "is_registered": True,
+            "$or": [
+                {"last_heartbeat": {"$lt": cutoff}},
+                {"last_heartbeat": {"$exists": False}}
+            ]
+        },
+        {"_id": 0, "id": 1, "name": 1, "phone": 1, "last_heartbeat": 1, "is_locked": 1, "admin_mode_active": 1, "tamper_attempts": 1}
+    )
+    
+    async for client in cursor:
+        hb = client.get("last_heartbeat")
+        client["last_heartbeat"] = hb.isoformat() if hb else None
+        silent_clients.append(client)
+    
+    return {
+        "silent_clients": silent_clients,
+        "count": len(silent_clients),
+        "cutoff_minutes": minutes
+    }
+
 @api_router.get("/clients/{client_id}", response_model=Client)
 async def get_client(client_id: str, admin_id: Optional[str] = Query(default=None)):
     client = await db.clients.find_one({"id": client_id})
@@ -1345,41 +1379,6 @@ async def report_admin_status(client_id: str, admin_active: bool):
     return {"message": "Admin mode status updated", "admin_active": admin_active}
 
 # ===================== TAMPER DETECTION =====================
-
-@api_router.get("/clients/silent")
-async def get_silent_clients(
-    admin_token: str = Query(...),
-    minutes: int = Query(default=5)
-):
-    """Get clients that haven't sent a heartbeat in the specified number of minutes.
-    This detects Clear Data/Cache or device being turned off."""
-    admin = await verify_admin_token(admin_token)
-    cutoff = datetime.utcnow() - timedelta(minutes=minutes)
-    
-    # Find registered clients with stale or missing heartbeats
-    silent_clients = []
-    cursor = db.clients.find(
-        {
-            "admin_id": admin["id"],
-            "is_registered": True,
-            "$or": [
-                {"last_heartbeat": {"$lt": cutoff}},
-                {"last_heartbeat": {"$exists": False}}
-            ]
-        },
-        {"_id": 0, "id": 1, "name": 1, "phone": 1, "last_heartbeat": 1, "is_locked": 1, "admin_mode_active": 1, "tamper_attempts": 1}
-    )
-    
-    async for client in cursor:
-        hb = client.get("last_heartbeat")
-        client["last_heartbeat"] = hb.isoformat() if hb else None
-        silent_clients.append(client)
-    
-    return {
-        "silent_clients": silent_clients,
-        "count": len(silent_clients),
-        "cutoff_minutes": minutes
-    }
 
 @api_router.post("/clients/{client_id}/report-tamper")
 async def report_tamper_attempt(client_id: str, tamper_type: str = "unknown"):
