@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,8 @@ export default function AddClient() {
   const { t, language } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [userCredits, setUserCredits] = useState<number>(5);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -38,6 +40,25 @@ export default function AddClient() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
+
+  useEffect(() => {
+    const fetchCredits = async () => {
+      try {
+        const token = await AsyncStorage.getItem('admin_token');
+        if (token) {
+          const response = await fetch(`${API_URL}/api/admin/credits?admin_token=${token}`);
+          if (response.ok) {
+            const data = await response.json();
+            setUserCredits(data.credits);
+            setIsSuperAdmin(data.is_super_admin);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching credits:', error);
+      }
+    };
+    fetchCredits();
+  }, []);
 
   const months = language === 'et' 
     ? ['Jaanuar', 'Veebruar', 'Märts', 'Aprill', 'Mai', 'Juuni', 'Juuli', 'August', 'September', 'Oktoober', 'November', 'Detsember']
