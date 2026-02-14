@@ -65,6 +65,13 @@ export default function AdminSettings() {
   const [googleAccount, setGoogleAccount] = useState<string | null>(null);
   const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
   const [backupInProgress, setBackupInProgress] = useState(false);
+  
+  // Credit system states
+  const [userCredits, setUserCredits] = useState<number>(5);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [showCreditModal, setShowCreditModal] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null);
+  const [newCreditValue, setNewCreditValue] = useState('');
 
   const handleAuthError = async () => {
     await AsyncStorage.multiRemove(['admin_token', 'admin_stay_signed_in']);
