@@ -122,6 +122,11 @@ export default function ClientHome() {
         } else {
           console.log(`Device Admin active but uninstall protection failed: ${result}`);
         }
+        // Report admin mode active to backend so admin app shows it
+        const storedId = await AsyncStorage.getItem('client_id');
+        if (storedId) {
+          await reportAdminStatus(storedId, true);
+        }
         return true;
       }
       console.log(`Admin check attempt ${attempt}/${maxAttempts} - not active yet`);
