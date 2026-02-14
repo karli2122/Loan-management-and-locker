@@ -186,6 +186,34 @@ class EMIDeviceAdminModule : Module() {
             }
         }
 
+        // Check if admin was forcefully disabled (tamper detection)
+        AsyncFunction("wasAdminDisabled") {
+            try {
+                val wasDisabled = prefs.getBoolean("admin_was_disabled", false)
+                val tamperDetected = prefs.getBoolean("tamper_detected", false)
+                Log.d(TAG, "wasAdminDisabled: $wasDisabled, tamperDetected: $tamperDetected")
+                wasDisabled || tamperDetected
+            } catch (e: Exception) {
+                Log.e(TAG, "wasAdminDisabled error: ${e.message}")
+                false
+            }
+        }
+
+        // Clear tamper flags after they've been handled
+        AsyncFunction("clearTamperFlags") { promise: Promise ->
+            try {
+                prefs.edit()
+                    .putBoolean("admin_was_disabled", false)
+                    .putBoolean("tamper_detected", false)
+                    .apply()
+                Log.d(TAG, "Tamper flags cleared")
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "clearTamperFlags error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
         // Check if app is device owner
         AsyncFunction("isDeviceOwner") {
             try {
