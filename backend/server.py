@@ -2654,9 +2654,11 @@ async def mark_notifications_read(notification_ids: List[str], admin_token: str 
 @api_router.post("/notifications/mark-all-read")
 async def mark_all_notifications_read(admin_token: str = Query(...)):
     """Mark all notifications as read for admin"""
-    admin = await get_admin_id_from_token(admin_token)
-    admin_id = admin["id"]
-    is_super = admin.get("is_super_admin", False)
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Get admin details to check if super admin
+    admin_doc = await db.admins.find_one({"id": admin_id})
+    is_super = admin_doc.get("is_super_admin", False) if admin_doc else False
     
     query = {} if is_super else {"admin_id": admin_id}
     result = await db.notifications.update_many(query, {"$set": {"is_read": True}})
