@@ -1219,19 +1219,19 @@ async def create_client(client_data: ClientCreate, admin_token: Optional[str] = 
     return client
 
 @api_router.get("/clients")
-async def get_all_clients(skip: int = Query(default=0), limit: int = Query(default=100), admin_id: Optional[str] = Query(default=None)):
+async def get_all_clients(skip: int = Query(default=0), limit: int = Query(default=100), admin_token: str = Query(...)):
     """Get all clients with pagination
     
     Args:
         skip: Number of records to skip (default: 0)
         limit: Maximum number of records to return (default: 100, max: 500)
+        admin_token: Required admin authentication token
     """
+    # Authenticate admin
+    admin_id = await get_admin_id_from_token(admin_token)
+    
     # Cap limit at 500 to prevent excessive data transfer
     limit = min(limit, 500)
-    
-    if not admin_id:
-        logger.warning("admin_id not provided for client listing; rejecting request")
-        raise ValidationException("admin_id is required for client listings")
     
     query = {"admin_id": admin_id}
     
