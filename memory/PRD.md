@@ -390,7 +390,34 @@ Refactored the 3131-line `server.py` into modular route files:
 - Resend email is in sandbox mode - can only send to verified email
 - To send to any client, user must verify their domain at resend.com/domains
 
+### Session 12: Bug Fixes - 4 Issues (Feb 14, 2026)
+**All 4 user-reported bugs fixed and verified (100% test pass rate):**
+
+1. **EMI Amount shows €0 in "Laenu andmed" section** - FIXED ✅
+   - Updated `client-details.tsx` line 738 to use `client.monthly_emi || client.emi_amount || 0`
+   - Also updated due date display to use `client.next_payment_due || client.emi_due_date`
+
+2. **Reports API 422 error** - VERIFIED ✅
+   - Tested `/api/reports/collection` - returns 200 OK with valid data
+   - Was never broken - 422 only occurs when admin_token is missing (correct behavior)
+
+3. **Missing handleAuthFailure function** - FIXED ✅
+   - Added `handleAuthFailure()` function at lines 99-107 in `client-details.tsx`
+   - Clears AsyncStorage auth data, shows alert, redirects to login
+
+4. **Admin Profile Update UI (address field)** - FIXED ✅
+   - Added `editAddress` state variable in `settings.tsx`
+   - Added address input field in Edit Profile modal (lines 1143-1152)
+   - Backend already supported address field via `PUT /api/admin/update-profile`
+
+**Files Modified:**
+- `frontend/app/admin/client-details.tsx` - handleAuthFailure + EMI display fix
+- `frontend/app/admin/settings.tsx` - Address field in profile edit
+
+**Testing Results:** 11/11 backend tests passed (100%)
+
+**Note:** User's original "404 Not Found" login error was resolved - caused by using old preview URL (`frontend-test-suite-3`) instead of current URL (`loan-admin-portal-1`).
+
 ## Current Backlog
-- P1: Create Admin Profile edit screen to set admin address (used in contracts)
 - P2: Add data-testid attributes to interactive elements
 - P3: Push notifications for payment reminders (requires FCM integration)
