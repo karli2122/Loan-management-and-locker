@@ -96,6 +96,16 @@ export default function ClientDetails() {
     return await AsyncStorage.getItem('admin_token');
   };
 
+  // Handle authentication failure - redirect to login
+  const handleAuthFailure = async () => {
+    await AsyncStorage.multiRemove(['admin_token', 'admin_id', 'admin_username', 'admin_stay_signed_in']);
+    Alert.alert(
+      language === 'et' ? 'Seanss aegunud' : 'Session Expired',
+      language === 'et' ? 'Palun logige uuesti sisse' : 'Please log in again',
+      [{ text: 'OK', onPress: () => router.replace('/admin/login') }]
+    );
+  };
+
   const buildAdminTokenQuery = async (hasQuery = false) => {
     const token = await getAdminToken();
     return token ? `${hasQuery ? '&' : '?'}admin_token=${token}` : '';
