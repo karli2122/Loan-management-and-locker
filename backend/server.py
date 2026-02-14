@@ -2500,9 +2500,11 @@ class BulkOperationRequest(BaseModel):
 @api_router.post("/clients/bulk-operation")
 async def bulk_client_operation(request: BulkOperationRequest, admin_token: str = Query(...)):
     """Perform bulk operations on multiple clients"""
-    admin = await get_admin_id_from_token(admin_token)
-    admin_id = admin["id"]
-    is_super = admin.get("is_super_admin", False)
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Get admin details to check if super admin
+    admin_doc = await db.admins.find_one({"id": admin_id})
+    is_super = admin_doc.get("is_super_admin", False) if admin_doc else False
     
     results = {"success": [], "failed": []}
     
