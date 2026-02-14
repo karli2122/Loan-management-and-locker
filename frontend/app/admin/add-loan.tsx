@@ -183,6 +183,8 @@ export default function AddLoan() {
           name: newClientName.trim(),
           phone: newClientPhone.trim(),
           email: newClientEmail.trim(),
+          address: newClientAddress.trim(),
+          birth_number: newClientBirthNumber.trim(),
         };
         
         console.log('Creating new client for loan:', newClientData);
