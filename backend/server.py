@@ -1175,27 +1175,12 @@ async def list_admins_with_credits(admin_token: str = Query(...)):
 @api_router.post("/clients", response_model=Client)
 async def create_client(client_data: ClientCreate, admin_token: Optional[str] = Query(default=None)):
     admin_id = client_data.admin_id
-    admin = None
     
     if admin_token:
         token_doc = await db.admin_tokens.find_one({"token": admin_token})
         if not token_doc:
             raise AuthenticationException("Invalid admin token")
         admin_id = token_doc["admin_id"]
-        admin = await db.admins.find_one({"id": admin_id})
-    
-    # Credit check: Non-superadmins must have credits to create clients
-    if admin and not admin.get("is_super_admin", False):
-        current_credits = admin.get("credits", 0)
-        if current_credits <= 0:
-            raise ValidationException("Insufficient credits. Please contact superadmin to get more credits.")
-        
-        # Deduct 1 credit
-        await db.admins.update_one(
-            {"id": admin_id},
-            {"$inc": {"credits": -1}}
-        )
-        logger.info(f"Admin {admin['username']} used 1 credit. Remaining: {current_credits - 1}")
     
     client_payload = client_data.dict()
     if admin_id:
