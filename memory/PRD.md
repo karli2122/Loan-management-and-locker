@@ -19,6 +19,11 @@ Mobile application (React Native/Expo) + FastAPI backend for managing EMI (Equat
 
 ## What's Been Implemented
 
+### Current Session (Feb 14, 2026)
+- **Android 16 Device Admin Fix (P0)**: Removed deprecated policies (`limit-password`, `reset-password`, `expire-password`, `encrypted-storage`) from `device_admin.xml`. Android 16 strictly enforces these deprecations and silently rejects Device Admin activation when they are declared.
+- **Expo Module Import Fix (P0)**: Updated `DevicePolicy.ts` and `DeviceAdmin.ts` (both `src/` and `src/src/` copies) to use `requireNativeModule('EMIDeviceAdmin')` from `expo-modules-core` instead of `NativeModules` from `react-native`. Required for Expo 54+ with new architecture enabled.
+- **Native Module SDK Update**: Updated `build.gradle` to target SDK 36 (Android 16). Marked `resetPassword` as no-op (deprecated since API 28).
+
 ### Previous Sessions
 - Expo build system stabilized
 - Stale URL eradication (multiple rounds)
@@ -41,6 +46,9 @@ Mobile application (React Native/Expo) + FastAPI backend for managing EMI (Equat
 - Test files: `/app/backend/tests/test_emi_admin_api.py`
 
 ## Prioritized Backlog
+
+### P0 (Critical - User Verification)
+- Rebuild client APK with `--clear-cache` to test Android 16 Device Admin fix
 
 ### P1 (Important)
 - API Security Audit: Verify all endpoints have proper auth middleware
