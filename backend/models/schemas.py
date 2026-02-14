@@ -57,6 +57,7 @@ class ProfileUpdate(BaseModel):
     last_name: str
     email: Optional[str] = None
     phone: Optional[str] = None
+    address: Optional[str] = None  # Lender address for contracts
 
 
 class CreditAssignment(BaseModel):
