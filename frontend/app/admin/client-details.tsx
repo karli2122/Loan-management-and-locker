@@ -1717,11 +1717,40 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4F46E5',
   },
+  testEmailButton: {
+    backgroundColor: '#F59E0B20',
+    borderColor: '#F59E0B',
+  },
+  testEmailButtonText: {
+    color: '#F59E0B',
+  },
   sendEmailButton: {
     backgroundColor: '#10B98120',
     borderColor: '#10B981',
   },
   sendEmailButtonText: {
     color: '#10B981',
+  },
+  fullWidthButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 12,
+  },
+  fullWidthButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  disabledButton: {
+    backgroundColor: '#1E293B',
+    borderColor: '#334155',
+  },
+  disabledButtonText: {
+    color: '#64748B',
   },
 });
