@@ -209,9 +209,9 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
    - Added 100ms delay before navigation from registration success alert to ensure alert dismisses cleanly
    - Added mount check before showing admin prompt to prevent crashes if component unmounts during initialization
 
-## Testing Status (Dec 2025)
+## Testing Status (Feb 2026)
 ### Enhancement Features - COMPLETE
-- **Backend**: All 30 tests passed (100%)
+- **Backend**: All 43 tests passed (100%) across iterations
 - **Verified Endpoints**:
   - `GET /api/notifications?admin_token&limit=100` - PASS
   - `POST /api/notifications/mark-all-read?admin_token` - PASS
@@ -219,9 +219,29 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
   - `GET /api/payments/history/{client_id}` - PASS
   - `GET /api/support/messages/{client_id}` - PASS
   - `POST /api/support/messages/{client_id}?sender=client` - PASS
+  - `GET /api/reminders/pending?admin_token` - PASS (NEW)
+  - `POST /api/reminders/send-push?admin_token` - PASS (NEW)
+  - `POST /api/reminders/send-single/{client_id}?admin_token` - PASS (NEW)
 - **Frontend**: React Native/Expo mobile app - browser testing N/A
 
+### Session 7: Backend Refactoring & Payment Reminders (Feb 14, 2026)
+1. **P1 - Backend Architecture Documentation**:
+   - Created `/app/backend/ARCHITECTURE.md` - comprehensive documentation
+   - Created `/app/backend/models/` - Pydantic model module (schemas.py)
+   - Created `/app/backend/utils/` - Utility modules (auth.py, calculations.py, exceptions.py)
+   - Note: Full refactor deferred to avoid breaking working code
+
+2. **P2 - API URL Consolidation**:
+   - Removed redundant `/app/frontend/src/utils/api.ts`
+   - All API calls use `API_URL` from `/app/frontend/src/constants/api.ts`
+
+3. **P3 - Payment Reminder System**:
+   - `GET /api/reminders/pending` - Get clients with pending payments, summary stats
+   - `POST /api/reminders/send-push` - Send push notifications to all clients with tokens
+   - `POST /api/reminders/send-single/{client_id}` - Send reminder to specific client
+   - Admin Dashboard updated with Payment Reminders, Notifications, Client Map cards
+   - New screen: `/app/frontend/app/admin/payment-reminders.tsx`
+
 ## Backlog
-- P1: **Refactor `backend/server.py`** - File is 2800+ lines, needs breaking into smaller modules using FastAPI APIRouter
-- P2: API URL consolidation (src/constants/api.ts vs src/utils/api.ts) - centralize API URL configuration
+- P2: Full backend refactor - break server.py into router modules (see ARCHITECTURE.md for plan)
 - P3: Enforce `buildApiUrl()` usage across all API calls for consistency
