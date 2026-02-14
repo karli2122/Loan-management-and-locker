@@ -846,17 +846,28 @@ export default function ClientDetails() {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.contractButton, styles.sendEmailButton]}
-                onPress={handleSendContractEmail}
-                disabled={actionLoading || !client.email}
-                data-testid="send-contract-email-btn"
+                style={[styles.contractButton, styles.testEmailButton]}
+                onPress={() => handleSendContractEmail(true)}
+                disabled={actionLoading}
+                data-testid="send-test-email-btn"
               >
-                <Ionicons name="mail" size={16} color="#10B981" />
-                <Text style={[styles.contractButtonText, styles.sendEmailButtonText]}>
-                  {language === 'et' ? 'Saada e-postiga' : 'Send Email'}
+                <Ionicons name="flask" size={16} color="#F59E0B" />
+                <Text style={[styles.contractButtonText, styles.testEmailButtonText]}>
+                  {language === 'et' ? 'Test e-kiri' : 'Test Email'}
                 </Text>
               </TouchableOpacity>
             </View>
+            <TouchableOpacity
+              style={[styles.fullWidthButton, styles.sendEmailButton, (!client.email) && styles.disabledButton]}
+              onPress={() => handleSendContractEmail(false)}
+              disabled={actionLoading || !client.email}
+              data-testid="send-contract-email-btn"
+            >
+              <Ionicons name="mail" size={16} color={client.email ? "#10B981" : "#64748B"} />
+              <Text style={[styles.fullWidthButtonText, client.email ? styles.sendEmailButtonText : styles.disabledButtonText]}>
+                {language === 'et' ? 'Saada kliendile e-postiga' : 'Send to Client Email'}
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
 
