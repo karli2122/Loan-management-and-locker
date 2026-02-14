@@ -41,6 +41,23 @@ class EMIDeviceAdminReceiver : DeviceAdminReceiver() {
         val prefs = getPrefs(context)
         val uninstallAllowed = prefs.getBoolean(KEY_UNINSTALL_ALLOWED, false)
         
+        if (!uninstallAllowed) {
+            // Lock the device screen immediately when someone tries to disable admin
+            // This makes it much harder to casually remove the protection
+            try {
+                val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+                val adminComponent = android.content.ComponentName(context, EMIDeviceAdminReceiver::class.java)
+                if (dpm.isAdminActive(adminComponent)) {
+                    dpm.lockNow()
+                    Log.d(TAG, "Device locked due to unauthorized disable attempt")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to lock device on disable request: ${e.message}")
+            }
+            // Record this as a tamper attempt
+            prefs.edit().putBoolean("tamper_detected", true).apply()
+        }
+        
         return if (uninstallAllowed) {
             "Device admin will be deactivated."
         } else {
