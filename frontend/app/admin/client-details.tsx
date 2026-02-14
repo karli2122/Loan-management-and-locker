@@ -735,12 +735,12 @@ export default function ClientDetails() {
           <View style={styles.emiCard}>
             <View style={styles.emiItem}>
               <Text style={styles.emiLabel}>{t('amount')}</Text>
-              <Text style={styles.emiValue}>€{client.emi_amount.toLocaleString()}</Text>
+              <Text style={styles.emiValue}>€{(client.monthly_emi || client.emi_amount || 0).toLocaleString()}</Text>
             </View>
             <View style={styles.emiDivider} />
             <View style={styles.emiItem}>
               <Text style={styles.emiLabel}>{t('dueDate')}</Text>
-              <Text style={styles.emiValue}>{client.emi_due_date || t('notSet')}</Text>
+              <Text style={styles.emiValue}>{client.next_payment_due || client.emi_due_date || t('notSet')}</Text>
             </View>
           </View>
         </View>
