@@ -394,6 +394,26 @@ export default function AddLoan() {
                   autoCapitalize="none"
                 />
               </View>
+              <View style={styles.inputContainer}>
+                <Ionicons name="location" size={20} color="#64748B" />
+                <TextInput
+                  style={styles.input}
+                  placeholder={language === 'et' ? 'Aadress' : 'Address'}
+                  placeholderTextColor="#64748B"
+                  value={newClientAddress}
+                  onChangeText={setNewClientAddress}
+                />
+              </View>
+              <View style={styles.inputContainer}>
+                <Ionicons name="card" size={20} color="#64748B" />
+                <TextInput
+                  style={styles.input}
+                  placeholder={language === 'et' ? 'Isikukood' : 'Birth Number'}
+                  placeholderTextColor="#64748B"
+                  value={newClientBirthNumber}
+                  onChangeText={setNewClientBirthNumber}
+                />
+              </View>
             </View>
           )}
         </View>
