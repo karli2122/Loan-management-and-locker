@@ -250,6 +250,27 @@ class TestCreditDeductionOnClientCreation:
         data = response.json()
         return {"token": data["token"], "admin_id": data["id"]}
     
+    @pytest.fixture
+    def test_regular_admin(self, superadmin_session):
+        """Create a test regular admin and clean up after test"""
+        # Create test admin
+        response = requests.post(f"{BASE_URL}/api/admin/register", params={
+            "admin_token": superadmin_session["token"]
+        }, json={
+            "username": f"TEST_credit_admin_{int(time.time())}",
+            "password": "testpass123",
+            "role": "user"
+        })
+        assert response.status_code == 200, f"Failed to create test admin: {response.text}"
+        admin_data = response.json()
+        
+        yield {"id": admin_data["id"], "token": admin_data["token"], "username": admin_data["username"]}
+        
+        # Cleanup
+        requests.delete(f"{BASE_URL}/api/admin/{admin_data['id']}", params={
+            "admin_token": superadmin_session["token"]
+        })
+    
     def test_superadmin_client_creation_no_credit_deduction(self, superadmin_session):
         """POST /api/clients with superadmin token should NOT deduct credits"""
         # Get initial credits
@@ -288,77 +309,138 @@ class TestCreditDeductionOnClientCreation:
             "admin_id": superadmin_session["admin_id"]
         })
     
-    def test_regular_admin_client_creation_credit_deduction(self, superadmin_session):
+    def test_regular_admin_client_creation_credit_deduction(self, superadmin_session, test_regular_admin):
         """POST /api/clients with regular admin token should deduct 1 credit"""
-        # Find a regular admin with credits
-        response = requests.get(f"{BASE_URL}/api/admin/list-with-credits", params={
-            "admin_token": superadmin_session["token"]
+        # Get initial credits (should be 5 by default)
+        response = requests.get(f"{BASE_URL}/api/admin/credits", params={
+            "admin_token": test_regular_admin["token"]
         })
-        admins = response.json()
+        initial_credits = response.json()["credits"]
+        assert initial_credits == 5, f"Expected 5 credits for new admin, got {initial_credits}"
         
-        regular_admin = None
-        for admin in admins:
-            if not admin["is_super_admin"] and admin["credits"] > 0:
-                regular_admin = admin
-                break
+        # Create client
+        client_name = f"TEST_RegularAdminClient_{int(time.time())}"
+        response = requests.post(f"{BASE_URL}/api/clients", params={
+            "admin_token": test_regular_admin["token"]
+        }, json={
+            "name": client_name,
+            "phone": "+3725559999",
+            "email": f"test_regular_{int(time.time())}@example.com"
+        })
         
-        if not regular_admin:
-            pytest.skip("No regular admin with credits found")
+        assert response.status_code == 200, f"Client creation failed: {response.text}"
+        client_id = response.json()["id"]
         
-        # Ensure regular admin has enough credits
-        if regular_admin["credits"] < 2:
-            requests.post(f"{BASE_URL}/api/admin/credits/assign", params={
-                "admin_token": superadmin_session["token"]
-            }, json={
-                "target_admin_id": regular_admin["id"],
-                "credits": 5
-            })
-            regular_admin["credits"] = 5
+        # Verify 1 credit was deducted
+        response = requests.get(f"{BASE_URL}/api/admin/credits", params={
+            "admin_token": test_regular_admin["token"]
+        })
+        final_credits = response.json()["credits"]
         
-        # We need to login as the regular admin to get their token
-        # Since we don't have the password, we'll test the credit deduction differently
-        # by verifying the logic in the code review
-        print(f"Found regular admin: {regular_admin['username']} with {regular_admin['credits']} credits")
-        print("Note: Cannot fully test regular admin client creation without their password")
-        print("Code review confirms credit deduction logic at lines 1187-1198 in server.py")
+        assert final_credits == initial_credits - 1, f"Expected {initial_credits - 1} credits after deduction, got {final_credits}"
+        print(f"Regular admin client creation: credits deducted ({initial_credits} -> {final_credits})")
+        
+        # Cleanup client
+        requests.post(f"{BASE_URL}/api/clients/{client_id}/allow-uninstall", params={
+            "admin_id": test_regular_admin["id"]
+        })
+        requests.delete(f"{BASE_URL}/api/clients/{client_id}", params={
+            "admin_id": test_regular_admin["id"]
+        })
     
-    def test_regular_admin_insufficient_credits_rejected(self, superadmin_session):
+    def test_regular_admin_insufficient_credits_rejected(self, superadmin_session, test_regular_admin):
         """POST /api/clients with 0 credits should be rejected"""
-        # Find a regular admin
-        response = requests.get(f"{BASE_URL}/api/admin/list-with-credits", params={
-            "admin_token": superadmin_session["token"]
-        })
-        admins = response.json()
-        
-        regular_admin = None
-        for admin in admins:
-            if not admin["is_super_admin"]:
-                regular_admin = admin
-                break
-        
-        if not regular_admin:
-            pytest.skip("No regular admin found")
-        
         # Set credits to 0
-        original_credits = regular_admin["credits"]
-        requests.post(f"{BASE_URL}/api/admin/credits/assign", params={
+        response = requests.post(f"{BASE_URL}/api/admin/credits/assign", params={
             "admin_token": superadmin_session["token"]
         }, json={
-            "target_admin_id": regular_admin["id"],
+            "target_admin_id": test_regular_admin["id"],
             "credits": 0
         })
+        assert response.status_code == 200
         
-        # Note: We cannot fully test this without the regular admin's password
-        # Restoring credits
-        requests.post(f"{BASE_URL}/api/admin/credits/assign", params={
-            "admin_token": superadmin_session["token"]
+        # Verify credits are 0
+        response = requests.get(f"{BASE_URL}/api/admin/credits", params={
+            "admin_token": test_regular_admin["token"]
+        })
+        assert response.json()["credits"] == 0
+        
+        # Try to create client - should fail
+        client_name = f"TEST_ZeroCreditClient_{int(time.time())}"
+        response = requests.post(f"{BASE_URL}/api/clients", params={
+            "admin_token": test_regular_admin["token"]
         }, json={
-            "target_admin_id": regular_admin["id"],
-            "credits": original_credits
+            "name": client_name,
+            "phone": "+3725558888",
+            "email": f"test_zero_{int(time.time())}@example.com"
         })
         
-        print(f"Credit system verified for {regular_admin['username']}")
-        print("Note: Full insufficient credits test requires regular admin password")
+        assert response.status_code == 422, f"Expected 422 for insufficient credits, got {response.status_code}"
+        data = response.json()
+        assert "Insufficient credits" in data.get("error", ""), f"Expected insufficient credits error, got: {data}"
+        print(f"Insufficient credits correctly rejected: {data['error']}")
+
+
+class TestNonSuperadminAuthorizationRejection:
+    """Tests that non-superadmin users are rejected from superadmin-only endpoints"""
+    
+    @pytest.fixture
+    def superadmin_session(self):
+        """Login superadmin and return token + admin_id"""
+        response = requests.post(f"{BASE_URL}/api/admin/login", json={
+            "username": SUPERADMIN_USERNAME,
+            "password": SUPERADMIN_PASSWORD
+        })
+        assert response.status_code == 200
+        data = response.json()
+        return {"token": data["token"], "admin_id": data["id"]}
+    
+    @pytest.fixture
+    def test_regular_admin(self, superadmin_session):
+        """Create a test regular admin and clean up after test"""
+        response = requests.post(f"{BASE_URL}/api/admin/register", params={
+            "admin_token": superadmin_session["token"]
+        }, json={
+            "username": f"TEST_auth_admin_{int(time.time())}",
+            "password": "testpass123",
+            "role": "user"
+        })
+        assert response.status_code == 200
+        admin_data = response.json()
+        
+        yield {"id": admin_data["id"], "token": admin_data["token"]}
+        
+        # Cleanup
+        requests.delete(f"{BASE_URL}/api/admin/{admin_data['id']}", params={
+            "admin_token": superadmin_session["token"]
+        })
+    
+    def test_non_superadmin_cannot_list_admins_with_credits(self, test_regular_admin):
+        """GET /api/admin/list-with-credits should reject non-superadmin"""
+        response = requests.get(f"{BASE_URL}/api/admin/list-with-credits", params={
+            "admin_token": test_regular_admin["token"]
+        })
+        
+        assert response.status_code == 403, f"Expected 403, got {response.status_code}"
+        data = response.json()
+        assert data.get("code") == "AUTHORIZATION_ERROR"
+        assert "superadmin" in data.get("error", "").lower()
+        print(f"Non-superadmin correctly rejected from list-with-credits: {data['error']}")
+    
+    def test_non_superadmin_cannot_assign_credits(self, test_regular_admin, superadmin_session):
+        """POST /api/admin/credits/assign should reject non-superadmin"""
+        response = requests.post(f"{BASE_URL}/api/admin/credits/assign", params={
+            "admin_token": test_regular_admin["token"]
+        }, json={
+            "target_admin_id": superadmin_session["admin_id"],
+            "credits": 100
+        })
+        
+        assert response.status_code == 403, f"Expected 403, got {response.status_code}"
+        data = response.json()
+        assert data.get("code") == "AUTHORIZATION_ERROR"
+        assert "superadmin" in data.get("error", "").lower()
+        print(f"Non-superadmin correctly rejected from assigning credits: {data['error']}")
 
 
 class TestSilentClients:
