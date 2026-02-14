@@ -1,73 +1,75 @@
 # EMI Device Admin - Product Requirements Document
 
 ## Original Problem Statement
-Mobile application (React Native/Expo) + FastAPI backend for managing EMI (Equated Monthly Installment) device loans. Admins manage clients, loans, devices, and view financial reports.
-
-## Core Requirements
-1. Admin authentication with token-based security
-2. Client management (CRUD) with device registration
-3. Loan management with EMI calculations
-4. Device lock/unlock functionality via native Android module
-5. Financial reports and analytics
-6. Multi-admin support with data segregation
+EMI/Loan management mobile application with admin and client apps. Admin app manages clients, loan plans, device locking. Client app enforces device admin policies, prevents uninstall, and reports status.
 
 ## Architecture
-- **Frontend**: React Native (Expo) - builds as Android APK
-- **Backend**: FastAPI (Python) on port 8001
-- **Database**: MongoDB
-- **Native Module**: emi-device-admin (Kotlin) for Android device admin features
+- **Backend**: FastAPI + MongoDB (port 8001 internally)
+- **Frontend**: React Native / Expo (mobile app)
+- **Native Module**: `emi-device-admin` Expo module (Kotlin) for Android Device Admin API
+- **Auth**: Token-based (24h expiry), stored in AsyncStorage
+- **API URL**: `EXPO_PUBLIC_BACKEND_URL` env var
 
-## What's Been Implemented
+## Key Files
+```
+/app
+├── backend/
+│   └── server.py                    # All API logic
+└── frontend/
+    ├── modules/emi-device-admin/    # Native Expo module
+    │   └── android/src/main/java/expo/modules/emideviceadmin/
+    │       ├── EMIDeviceAdminModule.kt
+    │       └── EMIDeviceAdminReceiver.kt
+    ├── app/
+    │   ├── admin/
+    │   │   ├── add-client.tsx
+    │   │   ├── loan-plans.tsx
+    │   │   ├── login.tsx
+    │   │   └── settings.tsx
+    │   └── client/
+    │       ├── home.tsx
+    │       └── register.tsx
+    ├── src/
+    │   ├── constants/api.ts
+    │   ├── utils/
+    │   │   ├── adminAuth.ts         # Shared admin auth utility (NEW)
+    │   │   ├── DevicePolicy.ts
+    │   │   ├── api.ts
+    │   │   └── errorHandler.ts
+    │   ├── context/LanguageContext.tsx
+    │   └── services/OfflineSyncManager.ts
+    └── package.json
+```
 
-### Current Session (Feb 14, 2026)
-- **Android 16 Device Admin Fix (P0)**: Removed deprecated policies (`limit-password`, `reset-password`, `expire-password`, `encrypted-storage`) from `device_admin.xml`. Android 16 strictly enforces these deprecations and silently rejects Device Admin activation when they are declared.
-- **Expo Module Import Fix (P0)**: Updated `DevicePolicy.ts` and `DeviceAdmin.ts` (both `src/` and `src/src/` copies) to use `requireNativeModule('EMIDeviceAdmin')` from `expo-modules-core` instead of `NativeModules` from `react-native`. Required for Expo 54+ with new architecture enabled.
-- **Native Module SDK Update**: Updated `build.gradle` to target SDK 36 (Android 16). Marked `resetPassword` as no-op (deprecated since API 28).
-- **Flicker/Crash Fix (P0)**: Split `useEffect` in `home.tsx` into two: one-time initialization (runs once) and polling/app-state (depends on clientId). Added `hasInitialized` ref to prevent duplicate admin prompts. Added 500ms delay before showing admin prompt.
-- **Admin Mode Reporting Fix (P0)**: `checkAdminStatusWithRetry()` now calls `reportAdminStatus()` to backend after user grants admin permission. Previously only reported during app initialization (when admin was still false).
-- **Uninstall Protection Enhancement (P0)**: Enhanced `EMIDeviceAdminReceiver.kt` to: sync with SharedPreferences `KEY_UNINSTALL_ALLOWED` flag, show stronger warning when admin-disallowed uninstall is attempted, mark `admin_was_disabled` flag for tamper detection.
-
-### Previous Sessions
-- Expo build system stabilized
-- Stale URL eradication (multiple rounds)
-- Authentication flow hardened (token validation, 401 handling)
-- Native Kotlin module rewritten (admin mode crash fix)
-- All 13 API endpoints verified operational
-
-### Current Session (Feb 13, 2026)
-- **Data Segregation (P0)**: Made `/api/stats`, `/api/reports/collection`, `/api/reports/clients` require `admin_id` parameter
-- **Stale URL Cleanup (P0)**: Removed dead fallback URLs from 5 files: `app.config.js`, `src/constants/api.ts`, `src/utils/api.ts`, `src/src/constants/api.ts`, `app/admin/(tabs)/index.tsx`
-- **Device Management Fix (P0)**: `device-management.tsx` now passes `admin_id` to `/api/stats`
-- **Profit Report Enhancement (P0)**: `/api/reports/financial` now returns admin `first_name`, `last_name`, `username`, `role`
-- **Login API Enhanced (P0)**: `AdminResponse` model now includes `first_name`/`last_name`. Login endpoint returns these from DB
-- **Dashboard Welcome Screen (P0)**: Removed hardcoded `karli1987='Admin'` check. Now shows user's first name
-- **Settings Role Label (P0)**: Shows actual role (Admin/User) instead of hardcoded "Administrator"
-- **Admin Mode Fix (P0)**: AndroidManifest.xml now uses fully qualified receiver class name `expo.modules.emideviceadmin.EMIDeviceAdminReceiver`
-
-### Testing
-- Backend API: 14/14 tests passed (100%) - iteration_2
-- Test files: `/app/backend/tests/test_emi_admin_api.py`
-
-## Prioritized Backlog
-
-### P0 (Critical - User Verification)
-- Rebuild client APK with `--clear-cache` to test Android 16 Device Admin fix
-
-### P1 (Important)
-- API Security Audit: Verify all endpoints have proper auth middleware
-- User needs to rebuild BOTH admin and client APKs with `--clear-cache`
-
-### P2 (Nice to have)
-- Code refactoring for production readiness
+## DB Schema
+- **admins**: `(id, username, password_hash, first_name, last_name, role, is_super_admin)`
+- **admin_tokens**: `(admin_id, token, expires_at)` — upsert on login
+- **clients**: `(id, name, phone, email, admin_id, admin_mode_active, registration_code, ...)`
+- **loan_plans**: `(id, name, interest_rate, min/max_tenure_months, processing_fee_percent, late_fee_percent, description, is_active, admin_id)`
 
 ## Key API Endpoints
-- `POST /api/admin/login` - Returns id, username, role, is_super_admin, token, first_name, last_name
-- `GET /api/stats?admin_id={id}` - Device statistics (admin_id REQUIRED)
-- `GET /api/reports/collection?admin_id={id}` - Collection report (admin_id REQUIRED)
-- `GET /api/reports/clients?admin_id={id}` - Client report (admin_id REQUIRED)
-- `GET /api/reports/financial?admin_id={id}` - Financial report with admin info
-- `POST /api/clients?admin_token={token}` - Create client
+- `POST /api/admin/login` — returns token, id, role, first_name, last_name
+- `GET /api/admin/verify/{token}` — verify token validity
+- `GET/POST/PUT/DELETE /api/loan-plans` — CRUD with `admin_token` query param
+- `POST /api/clients` — create client with `admin_token` query param
+- `GET /api/device/status/{client_id}` — device status incl. `uninstall_allowed`
+- `POST /api/device/report-admin-status` — report device admin mode status
 
 ## Credentials
-- Admin: `karli1987` / `nasvakas123`
-- Admin ID: `a8c52e87-f8c8-44b3-9371-57393881db18`
+- Admin: `username=karli1987`, `password=nasvakas123`
+
+## What's Implemented (Feb 14, 2026)
+1. **Loan Plan CRUD fix**: All operations (create/delete/update/toggle) now use centralized `getAuthInfo()` from `adminAuth.ts` with proper 401 handling + redirect to login
+2. **Add Client fix**: Uses `getAuthInfo()` with 401 handling
+3. **Settings page fix**: Removed aggressive token verification on page load; only redirects if no token/adminId stored at all
+4. **Admin mode protection enhancement**:
+   - `EMIDeviceAdminReceiver.kt`: Now locks device screen when user attempts to disable Device Admin (before confirmation)
+   - `EMIDeviceAdminModule.kt`: Added `wasAdminDisabled()` and `clearTamperFlags()` methods
+   - `DevicePolicy.ts`: Added corresponding JS wrapper methods
+   - `client/home.tsx`: Enhanced `checkAndSetupDeviceProtection()` — detects forced deactivation, reports tamper, shows non-dismissable re-enable prompt
+5. **Code cleanup**: Removed duplicate `src/src/` directory
+6. **New utility**: `src/utils/adminAuth.ts` — centralized auth token handling
+
+## Backlog
+- P1: API Security Audit — verify all endpoints have auth middleware
+- P2: API URL consolidation (src/constants/api.ts vs src/utils/api.ts)
