@@ -25,6 +25,7 @@ from routes import (
     notifications_router,
     support_router,
     reminders_router,
+    contracts_router,
 )
 
 # Configure logging
