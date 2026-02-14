@@ -167,23 +167,6 @@ export default function AddClient() {
           <View style={styles.placeholder} />
         </View>
 
-        {/* Credit Balance Indicator */}
-        <View style={styles.creditIndicator} data-testid="credit-indicator">
-          <Ionicons name="ticket" size={16} color="#F59E0B" />
-          <Text style={styles.creditIndicatorText}>
-            {language === 'et' ? 'Krediite: ' : 'Credits: '}
-            {isSuperAdmin ? '∞' : userCredits}
-          </Text>
-          {!isSuperAdmin && userCredits <= 2 && (
-            <View style={styles.lowCreditWarningInline}>
-              <Ionicons name="warning" size={14} color="#F59E0B" />
-              <Text style={styles.lowCreditWarningText}>
-                {language === 'et' ? 'Madal' : 'Low'}
-              </Text>
-            </View>
-          )}
-        </View>
-
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.form}>
             <Text style={styles.label}>{t('fullName')} *</Text>
