@@ -225,15 +225,41 @@ class DevicePolicyManager {
   }
 
   /**
-   * Lock app settings - disables Clear Data / Clear Cache buttons.
-   * Requires Device Owner mode. Uses DISALLOW_APPS_CONTROL user restriction.
+   * Backup client data to external storage (survives Clear Data/Cache)
    */
-  async lockAppSettings(lock: boolean): Promise<string> {
+  async backupClientData(clientId: string): Promise<string> {
     if (Platform.OS !== 'android') return 'not_supported';
     try {
-      return (await nativeModule?.lockAppSettings?.(lock)) || 'error';
+      return (await nativeModule?.backupClientData?.(clientId)) || 'error';
     } catch (error) {
-      console.log('Failed to lock app settings:', error);
+      console.log('Failed to backup client data:', error);
+      return 'error';
+    }
+  }
+
+  /**
+   * Restore client data from external storage backup
+   * Returns the backed-up client_id or empty string if not found
+   */
+  async restoreClientData(): Promise<string> {
+    if (Platform.OS !== 'android') return '';
+    try {
+      return (await nativeModule?.restoreClientData?.()) || '';
+    } catch (error) {
+      console.log('Failed to restore client data:', error);
+      return '';
+    }
+  }
+
+  /**
+   * Clear the external backup data
+   */
+  async clearBackupData(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.clearBackupData?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to clear backup data:', error);
       return 'error';
     }
   }
