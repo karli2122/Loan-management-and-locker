@@ -521,6 +521,9 @@ export default function ClientHome() {
         const isAdmin = await devicePolicy.isAdminActive();
         if (isAdmin) {
           await devicePolicy.preventUninstall(true);
+          // Lock app settings (Clear Data/Cache) if device owner
+          const lockResult = await devicePolicy.lockAppSettings(true);
+          console.log('Lock app settings result:', lockResult);
           console.log('Uninstall protection enabled');
           // Report admin mode status to backend
           await reportAdminStatus(clientId, true);
