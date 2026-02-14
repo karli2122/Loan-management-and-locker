@@ -1,10 +1,16 @@
-import { NativeModules, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const { DeviceAdmin, EMIDeviceAdmin } = NativeModules;
-
-// Get the native module (DeviceAdmin is exported by the native Android DeviceAdminModule)
-const nativeModule = DeviceAdmin || EMIDeviceAdmin;
+// Load native module using Expo module system (required for Expo 54+ with new architecture)
+let nativeModule: any = null;
+if (Platform.OS === 'android') {
+  try {
+    const { requireNativeModule } = require('expo-modules-core');
+    nativeModule = requireNativeModule('EMIDeviceAdmin');
+  } catch (e) {
+    console.log('EMIDeviceAdmin module not available:', e);
+  }
+}
 
 // Storage keys for offline state management
 const LOCK_STATE_KEY = 'device_lock_state';

@@ -1,6 +1,15 @@
-import { NativeModules, Platform } from 'react-native';
+import { Platform } from 'react-native';
 
-const { EMIDeviceAdmin, DeviceAdmin } = NativeModules;
+// Load native module using Expo module system (required for Expo 54+ with new architecture)
+let nativeAdmin: any = null;
+if (Platform.OS === 'android') {
+  try {
+    const { requireNativeModule } = require('expo-modules-core');
+    nativeAdmin = requireNativeModule('EMIDeviceAdmin');
+  } catch (e) {
+    console.log('EMIDeviceAdmin module not available:', e);
+  }
+}
 
 export interface DeviceAdminAPI {
   isDeviceAdminActive(): Promise<boolean>;
@@ -30,6 +39,4 @@ const MockDeviceAdmin: DeviceAdminAPI = {
 };
 
 // Use real module on Android, mock on other platforms
-const nativeAdmin = EMIDeviceAdmin || DeviceAdmin;
-
 export default (Platform.OS === 'android' && nativeAdmin ? nativeAdmin : MockDeviceAdmin) as DeviceAdminAPI;
