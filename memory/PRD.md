@@ -134,5 +134,13 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
 - `GET /api/clients/silent` — list clients that haven't checked in recently
 - `POST /api/clients/{client_id}/generate-code` — generate new registration code (uses 1 credit for non-superadmins)
 
+## What's Implemented (Feb 14, 2026 - Session 5: Post-Registration Crash Fix)
+1. **Fixed client app crash after device registration**:
+   - Added `fresh_registration` flag in AsyncStorage to coordinate registration → home transition
+   - Extended delay (1500ms) for Device Admin prompt after fresh registration vs 500ms for normal app open
+   - Added 100ms delay before navigation from registration success alert to ensure alert dismisses cleanly
+   - Added mount check before showing admin prompt to prevent crashes if component unmounts during initialization
+
 ## Backlog
 - P2: API URL consolidation (src/constants/api.ts vs src/utils/api.ts) - centralize API URL configuration
+- P3: Enforce `buildApiUrl()` usage across all API calls for consistency
