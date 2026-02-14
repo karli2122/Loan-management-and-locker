@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
+import { getAuthInfo, handleAuthFailure } from '../../src/utils/adminAuth';
 
 
 export default function AddClient() {
@@ -73,7 +74,9 @@ export default function AddClient() {
 
     setLoading(true);
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const auth = await getAuthInfo();
+      if (!auth) { await handleAuthFailure(router, language); return; }
+
       const requestBody = {
         name: form.name,
         phone: form.phone,
@@ -83,7 +86,7 @@ export default function AddClient() {
       };
       
       console.log('Creating client with data:', requestBody);
-      const response = await fetch(`${API_URL}/api/clients?admin_token=${adminToken}`, {
+      const response = await fetch(`${API_URL}/api/clients?admin_token=${auth.token}`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
