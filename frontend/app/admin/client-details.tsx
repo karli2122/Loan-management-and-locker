@@ -1743,7 +1743,7 @@ const styles = StyleSheet.create({
   // Contract action styles
   contractActions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
     marginTop: 16,
   },
   contractButton: {
@@ -1751,18 +1751,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 4,
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
     backgroundColor: '#4F46E520',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#4F46E5',
   },
   contractButtonText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#4F46E5',
+  },
+  downloadButton: {
+    backgroundColor: '#3B82F620',
+    borderColor: '#3B82F6',
+  },
+  downloadButtonText: {
+    color: '#3B82F6',
+  },
+  shareButton: {
+    backgroundColor: '#10B98120',
+    borderColor: '#10B981',
+  },
+  shareButtonText: {
+    color: '#10B981',
   },
   testEmailButton: {
     backgroundColor: '#F59E0B20',
