@@ -59,6 +59,7 @@ export default function AdminSettings() {
   const [editLastName, setEditLastName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
+  const [editAddress, setEditAddress] = useState('');
   
   // Google Drive backup states
   const [googleConnected, setGoogleConnected] = useState(false);
