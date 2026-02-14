@@ -17,7 +17,7 @@ import os
 import uuid
 
 # Use the preview URL from frontend/.env
-BASE_URL = "https://apk-verification.preview.emergentagent.com"
+BASE_URL = "https://client-details-ui.preview.emergentagent.com"
 
 # Test credentials from review request
 TEST_USERNAME = "karli1987"
