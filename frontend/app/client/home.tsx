@@ -720,8 +720,11 @@ export default function ClientHome() {
                 console.log('Enable button pressed - requesting Device Admin');
                 const result = await devicePolicy.requestAdmin();
                 console.log('Device Admin request result:', result);
-                // Re-check admin status after request
-                await checkAdminStatusWithRetry();
+                // Re-check admin status after request and report to backend
+                const granted = await checkAdminStatusWithRetry();
+                if (!granted) {
+                  console.log('Admin not granted after enable button press');
+                }
               }}
             >
               <Text style={styles.enableProtectionText}>
