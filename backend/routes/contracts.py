@@ -375,8 +375,22 @@ async def send_contract_email(client_id: str, admin_token: str = Query(...)):
             "email_id": email_result.get("id") if isinstance(email_result, dict) else str(email_result)
         }
     except Exception as e:
-        logger.error(f"Failed to send contract email: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
+        error_msg = str(e)
+        logger.error(f"Failed to send contract email: {error_msg}")
+        
+        # Provide user-friendly error messages
+        if "only send testing emails" in error_msg.lower() or "verify a domain" in error_msg.lower():
+            raise HTTPException(
+                status_code=400,
+                detail="Email service is in sandbox mode. To send emails to clients, please verify your domain at resend.com/domains."
+            )
+        elif "invalid" in error_msg.lower() and "email" in error_msg.lower():
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid email address format for client: {client['email']}"
+            )
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to send email: {error_msg}")
 
 
 @router.get("/contracts/{client_id}/download")
