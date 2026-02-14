@@ -529,7 +529,7 @@ export default function ClientDetails() {
           </View>
         )}
         <View style={styles.regCodeRow}>
-          {showGeneratedKey ? (
+          {client.registration_code ? (
             <>
               <Text style={styles.regCode}>{t('registrationCode')}: {client.registration_code}</Text>
               <TouchableOpacity
@@ -544,12 +544,12 @@ export default function ClientDetails() {
             </>
           ) : (
             <Text style={styles.regCodeHidden}>
-              {language === 'et' ? 'Registreerimiskood on peidetud' : 'Registration code is hidden'}
+              {language === 'et' ? 'Võtit pole veel genereeritud' : 'Key not generated yet'}
             </Text>
           )}
         </View>
-        {/* Generate Key Button - only show if key not yet generated in this session */}
-        {!showGeneratedKey && (
+        {/* Generate Key Button - only show if key not yet generated */}
+        {!client.registration_code && (
           <TouchableOpacity
             style={[
               styles.generateKeyButton,
