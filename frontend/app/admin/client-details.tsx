@@ -529,44 +529,54 @@ export default function ClientDetails() {
           </View>
         )}
         <View style={styles.regCodeRow}>
-          <Text style={styles.regCode}>{t('registrationCode')}: {client.registration_code}</Text>
-          <TouchableOpacity
-            style={styles.copyButton}
-            onPress={async () => {
-              await Share.share({ message: client.registration_code });
-            }}
-          >
-            <Ionicons name="copy" size={18} color="#94A3B8" />
-            <Text style={styles.copyText}>{t('copy')}</Text>
-          </TouchableOpacity>
-        </View>
-        {/* Generate Key Button */}
-        <TouchableOpacity
-          style={[
-            styles.generateKeyButton,
-            (!isSuperAdmin && userCredits <= 0) && styles.generateKeyButtonDisabled
-          ]}
-          onPress={handleGenerateCode}
-          disabled={generatingCode}
-          data-testid="generate-key-button"
-        >
-          {generatingCode ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
+          {showGeneratedKey ? (
             <>
-              <Ionicons name="key" size={16} color="#fff" />
-              <Text style={styles.generateKeyButtonText}>
-                {language === 'et' ? 'Genereeri võti' : 'Generate key'}
-              </Text>
+              <Text style={styles.regCode}>{t('registrationCode')}: {client.registration_code}</Text>
+              <TouchableOpacity
+                style={styles.copyButton}
+                onPress={async () => {
+                  await Share.share({ message: client.registration_code });
+                }}
+              >
+                <Ionicons name="copy" size={18} color="#94A3B8" />
+                <Text style={styles.copyText}>{t('copy')}</Text>
+              </TouchableOpacity>
             </>
-          )}
-          <View style={styles.creditBadge}>
-            <Ionicons name="ticket" size={12} color="#F59E0B" />
-            <Text style={styles.creditBadgeText}>
-              {isSuperAdmin ? '∞' : userCredits}
+          ) : (
+            <Text style={styles.regCodeHidden}>
+              {language === 'et' ? 'Registreerimiskood on peidetud' : 'Registration code is hidden'}
             </Text>
-          </View>
-        </TouchableOpacity>
+          )}
+        </View>
+        {/* Generate Key Button - only show if key not yet generated in this session */}
+        {!showGeneratedKey && (
+          <TouchableOpacity
+            style={[
+              styles.generateKeyButton,
+              (!isSuperAdmin && userCredits <= 0) && styles.generateKeyButtonDisabled
+            ]}
+            onPress={handleGenerateCode}
+            disabled={generatingCode}
+            data-testid="generate-key-button"
+          >
+            {generatingCode ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="key" size={16} color="#fff" />
+                <Text style={styles.generateKeyButtonText}>
+                  {language === 'et' ? 'Genereeri võti' : 'Generate key'}
+                </Text>
+              </>
+            )}
+            <View style={styles.creditBadge}>
+              <Ionicons name="ticket" size={12} color="#F59E0B" />
+              <Text style={styles.creditBadgeText}>
+                {isSuperAdmin ? '∞' : userCredits}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
       </View>
 
         {/* Contact Info */}
