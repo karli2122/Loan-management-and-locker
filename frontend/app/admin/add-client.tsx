@@ -29,6 +29,8 @@ export default function AddClient() {
     name: '',
     phone: '',
     email: '',
+    address: '',
+    birth_number: '',
     emi_amount: '',
     emi_due_date: '',
   });
