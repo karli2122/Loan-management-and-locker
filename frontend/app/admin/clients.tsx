@@ -56,6 +56,7 @@ export default function ClientsList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'locked' | 'unlocked' | 'silent'>('all');
   const [silentLoading, setSilentLoading] = useState(false);
+  const [showFilterPicker, setShowFilterPicker] = useState(false);
 
   const fetchClients = async () => {
     try {
@@ -298,27 +299,20 @@ export default function ClientsList() {
       </View>
 
       <View style={styles.filterContainer}>
-        {(['all', 'locked', 'unlocked', 'silent'] as const).map((f) => (
-          <TouchableOpacity
-            key={f}
-            style={[
-              styles.filterButton, 
-              filter === f && styles.filterButtonActive,
-              f === 'silent' && styles.silentFilterButton,
-              f === 'silent' && filter === f && styles.silentFilterButtonActive
-            ]}
-            onPress={() => setFilter(f)}
-          >
-            {f === 'silent' && <Ionicons name="alert-circle" size={14} color={filter === f ? '#fff' : '#F97316'} style={{marginRight: 4}} />}
-            <Text style={[
-              styles.filterText, 
-              filter === f && styles.filterTextActive,
-              f === 'silent' && filter !== f && styles.silentFilterText
-            ]}>
-              {getFilterLabel(f)}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        <TouchableOpacity
+          style={styles.filterDropdown}
+          onPress={() => setShowFilterPicker(true)}
+          data-testid="filter-dropdown"
+        >
+          {filter === 'silent' && <Ionicons name="alert-circle" size={16} color="#F97316" style={{marginRight: 6}} />}
+          <Text style={[
+            styles.filterDropdownText,
+            filter === 'silent' && styles.silentFilterDropdownText
+          ]}>
+            {getFilterLabel(filter)}
+          </Text>
+          <Ionicons name="chevron-down" size={18} color="#94A3B8" />
+        </TouchableOpacity>
       </View>
 
       {filter === 'silent' && silentLoading ? (
