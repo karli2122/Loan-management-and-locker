@@ -179,6 +179,8 @@ async def update_profile(data: ProfileUpdate, admin_token: str = Query(...)):
         update_data["email"] = data.email
     if data.phone is not None:
         update_data["phone"] = data.phone
+    if data.address is not None:
+        update_data["address"] = data.address
     
     if update_data:
         await db.admins.update_one({"id": admin_id}, {"$set": update_data})
