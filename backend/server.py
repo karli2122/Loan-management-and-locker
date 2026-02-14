@@ -2777,7 +2777,7 @@ async def mark_support_messages_read(client_id: str, admin_token: str = Query(..
 # ===================== PAYMENT HISTORY ENDPOINTS =====================
 
 @api_router.get("/payments/history/{client_id}")
-async def get_payment_history(client_id: str):
+async def get_client_payment_history(client_id: str):
     """Get detailed payment history for a client (accessible to client)"""
     client = await db.clients.find_one({"id": client_id})
     if not client:
