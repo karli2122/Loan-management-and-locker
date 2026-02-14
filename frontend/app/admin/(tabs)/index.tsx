@@ -353,6 +353,32 @@ export default function Dashboard() {
             <Text style={styles.actionDescription}>{language === 'et' ? 'Arvuta laenumaksed' : 'Calculate loan payments'}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/admin/notifications')}
+            data-testid="notifications-btn"
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#EF4444' }]}>
+              <Ionicons name="notifications" size={24} color="#fff" />
+            </View>
+            <Text style={styles.actionTitle}>{language === 'et' ? 'Teavitused' : 'Notifications'}</Text>
+            <Text style={styles.actionDescription}>{language === 'et' ? 'Turvateavitused ja hoiatused' : 'Security alerts & warnings'}</Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/admin/client-map')}
+            data-testid="client-map-btn"
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#06B6D4' }]}>
+              <Ionicons name="map" size={24} color="#fff" />
+            </View>
+            <Text style={styles.actionTitle}>{language === 'et' ? 'Klientide kaart' : 'Client Map'}</Text>
+            <Text style={styles.actionDescription}>{language === 'et' ? 'Seadmete asukohad' : 'Device locations'}</Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
