@@ -117,6 +117,7 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
 - `POST /api/admin/credits/assign` — superadmin assigns credits (body: {target_admin_id, credits})
 - `GET /api/admin/list-with-credits` — list all admins with credits (superadmin only)
 - `GET /api/clients/silent` — list clients that haven't checked in recently
+- `POST /api/clients/{client_id}/generate-code` — generate new registration code (uses 1 credit for non-superadmins)
 
 ## Backlog
 - P1: API Security Audit — verify all endpoints have auth middleware
