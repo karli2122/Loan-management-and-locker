@@ -39,25 +39,6 @@ export default function AddClient() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
 
-  useEffect(() => {
-    const fetchCredits = async () => {
-      try {
-        const token = await AsyncStorage.getItem('admin_token');
-        if (token) {
-          const response = await fetch(`${API_URL}/api/admin/credits?admin_token=${token}`);
-          if (response.ok) {
-            const data = await response.json();
-            setUserCredits(data.credits);
-            setIsSuperAdmin(data.is_super_admin);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching credits:', error);
-      }
-    };
-    fetchCredits();
-  }, []);
-
   const months = language === 'et' 
     ? ['Jaanuar', 'Veebruar', 'Märts', 'Aprill', 'Mai', 'Juuni', 'Juuli', 'August', 'September', 'Oktoober', 'November', 'Detsember']
     : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
