@@ -513,6 +513,38 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     lineHeight: 20,
   },
+  // Credit indicator styles
+  creditIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F59E0B15',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginHorizontal: 20,
+    marginBottom: 8,
+    gap: 8,
+  },
+  creditIndicatorText: {
+    fontSize: 14,
+    color: '#F59E0B',
+    fontWeight: '500',
+  },
+  lowCreditWarningInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 'auto',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: '#F59E0B20',
+    borderRadius: 12,
+  },
+  lowCreditWarningText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#F59E0B',
+  },
   // Date Picker styles
   datePickerOverlay: {
     flex: 1,
