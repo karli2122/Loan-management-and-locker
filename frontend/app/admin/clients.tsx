@@ -29,16 +29,31 @@ interface Client {
   emi_due_date: string | null;
   is_locked: boolean;
   is_registered: boolean;
+  last_heartbeat?: string | null;
+  admin_mode_active?: boolean;
+  tamper_attempts?: number;
+}
+
+interface SilentClient {
+  id: string;
+  name: string;
+  phone: string;
+  last_heartbeat: string | null;
+  is_locked: boolean;
+  admin_mode_active: boolean;
+  tamper_attempts: number;
 }
 
 export default function ClientsList() {
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [clients, setClients] = useState<Client[]>([]);
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
+  const [silentClients, setSilentClients] = useState<SilentClient[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'locked' | 'unlocked'>('all');
+  const [filter, setFilter] = useState<'all' | 'locked' | 'unlocked' | 'silent'>('all');
+  const [silentLoading, setSilentLoading] = useState(false);
 
   const fetchClients = async () => {
     try {
