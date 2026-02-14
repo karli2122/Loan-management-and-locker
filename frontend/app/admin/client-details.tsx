@@ -1671,4 +1671,35 @@ const styles = StyleSheet.create({
   paymentConfirmButton: {
     backgroundColor: '#10B981',
   },
+  // Contract action styles
+  contractActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  contractButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#4F46E520',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#4F46E5',
+  },
+  contractButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4F46E5',
+  },
+  sendEmailButton: {
+    backgroundColor: '#10B98120',
+    borderColor: '#10B981',
+  },
+  sendEmailButtonText: {
+    color: '#10B981',
+  },
 });
