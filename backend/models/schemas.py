@@ -19,6 +19,7 @@ class Admin(BaseModel):
     last_name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
+    address: Optional[str] = None  # Lender address for contracts
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
