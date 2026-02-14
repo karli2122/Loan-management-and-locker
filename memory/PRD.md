@@ -64,6 +64,7 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
 3. **Settings page fix**: Removed aggressive token verification on page load; only redirects if no token/adminId stored at all
 4. **Admin mode protection enhancement**:
    - `EMIDeviceAdminReceiver.kt`: Now locks device screen when user attempts to disable Device Admin (before confirmation)
+   - `EMIDeviceAdminReceiver.kt`: **Auto-launches the app** via `getLaunchIntentForPackage()` on both `onDisableRequested` and `onDisabled` — shows non-dismissable re-enable prompt even if app was closed
    - `EMIDeviceAdminModule.kt`: Added `wasAdminDisabled()` and `clearTamperFlags()` methods
    - `DevicePolicy.ts`: Added corresponding JS wrapper methods
    - `client/home.tsx`: Enhanced `checkAndSetupDeviceProtection()` — detects forced deactivation, reports tamper, shows non-dismissable re-enable prompt
