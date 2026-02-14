@@ -130,7 +130,9 @@ export default function AddClient() {
       console.log('Client created successfully:', client.id);
       Alert.alert(
         t('success'),
-        `${t('clientCreated')}\n\n${t('registrationCode')}: ${client.registration_code}\n\n${t('shareCodeMessage')}`,
+        language === 'et' 
+          ? 'Klient lisatud! Minge kliendi detailide juurde, et genereerida registreerimiskood.'
+          : 'Client created! Go to client details to generate registration key.',
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error: any) {
