@@ -1281,6 +1281,55 @@ async def update_client(client_id: str, update_data: ClientUpdate, admin_id: Opt
     updated_client = await db.clients.find_one({"id": client_id})
     return Client(**updated_client)
 
+@api_router.post("/clients/{client_id}/generate-code")
+async def generate_registration_code(client_id: str, admin_token: str = Query(...)):
+    """Generate a new registration code for a client. Requires 1 credit (unless superadmin)."""
+    # Verify admin token
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise AuthenticationException("Invalid admin token")
+    
+    admin = await db.admins.find_one({"id": token_doc["admin_id"]})
+    if not admin:
+        raise AuthenticationException("Admin not found")
+    
+    # Find client and verify access
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    await enforce_client_scope(client, token_doc["admin_id"])
+    
+    # Credit check: Non-superadmins must have credits
+    if not admin.get("is_super_admin", False):
+        current_credits = admin.get("credits", 0)
+        if current_credits <= 0:
+            raise ValidationException("Insufficient credits. Please contact superadmin to get more credits.")
+        
+        # Deduct 1 credit
+        await db.admins.update_one(
+            {"id": admin["id"]},
+            {"$inc": {"credits": -1}}
+        )
+        logger.info(f"Admin {admin['username']} used 1 credit for code generation. Remaining: {current_credits - 1}")
+    else:
+        logger.info(f"Superadmin {admin['username']} generated code without credit deduction")
+    
+    # Generate new registration code
+    new_code = secrets.token_hex(4).upper()
+    
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {"registration_code": new_code}}
+    )
+    
+    logger.info(f"New registration code generated for client {client_id}")
+    
+    return {
+        "message": "Registration code generated successfully",
+        "registration_code": new_code,
+        "credits_remaining": admin.get("credits", 0) - 1 if not admin.get("is_super_admin", False) else "unlimited"
+    }
+
 @api_router.post("/clients/{client_id}/allow-uninstall")
 async def allow_uninstall(client_id: str, admin_id: Optional[str] = Query(default=None)):
     """Signal device to allow app uninstallation - must be called before deletion"""
