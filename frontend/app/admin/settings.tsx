@@ -646,6 +646,39 @@ export default function AdminSettings() {
             </View>
           </View>
 
+          {/* Credit Balance Display */}
+          <View style={styles.creditCard} data-testid="credit-balance-card">
+            <View style={styles.creditIconContainer}>
+              <Ionicons name="ticket" size={24} color="#F59E0B" />
+            </View>
+            <View style={styles.creditInfo}>
+              <Text style={styles.creditLabel}>
+                {language === 'et' ? 'Krediidi saldo' : 'Credit Balance'}
+              </Text>
+              <Text style={styles.creditValue}>
+                {isSuperAdmin ? '∞' : userCredits}
+              </Text>
+            </View>
+            {isSuperAdmin && (
+              <View style={styles.superAdminTag}>
+                <Ionicons name="shield-checkmark" size={14} color="#10B981" />
+                <Text style={styles.superAdminText}>
+                  {language === 'et' ? 'Peaadmin' : 'Superadmin'}
+                </Text>
+              </View>
+            )}
+          </View>
+          {!isSuperAdmin && userCredits <= 2 && (
+            <View style={styles.lowCreditWarning}>
+              <Ionicons name="warning" size={16} color="#F59E0B" />
+              <Text style={styles.lowCreditText}>
+                {language === 'et' 
+                  ? 'Krediit hakkab lõppema. Pöördu peaadmini poole.' 
+                  : 'Low credits. Contact superadmin for more.'}
+              </Text>
+            </View>
+          )}
+
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => setShowEditProfile(true)}
