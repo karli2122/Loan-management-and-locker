@@ -7,6 +7,7 @@ from .reports import router as reports_router
 from .notifications import router as notifications_router
 from .support import router as support_router
 from .reminders import router as reminders_router
+from .contracts import router as contracts_router
 
 __all__ = [
     "admin_router",
@@ -17,4 +18,5 @@ __all__ = [
     "notifications_router",
     "support_router",
     "reminders_router",
+    "contracts_router",
 ]
