@@ -214,6 +214,30 @@ export default function AddClient() {
               />
             </View>
 
+            <Text style={styles.label}>{language === 'et' ? 'Aadress' : 'Address'}</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="location" size={20} color="#64748B" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder={language === 'et' ? 'Sisesta aadress' : 'Enter address'}
+                placeholderTextColor="#64748B"
+                value={form.address}
+                onChangeText={(text) => setForm({ ...form, address: text })}
+              />
+            </View>
+
+            <Text style={styles.label}>{language === 'et' ? 'Isikukood' : 'Birth Number'}</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="card" size={20} color="#64748B" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder={language === 'et' ? 'Sisesta isikukood' : 'Enter birth number'}
+                placeholderTextColor="#64748B"
+                value={form.birth_number}
+                onChangeText={(text) => setForm({ ...form, birth_number: text })}
+              />
+            </View>
+
             <Text style={styles.label}>{t('emiAmount')}</Text>
             <View style={styles.inputContainer}>
               <Text style={styles.currencySymbol}>€</Text>
