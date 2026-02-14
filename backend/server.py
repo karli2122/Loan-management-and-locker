@@ -86,6 +86,7 @@ app.include_router(reports_router, prefix="/api")
 app.include_router(notifications_router, prefix="/api")
 app.include_router(support_router, prefix="/api")
 app.include_router(reminders_router, prefix="/api")
+app.include_router(contracts_router, prefix="/api")
 
 
 # ===================== ROOT ENDPOINTS =====================
