@@ -99,17 +99,33 @@ class TestHeartbeatAndSilentClients:
         print(f"✓ Silent clients endpoint works: found {data['count']} silent clients with {data['cutoff_minutes']} minutes cutoff")
     
     def test_03_device_status_updates_heartbeat(self, admin_token, admin_id, test_client):
-        """Test that GET /api/device/status/{client_id} updates last_heartbeat"""
+        """Test that GET /api/device/status/{client_id} updates last_heartbeat in database
+        
+        Note: The Client Pydantic model does not expose last_heartbeat field in GET response.
+        We verify heartbeat is being stored by checking silent clients behavior instead.
+        """
         client_id = test_client["id"]
         
-        # First, get client and check initial state (no heartbeat)
+        # First, get client and check initial state
         response = requests.get(f"{BASE_URL}/api/clients/{client_id}?admin_id={admin_id}")
         assert response.status_code == 200, f"Failed to get client: {response.text}"
         client_before = response.json()
-        # New clients might not have last_heartbeat field or it could be None
-        print(f"✓ Client before status check - last_heartbeat: {client_before.get('last_heartbeat', 'NOT SET')}")
+        print(f"✓ Client before status check - is_registered: {client_before.get('is_registered')}")
         
-        # Call device status endpoint
+        # Register the device first so it can appear in silent list
+        reg_code = client_before.get("registration_code")
+        reg_response = requests.post(
+            f"{BASE_URL}/api/device/register",
+            json={
+                "registration_code": reg_code,
+                "device_id": f"test_hb_device_{client_id[:8]}",
+                "device_model": "HB Test Model"
+            }
+        )
+        if reg_response.status_code == 200:
+            print(f"✓ Device registered")
+        
+        # Now call device status endpoint (this should update heartbeat)
         response = requests.get(f"{BASE_URL}/api/device/status/{client_id}")
         assert response.status_code == 200, f"Device status failed: {response.text}"
         status_data = response.json()
@@ -117,15 +133,20 @@ class TestHeartbeatAndSilentClients:
         assert "is_locked" in status_data, "Status response should contain is_locked"
         print(f"✓ Device status call succeeded for client {client_id}")
         
-        # Get client again and verify heartbeat was updated
-        response = requests.get(f"{BASE_URL}/api/clients/{client_id}?admin_id={admin_id}")
-        assert response.status_code == 200, f"Failed to get client after status: {response.text}"
-        client_after = response.json()
+        # Verify heartbeat was updated by checking silent clients list
+        # The client should NOT be in silent list now (has recent heartbeat)
+        response = requests.get(
+            f"{BASE_URL}/api/clients/silent",
+            params={"admin_token": admin_token, "minutes": 1}
+        )
+        assert response.status_code == 200, f"Silent clients failed: {response.text}"
+        data = response.json()
+        silent_ids = [c["id"] for c in data["silent_clients"]]
         
-        # Verify last_heartbeat is now set (should be recent)
-        assert "last_heartbeat" in client_after or client_after.get("last_heartbeat") is not None, \
-            "last_heartbeat should be set after status check"
-        print(f"✓ Client after status check - last_heartbeat: {client_after.get('last_heartbeat')}")
+        # Client should NOT be in silent list (heartbeat was just updated)
+        assert client_id not in silent_ids, \
+            f"Client {client_id} should NOT be in silent list after status check (has recent heartbeat)"
+        print(f"✓ Heartbeat verified: client NOT in silent list (recent heartbeat)")
     
     def test_04_new_client_without_heartbeat_shows_in_silent(self, admin_token, admin_id):
         """Test that a new registered client with no heartbeat appears in silent list"""
