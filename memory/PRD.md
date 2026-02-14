@@ -342,3 +342,55 @@ Refactored the 3131-line `server.py` into modular route files:
 - `frontend/app/admin/add-loan.tsx` - admin_token for all API calls
 
 **Testing Results:** 100% pass rate - All 8 bugs verified fixed
+
+### Session 11: New Feature Implementation (Feb 14, 2026)
+**Two new features implemented and verified:**
+
+1. **Regenerate Key Feature** - COMPLETE ✅
+   - "Regenerate key" button in client-details.tsx for clients with existing keys
+   - Uses existing `POST /api/clients/{client_id}/generate-code` endpoint
+   - Costs 1 credit for non-superadmin users
+   - Shows credit badge with current balance (∞ for superadmins)
+   - Generates new 8-character uppercase hex registration code
+
+2. **Loan Contract Generation** - COMPLETE ✅
+   - New route file: `backend/routes/contracts.py`
+   - `GET /api/contracts/{client_id}/preview` - Generates PDF contract in browser
+   - `GET /api/contracts/{client_id}/download` - Downloads PDF as attachment
+   - `POST /api/contracts/{client_id}/send-email` - Sends PDF via email
+   - PDF contains: Estonian loan contract template, lender name/address, client name/address/birth_number, loan amount, due date
+   - Email subject: "Laen", body: "Palun alkirjastage Leping ja saadke tagasi."
+   - Uses Resend API for email (sandbox mode - requires domain verification for production)
+
+3. **Model Updates**:
+   - Admin model: Added `address` field for contract generation
+   - Client model: Added `address` and `birth_number` fields
+
+4. **Frontend Updates**:
+   - `client-details.tsx`: Added "Preview Contract" and "Send Email" buttons in Loan Overview section
+   - `add-client.tsx`: Added Address and Birth Number input fields
+   - `add-loan.tsx`: Added Address and Birth Number for inline client creation
+
+**Files Modified:**
+- `backend/routes/contracts.py` (NEW) - PDF generation and email sending
+- `backend/models/schemas.py` - Admin and Client model updates
+- `backend/routes/clients.py` - Handle new client fields
+- `backend/routes/admin.py` - Handle admin address
+- `backend/server.py` - Register contracts router
+- `frontend/app/admin/client-details.tsx` - Contract buttons and regenerate key
+- `frontend/app/admin/add-client.tsx` - New form fields
+- `frontend/app/admin/add-loan.tsx` - New form fields
+
+**Testing Results:** 100% pass rate (15/15 tests)
+- PDF preview returns valid PDF content
+- Regenerate key works correctly
+- Email sending works (returns expected sandbox limitation error)
+
+**Known Limitations:**
+- Resend email is in sandbox mode - can only send to verified email
+- To send to any client, user must verify their domain at resend.com/domains
+
+## Current Backlog
+- P1: Create Admin Profile edit screen to set admin address (used in contracts)
+- P2: Add data-testid attributes to interactive elements
+- P3: Push notifications for payment reminders (requires FCM integration)
