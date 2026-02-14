@@ -1287,7 +1287,8 @@ async def get_silent_clients(
     }
 
 @api_router.get("/clients/{client_id}", response_model=Client)
-async def get_client(client_id: str, admin_id: Optional[str] = Query(default=None)):
+async def get_client(client_id: str, admin_token: str = Query(...)):
+    admin_id = await get_admin_id_from_token(admin_token)
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -1296,7 +1297,8 @@ async def get_client(client_id: str, admin_id: Optional[str] = Query(default=Non
     return Client(**client)
 
 @api_router.put("/clients/{client_id}", response_model=Client)
-async def update_client(client_id: str, update_data: ClientUpdate, admin_id: Optional[str] = Query(default=None)):
+async def update_client(client_id: str, update_data: ClientUpdate, admin_token: str = Query(...)):
+    admin_id = await get_admin_id_from_token(admin_token)
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
