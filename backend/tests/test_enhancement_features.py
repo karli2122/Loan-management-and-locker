@@ -335,7 +335,8 @@ class TestBulkOperations:
         if response.status_code != 200:
             pytest.skip("Cannot get clients list")
         
-        clients = response.json()
+        data = response.json()
+        clients = data.get("clients", [])
         if not clients or len(clients) == 0:
             pytest.skip("No clients available for bulk operation test")
         
@@ -378,7 +379,8 @@ class TestBulkOperations:
         if response.status_code != 200:
             pytest.skip("Cannot get clients list")
         
-        clients = response.json()
+        data = response.json()
+        clients = data.get("clients", [])
         if not clients or len(clients) == 0:
             pytest.skip("No clients available for bulk operation test")
         
@@ -458,7 +460,8 @@ class TestSupportMessages:
                 params={"admin_token": TestSupportMessages.admin_token}
             )
             if response.status_code == 200:
-                clients = response.json()
+                data = response.json()
+                clients = data.get("clients", [])
                 if clients and len(clients) > 0:
                     TestSupportMessages.test_client_id = clients[0]["id"]
     
@@ -569,7 +572,8 @@ class TestPaymentHistory:
                 params={"admin_token": TestPaymentHistory.admin_token}
             )
             if response.status_code == 200:
-                clients = response.json()
+                data = response.json()
+                clients = data.get("clients", [])
                 if clients and len(clients) > 0:
                     TestPaymentHistory.test_client_id = clients[0]["id"]
     
