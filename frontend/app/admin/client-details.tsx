@@ -535,6 +535,33 @@ export default function ClientDetails() {
             <Text style={styles.copyText}>{t('copy')}</Text>
           </TouchableOpacity>
         </View>
+        {/* Generate Key Button */}
+        <TouchableOpacity
+          style={[
+            styles.generateKeyButton,
+            (!isSuperAdmin && userCredits <= 0) && styles.generateKeyButtonDisabled
+          ]}
+          onPress={handleGenerateCode}
+          disabled={generatingCode}
+          data-testid="generate-key-button"
+        >
+          {generatingCode ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Ionicons name="key" size={16} color="#fff" />
+              <Text style={styles.generateKeyButtonText}>
+                {language === 'et' ? 'Genereeri võti' : 'Generate key'}
+              </Text>
+            </>
+          )}
+          <View style={styles.creditBadge}>
+            <Ionicons name="ticket" size={12} color="#F59E0B" />
+            <Text style={styles.creditBadgeText}>
+              {isSuperAdmin ? '∞' : userCredits}
+            </Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
         {/* Contact Info */}
