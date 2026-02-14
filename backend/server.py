@@ -1346,6 +1346,41 @@ async def report_admin_status(client_id: str, admin_active: bool):
 
 # ===================== TAMPER DETECTION =====================
 
+@api_router.get("/clients/silent")
+async def get_silent_clients(
+    admin_id: str,
+    minutes: int = 5,
+    current_admin: dict = Depends(get_current_admin_user)
+):
+    """Get clients that haven't sent a heartbeat in the specified number of minutes.
+    This detects Clear Data/Cache or device being turned off."""
+    cutoff = datetime.utcnow() - timedelta(minutes=minutes)
+    
+    # Find registered clients with stale or missing heartbeats
+    silent_clients = []
+    cursor = db.clients.find(
+        {
+            "admin_id": current_admin["id"],
+            "is_registered": True,
+            "$or": [
+                {"last_heartbeat": {"$lt": cutoff}},
+                {"last_heartbeat": {"$exists": False}}
+            ]
+        },
+        {"_id": 0, "id": 1, "name": 1, "phone": 1, "last_heartbeat": 1, "is_locked": 1, "admin_mode_active": 1, "tamper_attempts": 1}
+    )
+    
+    async for client in cursor:
+        hb = client.get("last_heartbeat")
+        client["last_heartbeat"] = hb.isoformat() if hb else None
+        silent_clients.append(client)
+    
+    return {
+        "silent_clients": silent_clients,
+        "count": len(silent_clients),
+        "cutoff_minutes": minutes
+    }
+
 @api_router.post("/clients/{client_id}/report-tamper")
 async def report_tamper_attempt(client_id: str, tamper_type: str = "unknown"):
     """Report tampering attempt from client device"""
