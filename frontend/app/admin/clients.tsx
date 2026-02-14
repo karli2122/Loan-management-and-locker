@@ -657,4 +657,72 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginTop: 12,
   },
+  // Dropdown filter styles
+  filterDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+    gap: 8,
+  },
+  filterDropdownText: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '500',
+  },
+  silentFilterDropdownText: {
+    color: '#F97316',
+  },
+  // Filter modal styles
+  filterModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  filterModalContent: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 20,
+    width: '100%',
+    maxWidth: 320,
+  },
+  filterModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  filterModalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  filterModalItemActive: {
+    backgroundColor: '#4F46E5',
+    borderColor: '#4F46E5',
+  },
+  filterModalItemText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#fff',
+    fontWeight: '500',
+  },
+  filterModalItemTextActive: {
+    color: '#fff',
+  },
+  silentFilterModalText: {
+    color: '#F97316',
+  },
 });
