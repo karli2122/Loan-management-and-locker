@@ -613,6 +613,7 @@ class AdminResponse(BaseModel):
     username: str
     role: str
     is_super_admin: bool
+    credits: int = 5
     token: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
