@@ -544,35 +544,35 @@ export default function ClientDetails() {
             </Text>
           )}
         </View>
-        {/* Generate Key Button - only show if key not yet generated */}
-        {!client.registration_code && (
-          <TouchableOpacity
-            style={[
-              styles.generateKeyButton,
-              (!isSuperAdmin && userCredits <= 0) && styles.generateKeyButtonDisabled
-            ]}
-            onPress={handleGenerateCode}
-            disabled={generatingCode}
-            data-testid="generate-key-button"
-          >
-            {generatingCode ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="key" size={16} color="#fff" />
-                <Text style={styles.generateKeyButtonText}>
-                  {language === 'et' ? 'Genereeri võti' : 'Generate key'}
-                </Text>
-              </>
-            )}
-            <View style={styles.creditBadge}>
-              <Ionicons name="ticket" size={12} color="#F59E0B" />
-              <Text style={styles.creditBadgeText}>
-                {isSuperAdmin ? '∞' : userCredits}
+        {/* Generate Key Button - show for all cases */}
+        <TouchableOpacity
+          style={[
+            styles.generateKeyButton,
+            (!isSuperAdmin && userCredits <= 0) && styles.generateKeyButtonDisabled
+          ]}
+          onPress={handleGenerateCode}
+          disabled={generatingCode || (!isSuperAdmin && userCredits <= 0)}
+          data-testid="generate-key-button"
+        >
+          {generatingCode ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Ionicons name="key" size={16} color="#fff" />
+              <Text style={styles.generateKeyButtonText}>
+                {client.registration_code 
+                  ? (language === 'et' ? 'Regenereeri võti' : 'Regenerate key')
+                  : (language === 'et' ? 'Genereeri võti' : 'Generate key')}
               </Text>
-            </View>
-          </TouchableOpacity>
-        )}
+            </>
+          )}
+          <View style={styles.creditBadge}>
+            <Ionicons name="ticket" size={12} color="#F59E0B" />
+            <Text style={styles.creditBadgeText}>
+              {isSuperAdmin ? '∞' : userCredits}
+            </Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
         {/* Contact Info */}
