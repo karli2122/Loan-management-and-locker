@@ -82,6 +82,8 @@ export default function AddClient() {
         name: form.name,
         phone: form.phone,
         email: form.email,
+        address: form.address,
+        birth_number: form.birth_number,
         emi_amount: parseFloat(form.emi_amount) || 0,
         emi_due_date: form.emi_due_date || undefined,
       };
