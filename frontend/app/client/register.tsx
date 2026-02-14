@@ -120,6 +120,9 @@ export default function ClientRegister() {
       // Registration successful - save client data
       await AsyncStorage.setItem('client_id', clientId);
       
+      // Mark as fresh registration so home.tsx can delay admin prompt
+      await AsyncStorage.setItem('fresh_registration', 'true');
+      
       // Backup client_id to external storage (survives Clear Data)
       await devicePolicy.backupClientData(clientId);
       
@@ -142,8 +145,10 @@ export default function ClientRegister() {
           {
             text: t('ok'),
             onPress: () => {
-              // Navigate to home screen - it will handle admin permission prompt
-              router.replace('/client/home');
+              // Small delay to ensure alert is fully dismissed before navigation
+              setTimeout(() => {
+                router.replace('/client/home');
+              }, 100);
             },
           },
         ]
