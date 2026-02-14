@@ -2616,9 +2616,11 @@ class Notification(BaseModel):
 @api_router.get("/notifications")
 async def get_notifications(admin_token: str = Query(...), limit: int = Query(50), unread_only: bool = Query(False)):
     """Get notifications for the admin"""
-    admin = await get_admin_id_from_token(admin_token)
-    admin_id = admin["id"]
-    is_super = admin.get("is_super_admin", False)
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Get admin details to check if super admin
+    admin_doc = await db.admins.find_one({"id": admin_id})
+    is_super = admin_doc.get("is_super_admin", False) if admin_doc else False
     
     query = {"admin_id": admin_id} if not is_super else {}
     if unread_only:
