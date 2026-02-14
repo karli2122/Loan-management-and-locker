@@ -12,8 +12,9 @@ router = APIRouter(tags=["Reports"])
 
 
 @router.get("/reports/collection")
-async def get_collection_report(admin_id: str = Query(...)):
+async def get_collection_report(admin_token: str = Query(...)):
     """Get collection report for an admin."""
+    admin_id = await get_admin_id_from_token(admin_token)
     clients = await db.clients.find(
         {"admin_id": admin_id},
         {"_id": 0}
@@ -42,8 +43,9 @@ async def get_collection_report(admin_id: str = Query(...)):
 
 
 @router.get("/reports/clients")
-async def get_clients_report(admin_id: str = Query(...)):
+async def get_clients_report(admin_token: str = Query(...)):
     """Get detailed clients report."""
+    admin_id = await get_admin_id_from_token(admin_token)
     clients = await db.clients.find(
         {"admin_id": admin_id},
         {"_id": 0, "registration_code": 0}
@@ -69,11 +71,12 @@ async def get_clients_report(admin_id: str = Query(...)):
 
 @router.get("/reports/financial")
 async def get_financial_report(
-    admin_id: str = Query(...),
+    admin_token: str = Query(...),
     start_date: Optional[str] = Query(default=None),
     end_date: Optional[str] = Query(default=None)
 ):
     """Get financial report with optional date range."""
+    admin_id = await get_admin_id_from_token(admin_token)
     query = {"admin_id": admin_id}
     
     clients = await db.clients.find(query, {"_id": 0}).to_list(1000)
