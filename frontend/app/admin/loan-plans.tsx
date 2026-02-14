@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '../../src/constants/api';
 import { getErrorMessage } from '../../src/utils/errorHandler';
+import { getAuthInfo, handleAuthFailure } from '../../src/utils/adminAuth';
 
 
 interface LoanPlan {
@@ -53,14 +54,24 @@ export default function LoanPlans() {
     fetchPlans();
   }, []);
 
+  /** Check response for auth errors and redirect to login if needed */
+  const checkAuth = async (response: Response): Promise<boolean> => {
+    if (response.status === 401) {
+      await handleAuthFailure(router);
+      return false;
+    }
+    return true;
+  };
+
   const fetchPlans = async () => {
     try {
-      const adminId = await AsyncStorage.getItem('admin_id');
-      if (!adminId) {
-        Alert.alert('Error', 'Admin session not found');
+      const auth = await getAuthInfo();
+      if (!auth) {
+        await handleAuthFailure(router);
         return;
       }
-      const response = await fetch(`${API_URL}/api/loan-plans?admin_id=${adminId}`);
+      const response = await fetch(`${API_URL}/api/loan-plans?admin_id=${auth.adminId}`);
+      if (!(await checkAuth(response))) return;
       const data = await response.json();
       setPlans(data);
     } catch (error) {
@@ -103,7 +114,9 @@ export default function LoanPlans() {
 
     setActionLoading(true);
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const auth = await getAuthInfo();
+      if (!auth) { await handleAuthFailure(router); return; }
+
       const planData = {
         name: name.trim(),
         interest_rate: parseFloat(interestRate),
@@ -115,8 +128,8 @@ export default function LoanPlans() {
       };
 
       const url = editingPlan
-        ? `${API_URL}/api/loan-plans/${editingPlan.id}?admin_token=${token}`
-        : `${API_URL}/api/loan-plans?admin_token=${token}`;
+        ? `${API_URL}/api/loan-plans/${editingPlan.id}?admin_token=${auth.token}`
+        : `${API_URL}/api/loan-plans?admin_token=${auth.token}`;
 
       const response = await fetch(url, {
         method: editingPlan ? 'PUT' : 'POST',
@@ -124,6 +137,7 @@ export default function LoanPlans() {
         body: JSON.stringify(planData),
       });
 
+      if (!(await checkAuth(response))) return;
       if (!response.ok) throw new Error('Failed to save plan');
 
       Alert.alert('Success', `Plan ${editingPlan ? 'updated' : 'created'} successfully`);
@@ -138,10 +152,12 @@ export default function LoanPlans() {
 
   const handleToggleActive = async (plan: LoanPlan) => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const auth = await getAuthInfo();
+      if (!auth) { await handleAuthFailure(router); return; }
+
       const newActiveState = !plan.is_active;
       
-      const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${token}`, {
+      const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${auth.token}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -155,6 +171,7 @@ export default function LoanPlans() {
           is_active: newActiveState 
         }),
       });
+      if (!(await checkAuth(response))) return;
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Toggle error:', errorText);
@@ -179,14 +196,16 @@ export default function LoanPlans() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const token = await AsyncStorage.getItem('admin_token');
+              const auth = await getAuthInfo();
+              if (!auth) { await handleAuthFailure(router); return; }
               console.log('Attempting to delete plan:', plan.id, plan.name);
-              const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${token}`, {
+              const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${auth.token}`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
               });
               
               console.log('Delete plan response status:', response.status);
+              if (!(await checkAuth(response))) return;
               if (!response.ok) {
                 const contentType = response.headers.get('content-type');
                 let errorMessage = `Failed to delete plan (${response.status})`;
@@ -254,8 +273,9 @@ export default function LoanPlans() {
 
   const handleForceDeletePlan = async (plan: LoanPlan) => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
-      const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${token}&force=true`, {
+      const auth = await getAuthInfo();
+      if (!auth) { await handleAuthFailure(router); return; }
+      const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${auth.token}&force=true`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
       });
