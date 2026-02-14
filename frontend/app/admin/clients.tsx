@@ -265,7 +265,13 @@ export default function ClientsList() {
               </View>
             )}
           </View>
-          <Text style={styles.regCode}>{t('code')}: {item.registration_code || 'N/A'}</Text>
+          {item.registration_code ? (
+            <Text style={styles.regCode}>{t('code')}: {item.registration_code}</Text>
+          ) : (
+            <Text style={styles.regCodeNotGenerated}>
+              {language === 'et' ? 'Võti: pole genereeritud' : 'Key: not generated'}
+            </Text>
+          )}
         </View>
         <Ionicons name="chevron-forward" size={20} color="#64748B" />
       </TouchableOpacity>
