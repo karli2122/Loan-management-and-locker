@@ -360,6 +360,46 @@ export default function ClientsList() {
           }
         />
       )}
+
+      {/* Filter Picker Modal */}
+      <Modal visible={showFilterPicker} transparent animationType="fade">
+        <TouchableOpacity 
+          style={styles.filterModalOverlay} 
+          activeOpacity={1}
+          onPress={() => setShowFilterPicker(false)}
+        >
+          <View style={styles.filterModalContent}>
+            <Text style={styles.filterModalTitle}>
+              {language === 'et' ? 'Filtreeri kliendid' : 'Filter Clients'}
+            </Text>
+            {(['all', 'locked', 'unlocked', 'silent'] as const).map((f) => (
+              <TouchableOpacity
+                key={f}
+                style={[
+                  styles.filterModalItem,
+                  filter === f && styles.filterModalItemActive
+                ]}
+                onPress={() => {
+                  setFilter(f);
+                  setShowFilterPicker(false);
+                }}
+              >
+                {f === 'silent' && <Ionicons name="alert-circle" size={18} color={filter === f ? '#fff' : '#F97316'} style={{marginRight: 8}} />}
+                <Text style={[
+                  styles.filterModalItemText,
+                  filter === f && styles.filterModalItemTextActive,
+                  f === 'silent' && filter !== f && styles.silentFilterModalText
+                ]}>
+                  {getFilterLabel(f)}
+                </Text>
+                {filter === f && (
+                  <Ionicons name="checkmark" size={20} color="#fff" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
