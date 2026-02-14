@@ -243,15 +243,12 @@ class EMIDeviceAdminModule : Module() {
             }
         }
 
-        // Reset device password (requires device owner or admin)
-        AsyncFunction("resetPassword") { newPassword: String, promise: Promise ->
+        // Reset password not supported on modern Android (deprecated since API 28)
+        // Kept as no-op for backward compatibility
+        AsyncFunction("resetPassword") { _: String, promise: Promise ->
             try {
-                if (!dpm.isAdminActive(adminComponent)) {
-                    promise.resolve("not_admin")
-                    return@AsyncFunction
-                }
-                Log.d(TAG, "resetPassword: Attempting password reset")
-                promise.resolve("success")
+                Log.d(TAG, "resetPassword: Not supported on modern Android (deprecated)")
+                promise.resolve("not_supported")
             } catch (e: Exception) {
                 Log.e(TAG, "resetPassword error: ${e.message}")
                 promise.resolve("error: ${e.message}")
