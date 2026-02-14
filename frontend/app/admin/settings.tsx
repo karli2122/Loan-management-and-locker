@@ -117,14 +117,60 @@ export default function AdminSettings() {
       setEditFirstName(firstName || '');
       setEditLastName(lastName || '');
       
+      // Fetch current user's credits
+      await fetchCredits(token);
+      
       // Only fetch admin list if user is an admin
       if (token && role === 'admin') {
-        await fetchAdmins(token);
+        await fetchAdminsWithCredits(token);
       }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCredits = async (token: string) => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/credits?admin_token=${token}`);
+      if (response.ok) {
+        const data = await response.json();
+        setUserCredits(data.credits);
+        setIsSuperAdmin(data.is_super_admin);
+      }
+    } catch (error) {
+      console.error('Error fetching credits:', error);
+    }
+  };
+
+  const fetchAdminsWithCredits = async (token: string) => {
+    try {
+      // First check if user is superadmin by fetching their credits
+      const creditsResponse = await fetch(`${API_URL}/api/admin/credits?admin_token=${token}`);
+      if (creditsResponse.ok) {
+        const creditsData = await creditsResponse.json();
+        setIsSuperAdmin(creditsData.is_super_admin);
+        
+        // If superadmin, fetch full admin list with credits
+        if (creditsData.is_super_admin) {
+          const response = await fetch(`${API_URL}/api/admin/list-with-credits?admin_token=${token}`);
+          if (response.ok) {
+            const data = await response.json();
+            setAdmins(data);
+            return;
+          }
+        }
+      }
+      
+      // Fallback to regular admin list
+      const response = await fetch(`${API_URL}/api/admin/list?admin_token=${token}`);
+      if (response.ok) {
+        const data = await response.json();
+        setAdmins(data);
+      }
+    } catch (error) {
+      console.error('Error fetching admins:', error);
     }
   };
 
