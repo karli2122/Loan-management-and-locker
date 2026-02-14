@@ -135,5 +135,4 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
 - `POST /api/clients/{client_id}/generate-code` — generate new registration code (uses 1 credit for non-superadmins)
 
 ## Backlog
-- P1: API Security Audit — verify all endpoints have auth middleware
-- P2: API URL consolidation (src/constants/api.ts vs src/utils/api.ts)
+- P2: API URL consolidation (src/constants/api.ts vs src/utils/api.ts) - centralize API URL configuration
