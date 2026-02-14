@@ -83,10 +83,11 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
 4. **Client model update**: Added `last_heartbeat` and `uninstall_allowed` fields.
 
 ## What's Implemented (Feb 14, 2026 - Session 4: Credit System)
-1. **Credit-based device registration**:
+1. **Credit-based device registration** (CORRECTED):
    - Admin model updated with `credits` (default: 5) and `is_super_admin` fields
-   - Non-superadmin admins must have credits to create clients/generate registration codes
-   - 1 credit is deducted per client creation
+   - Credits are used when generating registration codes, NOT during client creation
+   - `POST /api/clients/{client_id}/generate-code` - generates new code and deducts 1 credit
+   - Non-superadmin admins must have credits to generate registration codes
    - Superadmins bypass the credit system (unlimited codes)
 2. **Credit management APIs**:
    - `GET /api/admin/credits` - Get current admin's credit balance
@@ -95,7 +96,8 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
 3. **UI credit display**:
    - Dashboard shows credit balance card with superadmin indicator
    - Settings page shows credit balance and credit management section
-   - Add Client page shows credit indicator and blocks submission if no credits
+   - **Client details page** shows "Generate key" button with credit badge
+   - Button disabled for non-superadmins with 0 credits
    - Admin list in settings shows credit badges for each admin
 4. **Silent client filter (Kadunud)**:
    - Clients list has "Kadunud" (Silent) filter button 
