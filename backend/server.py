@@ -886,6 +886,7 @@ async def register_admin(admin_data: AdminCreate, admin_token: str = Query(defau
         username=admin.username, 
         role=admin.role,
         is_super_admin=admin.is_super_admin,
+        credits=admin.credits,
         token=token
     )
 
