@@ -455,8 +455,21 @@ export default function ClientHome() {
         // Load client data first
         await loadClientData();
         
-        // Small delay to let the UI settle before showing admin prompt
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Check if this is a fresh registration - use longer delay to prevent flicker/crash
+        const isFreshRegistration = await AsyncStorage.getItem('fresh_registration');
+        const delay = isFreshRegistration === 'true' ? 1500 : 500;
+        
+        // Clear the fresh registration flag
+        if (isFreshRegistration === 'true') {
+          await AsyncStorage.removeItem('fresh_registration');
+          console.log('Fresh registration detected - using extended delay for admin prompt');
+        }
+        
+        // Delay to let the UI settle before showing admin prompt
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        // Only show admin prompt if component is still mounted
+        if (!isMounted.current) return;
         
         // Then check device protection after data is loaded
         await checkAndSetupDeviceProtection();
