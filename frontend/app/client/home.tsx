@@ -405,6 +405,10 @@ export default function ClientHome() {
   useEffect(() => {
     isMounted.current = true;
     
+    // Only initialize once to prevent flicker/crash from duplicate admin prompts
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+    
     // Wrap initialization in try-catch to prevent crashes
     const initialize = async () => {
       try {
@@ -414,8 +418,10 @@ export default function ClientHome() {
         // Load client data first
         await loadClientData();
         
-        // Then check device protection immediately after data is loaded
-        // This ensures the admin prompt appears right after registration
+        // Small delay to let the UI settle before showing admin prompt
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Then check device protection after data is loaded
         await checkAndSetupDeviceProtection();
       } catch (error) {
         console.error('Initialization error:', error);
@@ -425,20 +431,25 @@ export default function ClientHome() {
     
     initialize();
 
-    // Poll status every 30 seconds (reduced from 5 seconds to prevent database overflow)
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  // Separate effect for polling and app state - depends on clientId
+  useEffect(() => {
+    if (!clientId) return;
+
+    // Poll status every 30 seconds
     intervalRef.current = setInterval(() => {
-      if (clientId) {
-        fetchStatus(clientId);
-      }
-    }, 30000); // Was 5000
+      fetchStatus(clientId);
+    }, 30000);
 
     // Handle app state changes
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        if (clientId) {
-          fetchStatus(clientId);
-          updateLocation(clientId);
-        }
+        fetchStatus(clientId);
+        updateLocation(clientId);
         // Re-check protection on app resume
         checkAndSetupDeviceProtection().catch((err) =>
           console.error('Device protection check error on resume:', err)
@@ -461,7 +472,6 @@ export default function ClientHome() {
       }
       subscription.remove();
       backHandler.remove();
-      isMounted.current = false;
     };
   }, [clientId, status?.is_locked]);
 
