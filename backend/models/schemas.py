@@ -72,6 +72,8 @@ class Client(BaseModel):
     name: str
     phone: str
     email: str = ""
+    address: str = ""  # Client address for contracts
+    birth_number: str = ""  # Personal identification code (isikukood) for contracts
     admin_id: Optional[str] = None
     device_id: str = ""
     device_model: str = ""
