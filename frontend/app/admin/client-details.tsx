@@ -220,7 +220,7 @@ export default function ClientDetails() {
   const handleLock = async () => {
     setActionLoading(true);
     try {
-      const adminQuery = await buildAdminQuery(true);
+      const adminQuery = await buildAdminTokenQuery(true);
       const response = await fetch(`${API_URL}/api/clients/${id}/lock?message=${encodeURIComponent(lockMessage)}${adminQuery}`, {
         method: 'POST',
       });
@@ -243,7 +243,7 @@ export default function ClientDetails() {
         onPress: async () => {
           setActionLoading(true);
           try {
-            const adminQuery = await buildAdminQuery();
+            const adminQuery = await buildAdminTokenQuery();
             const response = await fetch(`${API_URL}/api/clients/${id}/unlock${adminQuery}`, {
               method: 'POST',
             });
@@ -267,7 +267,7 @@ export default function ClientDetails() {
     }
     setActionLoading(true);
     try {
-      const adminQuery = await buildAdminQuery(true);
+      const adminQuery = await buildAdminTokenQuery(true);
       const response = await fetch(
         `${API_URL}/api/clients/${id}/warning?message=${encodeURIComponent(warningMessage)}${adminQuery}`,
         { method: 'POST' }
@@ -296,7 +296,7 @@ export default function ClientDetails() {
           onPress: async () => {
             setActionLoading(true);
             try {
-              const adminQuery = await buildAdminQuery();
+              const adminQuery = await buildAdminTokenQuery();
               const response = await fetch(`${API_URL}/api/clients/${id}/allow-uninstall${adminQuery}`, {
                 method: 'POST',
               });
@@ -327,7 +327,7 @@ export default function ClientDetails() {
           onPress: async () => {
             setActionLoading(true);
             try {
-              const adminQuery = await buildAdminQuery();
+              const adminQuery = await buildAdminTokenQuery();
               // Step 1: Allow uninstall first
               const uninstallRes = await fetch(`${API_URL}/api/clients/${id}/allow-uninstall${adminQuery}`, {
                 method: 'POST',
@@ -360,7 +360,7 @@ export default function ClientDetails() {
   const handleFetchPrice = async () => {
     setFetchingPrice(true);
     try {
-      const adminQuery = await buildAdminQuery();
+      const adminQuery = await buildAdminTokenQuery();
       const response = await fetch(`${API_URL}/api/clients/${id}/fetch-price${adminQuery}`);
       if (!response.ok) {
         const error = await response.json();
@@ -402,7 +402,7 @@ export default function ClientDetails() {
         }
       }
 
-      const adminQuery = await buildAdminQuery();
+      const adminQuery = await buildAdminTokenQuery();
       const response = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
