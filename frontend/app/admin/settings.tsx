@@ -1140,6 +1140,17 @@ export default function AdminSettings() {
               />
             </View>
 
+            <View style={styles.inputContainer}>
+              <Ionicons name="location" size={20} color="#64748B" />
+              <TextInput
+                style={styles.input}
+                placeholder={language === 'et' ? 'Aadress' : 'Address'}
+                placeholderTextColor="#64748B"
+                value={editAddress}
+                onChangeText={setEditAddress}
+              />
+            </View>
+
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
