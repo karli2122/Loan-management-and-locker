@@ -138,6 +138,8 @@ class ClientCreate(BaseModel):
     name: str
     phone: str
     email: str
+    address: str = ""  # Client address for contracts
+    birth_number: str = ""  # Personal identification code (isikukood)
     emi_amount: float = 0.0
     emi_due_date: Optional[str] = None
     lock_mode: str = "device_admin"
@@ -152,6 +154,8 @@ class ClientUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
+    address: Optional[str] = None  # Client address for contracts
+    birth_number: Optional[str] = None  # Personal identification code (isikukood)
     emi_amount: Optional[float] = None
     emi_due_date: Optional[str] = None
     is_locked: Optional[bool] = None
