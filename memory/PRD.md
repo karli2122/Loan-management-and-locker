@@ -73,8 +73,14 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
 
 ## What's Implemented (Feb 14, 2026 - Session 2)
 1. **Client details conditional quick actions**: Quick actions section only renders when `client.is_registered === true`
-2. **Delete confirmation with auto-uninstall**: Delete button shows "Are you sure?" dialog. On confirmation, automatically calls `/api/clients/{id}/allow-uninstall` first, then `/api/clients/{id}` DELETE — combining both steps seamlessly
+2. **Delete confirmation with auto-uninstall**: Delete button shows "Are you sure?" dialog. On confirmation, automatically calls `/api/clients/{id}/allow-uninstall` first, then `/api/clients/{id}` DELETE
 3. **Backend verified**: Full chain (login → create → guard check → allow-uninstall → delete) tested with 7/7 tests passing
+
+## What's Implemented (Feb 14, 2026 - Session 3: Security Hardening)
+1. **Factory reset on tamper**: `EMIDeviceAdminReceiver.kt` → `onDisableRequested()` calls `dpm.wipeData(0)` if `uninstall_allowed=false`. Device wiped before admin disable completes.
+2. **Heartbeat monitoring**: Backend tracks `last_heartbeat` on every status check. New `GET /api/clients/silent` endpoint. 9/9 tests passed.
+3. **Persistent identity backup**: Native `backupClientData/restoreClientData/clearBackupData` methods write to `/sdcard/.emi_backup/`. App restores identity after Clear Data and reports tamper.
+4. **Client model update**: Added `last_heartbeat` and `uninstall_allowed` fields.
 
 ## Backlog
 - P1: API Security Audit — verify all endpoints have auth middleware
