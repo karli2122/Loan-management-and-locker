@@ -235,7 +235,7 @@ async def get_admin_credits(admin_token: str = Query(...)):
 
 @router.post("/admin/credits/assign")
 async def assign_credits(data: CreditAssignment, admin_token: str = Query(...)):
-    """Assign credits to an admin (super admin only)."""
+    """Assign credits to an admin (super admin only). Credits are ADDED to existing balance."""
     admin_id = await get_admin_id_from_token(admin_token)
     admin = await db.admins.find_one({"id": admin_id})
     
@@ -249,15 +249,21 @@ async def assign_credits(data: CreditAssignment, admin_token: str = Query(...)):
     if data.credits < 0:
         raise ValidationException("Credits cannot be negative")
     
+    # Use $inc to ADD credits to existing balance (additive)
+    current_credits = target_admin.get("credits", 0)
+    new_balance = current_credits + data.credits
+    
     await db.admins.update_one(
         {"id": data.target_admin_id},
-        {"$set": {"credits": data.credits}}
+        {"$set": {"credits": new_balance}}
     )
     
     return {
-        "message": f"Assigned {data.credits} credits to {target_admin['username']}",
+        "message": f"Added {data.credits} credits to {target_admin['username']}",
         "target_admin_id": data.target_admin_id,
-        "new_balance": data.credits
+        "previous_balance": current_credits,
+        "added": data.credits,
+        "new_balance": new_balance
     }
 
 

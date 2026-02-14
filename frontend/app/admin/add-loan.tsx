@@ -176,16 +176,15 @@ export default function AddLoan() {
 
       // Create new client if needed
       if (clientMode === 'new') {
-        const adminId = await AsyncStorage.getItem('admin_id');
+        const adminToken = await AsyncStorage.getItem('admin_token');
         const newClientData = {
           name: newClientName.trim(),
           phone: newClientPhone.trim(),
           email: newClientEmail.trim(),
-          admin_id: adminId || null,
         };
         
         console.log('Creating new client for loan:', newClientData);
-        const clientResponse = await fetch(`${API_URL}/api/clients`, {
+        const clientResponse = await fetch(`${API_URL}/api/clients?admin_token=${adminToken || ''}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(newClientData),
