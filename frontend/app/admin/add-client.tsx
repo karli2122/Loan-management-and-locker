@@ -17,7 +17,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
-import { API_BASE_URL } from '../../src/utils/api';
+import API_URL from '../../src/constants/api';
 
 
 export default function AddClient() {
@@ -83,7 +83,7 @@ export default function AddClient() {
       };
       
       console.log('Creating client with data:', requestBody);
-      const response = await fetch(`${API_BASE_URL}/api/clients?admin_token=${adminToken}`, {
+      const response = await fetch(`${API_URL}/api/clients?admin_token=${adminToken}`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
