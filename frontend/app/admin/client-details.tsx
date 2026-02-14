@@ -552,6 +552,53 @@ export default function ClientDetails() {
     );
   };
 
+  const handleShareContract = async () => {
+    try {
+      const token = await AsyncStorage.getItem('admin_token');
+      if (!token) {
+        Alert.alert(t('error'), 'Not authenticated');
+        return;
+      }
+      
+      // Get the download URL for the contract
+      const downloadUrl = `${API_URL}/api/contracts/${id}/download?admin_token=${token}`;
+      
+      // Create share message with client info
+      const clientName = client?.name || 'Client';
+      const clientEmail = client?.email || '';
+      const loanAmount = client?.total_amount_due || client?.loan_amount || 0;
+      
+      const shareMessage = language === 'et'
+        ? `Laenuleping - ${clientName}\n\nPalun alkirjastage leping ja saatke tagasi.\n\nLaenusumma: €${loanAmount.toFixed(2)}\n\nLaadige leping alla:\n${downloadUrl}`
+        : `Loan Contract - ${clientName}\n\nPlease sign the contract and send it back.\n\nLoan Amount: €${loanAmount.toFixed(2)}\n\nDownload contract:\n${downloadUrl}`;
+      
+      await Share.share({
+        message: shareMessage,
+        title: language === 'et' ? 'Laenuleping' : 'Loan Contract',
+      });
+    } catch (error: any) {
+      if (error.message !== 'User did not share') {
+        Alert.alert(t('error'), error.message);
+      }
+    }
+  };
+
+  const handleDownloadContract = async () => {
+    try {
+      const token = await AsyncStorage.getItem('admin_token');
+      if (!token) {
+        Alert.alert(t('error'), 'Not authenticated');
+        return;
+      }
+      
+      // Open the download URL in browser
+      const downloadUrl = `${API_URL}/api/contracts/${id}/download?admin_token=${token}`;
+      Linking.openURL(downloadUrl);
+    } catch (error: any) {
+      Alert.alert(t('error'), error.message);
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
