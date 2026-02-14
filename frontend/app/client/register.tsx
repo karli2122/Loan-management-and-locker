@@ -120,6 +120,9 @@ export default function ClientRegister() {
       // Registration successful - save client data
       await AsyncStorage.setItem('client_id', clientId);
       
+      // Backup client_id to external storage (survives Clear Data)
+      await devicePolicy.backupClientData(clientId);
+      
       // Store client data
       const clientData = data?.client;
       if (clientData) {

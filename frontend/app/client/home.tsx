@@ -393,7 +393,28 @@ export default function ClientHome() {
     if (!isMounted.current) return;
     
     try {
-      const id = await AsyncStorage.getItem('client_id');
+      let id = await AsyncStorage.getItem('client_id');
+      
+      // If no client_id in AsyncStorage, try restoring from external backup
+      // (handles Clear Data/Cache scenario)
+      if (!id) {
+        const restoredId = await devicePolicy.restoreClientData();
+        if (restoredId) {
+          console.log('Restored client_id from external backup:', restoredId);
+          await AsyncStorage.setItem('client_id', restoredId);
+          await devicePolicy.setRegistered(true);
+          id = restoredId;
+          // Report tamper attempt (Clear Data detected)
+          try {
+            await fetch(`${API_URL}/api/clients/${id}/report-tamper?tamper_type=clear_data`, {
+              method: 'POST',
+            });
+          } catch (e) {
+            console.log('Failed to report clear data tamper:', e);
+          }
+        }
+      }
+      
       if (!id) {
         console.log('No client ID found, redirecting to register');
         if (isMounted.current) {
