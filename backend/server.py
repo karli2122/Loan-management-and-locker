@@ -1086,6 +1086,90 @@ async def delete_admin(admin_id: str, admin_token: str = Query(...)):
     
     return {"message": "User deleted successfully"}
 
+# ===================== CREDIT MANAGEMENT ROUTES =====================
+
+class CreditAssignment(BaseModel):
+    target_admin_id: str
+    credits: int
+
+@api_router.get("/admin/credits")
+async def get_admin_credits(admin_token: str = Query(...)):
+    """Get current admin's credit balance"""
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise AuthenticationException("Invalid admin token")
+    
+    admin = await db.admins.find_one({"id": token_doc["admin_id"]})
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    
+    return {
+        "admin_id": admin["id"],
+        "username": admin["username"],
+        "credits": admin.get("credits", 5),
+        "is_super_admin": admin.get("is_super_admin", False)
+    }
+
+@api_router.post("/admin/credits/assign")
+async def assign_credits(credit_data: CreditAssignment, admin_token: str = Query(...)):
+    """Superadmin can assign credits to other admins"""
+    # Verify token
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise AuthenticationException("Invalid admin token")
+    
+    # Check if requester is superadmin
+    requester = await db.admins.find_one({"id": token_doc["admin_id"]})
+    if not requester or not requester.get("is_super_admin", False):
+        raise AuthorizationException("Only superadmin can assign credits")
+    
+    # Validate credits value
+    if credit_data.credits < 0:
+        raise ValidationException("Credits cannot be negative")
+    
+    # Find target admin
+    target_admin = await db.admins.find_one({"id": credit_data.target_admin_id})
+    if not target_admin:
+        raise HTTPException(status_code=404, detail="Target admin not found")
+    
+    # Update credits
+    await db.admins.update_one(
+        {"id": credit_data.target_admin_id},
+        {"$set": {"credits": credit_data.credits}}
+    )
+    
+    logger.info(f"Superadmin {requester['username']} assigned {credit_data.credits} credits to {target_admin['username']}")
+    
+    return {
+        "message": "Credits assigned successfully",
+        "target_admin_id": credit_data.target_admin_id,
+        "new_credits": credit_data.credits
+    }
+
+@api_router.get("/admin/list-with-credits")
+async def list_admins_with_credits(admin_token: str = Query(...)):
+    """List all admins with their credits (for superadmin credit management view)"""
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise AuthenticationException("Invalid admin token")
+    
+    # Check if requester is superadmin
+    requester = await db.admins.find_one({"id": token_doc["admin_id"]})
+    if not requester or not requester.get("is_super_admin", False):
+        raise AuthorizationException("Only superadmin can view all admin credits")
+    
+    admins = await db.admins.find().to_list(100)
+    return [{
+        "id": a["id"], 
+        "username": a["username"], 
+        "first_name": a.get("first_name"),
+        "last_name": a.get("last_name"),
+        "role": a.get("role", "user"),
+        "is_super_admin": a.get("is_super_admin", False),
+        "credits": a.get("credits", 5),
+        "created_at": a.get("created_at")
+    } for a in admins]
+
 # ===================== CLIENT MANAGEMENT ROUTES =====================
 
 @api_router.post("/clients", response_model=Client)
