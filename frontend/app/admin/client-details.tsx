@@ -484,8 +484,8 @@ export default function ClientDetails() {
     }
   };
 
-  const handleSendContractEmail = async () => {
-    if (!client?.email) {
+  const handleSendContractEmail = async (testMode: boolean = false) => {
+    if (!testMode && !client?.email) {
       Alert.alert(
         t('error'),
         language === 'et' 
@@ -495,11 +495,21 @@ export default function ClientDetails() {
       return;
     }
 
+    const titleText = testMode 
+      ? (language === 'et' ? 'Saada test e-kiri' : 'Send Test Email')
+      : (language === 'et' ? 'Saada leping' : 'Send Contract');
+    
+    const messageText = testMode
+      ? (language === 'et' 
+          ? 'Leping saadetakse teie e-postile (karlivilbas87@gmail.com). Sealt saate selle edasi saata kliendile.'
+          : 'Contract will be sent to your email (karlivilbas87@gmail.com). You can then forward it to the client.')
+      : (language === 'et'
+          ? `Kas soovite saata lepingu aadressile ${client?.email}?`
+          : `Send contract to ${client?.email}?`);
+
     Alert.alert(
-      language === 'et' ? 'Saada leping' : 'Send Contract',
-      language === 'et'
-        ? `Kas soovite saata lepingu aadressile ${client.email}?`
-        : `Send contract to ${client.email}?`,
+      titleText,
+      messageText,
       [
         { text: t('cancel'), style: 'cancel' },
         {
@@ -513,10 +523,11 @@ export default function ClientDetails() {
                 return;
               }
               
-              const response = await fetch(
-                `${API_URL}/api/contracts/${id}/send-email?admin_token=${token}`,
-                { method: 'POST' }
-              );
+              const url = testMode 
+                ? `${API_URL}/api/contracts/${id}/send-email?admin_token=${token}&test_mode=true`
+                : `${API_URL}/api/contracts/${id}/send-email?admin_token=${token}`;
+              
+              const response = await fetch(url, { method: 'POST' });
               
               if (!response.ok) {
                 const errorData = await response.json();
@@ -526,9 +537,9 @@ export default function ClientDetails() {
               const data = await response.json();
               Alert.alert(
                 t('success'),
-                language === 'et'
-                  ? `Leping saadetud aadressile ${client.email}`
-                  : `Contract sent to ${client.email}`
+                data.message || (testMode 
+                  ? (language === 'et' ? 'Test e-kiri saadetud!' : 'Test email sent!')
+                  : (language === 'et' ? `Leping saadetud aadressile ${client?.email}` : `Contract sent to ${client?.email}`))
               );
             } catch (error: any) {
               Alert.alert(t('error'), error.message);
