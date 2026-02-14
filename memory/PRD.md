@@ -82,7 +82,7 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
 3. **Persistent identity backup**: Native `backupClientData/restoreClientData/clearBackupData` methods write to `/sdcard/.emi_backup/`. App restores identity after Clear Data and reports tamper.
 4. **Client model update**: Added `last_heartbeat` and `uninstall_allowed` fields.
 
-## What's Implemented (Feb 14, 2026 - Session 4: Credit System)
+## What's Implemented (Feb 14, 2026 - Session 4: Credit System + Security Audit)
 1. **Credit-based device registration** (CORRECTED):
    - Admin model updated with `credits` (default: 5) and `is_super_admin` fields
    - Credits are used when generating registration codes, NOT during client creation
@@ -100,6 +100,21 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
    - Button disabled for non-superadmins with 0 credits
    - Admin list in settings shows credit badges for each admin
 4. **Silent client filter (Kadunud)**:
+   - Clients that haven't sent heartbeat in 60 minutes are flagged as silent
+   - Filter button in client list to show only silent clients
+5. **API Security Audit (COMPLETE)**:
+   - Added `get_admin_id_from_token()` helper function for secure token validation
+   - **Secured endpoints** now require `admin_token` instead of `admin_id`:
+     - `GET /api/clients`
+     - `GET /api/clients/{client_id}`
+     - `PUT /api/clients/{client_id}`
+     - `POST /api/clients/{client_id}/lock`
+     - `POST /api/clients/{client_id}/unlock`
+     - `POST /api/clients/{client_id}/warning`
+     - `POST /api/clients/{client_id}/allow-uninstall`
+     - `DELETE /api/clients/{client_id}`
+   - Frontend updated to use `admin_token` for all secured API calls
+   - All 27 security tests passed (100%)
    - Clients list has "Kadunud" (Silent) filter button 
    - Shows clients that haven't communicated in 60 minutes
    - Displays last seen time and tamper attempt count
