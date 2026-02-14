@@ -91,6 +91,7 @@ export default function ClientDetails() {
   const [userCredits, setUserCredits] = useState<number>(5);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
+  const [showGeneratedKey, setShowGeneratedKey] = useState(false);
   
   const getAdminToken = async () => {
     return await AsyncStorage.getItem('admin_token');
@@ -193,6 +194,9 @@ export default function ClientDetails() {
               if (client) {
                 setClient({ ...client, registration_code: data.registration_code });
               }
+              
+              // Show the generated key
+              setShowGeneratedKey(true);
               
               // Update credits
               if (!isSuperAdmin) {
