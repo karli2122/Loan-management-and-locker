@@ -157,44 +157,55 @@ export default function ClientHome() {
       setIsAdminActive(admin);
 
       if (!admin) {
+        // Check if admin was forcefully disabled (tamper attempt)
+        const wasDisabled = await devicePolicy.wasAdminDisabled();
+        if (wasDisabled) {
+          console.log('TAMPER DETECTED: Admin was forcefully disabled!');
+          // Report tamper attempt to backend
+          const storedId = await AsyncStorage.getItem('client_id');
+          if (storedId) {
+            await reportTamperAttempt('admin_disabled');
+            await reportAdminStatus(storedId, false);
+          }
+          // Clear the flag so we don't report it again
+          await devicePolicy.clearTamperFlags();
+        }
+
         console.log('Device Admin not active - prompting user');
         isRequestingAdmin.current = true;
         setLastAdminPromptTime(now);
+        
+        // Use a non-dismissable alert for re-activation after tamper
+        const title = language === 'et' ? 'Seadme kaitse vajalik' : 'Device Protection Required';
+        const message = wasDisabled
+          ? (language === 'et' 
+              ? 'Seadme administraator keelati. See on turvarikkumine. Palun lubage uuesti.'
+              : 'Device admin was disabled. This is a security violation. Please re-enable immediately.')
+          : (language === 'et' 
+              ? 'Seadme turvaliseks kasutamiseks luba administraatori õigused.'
+              : 'To secure your device, please enable Device Admin permissions.');
+
         Alert.alert(
-          language === 'et' ? 'Seadme kaitse vajalik' : 'Device Protection Required',
-          language === 'et' 
-            ? 'Seadme turvaliseks kasutamiseks luba administraatori õigused.'
-            : 'To secure your device, please enable Device Admin permissions.',
+          title,
+          message,
           [
-            {
-              text: language === 'et' ? 'Hiljem' : 'Later',
-              style: 'cancel',
-              onPress: () => {
-                console.log('User postponed admin setup');
-                isRequestingAdmin.current = false;
-              },
-            },
             {
               text: language === 'et' ? 'Luba kohe' : 'Enable Now',
               onPress: async () => {
                 try {
                   await devicePolicy.requestAdmin();
                   console.log('Device Admin request dispatched');
-                  // Use retry mechanism to check admin status
                   const granted = await checkAdminStatusWithRetry();
-                  if (granted) {
-                    isRequestingAdmin.current = false;
-                  } else {
-                    // If not granted after retries, reset flag so user can try again
-                    isRequestingAdmin.current = false;
-                  }
+                  isRequestingAdmin.current = false;
                 } catch (e) {
                   console.log('Admin request failed:', e);
                   isRequestingAdmin.current = false;
                 }
               },
             },
-          ]
+          ],
+          // After tamper, don't allow dismissal; otherwise allow "Later"
+          wasDisabled ? { cancelable: false } : { cancelable: true }
         );
       } else {
         setSetupComplete(true);
