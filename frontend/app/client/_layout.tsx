@@ -12,6 +12,8 @@ export default function ClientLayout() {
     >
       <Stack.Screen name="register" />
       <Stack.Screen name="home" />
+      <Stack.Screen name="payment-history" />
+      <Stack.Screen name="support-chat" />
     </Stack>
   );
 }
