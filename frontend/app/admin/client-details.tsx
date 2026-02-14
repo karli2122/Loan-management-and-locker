@@ -468,6 +468,79 @@ export default function ClientDetails() {
     }
   };
 
+  const handlePreviewContract = async () => {
+    try {
+      const token = await AsyncStorage.getItem('admin_token');
+      if (!token) {
+        Alert.alert(t('error'), 'Not authenticated');
+        return;
+      }
+      
+      // Open PDF in browser
+      const url = `${API_URL}/api/contracts/${id}/preview?admin_token=${token}`;
+      Linking.openURL(url);
+    } catch (error: any) {
+      Alert.alert(t('error'), error.message);
+    }
+  };
+
+  const handleSendContractEmail = async () => {
+    if (!client?.email) {
+      Alert.alert(
+        t('error'),
+        language === 'et' 
+          ? 'Kliendil puudub e-posti aadress'
+          : 'Client has no email address'
+      );
+      return;
+    }
+
+    Alert.alert(
+      language === 'et' ? 'Saada leping' : 'Send Contract',
+      language === 'et'
+        ? `Kas soovite saata lepingu aadressile ${client.email}?`
+        : `Send contract to ${client.email}?`,
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: language === 'et' ? 'Saada' : 'Send',
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              const token = await AsyncStorage.getItem('admin_token');
+              if (!token) {
+                Alert.alert(t('error'), 'Not authenticated');
+                return;
+              }
+              
+              const response = await fetch(
+                `${API_URL}/api/contracts/${id}/send-email?admin_token=${token}`,
+                { method: 'POST' }
+              );
+              
+              if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || errorData.error || 'Failed to send email');
+              }
+              
+              const data = await response.json();
+              Alert.alert(
+                t('success'),
+                language === 'et'
+                  ? `Leping saadetud aadressile ${client.email}`
+                  : `Contract sent to ${client.email}`
+              );
+            } catch (error: any) {
+              Alert.alert(t('error'), error.message);
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
