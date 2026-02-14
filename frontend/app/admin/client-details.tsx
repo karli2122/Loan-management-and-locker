@@ -747,6 +747,32 @@ export default function ClientDetails() {
                 </Text>
               </View>
             )}
+
+            {/* Contract Actions */}
+            <View style={styles.contractActions}>
+              <TouchableOpacity
+                style={styles.contractButton}
+                onPress={handlePreviewContract}
+                disabled={actionLoading}
+                data-testid="preview-contract-btn"
+              >
+                <Ionicons name="document-text" size={16} color="#4F46E5" />
+                <Text style={styles.contractButtonText}>
+                  {language === 'et' ? 'Vaata lepingut' : 'Preview Contract'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.contractButton, styles.sendEmailButton]}
+                onPress={handleSendContractEmail}
+                disabled={actionLoading || !client.email}
+                data-testid="send-contract-email-btn"
+              >
+                <Ionicons name="mail" size={16} color="#10B981" />
+                <Text style={[styles.contractButtonText, styles.sendEmailButtonText]}>
+                  {language === 'et' ? 'Saada e-postiga' : 'Send Email'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
