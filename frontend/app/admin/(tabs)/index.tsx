@@ -160,6 +160,37 @@ export default function Dashboard() {
         contentContainerStyle={styles.contentContainer}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />}
       >
+        {/* Credit Balance Card */}
+        <View style={styles.creditBalanceCard} data-testid="dashboard-credit-card">
+          <View style={styles.creditBalanceIcon}>
+            <Ionicons name="ticket" size={24} color="#F59E0B" />
+          </View>
+          <View style={styles.creditBalanceInfo}>
+            <Text style={styles.creditBalanceLabel}>
+              {language === 'et' ? 'Krediidi saldo' : 'Credit Balance'}
+            </Text>
+            <Text style={styles.creditBalanceValue}>
+              {isSuperAdmin ? '∞' : userCredits}
+            </Text>
+          </View>
+          {isSuperAdmin && (
+            <View style={styles.superAdminIndicator}>
+              <Ionicons name="shield-checkmark" size={16} color="#10B981" />
+              <Text style={styles.superAdminIndicatorText}>
+                {language === 'et' ? 'Peaadmin' : 'Superadmin'}
+              </Text>
+            </View>
+          )}
+          {!isSuperAdmin && userCredits <= 2 && (
+            <View style={styles.lowCreditIndicator}>
+              <Ionicons name="warning" size={16} color="#F59E0B" />
+              <Text style={styles.lowCreditIndicatorText}>
+                {language === 'et' ? 'Madal' : 'Low'}
+              </Text>
+            </View>
+          )}
+        </View>
+
         <Text style={styles.sectionTitle}>{language === 'et' ? 'Laenude ülevaade' : 'Loan Overview'}</Text>
 
         <View style={styles.statsGrid}>
