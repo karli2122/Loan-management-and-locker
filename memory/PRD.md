@@ -23,6 +23,9 @@ Mobile application (React Native/Expo) + FastAPI backend for managing EMI (Equat
 - **Android 16 Device Admin Fix (P0)**: Removed deprecated policies (`limit-password`, `reset-password`, `expire-password`, `encrypted-storage`) from `device_admin.xml`. Android 16 strictly enforces these deprecations and silently rejects Device Admin activation when they are declared.
 - **Expo Module Import Fix (P0)**: Updated `DevicePolicy.ts` and `DeviceAdmin.ts` (both `src/` and `src/src/` copies) to use `requireNativeModule('EMIDeviceAdmin')` from `expo-modules-core` instead of `NativeModules` from `react-native`. Required for Expo 54+ with new architecture enabled.
 - **Native Module SDK Update**: Updated `build.gradle` to target SDK 36 (Android 16). Marked `resetPassword` as no-op (deprecated since API 28).
+- **Flicker/Crash Fix (P0)**: Split `useEffect` in `home.tsx` into two: one-time initialization (runs once) and polling/app-state (depends on clientId). Added `hasInitialized` ref to prevent duplicate admin prompts. Added 500ms delay before showing admin prompt.
+- **Admin Mode Reporting Fix (P0)**: `checkAdminStatusWithRetry()` now calls `reportAdminStatus()` to backend after user grants admin permission. Previously only reported during app initialization (when admin was still false).
+- **Uninstall Protection Enhancement (P0)**: Enhanced `EMIDeviceAdminReceiver.kt` to: sync with SharedPreferences `KEY_UNINSTALL_ALLOWED` flag, show stronger warning when admin-disallowed uninstall is attempted, mark `admin_was_disabled` flag for tamper detection.
 
 ### Previous Sessions
 - Expo build system stabilized
