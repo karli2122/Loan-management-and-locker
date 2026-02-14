@@ -1361,8 +1361,9 @@ async def generate_registration_code(client_id: str, admin_token: str = Query(..
     }
 
 @api_router.post("/clients/{client_id}/allow-uninstall")
-async def allow_uninstall(client_id: str, admin_id: Optional[str] = Query(default=None)):
+async def allow_uninstall(client_id: str, admin_token: str = Query(...)):
     """Signal device to allow app uninstallation - must be called before deletion"""
+    admin_id = await get_admin_id_from_token(admin_token)
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -1382,7 +1383,8 @@ async def allow_uninstall(client_id: str, admin_id: Optional[str] = Query(defaul
     }
 
 @api_router.delete("/clients/{client_id}")
-async def delete_client(client_id: str, admin_id: Optional[str] = Query(default=None)):
+async def delete_client(client_id: str, admin_token: str = Query(...)):
+    admin_id = await get_admin_id_from_token(admin_token)
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
