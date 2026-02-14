@@ -1269,6 +1269,12 @@ async def get_device_status(client_id: str):
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
+    # Update heartbeat timestamp on every status check
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {"last_heartbeat": datetime.utcnow()}}
+    )
+    
     return ClientStatusResponse(
         id=client["id"],
         name=client["name"],
