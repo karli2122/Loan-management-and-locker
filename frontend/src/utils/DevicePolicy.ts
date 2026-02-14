@@ -223,6 +223,32 @@ class DevicePolicyManager {
       return 'error';
     }
   }
+
+  /**
+   * Check if admin was forcefully disabled (tamper attempt)
+   */
+  async wasAdminDisabled(): Promise<boolean> {
+    if (Platform.OS !== 'android') return false;
+    try {
+      return (await nativeModule?.wasAdminDisabled?.()) || false;
+    } catch (error) {
+      console.log('Failed to check admin disabled flag:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Clear tamper flags after they've been handled
+   */
+  async clearTamperFlags(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.clearTamperFlags?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to clear tamper flags:', error);
+      return 'error';
+    }
+  }
 }
 
 export const devicePolicy = new DevicePolicyManager();
