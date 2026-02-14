@@ -39,6 +39,4 @@ const MockDeviceAdmin: DeviceAdminAPI = {
 };
 
 // Use real module on Android, mock on other platforms
-const nativeAdmin = EMIDeviceAdmin || DeviceAdmin;
-
 export default (Platform.OS === 'android' && nativeAdmin ? nativeAdmin : MockDeviceAdmin) as DeviceAdminAPI;
