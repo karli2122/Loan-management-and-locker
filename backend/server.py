@@ -590,6 +590,7 @@ class Admin(BaseModel):
     password_hash: str
     role: str = "user"  # "admin" or "user"
     is_super_admin: bool = False
+    credits: int = 5  # Credits for generating registration codes (default: 5)
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: Optional[str] = None
