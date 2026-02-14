@@ -70,6 +70,11 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
 5. **Code cleanup**: Removed duplicate `src/src/` directory
 6. **New utility**: `src/utils/adminAuth.ts` — centralized auth token handling
 
+## What's Implemented (Feb 14, 2026 - Session 2)
+1. **Client details conditional quick actions**: Quick actions section only renders when `client.is_registered === true`
+2. **Delete confirmation with auto-uninstall**: Delete button shows "Are you sure?" dialog. On confirmation, automatically calls `/api/clients/{id}/allow-uninstall` first, then `/api/clients/{id}` DELETE — combining both steps seamlessly
+3. **Backend verified**: Full chain (login → create → guard check → allow-uninstall → delete) tested with 7/7 tests passing
+
 ## Backlog
 - P1: API Security Audit — verify all endpoints have auth middleware
 - P2: API URL consolidation (src/constants/api.ts vs src/utils/api.ts)
