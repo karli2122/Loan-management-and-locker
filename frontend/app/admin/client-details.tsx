@@ -89,6 +89,9 @@ export default function ClientDetails() {
   const [editDeviceMake, setEditDeviceMake] = useState('');
   const [editDeviceModel, setEditDeviceModel] = useState('');
   const [editDevicePrice, setEditDevicePrice] = useState('');
+  const [userCredits, setUserCredits] = useState<number>(5);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [generatingCode, setGeneratingCode] = useState(false);
   
   const getAdminScope = async () => {
     if (adminId) return adminId;
@@ -103,6 +106,22 @@ export default function ClientDetails() {
   const buildAdminQuery = async (hasQuery = false) => {
     const scope = await getAdminScope();
     return scope ? `${hasQuery ? '&' : '?'}admin_id=${scope}` : '';
+  };
+
+  const fetchCredits = async () => {
+    try {
+      const token = await AsyncStorage.getItem('admin_token');
+      if (token) {
+        const response = await fetch(`${API_URL}/api/admin/credits?admin_token=${token}`);
+        if (response.ok) {
+          const data = await response.json();
+          setUserCredits(data.credits);
+          setIsSuperAdmin(data.is_super_admin);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching credits:', error);
+    }
   };
 
   const fetchClient = async () => {
@@ -124,7 +143,77 @@ export default function ClientDetails() {
 
   useEffect(() => {
     fetchClient();
+    fetchCredits();
   }, [id]);
+
+  const handleGenerateCode = async () => {
+    // Credit check for non-superadmin users
+    if (!isSuperAdmin && userCredits <= 0) {
+      Alert.alert(
+        language === 'et' ? 'Krediidid puuduvad' : 'No Credits',
+        language === 'et' 
+          ? 'Teil pole krediite võtme genereerimiseks. Palun pöörduge peaadmini poole.'
+          : 'You have no credits to generate a key. Please contact the superadmin.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    Alert.alert(
+      language === 'et' ? 'Genereeri uus võti' : 'Generate New Key',
+      language === 'et' 
+        ? `See kulutab 1 krediiti. Teie saldo: ${isSuperAdmin ? '∞' : userCredits}. Jätkata?`
+        : `This will use 1 credit. Your balance: ${isSuperAdmin ? '∞' : userCredits}. Continue?`,
+      [
+        { text: language === 'et' ? 'Tühista' : 'Cancel', style: 'cancel' },
+        {
+          text: language === 'et' ? 'Genereeri' : 'Generate',
+          onPress: async () => {
+            setGeneratingCode(true);
+            try {
+              const token = await AsyncStorage.getItem('admin_token');
+              if (!token) {
+                Alert.alert(t('error'), 'Not authenticated');
+                return;
+              }
+              
+              const response = await fetch(`${API_URL}/api/clients/${id}/generate-code?admin_token=${token}`, {
+                method: 'POST',
+              });
+              
+              if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || errorData.detail || 'Failed to generate code');
+              }
+              
+              const data = await response.json();
+              
+              // Update client with new registration code
+              if (client) {
+                setClient({ ...client, registration_code: data.registration_code });
+              }
+              
+              // Update credits
+              if (!isSuperAdmin) {
+                setUserCredits(prev => prev - 1);
+              }
+              
+              Alert.alert(
+                language === 'et' ? 'Õnnestus' : 'Success',
+                language === 'et' 
+                  ? `Uus registreerimiskood: ${data.registration_code}`
+                  : `New registration code: ${data.registration_code}`
+              );
+            } catch (error: any) {
+              Alert.alert(t('error'), error.message);
+            } finally {
+              setGeneratingCode(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handleLock = async () => {
     setActionLoading(true);
