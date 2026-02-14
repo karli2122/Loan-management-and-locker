@@ -6,6 +6,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.os.UserManager
 import android.util.Log
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -223,6 +224,29 @@ class EMIDeviceAdminModule : Module() {
             } catch (e: Exception) {
                 Log.e(TAG, "isDeviceOwner error: ${e.message}")
                 false
+            }
+        }
+
+        // Lock app settings - disables Clear Data / Clear Cache buttons
+        // Requires Device Owner. Applies DISALLOW_APPS_CONTROL user restriction.
+        AsyncFunction("lockAppSettings") { lock: Boolean, promise: Promise ->
+            try {
+                if (!dpm.isDeviceOwnerApp(context.packageName)) {
+                    Log.w(TAG, "lockAppSettings: Not device owner, cannot apply restriction")
+                    promise.resolve("not_device_owner")
+                    return@AsyncFunction
+                }
+                if (lock) {
+                    dpm.addUserRestriction(adminComponent, UserManager.DISALLOW_APPS_CONTROL)
+                    Log.d(TAG, "lockAppSettings: DISALLOW_APPS_CONTROL applied")
+                } else {
+                    dpm.clearUserRestriction(adminComponent, UserManager.DISALLOW_APPS_CONTROL)
+                    Log.d(TAG, "lockAppSettings: DISALLOW_APPS_CONTROL cleared")
+                }
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "lockAppSettings error: ${e.message}")
+                promise.resolve("error: ${e.message}")
             }
         }
 
