@@ -535,4 +535,80 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 12,
   },
+  emptySubText: {
+    fontSize: 14,
+    color: '#475569',
+    marginTop: 4,
+  },
+  // Silent filter styles
+  silentFilterButton: {
+    backgroundColor: 'rgba(249, 115, 22, 0.1)',
+    borderWidth: 1,
+    borderColor: '#F97316',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  silentFilterButtonActive: {
+    backgroundColor: '#F97316',
+    borderColor: '#F97316',
+  },
+  silentFilterText: {
+    color: '#F97316',
+  },
+  // Silent client card styles
+  silentClientCard: {
+    borderColor: '#F97316',
+    borderWidth: 1,
+    backgroundColor: 'rgba(249, 115, 22, 0.05)',
+  },
+  silentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(249, 115, 22, 0.2)',
+    gap: 4,
+  },
+  silentBadgeText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#F97316',
+  },
+  silentMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  lastSeenText: {
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  tamperWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  tamperText: {
+    fontSize: 12,
+    color: '#EF4444',
+    fontWeight: '500',
+  },
+  // Loading styles
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    marginTop: 12,
+  },
 });
