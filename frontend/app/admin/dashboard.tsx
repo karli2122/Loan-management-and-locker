@@ -273,6 +273,42 @@ export default function Dashboard() {
             <Text style={styles.actionDescription}>{language === 'et' ? 'Arvuta laenumaksed' : 'Calculate loan payments'}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/admin/payment-reminders')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#EF4444' }]}>
+              <Ionicons name="notifications" size={24} color="#fff" />
+            </View>
+            <Text style={styles.actionTitle}>{language === 'et' ? 'Maksemuljatused' : 'Payment Reminders'}</Text>
+            <Text style={styles.actionDescription}>{language === 'et' ? 'Saada maksemuljatusi' : 'Send payment reminders'}</Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/admin/notifications')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#6366F1' }]}>
+              <Ionicons name="mail" size={24} color="#fff" />
+            </View>
+            <Text style={styles.actionTitle}>{language === 'et' ? 'Teatised' : 'Notifications'}</Text>
+            <Text style={styles.actionDescription}>{language === 'et' ? 'Vaata teavitusi' : 'View notifications'}</Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/admin/client-map')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#059669' }]}>
+              <Ionicons name="map" size={24} color="#fff" />
+            </View>
+            <Text style={styles.actionTitle}>{language === 'et' ? 'Kliendi kaart' : 'Client Map'}</Text>
+            <Text style={styles.actionDescription}>{language === 'et' ? 'Vaata klientide asukohti' : 'View client locations'}</Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
