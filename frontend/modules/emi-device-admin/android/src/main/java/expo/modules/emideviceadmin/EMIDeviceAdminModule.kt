@@ -313,5 +313,65 @@ class EMIDeviceAdminModule : Module() {
                 promise.resolve("error: ${e.message}")
             }
         }
+
+        // Backup client data to external storage (survives Clear Data)
+        // Writes client_id to a hidden file on shared storage
+        AsyncFunction("backupClientData") { clientId: String, promise: Promise ->
+            try {
+                val backupDir = File(Environment.getExternalStorageDirectory(), ".emi_backup")
+                if (!backupDir.exists()) {
+                    backupDir.mkdirs()
+                }
+                val backupFile = File(backupDir, "client_identity")
+                backupFile.writeText(clientId)
+                // Also create a .nomedia file to hide from gallery
+                val nomedia = File(backupDir, ".nomedia")
+                if (!nomedia.exists()) {
+                    nomedia.createNewFile()
+                }
+                Log.d(TAG, "backupClientData: Backed up client_id to external storage")
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "backupClientData error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // Restore client data from external storage backup
+        // Returns the backed-up client_id or empty string if not found
+        AsyncFunction("restoreClientData") { promise: Promise ->
+            try {
+                val backupFile = File(Environment.getExternalStorageDirectory(), ".emi_backup/client_identity")
+                if (backupFile.exists()) {
+                    val clientId = backupFile.readText().trim()
+                    if (clientId.isNotEmpty()) {
+                        Log.d(TAG, "restoreClientData: Restored client_id from backup")
+                        promise.resolve(clientId)
+                        return@AsyncFunction
+                    }
+                }
+                Log.d(TAG, "restoreClientData: No backup found")
+                promise.resolve("")
+            } catch (e: Exception) {
+                Log.e(TAG, "restoreClientData error: ${e.message}")
+                promise.resolve("")
+            }
+        }
+
+        // Clear the external backup (called when admin deletes client)
+        AsyncFunction("clearBackupData") { promise: Promise ->
+            try {
+                val backupDir = File(Environment.getExternalStorageDirectory(), ".emi_backup")
+                if (backupDir.exists()) {
+                    backupDir.listFiles()?.forEach { it.delete() }
+                    backupDir.delete()
+                    Log.d(TAG, "clearBackupData: Backup cleared")
+                }
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "clearBackupData error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
     }
 }
