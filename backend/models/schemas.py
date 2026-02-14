@@ -77,7 +77,7 @@ class Client(BaseModel):
     used_price_eur: Optional[float] = None
     price_fetched_at: Optional[datetime] = None
     lock_mode: str = "device_admin"
-    registration_code: str = Field(default_factory=lambda: secrets.token_hex(4).upper())
+    registration_code: str = ""  # Empty by default, generated via "Generate key" button
     expo_push_token: Optional[str] = None
     
     # Loan Management Fields
