@@ -242,6 +242,24 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
    - Admin Dashboard updated with Payment Reminders, Notifications, Client Map cards
    - New screen: `/app/frontend/app/admin/payment-reminders.tsx`
 
+### Session 8: Login Bug Investigation & Frontend Testing (Feb 14, 2026)
+1. **Login 404 Issue Investigation**:
+   - User reported "Login error 404" - RESOLVED
+   - Root cause: User likely used wrong credentials (`testadmin` instead of `karli1987`)
+   - Backend login API `/api/admin/login` verified working via curl
+   - Login endpoint returns proper error for invalid credentials, token on success
+
+2. **Frontend Enhancement Screens - FULLY TESTED**:
+   - All 7 screens tested via testing agent (100% pass rate)
+   - **Admin Login** (`/admin/login`): Estonian UI, login flow working
+   - **Admin Dashboard** (`/admin/dashboard`): Stats, quick actions, tab navigation all working
+   - **Admin Notifications** (`/admin/notifications`): List, mark all read, badges working
+   - **Admin Client Map** (`/admin/client-map`): Location cards, GPS data, map links working
+   - **Admin Payment Reminders** (`/admin/payment-reminders`): Summary, reminder cards working
+   - **Client Payment History** (`/client/payment-history`): Timeline, loan info working
+   - **Client Support Chat** (`/client/support-chat`): Messages, input, send working
+
 ## Backlog
-- P2: Full backend refactor - break server.py into router modules (see ARCHITECTURE.md for plan)
+- P1: Full backend refactor - break server.py into router modules (see ARCHITECTURE.md for plan)
+- P2: Add data-testid attributes to interactive elements for reliable automated testing
 - P3: Enforce `buildApiUrl()` usage across all API calls for consistency
