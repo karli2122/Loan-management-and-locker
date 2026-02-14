@@ -26,8 +26,6 @@ export default function AddClient() {
   const { t, language } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [userCredits, setUserCredits] = useState<number>(5);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [form, setForm] = useState({
     name: '',
     phone: '',
