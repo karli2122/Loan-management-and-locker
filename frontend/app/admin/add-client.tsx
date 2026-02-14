@@ -97,6 +97,11 @@ export default function AddClient() {
 
       console.log('Create client response status:', response.status);
       
+      if (response.status === 401) {
+        await handleAuthFailure(router, language);
+        return;
+      }
+
       const responseText = await response.text();
       let data;
       try {
