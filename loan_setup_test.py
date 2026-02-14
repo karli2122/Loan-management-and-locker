@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 
 # Configuration - Using the production URL from frontend .env
-BASE_URL = "https://frontend-test-suite-3.preview.emergentagent.com/api"
+BASE_URL = "https://loan-admin-portal-1.preview.emergentagent.com/api"
 ADMIN_USERNAME = "karli1987"
 ADMIN_PASSWORD = "nasvakas123"
 

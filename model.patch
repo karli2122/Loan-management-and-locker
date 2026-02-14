@@ -7,7 +7,7 @@ index 5d660b8..bba23f2 100644
  import { useLanguage } from '../../src/context/LanguageContext';
  
 -const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
-+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://frontend-test-suite-3.preview.emergentagent.com';
++const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://loan-admin-portal-1.preview.emergentagent.com';
  
  // Helper function to build API endpoint URL
  const getApiUrl = (endpoint: string) => {
@@ -15,7 +15,7 @@ index 5d660b8..bba23f2 100644
 -  // Remove trailing slash from API_URL
 -  const baseUrl = API_URL.replace(/\/$/, '');
 -  // Remove leading slash from endpoint
-+  const baseUrl = (API_URL || 'https://frontend-test-suite-3.preview.emergentagent.com').replace(/\/$/, '');
++  const baseUrl = (API_URL || 'https://loan-admin-portal-1.preview.emergentagent.com').replace(/\/$/, '');
    const cleanEndpoint = endpoint.replace(/^\//, '');
 -  // Return combined URL
    return `${baseUrl}/${cleanEndpoint}`;

@@ -7,7 +7,7 @@ function normalize(url: string) {
   return clean;
 }
 
-export const FALLBACK_BACKEND = 'https://frontend-test-suite-3.preview.emergentagent.com';
+export const FALLBACK_BACKEND = 'https://loan-admin-portal-1.preview.emergentagent.com';
 
 const rawCandidate =
   process.env.EXPO_PUBLIC_BACKEND_URL ||

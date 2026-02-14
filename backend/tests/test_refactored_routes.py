@@ -16,7 +16,7 @@ import os
 from datetime import datetime
 
 # Use the public URL for testing
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://frontend-test-suite-3.preview.emergentagent.com')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://loan-admin-portal-1.preview.emergentagent.com')
 
 # Test credentials from review request
 ADMIN_USERNAME = "karli1987"
