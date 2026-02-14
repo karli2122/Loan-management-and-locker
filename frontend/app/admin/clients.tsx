@@ -577,6 +577,12 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 4,
   },
+  regCodeNotGenerated: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
