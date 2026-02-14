@@ -80,6 +80,25 @@ export default function ClientsList() {
     }
   };
 
+  const fetchSilentClients = async () => {
+    setSilentLoading(true);
+    try {
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      if (!adminToken) return;
+      
+      // Silent clients: haven't sent heartbeat in 60 minutes
+      const response = await fetch(`${API_URL}/api/clients/silent?admin_token=${adminToken}&minutes=60`);
+      if (response.ok) {
+        const data = await response.json();
+        setSilentClients(data.silent_clients || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch silent clients:', error);
+    } finally {
+      setSilentLoading(false);
+    }
+  };
+
   const applyFilters = (clientList: Client[], query: string, filterType: string) => {
     // Filter out null/undefined clients
     let filtered = clientList.filter(c => c && c.name && c.phone);
