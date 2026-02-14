@@ -378,6 +378,7 @@ export default function AdminSettings() {
           last_name: editLastName.trim(),
           email: editEmail.trim() || null,
           phone: editPhone.trim() || null,
+          address: editAddress.trim() || null,
         }),
       });
 
