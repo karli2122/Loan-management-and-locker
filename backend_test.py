@@ -10,7 +10,7 @@ import sys
 from typing import Optional, Dict, Any
 
 # Configuration
-BASE_URL = "https://admin-credits-1.preview.emergentagent.com/api"
+BASE_URL = "https://frontend-test-suite-3.preview.emergentagent.com/api"
 ADMIN_USERNAME = "karli1987"
 ADMIN_PASSWORD = "nasvakas123"
 
