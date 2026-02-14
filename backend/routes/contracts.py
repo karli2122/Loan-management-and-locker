@@ -308,8 +308,8 @@ async def send_contract_email(client_id: str, admin_token: str = Query(...), tes
     
     await enforce_client_scope(client, admin_id)
     
-    # Check if client has an email
-    if not client.get("email"):
+    # Check if client has an email (only required if not test_mode)
+    if not test_mode and not client.get("email"):
         raise ValidationException("Client has no email address. Please add an email first.")
     
     # Check if client has a loan set up
@@ -349,12 +349,16 @@ async def send_contract_email(client_id: str, admin_token: str = Query(...), tes
     # Prepare email - admin's email as reply-to (only if valid)
     admin_email = admin.get("email", "")
     
+    # Determine recipient - test_mode sends to Resend verified email
+    TEST_EMAIL = os.environ.get("RESEND_TEST_EMAIL", "karlivilbas87@gmail.com")
+    recipient_email = TEST_EMAIL if test_mode else client["email"]
+    
     # Build email params
     params = {
         "from": SENDER_EMAIL,
-        "to": [client["email"]],
-        "subject": "Laen",
-        "html": "<p>Palun alkirjastage Leping ja saadke tagasi.</p>",
+        "to": [recipient_email],
+        "subject": f"Laen - {client.get('name', 'Client')}" if test_mode else "Laen",
+        "html": f"<p><strong>TEST MODE - Contract for: {client.get('name')}</strong></p><p>Palun alkirjastage Leping ja saadke tagasi.</p>" if test_mode else "<p>Palun alkirjastage Leping ja saadke tagasi.</p>",
         "attachments": [
             {
                 "filename": filename,
