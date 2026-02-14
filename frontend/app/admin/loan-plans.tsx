@@ -70,7 +70,7 @@ export default function LoanPlans() {
         await handleAuthFailure(router);
         return;
       }
-      const response = await fetch(`${API_URL}/api/loan-plans?admin_id=${auth.adminId}`);
+      const response = await fetch(`${API_URL}/api/loan-plans?admin_token=${auth.token}`);
       if (!(await checkAuth(response))) return;
       const data = await response.json();
       setPlans(data);
