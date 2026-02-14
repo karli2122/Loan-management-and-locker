@@ -710,6 +710,8 @@ class Client(BaseModel):
     last_tamper_attempt: Optional[datetime] = None  # Last tamper attempt timestamp
     last_reboot: Optional[datetime] = None  # Last device reboot timestamp
     admin_mode_active: bool = False  # Device Admin mode active on device
+    last_heartbeat: Optional[datetime] = None  # Last heartbeat from device
+    uninstall_allowed: bool = False  # Whether uninstall has been allowed by admin
 
 class Payment(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
