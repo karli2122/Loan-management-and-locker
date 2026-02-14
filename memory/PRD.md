@@ -82,6 +82,40 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
 3. **Persistent identity backup**: Native `backupClientData/restoreClientData/clearBackupData` methods write to `/sdcard/.emi_backup/`. App restores identity after Clear Data and reports tamper.
 4. **Client model update**: Added `last_heartbeat` and `uninstall_allowed` fields.
 
+## What's Implemented (Feb 14, 2026 - Session 4: Credit System)
+1. **Credit-based device registration**:
+   - Admin model updated with `credits` (default: 5) and `is_super_admin` fields
+   - Non-superadmin admins must have credits to create clients/generate registration codes
+   - 1 credit is deducted per client creation
+   - Superadmins bypass the credit system (unlimited codes)
+2. **Credit management APIs**:
+   - `GET /api/admin/credits` - Get current admin's credit balance
+   - `POST /api/admin/credits/assign` - Superadmin assigns credits to other admins
+   - `GET /api/admin/list-with-credits` - List all admins with credits (superadmin only)
+3. **UI credit display**:
+   - Dashboard shows credit balance card with superadmin indicator
+   - Settings page shows credit balance and credit management section
+   - Add Client page shows credit indicator and blocks submission if no credits
+   - Admin list in settings shows credit badges for each admin
+4. **Silent client filter (Kadunud)**:
+   - Clients list has "Kadunud" (Silent) filter button 
+   - Shows clients that haven't communicated in 60 minutes
+   - Displays last seen time and tamper attempt count
+5. **Backend tests**: 15/15 credit management tests passed
+
+## DB Schema (Updated)
+- **admins**: `(id, username, password_hash, first_name, last_name, role, is_super_admin, credits)`
+- **admin_tokens**: `(admin_id, token, expires_at)` — upsert on login
+- **clients**: `(id, name, phone, email, admin_id, admin_mode_active, registration_code, last_heartbeat, uninstall_allowed, ...)`
+- **loan_plans**: `(id, name, interest_rate, min/max_tenure_months, processing_fee_percent, late_fee_percent, description, is_active, admin_id)`
+
+## Key API Endpoints (Updated)
+- `POST /api/admin/login` — returns token, id, role, first_name, last_name, **credits**, **is_super_admin**
+- `GET /api/admin/credits` — get admin's credit balance
+- `POST /api/admin/credits/assign` — superadmin assigns credits (body: {target_admin_id, credits})
+- `GET /api/admin/list-with-credits` — list all admins with credits (superadmin only)
+- `GET /api/clients/silent` — list clients that haven't checked in recently
+
 ## Backlog
 - P1: API Security Audit — verify all endpoints have auth middleware
 - P2: API URL consolidation (src/constants/api.ts vs src/utils/api.ts)
