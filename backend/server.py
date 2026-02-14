@@ -1348,19 +1348,19 @@ async def report_admin_status(client_id: str, admin_active: bool):
 
 @api_router.get("/clients/silent")
 async def get_silent_clients(
-    admin_id: str,
-    minutes: int = 5,
-    current_admin: dict = Depends(get_current_admin_user)
+    admin_token: str = Query(...),
+    minutes: int = Query(default=5)
 ):
     """Get clients that haven't sent a heartbeat in the specified number of minutes.
     This detects Clear Data/Cache or device being turned off."""
+    admin = await verify_admin_token(admin_token)
     cutoff = datetime.utcnow() - timedelta(minutes=minutes)
     
     # Find registered clients with stale or missing heartbeats
     silent_clients = []
     cursor = db.clients.find(
         {
-            "admin_id": current_admin["id"],
+            "admin_id": admin["id"],
             "is_registered": True,
             "$or": [
                 {"last_heartbeat": {"$lt": cutoff}},
