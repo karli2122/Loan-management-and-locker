@@ -225,6 +225,20 @@ class DevicePolicyManager {
   }
 
   /**
+   * Lock app settings - disables Clear Data / Clear Cache buttons.
+   * Requires Device Owner mode. Uses DISALLOW_APPS_CONTROL user restriction.
+   */
+  async lockAppSettings(lock: boolean): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.lockAppSettings?.(lock)) || 'error';
+    } catch (error) {
+      console.log('Failed to lock app settings:', error);
+      return 'error';
+    }
+  }
+
+  /**
    * Check if admin was forcefully disabled (tamper attempt)
    */
   async wasAdminDisabled(): Promise<boolean> {
