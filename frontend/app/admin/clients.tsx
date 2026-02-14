@@ -140,6 +140,7 @@ export default function ClientsList() {
       case 'all': return t('all');
       case 'locked': return t('locked');
       case 'unlocked': return t('unlocked');
+      case 'silent': return language === 'et' ? 'Kadunud' : 'Silent';
       default: return f;
     }
   };
