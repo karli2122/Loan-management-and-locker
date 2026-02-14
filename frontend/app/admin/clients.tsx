@@ -126,7 +126,11 @@ export default function ClientsList() {
   }, []);
 
   useEffect(() => {
-    applyFilters(clients, searchQuery, filter);
+    if (filter === 'silent') {
+      fetchSilentClients();
+    } else {
+      applyFilters(clients, searchQuery, filter);
+    }
   }, [searchQuery, filter]);
 
   const onRefresh = useCallback(async () => {
