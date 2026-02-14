@@ -93,6 +93,18 @@ export default function AddClient() {
       return;
     }
 
+    // Credit check for non-superadmin users
+    if (!isSuperAdmin && userCredits <= 0) {
+      Alert.alert(
+        language === 'et' ? 'Krediidid puuduvad' : 'No Credits',
+        language === 'et' 
+          ? 'Teil pole krediite seadme registreerimiseks. Palun pöörduge peaadmini poole.'
+          : 'You have no credits to register a device. Please contact the superadmin.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       const auth = await getAuthInfo();
