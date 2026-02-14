@@ -135,9 +135,13 @@ export default function ClientsList() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchClients();
+    if (filter === 'silent') {
+      await fetchSilentClients();
+    } else {
+      await fetchClients();
+    }
     setRefreshing(false);
-  }, []);
+  }, [filter]);
 
   const getFilterLabel = (f: string) => {
     switch (f) {
@@ -147,6 +151,65 @@ export default function ClientsList() {
       case 'silent': return language === 'et' ? 'Kadunud' : 'Silent';
       default: return f;
     }
+  };
+
+  const formatLastSeen = (dateStr: string | null) => {
+    if (!dateStr) return language === 'et' ? 'Kunagi pole ühendunud' : 'Never connected';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffDays > 0) {
+      return language === 'et' ? `${diffDays} päeva tagasi` : `${diffDays} days ago`;
+    } else if (diffHours > 0) {
+      return language === 'et' ? `${diffHours} tundi tagasi` : `${diffHours} hours ago`;
+    } else {
+      return language === 'et' ? `${diffMins} minutit tagasi` : `${diffMins} minutes ago`;
+    }
+  };
+
+  const renderSilentClient = ({ item }: { item: SilentClient }) => {
+    if (!item || !item.id) return null;
+    
+    return (
+      <TouchableOpacity
+        style={[styles.clientCard, styles.silentClientCard]}
+        onPress={() => router.push({ pathname: '/admin/client-details', params: { id: item.id } })}
+        data-testid={`silent-client-${item.id}`}
+      >
+        <View style={styles.clientInfo}>
+          <View style={styles.clientHeader}>
+            <Text style={styles.clientName}>{item.name || 'N/A'}</Text>
+            <View style={styles.silentBadge}>
+              <Ionicons name="alert-circle" size={12} color="#F97316" />
+              <Text style={styles.silentBadgeText}>
+                {language === 'et' ? 'Kadunud' : 'Silent'}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.clientPhone}>{item.phone || 'N/A'}</Text>
+          <View style={styles.silentMeta}>
+            <Ionicons name="time-outline" size={14} color="#94A3B8" />
+            <Text style={styles.lastSeenText}>
+              {language === 'et' ? 'Viimati nähtud: ' : 'Last seen: '}
+              {formatLastSeen(item.last_heartbeat)}
+            </Text>
+          </View>
+          {item.tamper_attempts > 0 && (
+            <View style={styles.tamperWarning}>
+              <Ionicons name="warning" size={14} color="#EF4444" />
+              <Text style={styles.tamperText}>
+                {language === 'et' ? `${item.tamper_attempts} rikkumiskatset` : `${item.tamper_attempts} tamper attempts`}
+              </Text>
+            </View>
+          )}
+        </View>
+        <Ionicons name="chevron-forward" size={20} color="#64748B" />
+      </TouchableOpacity>
+    );
   };
 
   const renderClient = ({ item }: { item: Client }) => {
