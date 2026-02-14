@@ -10,6 +10,52 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
 - **Auth**: Token-based (24h expiry), stored in AsyncStorage
 - **API URL**: `EXPO_PUBLIC_BACKEND_URL` env var
 
+## What's Implemented
+
+### Session 6: Enhancement Features (Feb 14, 2026)
+1. **Post-Registration Crash Fix**:
+   - Added `fresh_registration` flag to coordinate registration → home transition
+   - Extended delay (1500ms) for Device Admin prompt after fresh registration
+   - Added mount check before showing admin prompt to prevent crashes
+
+2. **Admin Dashboard Analytics** (`GET /api/analytics/dashboard`):
+   - Overview metrics: total clients, registered, locked, active loans, overdue
+   - Financial summary: total disbursed, collected, outstanding, collection rate
+   - Recent activity: registrations and tamper attempts (last 7 days)
+   - Monthly revenue trend (6 months)
+   - Activity log (recent device activity)
+
+3. **Notification Center**:
+   - `GET /api/notifications` - Get notifications with unread count
+   - `POST /api/notifications/mark-all-read` - Mark all as read
+   - Frontend: `/app/frontend/app/admin/notifications.tsx`
+
+4. **Client Geolocation Map**:
+   - `GET /api/clients/locations` - Get all client locations with lat/lng
+   - Frontend: `/app/frontend/app/admin/client-map.tsx`
+
+5. **Bulk Operations** (`POST /api/clients/bulk-operation`):
+   - Actions: lock, unlock, warning
+   - Returns success/failure counts
+
+6. **Client Export** (`GET /api/clients/export`):
+   - Format: JSON or CSV
+   - Sanitized client data for export
+
+7. **Support Chat**:
+   - `GET /api/support/messages/{client_id}` - Get chat messages
+   - `POST /api/support/messages/{client_id}` - Send message
+   - Creates notification for admin when client sends message
+   - Frontend: `/app/frontend/app/client/support-chat.tsx`
+
+8. **Payment History** (`GET /api/payments/history/{client_id}`):
+   - Returns payments timeline, totals, loan info
+   - Frontend: `/app/frontend/app/client/payment-history.tsx`
+
+### Session 5: Credit System & Security (Feb 14, 2026)
+1. **Credit System Logic Correction**
+2. **API Security Audit** - 20+ endpoints secured with JWT
+
 ## Key Files
 ```
 /app
@@ -22,17 +68,22 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
     │       └── EMIDeviceAdminReceiver.kt
     ├── app/
     │   ├── admin/
+    │   │   ├── (tabs)/index.tsx      # Dashboard with analytics
+    │   │   ├── notifications.tsx     # Notification center (NEW)
+    │   │   ├── client-map.tsx        # Client locations map (NEW)
     │   │   ├── add-client.tsx
     │   │   ├── loan-plans.tsx
     │   │   ├── login.tsx
     │   │   └── settings.tsx
     │   └── client/
-    │       ├── home.tsx
-    │       └── register.tsx
+    │       ├── home.tsx               # Updated with new navigation
+    │       ├── register.tsx           # Fixed crash issue
+    │       ├── payment-history.tsx    # Payment timeline (NEW)
+    │       └── support-chat.tsx       # Support chat (NEW)
     ├── src/
     │   ├── constants/api.ts
     │   ├── utils/
-    │   │   ├── adminAuth.ts         # Shared admin auth utility (NEW)
+    │   │   ├── adminAuth.ts
     │   │   ├── DevicePolicy.ts
     │   │   ├── api.ts
     │   │   └── errorHandler.ts
@@ -42,10 +93,13 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
 ```
 
 ## DB Schema
-- **admins**: `(id, username, password_hash, first_name, last_name, role, is_super_admin)`
+- **admins**: `(id, username, password_hash, first_name, last_name, role, is_super_admin, credits)`
 - **admin_tokens**: `(admin_id, token, expires_at)` — upsert on login
-- **clients**: `(id, name, phone, email, admin_id, admin_mode_active, registration_code, ...)`
+- **clients**: `(id, name, phone, email, admin_id, admin_mode_active, registration_code, latitude, longitude, ...)`
 - **loan_plans**: `(id, name, interest_rate, min/max_tenure_months, processing_fee_percent, late_fee_percent, description, is_active, admin_id)`
+- **notifications**: `(id, admin_id, type, title, message, client_id, client_name, is_read, created_at)` (NEW)
+- **support_messages**: `(id, client_id, sender, message, is_read, created_at)` (NEW)
+- **payments**: `(id, client_id, amount, payment_date, payment_method, notes, recorded_by)`
 
 ## Key API Endpoints
 - `POST /api/admin/login` — returns token, id, role, first_name, last_name
@@ -54,9 +108,23 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
 - `POST /api/clients` — create client with `admin_token` query param
 - `GET /api/device/status/{client_id}` — device status incl. `uninstall_allowed`
 - `POST /api/device/report-admin-status` — report device admin mode status
+- **New Enhancement Endpoints**:
+  - `GET /api/analytics/dashboard` - Dashboard analytics
+  - `GET /api/notifications` - Get notifications
+  - `GET /api/clients/locations` - Client map data
+  - `GET /api/clients/export` - Export clients
+  - `POST /api/clients/bulk-operation` - Bulk lock/unlock/warning
+  - `GET/POST /api/support/messages/{client_id}` - Support chat
+  - `GET /api/payments/history/{client_id}` - Payment history
 
 ## Credentials
-- Admin: `username=karli1987`, `password=nasvakas123`
+- Superadmin: `username=karli1987`, `password=nasvakas123`
+- Admin: `username=testadmin`, `password=testpassword`
+
+## Backlog
+- P2: Enforce `buildApiUrl()` usage across all API calls for consistency
+- P3: Push notifications for payment reminders (requires FCM integration)
+- P3: Detailed admin dashboard with charts (Chart library integration)
 
 ## What's Implemented (Feb 14, 2026)
 1. **Loan Plan CRUD fix**: All operations (create/delete/update/toggle) now use centralized `getAuthInfo()` from `adminAuth.ts` with proper 401 handling + redirect to login
