@@ -924,6 +924,7 @@ async def login_admin(login_data: AdminLogin):
         username=admin["username"], 
         role=admin.get("role", "user"),
         is_super_admin=admin.get("is_super_admin", False),
+        credits=admin.get("credits", 5),
         token=token,
         first_name=admin.get("first_name"),
         last_name=admin.get("last_name")
