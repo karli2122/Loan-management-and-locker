@@ -225,34 +225,45 @@ export default function ClientDetails() {
   };
 
   const handleDelete = async () => {
-    Alert.alert(t('deleteClient'), t('deleteConfirm'), [
-      { text: t('cancel'), style: 'cancel' },
-      {
-        text: t('delete'),
-        style: 'destructive',
+    Alert.alert(
+      language === 'et' ? 'Kustuta klient' : 'Delete Client',
+      language === 'et' ? 'Kas olete kindel? See lubab ka rakenduse desinstallimise.' : 'Are you sure? This will also allow app uninstall on the device.',
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: language === 'et' ? 'Jah, kustuta' : 'Yes, Delete',
+          style: 'destructive',
           onPress: async () => {
             setActionLoading(true);
             try {
               const adminQuery = await buildAdminQuery();
-              const response = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`, {
+              // Step 1: Allow uninstall first
+              const uninstallRes = await fetch(`${API_URL}/api/clients/${id}/allow-uninstall${adminQuery}`, {
+                method: 'POST',
+              });
+              if (!uninstallRes.ok) {
+                const err = await uninstallRes.json();
+                throw new Error(err.detail || 'Failed to allow uninstall');
+              }
+              // Step 2: Delete client
+              const deleteRes = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`, {
                 method: 'DELETE',
               });
-            
-            if (!response.ok) {
-              const error = await response.json();
-              throw new Error(error.detail || 'Failed to delete client');
+              if (!deleteRes.ok) {
+                const err = await deleteRes.json();
+                throw new Error(err.detail || 'Failed to delete client');
+              }
+              Alert.alert(t('success'), t('clientDeletedSuccess'));
+              router.back();
+            } catch (error: any) {
+              Alert.alert(t('error'), error.message);
+            } finally {
+              setActionLoading(false);
             }
-            
-            Alert.alert(t('success'), t('clientDeletedSuccess'));
-            router.back();
-          } catch (error: any) {
-            Alert.alert(t('error'), error.message);
-          } finally {
-            setActionLoading(false);
-          }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   const handleFetchPrice = async () => {
@@ -612,51 +623,53 @@ export default function ClientDetails() {
           </View>
         )}
 
-        {/* Action Buttons */}
-        <View style={styles.actionsSection}>
-          <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
-          
-          {/* Record Payment Button (if no loan_start_date, show option to go to loan management) */}
-          {!client.loan_start_date && (
+        {/* Action Buttons - only show if device is registered */}
+        {client.is_registered && (
+          <View style={styles.actionsSection}>
+            <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
+            
+            {/* Record Payment Button (if no loan_start_date, show option to go to loan management) */}
+            {!client.loan_start_date && (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.setupLoanButton]}
+                onPress={() => router.push(`/admin/loan-management?id=${client.id}`)}
+                disabled={actionLoading}
+              >
+                <Ionicons name="wallet" size={20} color="#fff" />
+                <Text style={styles.actionButtonText}>{language === 'et' ? 'Seadista laen' : 'Setup Loan'}</Text>
+              </TouchableOpacity>
+            )}
+            
             <TouchableOpacity
-              style={[styles.actionButton, styles.setupLoanButton]}
-              onPress={() => router.push(`/admin/loan-management?id=${client.id}`)}
+              style={[styles.actionButton, client.is_locked ? styles.unlockButton : styles.lockButton]}
+              onPress={client.is_locked ? handleUnlock : () => setLockModal(true)}
               disabled={actionLoading}
             >
-              <Ionicons name="wallet" size={20} color="#fff" />
-              <Text style={styles.actionButtonText}>{language === 'et' ? 'Seadista laen' : 'Setup Loan'}</Text>
+              <Ionicons name={client.is_locked ? 'lock-open' : 'lock-closed'} size={20} color="#fff" />
+              <Text style={styles.actionButtonText}>
+                {client.is_locked ? t('unlockDevice') : t('lockDevice')}
+              </Text>
             </TouchableOpacity>
-          )}
-          
-          <TouchableOpacity
-            style={[styles.actionButton, client.is_locked ? styles.unlockButton : styles.lockButton]}
-            onPress={client.is_locked ? handleUnlock : () => setLockModal(true)}
-            disabled={actionLoading}
-          >
-            <Ionicons name={client.is_locked ? 'lock-open' : 'lock-closed'} size={20} color="#fff" />
-            <Text style={styles.actionButtonText}>
-              {client.is_locked ? t('unlockDevice') : t('lockDevice')}
-            </Text>
-          </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.actionButton, styles.warningButton]}
-            onPress={() => setWarningModal(true)}
-            disabled={actionLoading}
-          >
-            <Ionicons name="warning" size={20} color="#fff" />
-            <Text style={styles.actionButtonText}>{t('sendWarning')}</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.warningButton]}
+              onPress={() => setWarningModal(true)}
+              disabled={actionLoading}
+            >
+              <Ionicons name="warning" size={20} color="#fff" />
+              <Text style={styles.actionButtonText}>{t('sendWarning')}</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.actionButton, styles.allowUninstallButton]}
-            onPress={handleAllowUninstall}
-            disabled={actionLoading}
-          >
-            <Ionicons name="shield-checkmark" size={20} color="#fff" />
-            <Text style={styles.actionButtonText}>Allow Uninstall</Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.allowUninstallButton]}
+              onPress={handleAllowUninstall}
+              disabled={actionLoading}
+            >
+              <Ionicons name="shield-checkmark" size={20} color="#fff" />
+              <Text style={styles.actionButtonText}>Allow Uninstall</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
 
       {/* Payment Modal */}
