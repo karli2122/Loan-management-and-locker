@@ -85,15 +85,10 @@ export default function AdminSettings() {
       const firstName = await AsyncStorage.getItem('admin_first_name');
       const lastName = await AsyncStorage.getItem('admin_last_name');
       
-      // Validate token before proceeding
-      if (token) {
-        try {
-          const verifyRes = await fetch(`${API_URL}/api/admin/verify/${token}`);
-          if (!verifyRes.ok) {
-            await handleAuthError();
-            return;
-          }
-        } catch (_) {}
+      // Only redirect if no token at all (never logged in)
+      if (!token || !adminId) {
+        await handleAuthError();
+        return;
       }
       
       // Load Google Drive backup info
