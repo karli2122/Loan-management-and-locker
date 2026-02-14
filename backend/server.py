@@ -1147,7 +1147,7 @@ async def get_silent_clients(
     silent_clients = []
     cursor = db.clients.find(
         {
-            "admin_id": admin["id"],
+            "admin_id": admin["admin_id"],
             "is_registered": True,
             "$or": [
                 {"last_heartbeat": {"$lt": cutoff}},
