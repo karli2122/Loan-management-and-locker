@@ -51,7 +51,7 @@ def set_database(db):
 
 async def verify_admin_token_header(token: str) -> bool:
     """Verify admin token existence and expiration"""
-    if not _db:
+    if _db is None:
         raise RuntimeError("Database not initialized for auth")
     
     token_doc = await _db.admin_tokens.find_one({"token": token})
@@ -68,7 +68,7 @@ async def verify_admin_token_header(token: str) -> bool:
 
 async def get_admin_id_from_token(admin_token: str) -> str:
     """Get admin_id from token, raising AuthenticationException if invalid"""
-    if not _db:
+    if _db is None:
         raise RuntimeError("Database not initialized for auth")
     
     if not admin_token:
