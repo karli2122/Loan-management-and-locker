@@ -2782,9 +2782,11 @@ async def get_payment_history(client_id: str):
 @api_router.get("/clients/locations")
 async def get_client_locations(admin_token: str = Query(...)):
     """Get all client locations for map display"""
-    admin = await get_admin_id_from_token(admin_token)
-    admin_id = admin["id"]
-    is_super = admin.get("is_super_admin", False)
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Get admin details to check if super admin
+    admin_doc = await db.admins.find_one({"id": admin_id})
+    is_super = admin_doc.get("is_super_admin", False) if admin_doc else False
     
     query = {} if is_super else {"admin_id": admin_id}
     query["latitude"] = {"$ne": None}
