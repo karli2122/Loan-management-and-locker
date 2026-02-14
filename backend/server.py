@@ -2403,9 +2403,11 @@ async def root():
 @api_router.get("/analytics/dashboard")
 async def get_dashboard_analytics(admin_token: str = Query(...)):
     """Get comprehensive dashboard analytics including trends and activity"""
-    admin = await get_admin_id_from_token(admin_token)
-    admin_id = admin["id"]
-    is_super = admin.get("is_super_admin", False)
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Get admin details to check if super admin
+    admin_doc = await db.admins.find_one({"id": admin_id})
+    is_super = admin_doc.get("is_super_admin", False) if admin_doc else False
     
     # Build query based on admin scope
     client_query = {} if is_super else {"admin_id": admin_id}
