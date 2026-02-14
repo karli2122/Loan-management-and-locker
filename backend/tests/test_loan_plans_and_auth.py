@@ -21,7 +21,7 @@ import requests
 import uuid
 
 # Use the preview URL from review request
-BASE_URL = "https://client-details-ui.preview.emergentagent.com"
+BASE_URL = "https://admin-credits-1.preview.emergentagent.com"
 
 # Test credentials from review request
 TEST_USERNAME = "karli1987"
