@@ -52,6 +52,8 @@ export default function AddLoan() {
   const [newClientName, setNewClientName] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
   const [newClientEmail, setNewClientEmail] = useState('');
+  const [newClientAddress, setNewClientAddress] = useState('');
+  const [newClientBirthNumber, setNewClientBirthNumber] = useState('');
   
   // Loan details
   const [loanPlans, setLoanPlans] = useState<LoanPlan[]>([]);
