@@ -93,19 +93,13 @@ export default function ClientDetails() {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
   
-  const getAdminScope = async () => {
-    if (adminId) return adminId;
-    const stored = await AsyncStorage.getItem('admin_id');
-    if (stored) {
-      setAdminId(stored);
-      return stored;
-    }
-    return null;
+  const getAdminToken = async () => {
+    return await AsyncStorage.getItem('admin_token');
   };
 
-  const buildAdminQuery = async (hasQuery = false) => {
-    const scope = await getAdminScope();
-    return scope ? `${hasQuery ? '&' : '?'}admin_id=${scope}` : '';
+  const buildAdminTokenQuery = async (hasQuery = false) => {
+    const token = await getAdminToken();
+    return token ? `${hasQuery ? '&' : '?'}admin_token=${token}` : '';
   };
 
   const fetchCredits = async () => {
@@ -126,9 +120,17 @@ export default function ClientDetails() {
 
   const fetchClient = async () => {
     try {
-      const scope = await getAdminScope();
-      const adminQuery = scope ? `?admin_id=${scope}` : '';
-      const response = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`);
+      const token = await getAdminToken();
+      if (!token) {
+        Alert.alert(t('error'), 'Not authenticated');
+        router.back();
+        return;
+      }
+      const response = await fetch(`${API_URL}/api/clients/${id}?admin_token=${token}`);
+      if (response.status === 401) {
+        handleAuthFailure();
+        return;
+      }
       if (!response.ok) throw new Error('Client not found');
       const data = await response.json();
       setClient(data);
