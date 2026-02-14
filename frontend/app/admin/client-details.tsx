@@ -194,9 +194,6 @@ export default function ClientDetails() {
                 setClient({ ...client, registration_code: data.registration_code });
               }
               
-              // Show the generated key
-              setShowGeneratedKey(true);
-              
               // Update credits
               if (!isSuperAdmin) {
                 setUserCredits(prev => prev - 1);
