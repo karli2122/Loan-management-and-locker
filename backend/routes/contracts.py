@@ -375,12 +375,13 @@ async def send_contract_email(client_id: str, admin_token: str = Query(...), tes
         # Send email using async thread to avoid blocking
         email_result = await asyncio.to_thread(resend.Emails.send, params)
         
-        logger.info(f"Contract email sent to {client['email']} for client {client_id}")
+        logger.info(f"Contract email sent to {recipient_email} for client {client_id}" + (" (TEST MODE)" if test_mode else ""))
         
         return {
             "status": "success",
-            "message": f"Contract sent to {client['email']}",
-            "email_id": email_result.get("id") if isinstance(email_result, dict) else str(email_result)
+            "message": f"Test email sent to {recipient_email}. Forward it to {client.get('name')} ({client.get('email', 'no email')})." if test_mode else f"Contract sent to {client['email']}",
+            "email_id": email_result.get("id") if isinstance(email_result, dict) else str(email_result),
+            "test_mode": test_mode
         }
     except Exception as e:
         error_msg = str(e)
