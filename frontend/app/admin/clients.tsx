@@ -309,21 +309,51 @@ export default function ClientsList() {
         ))}
       </View>
 
-      <FlatList
-        data={filteredClients}
-        keyExtractor={(item) => item.id}
-        renderItem={renderClient}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="people-outline" size={64} color="#334155" />
-            <Text style={styles.emptyText}>{t('noClientsFound')}</Text>
-          </View>
-        }
-      />
+      {filter === 'silent' && silentLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#F97316" />
+          <Text style={styles.loadingText}>
+            {language === 'et' ? 'Laadin kadunud kliente...' : 'Loading silent clients...'}
+          </Text>
+        </View>
+      ) : filter === 'silent' ? (
+        <FlatList
+          data={silentClients}
+          keyExtractor={(item) => item.id}
+          renderItem={renderSilentClient}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F97316" />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="checkmark-circle" size={64} color="#10B981" />
+              <Text style={styles.emptyText}>
+                {language === 'et' ? 'Kadunud kliente pole!' : 'No silent clients!'}
+              </Text>
+              <Text style={styles.emptySubText}>
+                {language === 'et' ? 'Kõik seadmed on ühendatud' : 'All devices are connected'}
+              </Text>
+            </View>
+          }
+        />
+      ) : (
+        <FlatList
+          data={filteredClients}
+          keyExtractor={(item) => item.id}
+          renderItem={renderClient}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="people-outline" size={64} color="#334155" />
+              <Text style={styles.emptyText}>{t('noClientsFound')}</Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
