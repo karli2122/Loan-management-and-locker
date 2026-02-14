@@ -99,9 +99,24 @@ export default function Dashboard() {
     const storedUsername = await AsyncStorage.getItem('admin_username');
     const role = await AsyncStorage.getItem('admin_role');
     const storedFirst = await AsyncStorage.getItem('admin_first_name');
+    const token = await AsyncStorage.getItem('admin_token');
     if (storedUsername) setUsername(storedUsername);
     if (storedFirst) setFirstName(storedFirst);
     if (role) setUserRole(role);
+    
+    // Fetch credits
+    if (token) {
+      try {
+        const response = await fetch(`${API_URL}/api/admin/credits?admin_token=${token}`);
+        if (response.ok) {
+          const data = await response.json();
+          setUserCredits(data.credits);
+          setIsSuperAdmin(data.is_super_admin);
+        }
+      } catch (error) {
+        console.error('Error fetching credits:', error);
+      }
+    }
   };
 
   useEffect(() => {
@@ -111,7 +126,7 @@ export default function Dashboard() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchStats();
+    await Promise.all([fetchStats(), loadUserData()]);
     setRefreshing(false);
   }, []);
 
