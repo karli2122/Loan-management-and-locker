@@ -342,7 +342,7 @@ async def send_contract_email(client_id: str, admin_token: str = Query(...)):
     if not resend.api_key:
         raise ValidationException("Email service not configured. Please set RESEND_API_KEY in environment variables.")
     
-    # Prepare email - admin's email as reply-to
+    # Prepare email - admin's email as reply-to (only if valid)
     admin_email = admin.get("email", "")
     
     # Build email params
@@ -359,8 +359,8 @@ async def send_contract_email(client_id: str, admin_token: str = Query(...)):
         ]
     }
     
-    # Add reply-to if admin has email
-    if admin_email:
+    # Add reply-to only if admin has a valid email (must contain @)
+    if admin_email and "@" in admin_email:
         params["reply_to"] = admin_email
     
     try:
