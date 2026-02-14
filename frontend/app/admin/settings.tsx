@@ -1164,6 +1164,86 @@ export default function AdminSettings() {
           </View>
         </View>
       </Modal>
+
+      {/* Credit Assignment Modal - Only for Superadmin */}
+      <Modal visible={showCreditModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              {language === 'et' ? 'Määra krediite' : 'Assign Credits'}
+            </Text>
+            
+            {selectedAdmin && (
+              <View style={styles.selectedAdminInfo}>
+                <View style={styles.adminAvatarSmall}>
+                  <Text style={styles.adminAvatarText}>{selectedAdmin.username.charAt(0).toUpperCase()}</Text>
+                </View>
+                <View>
+                  <Text style={styles.adminName}>{selectedAdmin.username}</Text>
+                  <Text style={styles.currentCreditsText}>
+                    {language === 'et' ? 'Praegused krediidid: ' : 'Current credits: '}
+                    {selectedAdmin.credits}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="ticket" size={20} color="#F59E0B" />
+              <TextInput
+                style={styles.input}
+                placeholder={language === 'et' ? 'Uued krediidid' : 'New credits'}
+                placeholderTextColor="#64748B"
+                value={newCreditValue}
+                onChangeText={setNewCreditValue}
+                keyboardType="number-pad"
+                data-testid="credit-input"
+              />
+            </View>
+
+            <View style={styles.creditQuickButtons}>
+              {[5, 10, 25, 50].map((val) => (
+                <TouchableOpacity
+                  key={val}
+                  style={styles.creditQuickButton}
+                  onPress={() => setNewCreditValue(String(val))}
+                >
+                  <Text style={styles.creditQuickButtonText}>+{val}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setShowCreditModal(false);
+                  setSelectedAdmin(null);
+                  setNewCreditValue('');
+                }}
+              >
+                <Text style={styles.cancelButtonText}>
+                  {language === 'et' ? 'Tühista' : 'Cancel'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.creditConfirmButton]}
+                onPress={handleAssignCredits}
+                disabled={actionLoading}
+                data-testid="confirm-assign-credits-btn"
+              >
+                {actionLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.confirmButtonText}>
+                    {language === 'et' ? 'Määra' : 'Assign'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
