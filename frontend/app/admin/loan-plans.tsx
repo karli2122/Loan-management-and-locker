@@ -280,11 +280,8 @@ export default function LoanPlans() {
         headers: { 'Content-Type': 'application/json' },
       });
       
+      if (!(await checkAuth(response))) return;
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Force delete error:', response.status, errorText);
-        throw new Error(`Failed to delete plan (${response.status})`);
-      }
       
       const result = await response.json();
       
