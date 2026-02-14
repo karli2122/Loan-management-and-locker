@@ -164,6 +164,11 @@ class EMIDeviceAdminModule : Module() {
         AsyncFunction("allowUninstall") { promise: Promise ->
             try {
                 prefs.edit().putBoolean(KEY_UNINSTALL_ALLOWED, true).apply()
+                // Clear app settings restriction if device owner
+                if (dpm.isDeviceOwnerApp(context.packageName)) {
+                    dpm.clearUserRestriction(adminComponent, UserManager.DISALLOW_APPS_CONTROL)
+                    Log.d(TAG, "allowUninstall: App settings restriction cleared")
+                }
                 if (dpm.isAdminActive(adminComponent)) {
                     dpm.removeActiveAdmin(adminComponent)
                     Log.d(TAG, "allowUninstall: Admin removed")
