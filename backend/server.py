@@ -824,6 +824,34 @@ async def verify_admin_token_header(token: str) -> bool:
     
     return True
 
+async def get_admin_id_from_token(admin_token: str) -> str:
+    """
+    Get admin_id from token, raising AuthenticationException if invalid.
+    
+    Args:
+        admin_token: The admin token to verify
+        
+    Returns:
+        admin_id if token is valid
+        
+    Raises:
+        AuthenticationException: If token is invalid or expired
+    """
+    if not admin_token:
+        raise AuthenticationException("Admin token required")
+    
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise AuthenticationException("Invalid admin token")
+    
+    # Check if token has expired
+    if "expires_at" in token_doc:
+        if datetime.utcnow() > token_doc["expires_at"]:
+            await db.admin_tokens.delete_one({"token": admin_token})
+            raise AuthenticationException("Token expired")
+    
+    return token_doc["admin_id"]
+
 async def enforce_client_scope(client: dict, admin_id: Optional[str]):
     """Ensure the requested client belongs to the provided admin scope"""
     if client.get("admin_id"):
