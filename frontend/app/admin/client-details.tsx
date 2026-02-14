@@ -1194,6 +1194,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  regCodeHidden: {
+    fontSize: 14,
+    color: '#64748B',
+    fontStyle: 'italic',
+  },
   section: {
     marginBottom: 20,
   },
