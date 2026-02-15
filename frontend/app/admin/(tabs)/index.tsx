@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Alert,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -33,6 +34,13 @@ interface MonthStats {
   revenue: number;
   profit: number;
   dueOutstanding: number;
+}
+
+interface AdminUser {
+  id: string;
+  username: string;
+  first_name?: string;
+  last_name?: string;
 }
 
 export default function Dashboard() {
@@ -69,8 +77,28 @@ export default function Dashboard() {
     labels: [],
     data: [],
   });
+  
+  // Admin filter state
+  const [adminList, setAdminList] = useState<AdminUser[]>([]);
+  const [selectedAdminId, setSelectedAdminId] = useState<string | null>(null);
+  const [showAdminFilter, setShowAdminFilter] = useState(false);
 
-  const fetchStats = async () => {
+  const fetchAdminList = async () => {
+    try {
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      if (!adminToken) return;
+      
+      const response = await fetch(`${API_URL}/api/admin/list-with-credits?admin_token=${adminToken}`);
+      if (response.ok) {
+        const data = await response.json();
+        setAdminList(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch admin list:', error);
+    }
+  };
+
+  const fetchStats = async (filterAdminId?: string | null) => {
     const baseUrl = API_URL;
     try {
       const adminToken = await AsyncStorage.getItem('admin_token');
@@ -79,7 +107,12 @@ export default function Dashboard() {
         return;
       }
       
-      const response = await fetch(`${baseUrl}/api/reports/collection?admin_token=${adminToken}`);
+      let url = `${baseUrl}/api/reports/collection?admin_token=${adminToken}`;
+      if (filterAdminId) {
+        url += `&filter_admin_id=${filterAdminId}`;
+      }
+      
+      const response = await fetch(url);
       if (!response.ok) {
         console.error('API error:', response.status);
         return;
