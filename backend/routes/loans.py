@@ -266,8 +266,16 @@ async def record_payment(
     
     return {
         "message": "Payment recorded",
-        "payment_id": payment.id,
-        "new_balance": new_outstanding
+        "payment": {
+            "id": payment.id,
+            "amount": payment.amount,
+            "payment_date": payment.payment_date.isoformat() if payment.payment_date else None,
+            "payment_method": payment.payment_method
+        },
+        "updated_balance": {
+            "total_paid": new_total_paid,
+            "outstanding_balance": new_outstanding
+        }
     }
 
 
