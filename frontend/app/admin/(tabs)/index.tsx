@@ -59,6 +59,16 @@ export default function Dashboard() {
     profit: 0,
     dueOutstanding: 0,
   });
+  const [heartbeat, setHeartbeat] = useState({
+    total_registered: 0,
+    online_count: 0,
+    warning_count: 0,
+    critical_count: 0,
+  });
+  const [revenueChart, setRevenueChart] = useState<{ labels: string[]; data: number[] }>({
+    labels: [],
+    data: [],
+  });
 
   const fetchStats = async () => {
     const baseUrl = API_URL;
