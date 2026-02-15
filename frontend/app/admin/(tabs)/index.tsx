@@ -321,6 +321,91 @@ export default function Dashboard() {
           )}
         </View>
 
+        {/* Admin Filter for Superadmins */}
+        {isSuperAdmin && (
+          <TouchableOpacity
+            style={styles.adminFilterButton}
+            onPress={() => setShowAdminFilter(true)}
+            data-testid="admin-filter-btn"
+          >
+            <View style={styles.adminFilterContent}>
+              <Ionicons name="funnel" size={18} color="#4F46E5" />
+              <Text style={styles.adminFilterLabel}>
+                {language === 'et' ? 'Filtreeri admini järgi:' : 'Filter by Admin:'}
+              </Text>
+              <Text style={styles.adminFilterValue}>{getSelectedAdminName()}</Text>
+            </View>
+            <Ionicons name="chevron-down" size={18} color="#94A3B8" />
+          </TouchableOpacity>
+        )}
+
+        {/* Admin Filter Modal */}
+        <Modal
+          visible={showAdminFilter}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowAdminFilter(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowAdminFilter(false)}
+          >
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>
+                {language === 'et' ? 'Vali admin' : 'Select Admin'}
+              </Text>
+              
+              <TouchableOpacity
+                style={[styles.modalOption, !selectedAdminId && styles.modalOptionActive]}
+                onPress={() => {
+                  setSelectedAdminId(null);
+                  setShowAdminFilter(false);
+                }}
+              >
+                <Ionicons name="person" size={18} color={!selectedAdminId ? '#4F46E5' : '#94A3B8'} />
+                <Text style={[styles.modalOptionText, !selectedAdminId && styles.modalOptionTextActive]}>
+                  {language === 'et' ? 'Minu andmed' : 'My Data'}
+                </Text>
+                {!selectedAdminId && <Ionicons name="checkmark" size={18} color="#4F46E5" />}
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.modalOption, selectedAdminId === 'all' && styles.modalOptionActive]}
+                onPress={() => {
+                  setSelectedAdminId('all');
+                  setShowAdminFilter(false);
+                }}
+              >
+                <Ionicons name="people" size={18} color={selectedAdminId === 'all' ? '#4F46E5' : '#94A3B8'} />
+                <Text style={[styles.modalOptionText, selectedAdminId === 'all' && styles.modalOptionTextActive]}>
+                  {language === 'et' ? 'Kõik adminid' : 'All Admins'}
+                </Text>
+                {selectedAdminId === 'all' && <Ionicons name="checkmark" size={18} color="#4F46E5" />}
+              </TouchableOpacity>
+              
+              <View style={styles.modalDivider} />
+              
+              {adminList.map((admin) => (
+                <TouchableOpacity
+                  key={admin.id}
+                  style={[styles.modalOption, selectedAdminId === admin.id && styles.modalOptionActive]}
+                  onPress={() => {
+                    setSelectedAdminId(admin.id);
+                    setShowAdminFilter(false);
+                  }}
+                >
+                  <Ionicons name="person-circle" size={18} color={selectedAdminId === admin.id ? '#4F46E5' : '#94A3B8'} />
+                  <Text style={[styles.modalOptionText, selectedAdminId === admin.id && styles.modalOptionTextActive]}>
+                    {admin.first_name || admin.username}
+                  </Text>
+                  {selectedAdminId === admin.id && <Ionicons name="checkmark" size={18} color="#4F46E5" />}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
         <Text style={styles.sectionTitle}>{language === 'et' ? 'Laenude ülevaade' : 'Loan Overview'}</Text>
 
         <View style={styles.statsGrid}>
