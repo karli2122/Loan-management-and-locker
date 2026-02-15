@@ -716,4 +716,79 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
+  // Heartbeat card styles
+  heartbeatCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  heartbeatHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  heartbeatTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  heartbeatTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  heartbeatSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  heartbeatGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  heartbeatItem: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  heartbeatDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginBottom: 4,
+  },
+  heartbeatCount: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  heartbeatLabel: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+  heartbeatAlert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#334155',
+  },
+  heartbeatAlertText: {
+    fontSize: 12,
+    color: '#EF4444',
+    fontWeight: '500',
+  },
+  // Chart styles
+  chartContainer: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
 });
