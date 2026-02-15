@@ -58,6 +58,7 @@ async def application_exception_handler(request, exc: ApplicationException):
         "VALIDATION_ERROR": 422,
         "AUTHENTICATION_ERROR": 401,
         "AUTHORIZATION_ERROR": 403,
+        "NOT_FOUND_ERROR": 404,
     }
     status_code = status_codes.get(exc.error_code, 500)
     return JSONResponse(status_code=status_code, content=exc.to_response())
