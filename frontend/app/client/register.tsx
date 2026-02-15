@@ -108,7 +108,8 @@ export default function ClientRegister() {
         throw new Error(message);
       }
 
-      const clientId = data?.client_id;
+      // Backend returns 'id', not 'client_id'
+      const clientId = data?.id || data?.client_id;
       if (!clientId) {
         Alert.alert(
           t('error'),
