@@ -1700,6 +1700,31 @@ const styles = StyleSheet.create({
   langTextActive: {
     color: '#4F46E5',
   },
+  // Theme toggle styles
+  themeContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  themeOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  themeOptionActive: {
+    borderColor: '#4F46E5',
+    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+  },
+  themeText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
   // Google Drive Backup styles
   backupCard: {
     backgroundColor: '#1E293B',
