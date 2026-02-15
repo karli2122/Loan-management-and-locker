@@ -135,11 +135,17 @@ export default function Dashboard() {
     }
   };
 
-  const fetchHeartbeat = async () => {
+  const fetchHeartbeat = async (filterAdminId?: string | null) => {
     try {
       const adminToken = await AsyncStorage.getItem('admin_token');
       if (!adminToken) return;
-      const response = await fetch(`${API_URL}/api/heartbeat/summary?admin_token=${adminToken}`);
+      
+      let url = `${API_URL}/api/heartbeat/summary?admin_token=${adminToken}`;
+      if (filterAdminId) {
+        url += `&filter_admin_id=${filterAdminId}`;
+      }
+      
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setHeartbeat({
@@ -154,11 +160,17 @@ export default function Dashboard() {
     }
   };
 
-  const fetchRevenueChart = async () => {
+  const fetchRevenueChart = async (filterAdminId?: string | null) => {
     try {
       const adminToken = await AsyncStorage.getItem('admin_token');
       if (!adminToken) return;
-      const response = await fetch(`${API_URL}/api/analytics/dashboard?admin_token=${adminToken}`);
+      
+      let url = `${API_URL}/api/analytics/dashboard?admin_token=${adminToken}`;
+      if (filterAdminId) {
+        url += `&filter_admin_id=${filterAdminId}`;
+      }
+      
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         const revenue = data.monthly_revenue || {};
