@@ -2010,4 +2010,61 @@ const styles = StyleSheet.create({
   disabledButtonText: {
     color: '#64748B',
   },
+  // Late fee styles
+  lateFeeCard: {
+    backgroundColor: '#DC262615',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#DC262630',
+  },
+  lateFeeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  lateFeeTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  lateFeeDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  lateFeeDetailItem: {
+    flex: 1,
+  },
+  lateFeeLabel: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginBottom: 4,
+  },
+  lateFeeValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  lateFeeValueTotal: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F59E0B',
+  },
+  autoLockWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#DC262630',
+  },
+  autoLockWarningText: {
+    fontSize: 12,
+    color: '#F59E0B',
+    fontWeight: '600',
+  },
 });
