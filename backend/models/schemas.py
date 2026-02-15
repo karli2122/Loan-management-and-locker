@@ -225,7 +225,8 @@ class LoanPlanCreate(BaseModel):
 class LoanSetup(BaseModel):
     loan_amount: float
     interest_rate: float
-    loan_tenure_months: int
+    loan_tenure_months: int = 0
+    due_date: Optional[str] = None
     down_payment: float = 0.0
 
 
