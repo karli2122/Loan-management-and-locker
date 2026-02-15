@@ -202,18 +202,6 @@ export default function Dashboard() {
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => router.push('/admin/loan-management')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#10B981' }]}>
-              <Ionicons name="wallet" size={24} color="#fff" />
-            </View>
-            <Text style={styles.actionTitle}>{language === 'et' ? 'Laenuhaldus' : 'Loan Management'}</Text>
-            <Text style={styles.actionDescription}>{language === 'et' ? 'Halda laene ja makseid' : 'Manage loans & payments'}</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
             onPress={() => router.push('/admin/device-management')}
           >
             <View style={[styles.actionIcon, { backgroundColor: '#F59E0B' }]}>

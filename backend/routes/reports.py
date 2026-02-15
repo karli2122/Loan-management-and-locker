@@ -128,17 +128,19 @@ async def get_financial_report(
 
 @router.get("/stats")
 async def get_stats(admin_id: str = Query(default=None)):
-    """Get general statistics."""
+    """Get general statistics with device breakdown."""
     query = {"admin_id": admin_id} if admin_id else {}
     
     total_clients = await db.clients.count_documents(query)
     registered_clients = await db.clients.count_documents({**query, "is_registered": True})
     locked_clients = await db.clients.count_documents({**query, "is_locked": True})
+    unlocked_registered = await db.clients.count_documents({**query, "is_registered": True, "is_locked": False})
     
     return {
         "total_clients": total_clients,
-        "registered_clients": registered_clients,
-        "locked_clients": locked_clients,
+        "registered_devices": registered_clients,
+        "locked_devices": locked_clients,
+        "unlocked_devices": unlocked_registered,
         "unregistered_clients": total_clients - registered_clients
     }
 
