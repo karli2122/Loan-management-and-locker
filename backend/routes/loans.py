@@ -401,8 +401,8 @@ async def update_loan_settings(
 
 
 @router.post("/late-fees/calculate-all")
-async def calculate_all_late_fees(admin_token: str = Query(...)):
-    """Calculate and apply late fees for all overdue clients."""
+async def calculate_all_late_fees(admin_token: str = Query(...), apply_auto_lock: bool = Query(default=True)):
+    """Calculate and apply late fees for all overdue clients, optionally applying auto-lock."""
     admin_id = await get_admin_id_from_token(admin_token)
     
     # Get all clients with active loans for this admin
@@ -414,6 +414,7 @@ async def calculate_all_late_fees(admin_token: str = Query(...)):
     
     updated_count = 0
     total_late_fees = 0.0
+    auto_locked_count = 0
     
     now = datetime.utcnow()
     
@@ -457,14 +458,40 @@ async def calculate_all_late_fees(admin_token: str = Query(...)):
         monthly_emi = client.get("monthly_emi", 0)
         late_fee = calculate_late_fee(monthly_emi, late_fee_percent, days_overdue)
         
+        # Prepare update
+        update_data = {
+            "days_overdue": days_overdue,
+            "late_fees_accumulated": late_fee,
+            "is_late": True
+        }
+        
+        # Check if auto-lock should be applied
+        if apply_auto_lock:
+            auto_lock_enabled = client.get("auto_lock_enabled", True)
+            grace_days = client.get("auto_lock_grace_days", 3)
+            is_currently_locked = client.get("is_locked", False)
+            
+            if auto_lock_enabled and days_overdue > grace_days and not is_currently_locked:
+                update_data["is_locked"] = True
+                update_data["lock_message"] = f"Device auto-locked: Payment is {days_overdue} days overdue. Please contact your lender to unlock."
+                auto_locked_count += 1
+                
+                # Create notification for admin
+                from models.schemas import Notification
+                notification = Notification(
+                    admin_id=admin_id,
+                    type="auto_lock",
+                    title="Device Auto-Locked",
+                    message=f"Client {client['name']}'s device was auto-locked ({days_overdue} days overdue)",
+                    client_id=client["id"],
+                    client_name=client["name"]
+                )
+                await db.notifications.insert_one(notification.dict())
+        
         # Update client
         await db.clients.update_one(
             {"id": client["id"]},
-            {"$set": {
-                "days_overdue": days_overdue,
-                "late_fees_accumulated": late_fee,
-                "is_late": True
-            }}
+            {"$set": update_data}
         )
         
         updated_count += 1
@@ -474,7 +501,123 @@ async def calculate_all_late_fees(admin_token: str = Query(...)):
         "message": "Late fee calculation complete",
         "clients_processed": len(clients),
         "clients_with_late_fees": updated_count,
-        "total_late_fees": round(total_late_fees, 2)
+        "total_late_fees": round(total_late_fees, 2),
+        "devices_auto_locked": auto_locked_count
+    }
+
+
+@router.post("/auto-lock/process")
+async def process_auto_locks(admin_token: str = Query(...)):
+    """Process auto-locks for all overdue clients exceeding their grace period."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Get all clients with active loans that are overdue and not yet locked
+    clients = await db.clients.find({
+        "admin_id": admin_id,
+        "is_late": True,
+        "is_locked": False,
+        "auto_lock_enabled": True,
+        "days_overdue": {"$gt": 0}
+    }).to_list(1000)
+    
+    locked_count = 0
+    locked_clients = []
+    
+    for client in clients:
+        days_overdue = client.get("days_overdue", 0)
+        grace_days = client.get("auto_lock_grace_days", 3)
+        
+        if days_overdue > grace_days:
+            # Lock the device
+            await db.clients.update_one(
+                {"id": client["id"]},
+                {"$set": {
+                    "is_locked": True,
+                    "lock_message": f"Device auto-locked: Payment is {days_overdue} days overdue. Please contact your lender to unlock."
+                }}
+            )
+            
+            # Create notification for admin
+            from models.schemas import Notification
+            notification = Notification(
+                admin_id=admin_id,
+                type="auto_lock",
+                title="Device Auto-Locked",
+                message=f"Client {client['name']}'s device was auto-locked ({days_overdue} days overdue)",
+                client_id=client["id"],
+                client_name=client["name"]
+            )
+            await db.notifications.insert_one(notification.dict())
+            
+            locked_count += 1
+            locked_clients.append({
+                "id": client["id"],
+                "name": client["name"],
+                "days_overdue": days_overdue,
+                "grace_days": grace_days
+            })
+    
+    return {
+        "message": "Auto-lock processing complete",
+        "devices_locked": locked_count,
+        "locked_clients": locked_clients
+    }
+
+
+@router.get("/auto-lock/pending")
+async def get_pending_auto_locks(admin_token: str = Query(...)):
+    """Get list of clients approaching or past their auto-lock threshold."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Get all overdue clients with auto-lock enabled
+    clients = await db.clients.find({
+        "admin_id": admin_id,
+        "is_late": True,
+        "auto_lock_enabled": True,
+        "days_overdue": {"$gt": 0}
+    }, {"_id": 0}).to_list(1000)
+    
+    pending_locks = []
+    already_locked = []
+    approaching_lock = []
+    
+    for client in clients:
+        days_overdue = client.get("days_overdue", 0)
+        grace_days = client.get("auto_lock_grace_days", 3)
+        is_locked = client.get("is_locked", False)
+        days_until_lock = grace_days - days_overdue
+        
+        client_info = {
+            "id": client["id"],
+            "name": client["name"],
+            "phone": client.get("phone", ""),
+            "days_overdue": days_overdue,
+            "grace_days": grace_days,
+            "days_until_lock": max(0, days_until_lock),
+            "outstanding_balance": client.get("outstanding_balance", 0),
+            "late_fee": client.get("late_fees_accumulated", 0)
+        }
+        
+        if is_locked:
+            client_info["status"] = "locked"
+            already_locked.append(client_info)
+        elif days_overdue > grace_days:
+            client_info["status"] = "pending_lock"
+            pending_locks.append(client_info)
+        else:
+            client_info["status"] = "approaching"
+            approaching_lock.append(client_info)
+    
+    return {
+        "summary": {
+            "total_overdue": len(clients),
+            "pending_lock": len(pending_locks),
+            "already_locked": len(already_locked),
+            "approaching_lock": len(approaching_lock)
+        },
+        "pending_locks": sorted(pending_locks, key=lambda x: x["days_overdue"], reverse=True),
+        "already_locked": already_locked,
+        "approaching_lock": sorted(approaching_lock, key=lambda x: x["days_until_lock"])
     }
 
 
