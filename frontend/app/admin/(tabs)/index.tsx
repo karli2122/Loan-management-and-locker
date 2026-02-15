@@ -177,11 +177,13 @@ export default function Dashboard() {
   useEffect(() => {
     loadUserData();
     fetchStats();
+    fetchHeartbeat();
+    fetchRevenueChart();
   }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([fetchStats(), loadUserData()]);
+    await Promise.all([fetchStats(), loadUserData(), fetchHeartbeat(), fetchRevenueChart()]);
     setRefreshing(false);
   }, []);
 
