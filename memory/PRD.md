@@ -421,6 +421,7 @@ Refactored the 3131-line `server.py` into modular route files:
 ## Current Backlog
 - P2: Add data-testid attributes to interactive elements
 - P3: Push notifications for payment reminders (requires FCM integration)
+- P3: Real-time EMI preview calculator on Add Loan page
 
 ### Session 14: Add Loan Features & UI Polish (Feb 15, 2026)
 **All features implemented and verified (100% test pass rate):**
