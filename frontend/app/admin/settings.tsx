@@ -739,30 +739,30 @@ export default function AdminSettings() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.surface }]} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>
+        <Text style={[styles.title, { color: colors.text }]}>
           {language === 'et' ? 'Seaded' : 'Settings'}
         </Text>
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={[styles.content, { backgroundColor: colors.background }]}>
         {/* Current User Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
             {language === 'et' ? 'Sinu konto' : 'Your Account'}
           </Text>
-          <View style={styles.userCard}>
+          <View style={[styles.userCard, { backgroundColor: colors.surface }]}>
             <View style={styles.avatarContainer}>
               <Text style={styles.avatarText}>{currentUsername.charAt(0).toUpperCase()}</Text>
             </View>
             <View style={styles.userInfo}>
-              <Text style={styles.userName}>{editFirstName} {editLastName}</Text>
-              <Text style={styles.userRole}>
+              <Text style={[styles.userName, { color: colors.text }]}>{editFirstName} {editLastName}</Text>
+              <Text style={[styles.userRole, { color: colors.textMuted }]}>
                 {currentUserRole === 'admin' 
                   ? (language === 'et' ? 'Administraator' : 'Administrator') 
                   : (language === 'et' ? 'Kasutaja' : 'User')}
