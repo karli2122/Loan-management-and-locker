@@ -344,7 +344,12 @@ class TestLoanSettings:
             f"{BASE_URL}/api/clients?admin_token={self.admin_token}"
         )
         clients_data = clients_response.json()
-        clients_list = clients_data.get("clients", []) or clients_data if isinstance(clients_data, list) else []
+        # Handle both dict with clients key and direct list
+        if isinstance(clients_data, dict):
+            clients_list = clients_data.get("clients", [])
+        else:
+            clients_list = clients_data if isinstance(clients_data, list) else []
+        
         if clients_list:
             self.test_client_id = clients_list[0].get("id")
         else:
