@@ -4,6 +4,20 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 import { LanguageProvider } from '../src/context/LanguageContext';
+import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
+
+function ThemedLayout() {
+  const { colors, isDark } = useTheme();
+  
+  return (
+    <>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <Slot />
+      </View>
+    </>
+  );
+}
 
 export default function RootLayout() {
   const [isMounted, setIsMounted] = React.useState(false);
@@ -19,10 +33,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <LanguageProvider>
-        <StatusBar style="light" />
-        <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
-          <Slot />
-        </View>
+        <ThemeProvider>
+          <ThemedLayout />
+        </ThemeProvider>
       </LanguageProvider>
     </SafeAreaProvider>
   );
