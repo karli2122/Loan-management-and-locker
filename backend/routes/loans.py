@@ -273,6 +273,38 @@ async def record_payment(
     new_total_paid = client.get("total_paid", 0) + payment_data.amount
     new_outstanding = max(0, client.get("outstanding_balance", 0) - payment_data.amount)
     
+    # Determine if payment is on-time or late for credit score adjustment
+    days_overdue = client.get("days_overdue", 0)
+    is_late = client.get("is_late", False)
+    credit_score_change = 0
+    credit_score_reason = ""
+    
+    if days_overdue > 0 or is_late:
+        # Late payment: -10 credit score
+        credit_score_change = CREDIT_SCORE_LATE_PAYMENT
+        credit_score_reason = f"late_payment_{days_overdue}_days_overdue"
+    else:
+        # On-time payment: +5 credit score
+        credit_score_change = CREDIT_SCORE_ON_TIME_PAYMENT
+        credit_score_reason = "on_time_payment"
+    
+    # Apply credit score adjustment
+    if credit_score_change != 0:
+        from routes.credit_score import update_credit_score
+        try:
+            new_credit_score = await update_credit_score(
+                client_id=client_id,
+                change_amount=credit_score_change,
+                reason=credit_score_reason,
+                admin_id=admin_id
+            )
+            logger.info(f"Credit score updated for client {client_id}: {credit_score_change:+d} ({credit_score_reason})")
+        except Exception as e:
+            logger.error(f"Failed to update credit score for client {client_id}: {e}")
+            new_credit_score = client.get("credit_score", 500)
+    else:
+        new_credit_score = client.get("credit_score", 500)
+    
     # Move to next payment date
     next_due = client.get("next_payment_due")
     if next_due:
@@ -285,7 +317,9 @@ async def record_payment(
             "outstanding_balance": new_outstanding,
             "last_payment_date": payment.payment_date,
             "next_payment_due": next_due,
-            "days_overdue": 0
+            "days_overdue": 0,
+            "is_late": False,
+            "late_fees_accumulated": 0
         }}
     )
     
@@ -307,6 +341,11 @@ async def record_payment(
         "updated_balance": {
             "total_paid": new_total_paid,
             "outstanding_balance": new_outstanding
+        },
+        "credit_score": {
+            "change": credit_score_change,
+            "reason": credit_score_reason,
+            "new_score": new_credit_score
         }
     }
 
