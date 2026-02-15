@@ -449,21 +449,29 @@ export default function ClientDetails() {
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to record payment');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || errorData.message || 'Failed to record payment');
+      }
       
       const data = await response.json();
+      
+      // Handle response with proper null checks
+      const paidAmount = data.payment?.amount ?? parseFloat(paymentAmount);
+      const outstandingBalance = data.updated_balance?.outstanding_balance ?? 0;
+      
       Alert.alert(
         t('success'),
         language === 'et' 
-          ? `Makse salvestatud!\n\nMakstud: €${data.payment.amount}\nJääk: €${data.updated_balance.outstanding_balance.toFixed(2)}`
-          : `Payment recorded!\n\nPaid: €${data.payment.amount}\nOutstanding: €${data.updated_balance.outstanding_balance.toFixed(2)}`
+          ? `Makse salvestatud!\n\nMakstud: €${paidAmount.toFixed(2)}\nJääk: €${outstandingBalance.toFixed(2)}`
+          : `Payment recorded!\n\nPaid: €${paidAmount.toFixed(2)}\nOutstanding: €${outstandingBalance.toFixed(2)}`
       );
       setPaymentModal(false);
       setPaymentAmount('');
       setPaymentNotes('');
       fetchClient();
     } catch (error: any) {
-      Alert.alert(t('error'), error.message);
+      Alert.alert(t('error'), error.message || 'Failed to record payment');
     } finally {
       setActionLoading(false);
     }
