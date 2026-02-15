@@ -221,16 +221,44 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadUserData();
-    fetchStats();
-    fetchHeartbeat();
-    fetchRevenueChart();
+    fetchStats(selectedAdminId);
+    fetchHeartbeat(selectedAdminId);
+    fetchRevenueChart(selectedAdminId);
   }, []);
+
+  // Fetch admin list for superadmins
+  useEffect(() => {
+    if (isSuperAdmin) {
+      fetchAdminList();
+    }
+  }, [isSuperAdmin]);
+
+  // Refetch data when admin filter changes
+  useEffect(() => {
+    if (selectedAdminId !== null || isSuperAdmin) {
+      fetchStats(selectedAdminId);
+      fetchHeartbeat(selectedAdminId);
+      fetchRevenueChart(selectedAdminId);
+    }
+  }, [selectedAdminId]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([fetchStats(), loadUserData(), fetchHeartbeat(), fetchRevenueChart()]);
+    await Promise.all([
+      fetchStats(selectedAdminId),
+      loadUserData(),
+      fetchHeartbeat(selectedAdminId),
+      fetchRevenueChart(selectedAdminId),
+    ]);
     setRefreshing(false);
-  }, []);
+  }, [selectedAdminId]);
+
+  const getSelectedAdminName = () => {
+    if (!selectedAdminId) return language === 'et' ? 'Minu andmed' : 'My Data';
+    if (selectedAdminId === 'all') return language === 'et' ? 'Kõik adminid' : 'All Admins';
+    const admin = adminList.find(a => a.id === selectedAdminId);
+    return admin ? (admin.first_name || admin.username) : '';
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
