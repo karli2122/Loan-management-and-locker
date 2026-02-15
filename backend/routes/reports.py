@@ -12,13 +12,32 @@ router = APIRouter(tags=["Reports"])
 
 
 @router.get("/heartbeat/summary")
-async def get_heartbeat_summary(admin_token: str = Query(...)):
-    """Get heartbeat monitoring summary with severity breakdown."""
+async def get_heartbeat_summary(
+    admin_token: str = Query(...),
+    filter_admin_id: Optional[str] = Query(default=None)
+):
+    """Get heartbeat monitoring summary with severity breakdown. Superadmins can filter by admin."""
     admin_id = await get_admin_id_from_token(admin_token)
     
+    # Check if requester is superadmin for filtering capability
+    admin = await db.admins.find_one({"id": admin_id})
+    is_super_admin = admin.get("is_super_admin", False) if admin else False
+    
+    # Determine which admin's data to fetch
+    target_admin_id = admin_id
+    if filter_admin_id and is_super_admin:
+        if filter_admin_id == "all":
+            target_admin_id = None
+        else:
+            target_admin_id = filter_admin_id
+    
     now = datetime.utcnow()
+    query = {"is_registered": True}
+    if target_admin_id:
+        query["admin_id"] = target_admin_id
+    
     clients = await db.clients.find(
-        {"admin_id": admin_id, "is_registered": True},
+        query,
         {"_id": 0, "id": 1, "name": 1, "device_model": 1, "last_heartbeat": 1, "is_locked": 1}
     ).to_list(1000)
     
@@ -74,13 +93,26 @@ async def get_heartbeat_summary(admin_token: str = Query(...)):
 
 
 @router.get("/reports/collection")
-async def get_collection_report(admin_token: str = Query(...)):
-    """Get collection report for an admin."""
+async def get_collection_report(
+    admin_token: str = Query(...),
+    filter_admin_id: Optional[str] = Query(default=None)
+):
+    """Get collection report for an admin. Superadmins can filter by specific admin."""
     admin_id = await get_admin_id_from_token(admin_token)
-    clients = await db.clients.find(
-        {"admin_id": admin_id},
-        {"_id": 0}
-    ).to_list(1000)
+    
+    # Check if requester is superadmin for filtering capability
+    admin = await db.admins.find_one({"id": admin_id})
+    is_super_admin = admin.get("is_super_admin", False) if admin else False
+    
+    # Determine which admin's data to fetch
+    target_admin_id = admin_id
+    if filter_admin_id and is_super_admin:
+        target_admin_id = filter_admin_id
+    elif filter_admin_id == "all" and is_super_admin:
+        target_admin_id = None  # Fetch all clients
+    
+    query = {"admin_id": target_admin_id} if target_admin_id else {}
+    clients = await db.clients.find(query, {"_id": 0}).to_list(1000)
     
     total_disbursed = sum(c.get("loan_amount", 0) for c in clients)
     total_collected = sum(c.get("total_paid", 0) for c in clients)
@@ -208,11 +240,27 @@ async def get_stats(admin_id: str = Query(default=None)):
 
 
 @router.get("/analytics/dashboard")
-async def get_dashboard_analytics(admin_token: str = Query(...)):
-    """Get comprehensive dashboard analytics."""
+async def get_dashboard_analytics(
+    admin_token: str = Query(...),
+    filter_admin_id: Optional[str] = Query(default=None)
+):
+    """Get comprehensive dashboard analytics. Superadmins can filter by specific admin."""
     admin_id = await get_admin_id_from_token(admin_token)
     
-    clients = await db.clients.find({"admin_id": admin_id}, {"_id": 0}).to_list(1000)
+    # Check if requester is superadmin for filtering capability
+    admin = await db.admins.find_one({"id": admin_id})
+    is_super_admin = admin.get("is_super_admin", False) if admin else False
+    
+    # Determine which admin's data to fetch
+    target_admin_id = admin_id
+    if filter_admin_id and is_super_admin:
+        if filter_admin_id == "all":
+            target_admin_id = None  # Fetch all clients
+        else:
+            target_admin_id = filter_admin_id
+    
+    query = {"admin_id": target_admin_id} if target_admin_id else {}
+    clients = await db.clients.find(query, {"_id": 0}).to_list(1000)
     
     # Overview metrics
     total_clients = len(clients)
