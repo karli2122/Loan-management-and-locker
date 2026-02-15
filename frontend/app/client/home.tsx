@@ -480,8 +480,22 @@ export default function ClientHome() {
         // Only show admin prompt if component is still mounted
         if (!isMounted.current) return;
         
-        // Then check device protection after data is loaded
+        // Step 4: Check device protection (Device Admin prompt)
         await checkAndSetupDeviceProtection();
+        
+        // Step 5: Start foreground protection service (after admin check)
+        if (Platform.OS === 'android') {
+          await devicePolicy.startForegroundProtection();
+          console.log('Foreground protection service started');
+        }
+        
+        // Small delay before accessibility prompt
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Step 6: Check and prompt for accessibility service
+        if (Platform.OS === 'android' && isMounted.current) {
+          await checkAndPromptAccessibility();
+        }
       } catch (error) {
         console.error('Initialization error:', error);
         setLoading(false);
