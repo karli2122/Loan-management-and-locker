@@ -324,6 +324,91 @@ export default function Dashboard() {
           </View>
         </View>
 
+        {/* Heartbeat Monitoring Card */}
+        <TouchableOpacity
+          style={styles.heartbeatCard}
+          onPress={() => router.push('/admin/device-management')}
+          activeOpacity={0.8}
+          data-testid="heartbeat-card"
+        >
+          <View style={styles.heartbeatHeader}>
+            <View style={styles.heartbeatTitleRow}>
+              <Ionicons name="pulse" size={20} color="#10B981" />
+              <Text style={styles.heartbeatTitle}>
+                {language === 'et' ? 'Seadmete olek' : 'Device Heartbeat'}
+              </Text>
+            </View>
+            <Text style={styles.heartbeatSubtitle}>
+              {heartbeat.total_registered} {language === 'et' ? 'registreeritud' : 'registered'}
+            </Text>
+          </View>
+          <View style={styles.heartbeatGrid}>
+            <View style={styles.heartbeatItem}>
+              <View style={[styles.heartbeatDot, { backgroundColor: '#10B981' }]} />
+              <Text style={styles.heartbeatCount}>{heartbeat.online_count}</Text>
+              <Text style={styles.heartbeatLabel}>{language === 'et' ? 'Aktiivne' : 'Online'}</Text>
+            </View>
+            <View style={styles.heartbeatItem}>
+              <View style={[styles.heartbeatDot, { backgroundColor: '#F59E0B' }]} />
+              <Text style={styles.heartbeatCount}>{heartbeat.warning_count}</Text>
+              <Text style={styles.heartbeatLabel}>{language === 'et' ? 'Hoiatus' : 'Warning'}</Text>
+            </View>
+            <View style={styles.heartbeatItem}>
+              <View style={[styles.heartbeatDot, { backgroundColor: '#EF4444' }]} />
+              <Text style={styles.heartbeatCount}>{heartbeat.critical_count}</Text>
+              <Text style={styles.heartbeatLabel}>{language === 'et' ? 'Kriitiline' : 'Critical'}</Text>
+            </View>
+          </View>
+          {heartbeat.critical_count > 0 && (
+            <View style={styles.heartbeatAlert}>
+              <Ionicons name="warning" size={14} color="#EF4444" />
+              <Text style={styles.heartbeatAlertText}>
+                {heartbeat.critical_count} {language === 'et' ? 'seadet pole vastanud >2h' : 'device(s) unresponsive >2h'}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        {/* Monthly Revenue Trend Chart */}
+        {revenueChart.labels.length > 0 && (
+          <View style={styles.chartContainer} data-testid="revenue-chart">
+            <Text style={styles.sectionTitle}>
+              {language === 'et' ? 'Igakuine tulu' : 'Monthly Revenue'}
+            </Text>
+            <LineChart
+              data={{
+                labels: revenueChart.labels,
+                datasets: [{ data: revenueChart.data.some(v => v > 0) ? revenueChart.data : [0, 0, 0, 0, 0, 0] }],
+              }}
+              width={Dimensions.get('window').width - 56}
+              height={200}
+              yAxisLabel="€"
+              yAxisSuffix=""
+              chartConfig={{
+                backgroundColor: '#1E293B',
+                backgroundGradientFrom: '#1E293B',
+                backgroundGradientTo: '#1E293B',
+                decimalPlaces: 0,
+                color: (opacity = 1) => `rgba(79, 70, 229, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(148, 163, 184, ${opacity})`,
+                style: { borderRadius: 12 },
+                propsForDots: {
+                  r: '5',
+                  strokeWidth: '2',
+                  stroke: '#4F46E5',
+                },
+                propsForBackgroundLines: {
+                  strokeDasharray: '',
+                  stroke: '#334155',
+                  strokeWidth: 0.5,
+                },
+              }}
+              bezier
+              style={{ borderRadius: 12, marginTop: 8 }}
+            />
+          </View>
+        )}
+
         <View style={styles.actionsContainer}>
           <TouchableOpacity
             style={styles.actionCard}
