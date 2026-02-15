@@ -263,42 +263,42 @@ export default function Dashboard() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={[]}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <View style={{flex: 1}}>
-          <Text style={styles.greeting}>{t('welcomeBack')}</Text>
-          <Text style={styles.username}>
+          <Text style={[styles.greeting, { color: colors.textMuted }]}>{t('welcomeBack')}</Text>
+          <Text style={[styles.username, { color: colors.text }]}>
             {firstName || username || 'Admin'}
           </Text>
         </View>
         <View style={styles.langSwitcher}>
           <TouchableOpacity
-            style={[styles.langButton, language === 'et' && styles.langButtonActive]}
+            style={[styles.langButton, { backgroundColor: colors.surface }, language === 'et' && styles.langButtonActive]}
             onPress={() => setLanguage('et')}
           >
-            <Text style={[styles.langText, language === 'et' && styles.langTextActive]}>ET</Text>
+            <Text style={[styles.langText, { color: colors.textMuted }, language === 'et' && styles.langTextActive]}>ET</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.langButton, language === 'en' && styles.langButtonActive]}
+            style={[styles.langButton, { backgroundColor: colors.surface }, language === 'en' && styles.langButtonActive]}
             onPress={() => setLanguage('en')}
           >
-            <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>EN</Text>
+            <Text style={[styles.langText, { color: colors.textMuted }, language === 'en' && styles.langTextActive]}>EN</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView
-        style={styles.content}
+        style={[styles.content, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.contentContainer}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />}
       >
         {/* Credit Balance Card */}
-        <View style={styles.creditBalanceCard} data-testid="dashboard-credit-card">
+        <View style={[styles.creditBalanceCard, { backgroundColor: colors.surface }]} data-testid="dashboard-credit-card">
           <View style={styles.creditBalanceIcon}>
             <Ionicons name="ticket" size={24} color="#F59E0B" />
           </View>
           <View style={styles.creditBalanceInfo}>
-            <Text style={styles.creditBalanceLabel}>
+            <Text style={[styles.creditBalanceLabel, { color: colors.textMuted }]}>
               {language === 'et' ? 'Krediidi saldo' : 'Credit Balance'}
             </Text>
             <Text style={styles.creditBalanceValue}>
@@ -326,18 +326,18 @@ export default function Dashboard() {
         {/* Admin Filter for Superadmins */}
         {isSuperAdmin && (
           <TouchableOpacity
-            style={styles.adminFilterButton}
+            style={[styles.adminFilterButton, { backgroundColor: colors.surface }]}
             onPress={() => setShowAdminFilter(true)}
             data-testid="admin-filter-btn"
           >
             <View style={styles.adminFilterContent}>
               <Ionicons name="funnel" size={18} color="#4F46E5" />
-              <Text style={styles.adminFilterLabel}>
+              <Text style={[styles.adminFilterLabel, { color: colors.textMuted }]}>
                 {language === 'et' ? 'Filtreeri admini järgi:' : 'Filter by Admin:'}
               </Text>
               <Text style={styles.adminFilterValue}>{getSelectedAdminName()}</Text>
             </View>
-            <Ionicons name="chevron-down" size={18} color="#94A3B8" />
+            <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
           </TouchableOpacity>
         )}
 
@@ -353,8 +353,8 @@ export default function Dashboard() {
             activeOpacity={1}
             onPress={() => setShowAdminFilter(false)}
           >
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>
+            <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
                 {language === 'et' ? 'Vali admin' : 'Select Admin'}
               </Text>
               
@@ -365,8 +365,8 @@ export default function Dashboard() {
                   setShowAdminFilter(false);
                 }}
               >
-                <Ionicons name="person" size={18} color={!selectedAdminId ? '#4F46E5' : '#94A3B8'} />
-                <Text style={[styles.modalOptionText, !selectedAdminId && styles.modalOptionTextActive]}>
+                <Ionicons name="person" size={18} color={!selectedAdminId ? '#4F46E5' : colors.textMuted} />
+                <Text style={[styles.modalOptionText, { color: colors.textMuted }, !selectedAdminId && styles.modalOptionTextActive]}>
                   {language === 'et' ? 'Minu andmed' : 'My Data'}
                 </Text>
                 {!selectedAdminId && <Ionicons name="checkmark" size={18} color="#4F46E5" />}
@@ -379,14 +379,14 @@ export default function Dashboard() {
                   setShowAdminFilter(false);
                 }}
               >
-                <Ionicons name="people" size={18} color={selectedAdminId === 'all' ? '#4F46E5' : '#94A3B8'} />
-                <Text style={[styles.modalOptionText, selectedAdminId === 'all' && styles.modalOptionTextActive]}>
+                <Ionicons name="people" size={18} color={selectedAdminId === 'all' ? '#4F46E5' : colors.textMuted} />
+                <Text style={[styles.modalOptionText, { color: colors.textMuted }, selectedAdminId === 'all' && styles.modalOptionTextActive]}>
                   {language === 'et' ? 'Kõik adminid' : 'All Admins'}
                 </Text>
                 {selectedAdminId === 'all' && <Ionicons name="checkmark" size={18} color="#4F46E5" />}
               </TouchableOpacity>
               
-              <View style={styles.modalDivider} />
+              <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
               
               {adminList.map((admin) => (
                 <TouchableOpacity
@@ -397,8 +397,8 @@ export default function Dashboard() {
                     setShowAdminFilter(false);
                   }}
                 >
-                  <Ionicons name="person-circle" size={18} color={selectedAdminId === admin.id ? '#4F46E5' : '#94A3B8'} />
-                  <Text style={[styles.modalOptionText, selectedAdminId === admin.id && styles.modalOptionTextActive]}>
+                  <Ionicons name="person-circle" size={18} color={selectedAdminId === admin.id ? '#4F46E5' : colors.textMuted} />
+                  <Text style={[styles.modalOptionText, { color: colors.textMuted }, selectedAdminId === admin.id && styles.modalOptionTextActive]}>
                     {admin.first_name || admin.username}
                   </Text>
                   {selectedAdminId === admin.id && <Ionicons name="checkmark" size={18} color="#4F46E5" />}
@@ -408,7 +408,7 @@ export default function Dashboard() {
           </TouchableOpacity>
         </Modal>
 
-        <Text style={styles.sectionTitle}>{language === 'et' ? 'Laenude ülevaade' : 'Loan Overview'}</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'et' ? 'Laenude ülevaade' : 'Loan Overview'}</Text>
 
         <View style={styles.statsGrid}>
           <TouchableOpacity
