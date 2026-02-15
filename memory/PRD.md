@@ -789,7 +789,44 @@ All 3 phases successfully implemented:
 - Test file: `/app/backend/tests/test_audit_credit_score.py`
 - Bug fixed: NotFoundException HTTP status code mapping (testing agent)
 
+### Session 20: Dark/Light Theme Toggle & Automatic Credit Score Adjustments (Feb 15, 2026)
+**COMPLETED - Both features fully implemented**
+
+1. **Dark/Light Theme Toggle** - IMPLEMENTED ✅
+   - Created ThemeContext (`frontend/src/context/ThemeContext.tsx`) with:
+     - `darkColors` and `lightColors` color schemes
+     - `useTheme()` hook providing: theme, toggleTheme, setTheme, colors, isDark
+     - Local storage persistence using AsyncStorage (key: `app_theme`)
+   - Updated root layout (`frontend/app/_layout.tsx`) to include ThemeProvider
+   - Added theme toggle UI in Settings page (`frontend/app/admin/settings.tsx`):
+     - New "Teema" / "Theme" section with Dark/Light toggle buttons
+     - Icons: Moon for dark, Sun for light
+     - Visual feedback with active border highlight
+   - Settings page header and some sections now use dynamic theme colors
+
+2. **Automatic Credit Score Adjustments** - IMPLEMENTED ✅
+   - Updated payment recording endpoint (`backend/routes/loans.py`):
+     - +5 points for on-time payments (`CREDIT_SCORE_ON_TIME_PAYMENT`)
+     - -10 points for late payments (`CREDIT_SCORE_LATE_PAYMENT`)
+     - Integrates with existing `update_credit_score()` function from credit_score route
+     - Response now includes `credit_score` object with change, reason, and new_score
+   - Updated late fee calculation endpoint:
+     - Applies -10 credit score penalty when client first becomes late
+     - Only penalizes once per late period (checks `was_late` flag)
+   - Credit score history automatically logged for all automatic adjustments
+
+**Files Modified:**
+- `frontend/src/context/ThemeContext.tsx` (NEW) - Theme context with dark/light support
+- `frontend/app/_layout.tsx` - Added ThemeProvider
+- `frontend/app/admin/settings.tsx` - Added theme toggle UI and dynamic colors
+- `backend/routes/loans.py` - Added automatic credit score adjustments
+
+**Testing Results:**
+- Backend payment endpoint tested via curl - credit score correctly increased by +5
+- Theme toggle UI visible and functional in Settings page
+- Theme preference persisted in local storage
+
 ## Current Backlog
-- P2: Dark/Light Theme Toggle
 - P3: Android Management API (AMAPI) Integration
 - P3: Push notifications (FCM)
+
