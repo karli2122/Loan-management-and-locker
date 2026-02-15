@@ -549,3 +549,63 @@ Refactored the 3131-line `server.py` into modular route files:
 
 **Known Limitation:**
 - `fetch-price` endpoint returns MOCKED estimated prices based on device model patterns, not real market data
+
+
+### Session 16: Bug Fixes - Auth & Data Display (Feb 15, 2026)
+**All 7 user-reported bugs fixed and verified (100% test pass rate):**
+
+1. **Dashboard Shows No Data** - FIXED ✅
+   - Root cause: `(tabs)/index.tsx` used `admin_id` instead of `admin_token` for `/api/reports/collection`
+   - Also fixed response mapping: API returns flat JSON, not nested `overview`/`financial` objects
+   - Dashboard now shows: 4 active loans, €676 collected, 18.8% collection rate, €3600 disbursed
+   - File: `frontend/app/admin/(tabs)/index.tsx`
+
+2. **Loans Tab Not Showing Active Loans** - FIXED ✅
+   - Root cause: `(tabs)/loans.tsx` used `admin_id` instead of `admin_token` for `/api/clients`
+   - Backend requires `admin_token` for all client endpoints after security audit
+   - File: `frontend/app/admin/(tabs)/loans.tsx`
+
+3. **Transactions Tab Only Showing Payments** - FIXED ✅
+   - Root cause: Used `admin_id` instead of `admin_token`, and only extracted `payments_history`
+   - Added loan disbursement entries from `loan_amount`/`principal_amount` fields
+   - Added filter tabs: All (Kõik) / Disbursements (Väljastused) / Payments (Maksed)
+   - Disbursements shown with amber color, payments with green
+   - File: `frontend/app/admin/(tabs)/transactions.tsx`
+
+4. **"Loan Management" Button on Dashboard** - REMOVED ✅
+   - Removed the `Laenuhaldus` action card from the tab index dashboard
+   - File: `frontend/app/admin/(tabs)/index.tsx`
+
+5. **Reports Tab** - VERIFIED ✅ (was already working)
+   - Reports page already uses `admin_token` correctly
+   - All 3 report endpoints return data properly
+
+6. **Device Management Page** - VERIFIED ✅ (was already working)
+   - Shows breakdown: Total, Locked, Registered, Unlocked devices
+   - Uses `/api/stats` endpoint which returns detailed device counts
+
+7. **Settings User Search** - VERIFIED ✅ (was already working)
+   - Search field "Otsi kasutajaid..." filters admin users by username/first_name/last_name
+
+**Previously Implemented (Already Working):**
+- Admin mode status badge auto-refresh (15-second interval) - Session 14
+- Calendar view for Add Loan due date - Session 14
+- Client details contract Preview/Share/Download buttons - Session 11
+
+**Files Modified:**
+- `frontend/app/admin/(tabs)/index.tsx` - Auth fix + response mapping + removed Loan Management button
+- `frontend/app/admin/(tabs)/loans.tsx` - Auth fix (admin_id → admin_token)
+- `frontend/app/admin/(tabs)/transactions.tsx` - Auth fix + loan disbursements + filter tabs
+- `frontend/app/admin/dashboard.tsx` - Auth fix + response mapping (standalone dashboard)
+
+**Testing Results:** 100% pass rate
+- Backend: 15/15 tests passed
+- Frontend: All 7 features verified working
+- Test file: `/app/backend/tests/test_bug_fixes_iteration20.py`
+
+## Current Backlog
+- P0: Client app crash on home screen (Android-specific, needs APK testing)
+- P2: Add data-testid attributes to interactive elements
+- P2: Heartbeat Monitoring improvements
+- P3: Android Management API (AMAPI) Integration
+- P3: Push notifications (FCM)
