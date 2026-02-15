@@ -421,7 +421,6 @@ Refactored the 3131-line `server.py` into modular route files:
 ## Current Backlog
 - P2: Add data-testid attributes to interactive elements
 - P3: Push notifications for payment reminders (requires FCM integration)
-- P3: Real-time EMI preview calculator on Add Loan page
 
 ### Session 14: Add Loan Features & UI Polish (Feb 15, 2026)
 **All features implemented and verified (100% test pass rate):**
@@ -463,9 +462,16 @@ Refactored the 3131-line `server.py` into modular route files:
 - `backend/models/schemas.py` - Added `due_date: Optional[str]` to LoanSetup
 - `backend/routes/loans.py` - Updated `setup_loan` to accept and process `due_date`
 - `backend/database.py` - Fixed registration_code index (sparse)
-- `frontend/app/admin/add-loan.tsx` - Date picker, dropdown padding, plan pre-fill
+- `frontend/app/admin/add-loan.tsx` - Date picker, dropdown padding, plan pre-fill, EMI calculator preview
 - `frontend/app/admin/client-details.tsx` - Auto-refresh interval
 - `frontend/app/client/support-chat.tsx` - Bottom padding increase
+
+7. **Real-time EMI Calculator Preview** - IMPLEMENTED ✅
+   - Shows live calculation card when loan amount, interest rate, and due date are filled
+   - Displays: Monthly EMI, Tenure, Total Interest, Total Payable
+   - Uses same reducing balance formula as backend
+   - Styled with green accent card with dark sub-items
+   - File: `frontend/app/admin/add-loan.tsx`
 
 ### Session 13: Bug Fixes - 7 Issues (Feb 15, 2026)
 **All 6 bugs/features implemented and verified (100% backend test pass rate):**
