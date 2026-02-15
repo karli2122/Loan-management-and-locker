@@ -289,6 +289,63 @@ class DevicePolicyManager {
       return 'error';
     }
   }
+
+  // ===================== FOREGROUND SERVICE =====================
+
+  /**
+   * Start the persistent foreground protection service.
+   * Shows a permanent "Device Protected" notification and monitors Device Admin status.
+   */
+  async startForegroundProtection(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.startForegroundProtection?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to start foreground protection:', error);
+      return 'error';
+    }
+  }
+
+  /**
+   * Stop the foreground protection service.
+   */
+  async stopForegroundProtection(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.stopForegroundProtection?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to stop foreground protection:', error);
+      return 'error';
+    }
+  }
+
+  // ===================== ACCESSIBILITY SERVICE =====================
+
+  /**
+   * Check if the EMI Accessibility Service is enabled in system settings.
+   */
+  async isAccessibilityEnabled(): Promise<boolean> {
+    if (Platform.OS !== 'android') return false;
+    try {
+      return (await nativeModule?.isAccessibilityServiceEnabled?.()) || false;
+    } catch (error) {
+      console.log('Failed to check accessibility service:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Open the system Accessibility Settings screen so the user can enable the service.
+   */
+  async openAccessibilitySettings(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.openAccessibilitySettings?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to open accessibility settings:', error);
+      return 'error';
+    }
+  }
 }
 
 export const devicePolicy = new DevicePolicyManager();
