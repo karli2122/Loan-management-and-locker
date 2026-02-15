@@ -136,6 +136,46 @@ export default function ClientHome() {
     return false;
   };
 
+  // Check and prompt for Accessibility Service
+  const checkAndPromptAccessibility = async () => {
+    if (Platform.OS !== 'android') return;
+    
+    try {
+      const enabled = await devicePolicy.isAccessibilityEnabled();
+      setIsAccessibilityEnabled(enabled);
+      
+      if (!enabled) {
+        console.log('Accessibility service not enabled — prompting user');
+        
+        const title = language === 'et' ? 'Seadme kaitse' : 'Device Protection';
+        const message = language === 'et'
+          ? 'Seadme turvalisuse tagamiseks lubage juurdepääsetavuse teenus. See kaitseb rakendust eemaldamise eest.'
+          : 'To fully protect your device, please enable the accessibility service. This prevents unauthorized app removal.';
+        
+        Alert.alert(
+          title,
+          message,
+          [
+            {
+              text: language === 'et' ? 'Luba' : 'OK',
+              onPress: async () => {
+                await devicePolicy.openAccessibilitySettings();
+              },
+            },
+            {
+              text: language === 'et' ? 'Hiljem' : 'Later',
+              style: 'cancel',
+            },
+          ]
+        );
+      } else {
+        console.log('Accessibility service already enabled');
+      }
+    } catch (error) {
+      console.log('Accessibility check error:', error);
+    }
+  };
+
   // Check and setup Device Admin
   const checkAndSetupDeviceProtection = async () => {
     if (Platform.OS !== 'android') return;
