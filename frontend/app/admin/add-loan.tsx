@@ -298,15 +298,17 @@ export default function AddLoan() {
       console.log('Loan setup successful:', loanResponseData);
       
       const monthlyEmi = loanResponseData?.loan_details?.monthly_emi;
+      const tenureMonths = loanResponseData?.loan_details?.tenure_months;
       const emiText = (typeof monthlyEmi === 'number' && !isNaN(monthlyEmi)) 
         ? `€${monthlyEmi.toFixed(2)}` 
         : 'N/A';
+      const tenureText = tenureMonths ? `${tenureMonths} ${language === 'et' ? 'kuud' : 'months'}` : '';
       
       Alert.alert(
         language === 'et' ? 'Õnnestus' : 'Success',
         language === 'et' 
-          ? `Laen loodud!\nIgakuine makse: ${emiText}`
-          : `Loan created successfully!\nMonthly payment: ${emiText}`,
+          ? `Laen loodud!\nIgakuine makse: ${emiText}${tenureText ? `\nPeriood: ${tenureText}` : ''}`
+          : `Loan created successfully!\nMonthly payment: ${emiText}${tenureText ? `\nTenure: ${tenureText}` : ''}`,
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error: any) {
