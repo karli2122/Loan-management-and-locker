@@ -83,11 +83,15 @@ export default function ClientDetails() {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [editDeviceModal, setEditDeviceModal] = useState(false);
+  const [editClientModal, setEditClientModal] = useState(false);
   const [warningMessage, setWarningMessage] = useState('');
   const [lockMessage, setLockMessage] = useState('');
   const [editDeviceMake, setEditDeviceMake] = useState('');
   const [editDeviceModel, setEditDeviceModel] = useState('');
   const [editDevicePrice, setEditDevicePrice] = useState('');
+  const [editClientName, setEditClientName] = useState('');
+  const [editClientPhone, setEditClientPhone] = useState('');
+  const [editClientEmail, setEditClientEmail] = useState('');
   const [userCredits, setUserCredits] = useState<number>(5);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
