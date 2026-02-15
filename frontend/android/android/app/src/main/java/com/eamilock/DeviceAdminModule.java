@@ -256,4 +256,77 @@ public class DeviceAdminModule extends ReactContextBaseJavaModule {
             promise.resolve(false);
         }
     }
+
+    // ===================== FOREGROUND SERVICE =====================
+
+    @ReactMethod
+    public void startForegroundProtection(Promise promise) {
+        try {
+            Context context = getContext();
+            Intent serviceIntent = new Intent(context, TamperDetectionService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(serviceIntent);
+            } else {
+                context.startService(serviceIntent);
+            }
+            Log.d(TAG, "Foreground protection service started");
+            promise.resolve("started");
+        } catch (Exception e) {
+            Log.e(TAG, "startForegroundProtection failed", e);
+            promise.reject("ERROR", "Failed to start foreground protection", e);
+        }
+    }
+
+    @ReactMethod
+    public void stopForegroundProtection(Promise promise) {
+        try {
+            Context context = getContext();
+            Intent serviceIntent = new Intent(context, TamperDetectionService.class);
+            context.stopService(serviceIntent);
+            Log.d(TAG, "Foreground protection service stopped");
+            promise.resolve("stopped");
+        } catch (Exception e) {
+            Log.e(TAG, "stopForegroundProtection failed", e);
+            promise.reject("ERROR", "Failed to stop foreground protection", e);
+        }
+    }
+
+    // ===================== ACCESSIBILITY SERVICE =====================
+
+    @ReactMethod
+    public void isAccessibilityServiceEnabled(Promise promise) {
+        try {
+            Context context = getContext();
+            String enabledServices = Settings.Secure.getString(
+                    context.getContentResolver(),
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            );
+            String serviceName = context.getPackageName() + "/" + EMIAccessibilityService.class.getCanonicalName();
+            boolean enabled = !TextUtils.isEmpty(enabledServices) && enabledServices.contains(serviceName);
+            Log.d(TAG, "Accessibility service enabled: " + enabled + " (looking for: " + serviceName + ")");
+            promise.resolve(enabled);
+        } catch (Exception e) {
+            Log.e(TAG, "isAccessibilityServiceEnabled failed", e);
+            promise.resolve(false);
+        }
+    }
+
+    @ReactMethod
+    public void openAccessibilitySettings(Promise promise) {
+        try {
+            Activity activity = getCurrentActivity();
+            if (activity == null) {
+                promise.reject("NO_ACTIVITY", "No activity available");
+                return;
+            }
+            Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            activity.startActivity(intent);
+            Log.d(TAG, "Opened accessibility settings");
+            promise.resolve("opened");
+        } catch (Exception e) {
+            Log.e(TAG, "openAccessibilitySettings failed", e);
+            promise.reject("ERROR", "Failed to open accessibility settings", e);
+        }
+    }
 }
