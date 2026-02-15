@@ -593,6 +593,52 @@ export default function AddLoan() {
           )}
         </View>
 
+        {/* EMI Calculator Preview */}
+        {emiPreview && (
+          <View style={styles.emiPreviewCard} data-testid="emi-preview-card">
+            <View style={styles.emiPreviewHeader}>
+              <Ionicons name="calculator" size={20} color="#10B981" />
+              <Text style={styles.emiPreviewTitle}>
+                {language === 'et' ? 'Laenu kalkulaator' : 'Loan Calculator'}
+              </Text>
+            </View>
+            <View style={styles.emiPreviewGrid}>
+              <View style={styles.emiPreviewItem}>
+                <Text style={styles.emiPreviewLabel}>
+                  {language === 'et' ? 'Kuumakse' : 'Monthly EMI'}
+                </Text>
+                <Text style={styles.emiPreviewValue}>
+                  €{emiPreview.monthlyEmi.toFixed(2)}
+                </Text>
+              </View>
+              <View style={styles.emiPreviewItem}>
+                <Text style={styles.emiPreviewLabel}>
+                  {language === 'et' ? 'Periood' : 'Tenure'}
+                </Text>
+                <Text style={styles.emiPreviewValueSmall}>
+                  {emiPreview.months} {language === 'et' ? 'kuud' : 'months'}
+                </Text>
+              </View>
+              <View style={styles.emiPreviewItem}>
+                <Text style={styles.emiPreviewLabel}>
+                  {language === 'et' ? 'Intress kokku' : 'Total Interest'}
+                </Text>
+                <Text style={[styles.emiPreviewValueSmall, { color: '#F59E0B' }]}>
+                  €{emiPreview.totalInterest.toFixed(2)}
+                </Text>
+              </View>
+              <View style={styles.emiPreviewItem}>
+                <Text style={styles.emiPreviewLabel}>
+                  {language === 'et' ? 'Kokku tagasi' : 'Total Payable'}
+                </Text>
+                <Text style={styles.emiPreviewValueSmall}>
+                  €{emiPreview.totalAmount.toFixed(2)}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         <TouchableOpacity
           style={[styles.submitButton, loading && styles.submitButtonDisabled]}
           onPress={handleSubmit}
