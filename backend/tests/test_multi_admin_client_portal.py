@@ -59,7 +59,7 @@ def all_admins(superadmin_token):
     """Get list of all admin IDs for filter testing"""
     admin_token, _ = superadmin_token
     response = requests.get(
-        f"{BASE_URL}/api/admin/all",
+        f"{BASE_URL}/api/admin/list-with-credits",
         params={"admin_token": admin_token}
     )
     if response.status_code == 200:
