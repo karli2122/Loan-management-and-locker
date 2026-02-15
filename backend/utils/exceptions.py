@@ -34,3 +34,9 @@ class AuthorizationException(ApplicationException):
     """Raised when authorization fails"""
     def __init__(self, message: str = "Permission denied.", correlation_id: str = None):
         super().__init__(message, "AUTHORIZATION_ERROR", correlation_id)
+
+
+class NotFoundException(ApplicationException):
+    """Raised when a resource is not found"""
+    def __init__(self, message: str = "Resource not found.", correlation_id: str = None):
+        super().__init__(message, "NOT_FOUND_ERROR", correlation_id)
