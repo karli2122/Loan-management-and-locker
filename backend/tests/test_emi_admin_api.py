@@ -17,7 +17,7 @@ import os
 import uuid
 
 # Use the preview URL from frontend/.env
-BASE_URL = "https://loan-admin-portal-1.preview.emergentagent.com"
+BASE_URL = "https://admin-portal-repair-2.preview.emergentagent.com"
 
 # Test credentials from review request
 TEST_USERNAME = "karli1987"

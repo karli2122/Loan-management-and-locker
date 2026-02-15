@@ -1,94 +1,124 @@
-<analysis>**original_problem_statement**: The user initially requested two new features:
-1.  **Regenerate Key**: Add a regenerate key button that appears when a key already exists. Each generation should cost the admin 1 credit.
-2.  **Loan Contract Generation**: When a loan is added, auto-generate a PDF contract based on a user-provided  template. This should include Preview, Download, and Share options.
+<analysis>**original_problem_statement**: The user initially requested features for regenerating client keys and auto-generating loan contracts. After those were implemented, a series of issues were reported and addressed.
 
-Due to limitations with the  email service's sandbox mode, the user requested workarounds to avoid using it. The agent implemented two workarounds:
-1.  A Test Email button to send the contract to the admin's own verified email.
-2.  A Download PDF and Share (via WhatsApp, etc.) button to bypass email entirely.
-
-After implementation, the user started reporting a 404 Not Found error upon login.
+The most recent set of requests from the user includes 7 items:
+1.  **Reports tab crashing the app.**
+2.  **Loan Creation UI changes**:
+    *   In the Add Loan form, if a loan plan is used, the yearly interest should be pre-filled.
+    *   The period field should be replaced with a due date field that uses a calendar picker.
+3.  **Saved loans are not appearing** in the loans tab.
+4.  **Add an edit client details** function to the client info page.
+5.  When adding a new client, **automatically register a test device** for them.
+6.  The **Fetch device price function returns a not found error.**
+7.  The **Add payment function fails with a cannot read property amount of undefined** error.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application's backend (FastAPI) and frontend (React Native/Expo) have been updated to include the requested features.
-- **Contract Generation**: An admin can preview, download, and share a loan contract PDF for a client.
-- **Regenerate Key**: An admin can regenerate a client's access key.
-- **Email Workaround**: The UI includes buttons to download the PDF and share it via the device's native share functionality, completely bypassing the need for an email service for contract delivery.
-- The agent has successfully tested all these features using  and the . However, the user is experiencing a critical login issue.
+The application is a full-stack loan administration portal with a FastAPI backend and a React Native/Expo frontend. The agent has successfully resolved several critical issues in this session, including:
+- A 404 Not Found login error, which was traced to the user accessing an old, incorrect preview URL.
+- A critical bug preventing device registration, caused by a mismatch between the API response key (uid=0(root) gid=0(root) groups=0(root)) and the frontend's expected key ().
+- Several minor UI and functional bugs, such as a missing function (), an incorrect EMI amount display, and adding an  field to the admin profile.
+All previous fixes were verified by the testing agent. The agent has just begun investigating the new list of 7 issues reported by the user.
 
 **Last working item**:
--   Last item agent was working: The agent was investigating a 404 Not Found error that the user is experiencing after a successful login. The agent ran the frontend testing suite, which confirmed that the login functionality and all related features were working correctly. The agent was unable to reproduce the user's error.
--   Status: BLOCKED
--   Agent Testing Done: Y
+-   Last item agent was working: The agent was starting the investigation for a new list of 7 bugs and feature requests reported by the user. The agent has viewed the relevant source code files (, , , , , ) to gather context before starting the fixes.
+-   Status: NOT STARTED
+-   Agent Testing Done: N
 -   Which testing method agent to use? both
 -   User Testing Done: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: User reports 404 Not Found error after login (P0)**
+-   **Issue 1: Reports tab crashes the app (P0)**
+-   **Issue 2: Loan creation UI/UX issues (P0)**
+-   **Issue 3: Saved loans don't show in the loans tab (P0)**
+-   **Issue 4: Fetch device price gives a not found error (P0)**
+-   **Issue 5: Add payment gives a runtime error (P0)**
 
   **Issues Detail**:
-  - **Issue 1**: User reports 404 Not Found error after login.
-     - **Attempted fixes**: The agent verified the backend login endpoint () is working (returns 200). The agent restarted the frontend and backend services. The agent ran the  which performed a full end-to-end test, including login, and all tests passed without any 404 errors. The issue could not be reproduced by the agent.
+  - **Issue 1: Reports tab crashes the app**
+     - **Attempted fixes**: None. Investigation just began.
      - **Next debug checklist**:
-        1.  Ask the user for more specific details:
-            - The exact URL they are accessing in their browser.
-            - A screenshot of the 404 error page, including the URL bar.
-            - The exact steps they take (e.g., open URL -> enter credentials -> click login -> see 404).
-        2.  Instruct the user to perform a hard refresh (Ctrl+Shift+R or Cmd+Shift+R) and clear their browser cache, or try logging in via an incognito/private browser window.
-        3.  Check frontend routing logic in the Expo app configuration () and React Navigation setup to ensure there are no misconfigurations.
-        4.  Examine  to review the  function and the navigation logic upon successful authentication.
-        5.  Check NGINX/ingress controller logs if possible for any routing anomalies, although this is less likely if the testing agent succeeded.
-     - **Why fix this issue and what will be achieved with the fix?**: This is a critical, blocking issue. The user cannot access the application, rendering all other features unusable.
-     - **Status**: BLOCKED
+        1. Examine .
+        2. Check the browser's developer console for error messages when navigating to the reports tab.
+        3. Verify the data-fetching logic and API endpoints being called are correct and return valid data.
+        4. Check for rendering errors, especially those related to accessing properties of  or  data.
+     - **Why fix this issue and what will be achieved with the fix?**: The reports section is a key feature and is currently unusable. Fixing it will restore access to financial and operational statistics.
+     - **Status**: NOT STARTED
      - **Is recurring issue?** N
      - **Should Test frontend/backend/both after fix?** frontend
-     - **Blocked on other issue**: User feedback/details.
+     - **Blocked on other issue**: None
+
+  - **Issue 2: Loan creation UI/UX issues**
+     - **Attempted fixes**: None.
+     - **Next debug checklist**:
+        1. Modify the Add Loan form in .
+        2. Change the period input field to a due date field, integrating the  component from .
+        3. Update the data handling logic to use the selected date.
+     - **Why fix this issue and what will be achieved with the fix?**: This will improve the user experience for adding loans, making the due date selection more intuitive.
+     - **Status**: NOT STARTED
+     - **Is recurring issue?** N
+     - **Should Test frontend/backend/both after fix?** frontend
+     - **Blocked on other issue**: None
+
+  - **Issue 3: Saved loans don't show in the loans tab**
+     - **Attempted fixes**: None.
+     - **Next debug checklist**:
+        1. Review the data-fetching logic in .
+        2. Use  to test the backend API endpoint responsible for listing loans to ensure it returns the correct data.
+        3. Check the state management and rendering logic to ensure the fetched loan data is correctly displayed in the UI.
+     - **Why fix this issue and what will be achieved with the fix?**: This is a critical bug as it prevents admins from viewing or managing existing loans.
+     - **Status**: NOT STARTED
+     - **Is recurring issue?** N
+     - **Should Test frontend/backend/both after fix?** both
+     - **Blocked on other issue**: None
+
+  - **Issue 4: Fetch device price gives a not found error**
+     - **Attempted fixes**: None.
+     - **Next debug checklist**:
+        1. Locate the Fetch device price functionality in the frontend code.
+        2. Inspect the network request being made (URL, parameters) when the function is triggered.
+        3. Verify the corresponding backend endpoint exists and is being called correctly. This is likely an incorrect URL or a missing ID.
+     - **Why fix this issue and what will be achieved with the fix?**: This feature is broken, preventing users from getting device price information.
+     - **Status**: NOT STARTED
+     - **Is recurring issue?** N
+     - **Should Test frontend/backend/both after fix?** both
+     - **Blocked on other issue**: None
+
+  - **Issue 5: Add payment gives error cannot read property amount of undefined**
+     - **Attempted fixes**: None.
+     - **Next debug checklist**:
+        1. Analyze .
+        2. Trace the data flow for the object on which  is being accessed.
+        3. Add defensive coding (e.g., optional chaining ) or ensure the data object (likely related to the selected loan) is correctly populated before being used.
+     - **Why fix this issue and what will be achieved with the fix?**: This is a critical bug blocking the core functionality of recording payments.
+     - **Status**: NOT STARTED
+     - **Is recurring issue?** N
+     - **Should Test frontend/backend/both after fix?** frontend
+     - **Blocked on other issue**: None
 
 **In progress Task List**:
 -   None.
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks**:
-    - **Task 1: Resolve Minor UI/API Issues (P1)**
-        - Fix the cosmetic issue where the EMI Amount shows €0 in the Laenu andmed section.
-        - Investigate and fix the 422 error from the reports API, which may affect dashboard stats.
-    - **Task 2: Fix Missing  function (P2)**
-        - The  function is called in  but is not defined. This was discovered by the linter and should be fixed to prevent potential runtime errors.
+    - **Task 1: Add edit client details function (P1)**: Add an Edit button and form to  to allow updating client information. This may require a new backend endpoint.
+    - **Task 2: Auto-register test device on client creation (P1)**: Modify the add client backend logic in  to automatically create and associate a test device.
+    - **Task 3: Pre-fill interest from loan plan (P2)**: In the Add Loan form in , when a loan plan is selected, automatically populate the interest rate field.
 - **Future Tasks**:
-    - **Task 1: Implement Admin Profile Update UI (P2)**
-        - The  model has an  field, but there is no UI for the admin to set or update it. An Edit Profile page should be created.
+    - None identified beyond the current list.
 
 **Completed work in this session**
-- **Loan Contract Workaround (DONE)**:
-    - Added Download PDF () and Share () buttons to .
-    - Implemented  and  functions to allow sharing the contract PDF via the device's native share menu, bypassing .
-- **Email Test Workaround (DONE)**:
-    - Added a Test Email () button to .
-    - Updated  with a  query parameter to send the contract to a verified admin email address.
-- **Backend Fixes & Improvements (DONE)**:
-    - Added email validation in  to prevent crashes when the admin or client has an invalid email format.
-    - Added user-friendly error handling for the Resend API's sandbox limitations.
-- **Full Feature Testing (DONE)**:
-    - Verified Regenerate Key, Contract Preview, and the new Download/Share workarounds.
-    - Ran a comprehensive frontend test suite () which confirmed all core features, including login, are working correctly.
+-   **Login 404 Error (DONE)**: Resolved a critical login blocker by instructing the user to use the correct application URL.
+-   **Device Registration Bug (DONE)**: Fixed a bug in  where the frontend expected  from the API but received uid=0(root) gid=0(root) groups=0(root), causing registration to fail.
+-   **Admin Profile Address (DONE)**: Added an  field to the Edit Profile modal in  and verified the backend update.
+-   **Minor Bug Fixes (DONE)**:
+    - Implemented the missing  function in .
+    - Corrected the EMI amount display in .
+-   **Environment Cleanup (DONE)**: Resolved an  warning by removing  to enforce .
+-   **Full Testing (DONE)**: Successfully ran  to verify all the fixes above.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1**: **EMI Amount shows €0**: In the Laenu andmed section on the client details page, the EMI amount is displayed as €0. This is a cosmetic issue as the correct data appears elsewhere.
-    -   **Debug checklist**: Check the data-binding in  for the Laenu andmed section. Verify the correct field from the loan object is being used.
-    -   **Why to solve this**: To avoid confusion and display accurate data consistently across the UI.
-    -   **Should Test frontend/backend/both after fix**: frontend
-    -   **Is recurring issue?** N
--   **Issue 2**: **Reports API returns 422**: The testing agent noted that calling the reports API results in a 422 Unprocessable Entity error.
-    -   **Debug checklist**: Check the backend logs when the reports endpoint is called. Review the Pydantic models and logic in  to see what data validation is failing.
-    -   **Why to solve this**: This may prevent dashboard statistics from loading correctly.
-    -   **Should Test frontend/backend/both after fix**: backend
-    -   **Is recurring issue?** N
--   **Issue 3**: **Missing  function**: The function is called in  but is not defined.
-    -   **Debug checklist**: Find where  is being called and determine its purpose. It's likely intended to handle API errors by logging the user out. Implement the function (e.g., to navigate to the login page).
-    -   **Why to solve this**: To prevent a runtime crash if an API call fails authentication.
-    -   **Should Test frontend/backend/both after fix**: frontend
-    -   **Is recurring issue?** N
+-   None. All previously identified issues were resolved in this session.
 
 **Known issue recurrence from previous fork**
 -   None.
@@ -100,68 +130,71 @@ The application's backend (FastAPI) and frontend (React Native/Expo) have been u
 -   FastAPI backend with a modular router-based architecture.
 -   React Native (Expo) frontend for web and mobile.
 -   JWT-based authentication.
--   PDF Generation:  for template reading,  for PDF creation.
--   React Native  and  APIs for native device functionality.
+-    for UI components.
 
 **key DB schema**
--   No changes in this session.
+-   No changes to the DB schema in this session.
 
 **changes in tech stack**
--   No new dependencies were added. The focus was on using existing React Native APIs (, ).
+-   None.
 
 **All files of reference**
--    (Modified for email validation, error handling, and test mode)
--    (Modified to add Download and Share buttons and handlers)
--    (Modified to add styles for new buttons)
--    (Modified to add a verified test email address)
--    (File to check for debugging the login 404 error)
+-    (Fixed device registration bug)
+-    (Fixed EMI amount, added )
+-    (Added address field to profile)
+-    (Viewed for investigation of crash)
+-    (Viewed for investigation of loan issues)
+-    (Viewed for investigation of payment error)
+-    (Viewed for investigation)
+-    (Viewed for investigation)
 
 **Areas that need refactoring**:
 -   None.
 
 **key api endpoints**
--   : (To be debugged from user's perspective)
--   : (Working)
--   : (Working, with  query param)
+-    (Updated to support )
+-    (Functionality verified, frontend consumer fixed)
+-   Endpoints related to reports, loans, and payments need to be investigated as part of the new bug list.
 
 **Critical Info for New Agent**
--   **Your immediate priority is the 404 Not Found login error reported by the user.** Do not proceed with any other tasks until this is resolved.
--   The agent's own testing could not reproduce the error. This strongly suggests the issue is environment-specific to the user (e.g., browser cache, incorrect URL, network proxy).
--   You MUST get more information from the user before attempting a fix. Ask for the exact URL they are using and a screenshot of the error page.
--   Instruct the user to try clearing their cache or using an incognito window as a first step.
+-   **Your immediate priority is the new list of 7 issues reported by the user.** They are a mix of critical bugs and feature requests.
+-   The issues are spread across different modules (Reports, Loans, Clients, Payments), so approach them systematically.
+-   The agent has already viewed the relevant files, providing a good starting point for debugging.
+-   Prioritize the critical bugs that block core functionality (Reports crash, loans not showing, add payment error) before working on the feature enhancements.
 
 **documents and test reports created in this job**
 -   
+-    (Updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-- **User**: Still error 404. **Status**: Pending Resolution.
-- **Agent**: Summarized testing agent results, confirmed login works, and asked for more info on the 404.
-- **User**: Front end test suite 3. **Status**: Completed.
-- **Agent**: Acknowledged the 404 and asked for details.
-- **User**: Login error 404 not found. **Status**: Pending Resolution.
-- **Agent**: Summarized the No Resend workaround.
-- **User**: Add a new workaround so dont have to use resend. **Status**: Completed.
-- **Agent**: Confirmed the previous Test Email workaround was already implemented.
-- **User**: Add a workaround (second time). **Status**: Completed.
-- **Agent**: Explained the Test Email workaround was implemented.
+1.  **User**: Reports tab opening crashes the app... (Lists 7 new issues). **Status**: Acknowledged, Investigation Started.
+2.  **Agent**: Confirmed the device registration bug is fixed and asked the user to try again.
+3.  **User**: Generated keys dont register device , says wrong code. **Status**: Resolved.
+4.  **Agent**: Explained the API restart reasons (hot reload, new session).
+5.  **User**: Check logs why api restart. **Status**: Completed.
+6.  **Agent**: Confirmed API status is healthy and all services are running.
+7.  **User**: Check api status and logs. **Status**: Completed.
+8.  **Agent**: Confirmed  was removed.
+9.  **User**:  command. **Status**: Resolved.
+10. **Agent**: Explained the testing agent results and updated the PRD.
 
 **Project Health Check:**
--   **Broken**: The application is not usable for the user due to a critical 404 Not Found error after login, even though automated tests pass.
+-   **Broken**: Multiple core features are unusable due to critical bugs reported by the user (Reports crash, loans not visible, payments fail).
 
 **3rd Party Integrations**
--   ****: Used for reading  templates.
--   ****: Used for generating PDF files.
--   ****: Used for the optional Test Email feature; a primary dependency has been removed via the Download/Share workaround.
+-   : Reading  templates.
+-   : Generating PDF files.
+-   : Optional email sending.
 
 **Testing status**
--   Testing agent used after significant changes: YES ( was run).
+-   Testing agent used after significant changes: YES. The previous set of fixes was verified by .
 -   Troubleshoot agent used after agent stuck in loop: NO
--   Test files created: None.
--   Known regressions: A critical login regression is reported by the user, but not reproducible by the agent.
+-   Test files created: []
+-   Known regressions: The user has reported multiple regressions/new bugs that are now the top priority.
 
 **Credentials to test flow:**
 -   **Superadmin**: , 
 -   **Admin**: , 
 
 **What agent forgot to execute**
--   The agent could not resolve the user's primary reported issue (404 error), despite multiple attempts and running a full test suite. The next step requires gathering more specific information from the user.</analysis>
+-   The agent has not yet started implementing fixes for the 7 new issues reported by the user. The immediate next step is to create a plan to address them.</analysis>

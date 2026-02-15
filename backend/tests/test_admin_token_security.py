@@ -22,7 +22,7 @@ import os
 import uuid
 
 # Use the public URL for testing
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://loan-admin-portal-1.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://admin-portal-repair-2.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 SUPERADMIN_USERNAME = "karli1987"
