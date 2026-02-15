@@ -76,6 +76,12 @@ export default function AdminSettings() {
   
   // User search state
   const [userSearchQuery, setUserSearchQuery] = useState('');
+  
+  // Late Fee & Auto-Lock settings states
+  const [lateFeePercent, setLateFeePercent] = useState<string>('2.0');
+  const [autoLockGraceDays, setAutoLockGraceDays] = useState<string>('3');
+  const [autoLockEnabled, setAutoLockEnabled] = useState<boolean>(true);
+  const [settingsSaving, setSettingsSaving] = useState(false);
 
   const handleAuthError = async () => {
     await AsyncStorage.multiRemove(['admin_token', 'admin_stay_signed_in']);
