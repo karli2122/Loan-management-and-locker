@@ -61,34 +61,29 @@ export default function Dashboard() {
   const fetchStats = async () => {
     const baseUrl = API_URL;
     try {
-      const adminId = await AsyncStorage.getItem('admin_id');
-      if (!adminId) {
-        console.error('Admin ID not found');
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      if (!adminToken) {
+        console.error('Admin token not found');
         return;
       }
       
-      const response = await fetch(`${baseUrl}/api/reports/collection?admin_id=${adminId}`);
+      const response = await fetch(`${baseUrl}/api/reports/collection?admin_token=${adminToken}`);
       if (!response.ok) {
         console.error('API error:', response.status);
         return;
       }
       const data = await response.json();
       
-      // Safe access with fallbacks
+      // API returns flat structure
       setLoanStats({
-        total_clients: data?.overview?.total_clients ?? 0,
-        active_loans: data?.overview?.active_loans ?? 0,
-        completed_loans: data?.overview?.completed_loans ?? 0,
-        overdue_clients: data?.overview?.overdue_clients ?? 0,
-        total_disbursed: data?.financial?.total_disbursed ?? 0,
-        total_collected: data?.financial?.total_collected ?? 0,
-        total_outstanding: data?.financial?.total_outstanding ?? 0,
-        collection_rate: data?.financial?.collection_rate ?? 0,
-      });
-      setMonthStats({
-        revenue: data?.this_month?.total_collected ?? 0,
-        profit: data?.this_month?.profit_collected ?? 0,
-        dueOutstanding: data?.this_month?.due_outstanding ?? 0,
+        total_clients: data.total_clients ?? 0,
+        active_loans: data.active_loans ?? 0,
+        completed_loans: data.completed_loans ?? 0,
+        overdue_clients: data.overdue_loans ?? 0,
+        total_disbursed: data.total_disbursed ?? 0,
+        total_collected: data.total_collected ?? 0,
+        total_outstanding: data.total_outstanding ?? 0,
+        collection_rate: data.collection_rate ?? 0,
       });
     } catch (error) {
       console.error('Failed to fetch stats:', error);
