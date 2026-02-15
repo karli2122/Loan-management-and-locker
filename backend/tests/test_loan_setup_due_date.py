@@ -40,16 +40,28 @@ class TestLoanSetupWithDueDate:
     
     def create_test_client(self, name_suffix=""):
         """Helper to create a test client"""
+        import time
         client_data = {
             "name": f"TEST_LoanSetup_{name_suffix}_{uuid.uuid4().hex[:6]}",
             "phone": f"+372{uuid.uuid4().hex[:8]}",
             "email": f"test_{uuid.uuid4().hex[:6]}@test.com"
         }
-        response = requests.post(
-            f"{BASE_URL}/api/clients?admin_token={self.admin_token}",
-            json=client_data
-        )
-        assert response.status_code == 201, f"Failed to create client: {response.text}"
+        # Retry logic for intermittent 520 errors
+        for attempt in range(3):
+            response = requests.post(
+                f"{BASE_URL}/api/clients?admin_token={self.admin_token}",
+                json=client_data
+            )
+            if response.status_code in [200, 201]:
+                client = response.json()
+                self.test_client_ids.append(client["id"])
+                return client
+            elif response.status_code == 520:
+                time.sleep(2)  # Wait before retry
+                continue
+            else:
+                break
+        assert response.status_code in [200, 201], f"Failed to create client: {response.text}"
         client = response.json()
         self.test_client_ids.append(client["id"])
         return client
