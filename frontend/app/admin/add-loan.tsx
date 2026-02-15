@@ -506,19 +506,59 @@ export default function AddLoan() {
           </View>
 
           <Text style={styles.label}>
-            {language === 'et' ? 'Periood (kuud)' : 'Tenure (months)'}
+            {language === 'et' ? 'Tähtaeg' : 'Due Date'}
           </Text>
-          <View style={styles.inputContainer}>
-            <Ionicons name="calendar" size={20} color="#64748B" />
-            <TextInput
-              style={styles.input}
-              placeholder="12"
-              placeholderTextColor="#64748B"
-              value={tenure}
-              onChangeText={setTenure}
-              keyboardType="number-pad"
-            />
-          </View>
+          {Platform.OS === 'web' ? (
+            <View style={styles.inputContainer}>
+              <Ionicons name="calendar" size={20} color="#64748B" />
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e: any) => setDueDate(e.target.value)}
+                min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+                style={{
+                  flex: 1,
+                  fontSize: 16,
+                  color: '#fff',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  fontFamily: 'inherit',
+                  colorScheme: 'dark',
+                }}
+                data-testid="due-date-input"
+              />
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.inputContainer}
+              onPress={() => {
+                // Fallback for native: set a default date 12 months from now
+                if (!dueDate) {
+                  const defaultDate = new Date();
+                  defaultDate.setMonth(defaultDate.getMonth() + 12);
+                  setDueDate(defaultDate.toISOString().split('T')[0]);
+                }
+              }}
+            >
+              <Ionicons name="calendar" size={20} color="#64748B" />
+              <Text style={{ flex: 1, fontSize: 16, color: dueDate ? '#fff' : '#64748B' }}>
+                {dueDate || (language === 'et' ? 'Vali kuupäev' : 'Select date')}
+              </Text>
+            </TouchableOpacity>
+          )}
+          {dueDate && (
+            <Text style={styles.dueDateInfo} data-testid="due-date-info">
+              {(() => {
+                const now = new Date();
+                const due = new Date(dueDate);
+                const diffMonths = (due.getFullYear() - now.getFullYear()) * 12 + (due.getMonth() - now.getMonth());
+                return language === 'et'
+                  ? `~${Math.max(1, diffMonths)} kuud`
+                  : `~${Math.max(1, diffMonths)} months`;
+              })()}
+            </Text>
+          )}
         </View>
 
         <TouchableOpacity
