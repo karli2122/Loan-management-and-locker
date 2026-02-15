@@ -98,12 +98,12 @@ export default function TransactionsTab() {
   };
 
   useEffect(() => {
-    fetchPayments();
+    fetchTransactions();
   }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchPayments();
+    await fetchTransactions();
     setRefreshing(false);
   };
 
@@ -116,33 +116,56 @@ export default function TransactionsTab() {
     });
   };
 
-  const renderPayment = ({ item }: { item: Payment }) => (
-    <TouchableOpacity
-      style={styles.paymentCard}
-      onPress={() => router.push(`/admin/client-details?id=${item.client_id}`)}
-    >
-      <View style={styles.paymentHeader}>
-        <View style={styles.paymentIcon}>
-          <Ionicons name="cash" size={24} color="#10B981" />
+  const filteredTransactions = filter === 'all' 
+    ? transactions 
+    : transactions.filter(t => t.type === filter);
+
+  const renderTransaction = ({ item }: { item: Transaction }) => {
+    const isDisbursement = item.type === 'disbursement';
+    return (
+      <TouchableOpacity
+        style={styles.paymentCard}
+        onPress={() => router.push(`/admin/client-details?id=${item.client_id}`)}
+        data-testid={`transaction-${item.id}`}
+      >
+        <View style={styles.paymentHeader}>
+          <View style={[styles.paymentIcon, isDisbursement && styles.disbursementIcon]}>
+            <Ionicons 
+              name={isDisbursement ? 'arrow-up-circle' : 'cash'} 
+              size={24} 
+              color={isDisbursement ? '#F59E0B' : '#10B981'} 
+            />
+          </View>
+          <View style={styles.paymentInfo}>
+            <Text style={styles.clientName}>{item.client_name}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.paymentDate}>{formatDate(item.date)}</Text>
+              <View style={[styles.typeBadge, isDisbursement ? styles.disbursementBadge : styles.paymentBadge]}>
+                <Text style={styles.typeBadgeText}>
+                  {isDisbursement 
+                    ? (language === 'et' ? 'Väljastus' : 'Disbursed') 
+                    : (language === 'et' ? 'Makse' : 'Payment')}
+                </Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.amountContainer}>
+            <Text style={[styles.amount, isDisbursement && styles.disbursementAmount]}>
+              {isDisbursement ? '-' : '+'}€{item.amount.toFixed(2)}
+            </Text>
+            {item.payment_method && (
+              <Text style={styles.paymentMethod}>{item.payment_method}</Text>
+            )}
+          </View>
         </View>
-        <View style={styles.paymentInfo}>
-          <Text style={styles.clientName}>{item.client_name}</Text>
-          <Text style={styles.paymentDate}>{formatDate(item.payment_date)}</Text>
-        </View>
-        <View style={styles.amountContainer}>
-          <Text style={styles.amount}>€{item.amount.toFixed(2)}</Text>
-          {item.payment_method && (
-            <Text style={styles.paymentMethod}>{item.payment_method}</Text>
-          )}
-        </View>
-      </View>
-      {item.notes && (
-        <Text style={styles.notes} numberOfLines={2}>
-          {item.notes}
-        </Text>
-      )}
-    </TouchableOpacity>
-  );
+        {item.notes && (
+          <Text style={styles.notes} numberOfLines={2}>
+            {item.notes}
+          </Text>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
@@ -158,10 +181,38 @@ export default function TransactionsTab() {
         </TouchableOpacity>
       </View>
 
+      {/* Filter tabs */}
+      <View style={styles.filterRow}>
+        <TouchableOpacity
+          style={[styles.filterTab, filter === 'all' && styles.filterTabActive]}
+          onPress={() => setFilter('all')}
+        >
+          <Text style={[styles.filterTabText, filter === 'all' && styles.filterTabTextActive]}>
+            {language === 'et' ? 'Kõik' : 'All'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterTab, filter === 'disbursement' && styles.filterTabActive]}
+          onPress={() => setFilter('disbursement')}
+        >
+          <Text style={[styles.filterTabText, filter === 'disbursement' && styles.filterTabTextActive]}>
+            {language === 'et' ? 'Väljastused' : 'Disbursements'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterTab, filter === 'payment' && styles.filterTabActive]}
+          onPress={() => setFilter('payment')}
+        >
+          <Text style={[styles.filterTabText, filter === 'payment' && styles.filterTabTextActive]}>
+            {language === 'et' ? 'Maksed' : 'Payments'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <FlatList
-        data={payments}
-        renderItem={renderPayment}
-        keyExtractor={(item, index) => `${item.client_id}-${index}`}
+        data={filteredTransactions}
+        renderItem={renderTransaction}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />
