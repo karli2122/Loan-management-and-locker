@@ -693,9 +693,48 @@ Refactored the 3131-line `server.py` into modular route files:
 
 **Note:** Currently no clients have overdue payments, so auto-lock returns 0 locked devices. The feature activates when `days_overdue > auto_lock_grace_days`.
 
+### Session 17c: Admin Configuration UI - Phase 3 (Feb 15, 2026)
+**COMPLETED - Backend & Frontend Implementation**
+
+1. **Admin Settings Backend Endpoints** - IMPLEMENTED ✅
+   - `GET /api/admin/settings` - Get current admin's default settings
+   - `PUT /api/admin/settings` - Update settings with validation (percent 0-100, grace days 1-365)
+   - `POST /api/admin/settings/apply-to-all` - Apply settings to all existing clients
+
+2. **AdminSettings Model** - IMPLEMENTED ✅
+   - Added to `models/schemas.py`
+   - Fields: `default_late_fee_percent`, `default_auto_lock_grace_days`, `default_auto_lock_enabled`
+
+3. **Settings Page UI** - IMPLEMENTED ✅
+   - New "Late Fee & Auto-Lock" section in Admin Settings page
+   - Late Fee Percent input with validation
+   - Grace Period (days) input
+   - Auto-Lock Enabled toggle
+   - "Save Settings" button
+   - "Apply to All Clients" button
+
+**Files Modified:**
+- `backend/routes/admin.py` - Added 3 admin settings endpoints
+- `backend/models/schemas.py` - Added AdminSettings and AdminSettingsUpdate models
+- `frontend/app/admin/settings.tsx` - Added settings section UI and functions
+
+**Testing Results:** 100% pass rate
+- Backend: 12/12 tests passed
+- Frontend: 100% verified
+- Test file: `/app/backend/tests/test_admin_settings.py`
+
+## FEATURE COMPLETE: Late Fee Auto-Calculation & Auto-Lock
+
+All 3 phases successfully implemented:
+- **Phase 1**: Late fee calculation endpoints + Frontend display ✅
+- **Phase 2**: Auto-lock processing endpoints ✅
+- **Phase 3**: Admin configuration UI ✅
+
 ## Current Backlog
-- P0: Phase 3 - Admin Configuration UI (settings page for late fee rate and grace period)
-- P0: Client app crash on home screen (Android-specific, needs APK testing)
-- P2: Add data-testid attributes to interactive elements
+- P1: Multi-Admin Dashboard Analytics
+- P1: Client Self-Service Portal
+- P2: Audit Log - Track all admin actions
+- P2: Client Credit Score Tracking
+- P2: Dark/Light Theme Toggle
 - P3: Android Management API (AMAPI) Integration
 - P3: Push notifications (FCM)
