@@ -268,7 +268,7 @@ export default function AdminLogin() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -278,31 +278,31 @@ export default function AdminLogin() {
             <View style={styles.iconContainer}>
               <Ionicons name="shield" size={50} color="#fff" />
             </View>
-            <Text style={styles.title}>{t('adminLogin')}</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: colors.text }]}>{t('adminLogin')}</Text>
+            <Text style={[styles.subtitle, { color: colors.textMuted }]}>
               {t('signInToManage')}
             </Text>
           </View>
 
           <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Ionicons name="person" size={20} color="#64748B" style={styles.inputIcon} />
+            <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Ionicons name="person" size={20} color={colors.textMuted} style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 placeholder={t('username')}
-                placeholderTextColor="#64748B"
+                placeholderTextColor={colors.textMuted}
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
               />
             </View>
 
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed" size={20} color="#64748B" style={styles.inputIcon} />
+            <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Ionicons name="lock-closed" size={20} color={colors.textMuted} style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 placeholder={t('password')}
-                placeholderTextColor="#64748B"
+                placeholderTextColor={colors.textMuted}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -311,7 +311,7 @@ export default function AdminLogin() {
                 <Ionicons
                   name={showPassword ? 'eye-off' : 'eye'}
                   size={20}
-                  color="#64748B"
+                  color={colors.textMuted}
                 />
               </TouchableOpacity>
             </View>
@@ -320,10 +320,10 @@ export default function AdminLogin() {
               <Switch
                 value={staySignedIn}
                 onValueChange={setStaySignedIn}
-                trackColor={{ false: '#334155', true: '#4F46E5' }}
+                trackColor={{ false: colors.border, true: '#4F46E5' }}
                 thumbColor="#fff"
               />
-              <Text style={styles.rememberText}>{t('staySignedIn')}</Text>
+              <Text style={[styles.rememberText, { color: colors.textSecondary }]}>{t('staySignedIn')}</Text>
             </View>
 
             <TouchableOpacity
