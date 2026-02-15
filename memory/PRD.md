@@ -458,6 +458,40 @@ Refactored the 3131-line `server.py` into modular route files:
 **Testing Results:** 100% pass rate (5/5 backend tests, frontend verified via screenshot)
 - Test file: `/app/backend/tests/test_loan_setup_due_date.py`
 
+### Session 15: Tamper Protection - Foreground Service, Accessibility Service, Permission Fix (Feb 15, 2026)
+
+1. **Foreground Service (Persistent)** - IMPLEMENTED
+   - Rewrote `TamperDetectionService.java` as a proper foreground service
+   - Shows permanent "Device Protected" notification (cannot be dismissed)
+   - Monitors Device Admin status every 10 seconds
+   - Detects tamper (admin disabled) → broadcasts event to React Native
+   - `START_STICKY` — Android restarts service if killed
+   - Boot Receiver restarts service on device boot
+   - Files: `TamperDetectionService.java`, `DeviceAdminModule.java`, `DevicePolicy.ts`
+
+2. **Accessibility Service** - IMPLEMENTED
+   - Created `EMIAccessibilityService.java` — monitors window state changes
+   - Detects Settings > Apps, App Info, Manage Applications screens
+   - Covers: stock Android, Samsung, MIUI, Oppo/ColorOS settings packages
+   - On tamper detection: sends BACK action + launches our app
+   - Stores tamper attempt counts and timestamps
+   - Files: `EMIAccessibilityService.java`, `accessibility_service_config.xml`, `strings.xml`
+
+3. **Accessibility Prompt** - IMPLEMENTED
+   - Alert dialog prompts user to enable accessibility service
+   - "OK" button opens system Accessibility Settings directly
+   - "Later" button dismisses (will re-prompt on next app open)
+   - Re-checks accessibility status when app returns from background
+   - File: `app/client/home.tsx`
+
+4. **Permission Race Condition Fix** - IMPLEMENTED
+   - Changed from parallel to sequential permission requests
+   - Flow: Location → 500ms delay → Notifications → Device Admin → Foreground Service → 1s delay → Accessibility prompt
+   - No more overlapping permission dialogs
+   - File: `app/client/home.tsx`
+
+**Important**: These are Android-native features. Required AndroidManifest.xml changes documented in `frontend/TAMPER_PROTECTION_SETUP.md`. Must be tested on actual Android device after APK build.
+
 **Files Modified:**
 - `backend/models/schemas.py` - Added `due_date: Optional[str]` to LoanSetup
 - `backend/routes/loans.py` - Updated `setup_loan` to accept and process `due_date`
