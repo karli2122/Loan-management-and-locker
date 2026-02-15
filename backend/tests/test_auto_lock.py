@@ -296,18 +296,28 @@ class TestAutoLockNotifications:
         # Endpoint should exist and return 200
         if response.status_code == 200:
             data = response.json()
-            # Should be a list of notifications
-            assert isinstance(data, list), "Notifications should be a list"
+            
+            # Handle both direct list or object with notifications array
+            if isinstance(data, dict):
+                notifications = data.get("notifications", [])
+                assert "unread_count" in data, "Response should have 'unread_count'"
+            else:
+                notifications = data
+            
+            assert isinstance(notifications, list), "Notifications should be a list"
             
             # If there are notifications, check for auto_lock type
-            auto_lock_notifications = [n for n in data if n.get("type") == "auto_lock"]
-            print(f"Found {len(auto_lock_notifications)} auto-lock notifications")
+            auto_lock_notifications = [n for n in notifications if n.get("type") == "auto_lock"]
+            print(f"Found {len(auto_lock_notifications)} auto-lock notifications out of {len(notifications)} total")
             
             # Validate auto_lock notification structure if present
             for notif in auto_lock_notifications:
                 assert "title" in notif, "notification should have 'title'"
                 assert "message" in notif, "notification should have 'message'"
                 assert notif["type"] == "auto_lock", "type should be 'auto_lock'"
+                # Verify it mentions auto-lock in message
+                assert "auto-lock" in notif["message"].lower() or "overdue" in notif["message"].lower(), \
+                    f"auto_lock notification should mention auto-lock or overdue: {notif['message']}"
         elif response.status_code == 404:
             # Notifications endpoint may not exist yet
             print("Notifications endpoint not found - may not be implemented")
