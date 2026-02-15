@@ -161,6 +161,14 @@ export default function ClientDetails() {
     fetchCredits();
   }, [id]);
 
+  // Auto-refresh client data every 15 seconds to keep admin mode status updated
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchClient();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [id]);
+
   const handleGenerateCode = async () => {
     // Credit check for non-superadmin users
     if (!isSuperAdmin && userCredits <= 0) {
