@@ -335,7 +335,7 @@ async def update_admin_settings(
         update_data["default_auto_lock_enabled"] = default_auto_lock_enabled
     
     # Upsert settings
-    result = await db.admin_settings.update_one(
+    await db.admin_settings.update_one(
         {"admin_id": admin_id},
         {
             "$set": update_data,
