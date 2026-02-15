@@ -46,23 +46,27 @@ export default function Dashboard() {
 
   const fetchStats = async () => {
     try {
-      const adminId = await AsyncStorage.getItem('admin_id');
-      if (!adminId) {
-        console.error('Admin ID not found');
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      if (!adminToken) {
+        console.error('Admin token not found');
         return;
       }
-      const response = await fetch(`${API_URL}/api/reports/collection?admin_id=${adminId}`);
+      const response = await fetch(`${API_URL}/api/reports/collection?admin_token=${adminToken}`);
+      if (!response.ok) {
+        console.error('Reports API error:', response.status);
+        return;
+      }
       const data = await response.json();
       
       setLoanStats({
-        total_clients: data.overview.total_clients,
-        active_loans: data.overview.active_loans,
-        completed_loans: data.overview.completed_loans,
-        overdue_clients: data.overview.overdue_clients,
-        total_disbursed: data.financial.total_disbursed,
-        total_collected: data.financial.total_collected,
-        total_outstanding: data.financial.total_outstanding,
-        collection_rate: data.financial.collection_rate,
+        total_clients: data.total_clients || 0,
+        active_loans: data.active_loans || 0,
+        completed_loans: data.completed_loans || 0,
+        overdue_clients: data.overdue_loans || 0,
+        total_disbursed: data.total_disbursed || 0,
+        total_collected: data.total_collected || 0,
+        total_outstanding: data.total_outstanding || 0,
+        collection_rate: data.collection_rate || 0,
       });
     } catch (error) {
       console.error('Failed to fetch stats:', error);
