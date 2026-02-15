@@ -71,6 +71,8 @@ interface Client {
   late_fees_accumulated?: number;
   auto_lock_enabled?: boolean;
   auto_lock_grace_days?: number;
+  // Credit score
+  credit_score?: number;
 }
 
 export default function ClientDetails() {
