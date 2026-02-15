@@ -285,7 +285,7 @@ eas build --profile client-preview --platform android
 ## 🌍 Deployment
 
 ### Current Setup
-- API URL: `https://late-fees-impl.preview.emergentagent.com`
+- API URL: `https://late-fee-dashboard.preview.emergentagent.com`
 - Backend: Port 8001
 - Frontend: Port 3000
 - MongoDB: Connected
@@ -317,12 +317,12 @@ eas build --profile client-preview --platform android
 
 ### Backend Tests
 ```bash
-curl https://late-fees-impl.preview.emergentagent.com/api/health
+curl https://late-fee-dashboard.preview.emergentagent.com/api/health
 ```
 
 ### Login Test
 ```bash
-curl -X POST https://late-fees-impl.preview.emergentagent.com/api/admin/login \
+curl -X POST https://late-fee-dashboard.preview.emergentagent.com/api/admin/login \
   -H "Content-Type: application/json" \
   -d '{"username":"karli1987","password":"nasvakas123"}'
 ```
@@ -376,7 +376,7 @@ Proprietary - All rights reserved
 ## 📞 Support
 
 For issues or questions, refer to the API documentation at:
-`https://late-fees-impl.preview.emergentagent.com/api/`
+`https://late-fee-dashboard.preview.emergentagent.com/api/`
 
 ---
 

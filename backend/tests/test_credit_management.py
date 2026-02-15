@@ -16,7 +16,7 @@ import time
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://late-fees-impl.preview.emergentagent.com"
+    BASE_URL = "https://late-fee-dashboard.preview.emergentagent.com"
 
 # Test credentials
 SUPERADMIN_USERNAME = "karli1987"
