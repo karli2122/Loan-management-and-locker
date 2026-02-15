@@ -130,6 +130,9 @@ export default function AdminSettings() {
       // Fetch current user's credits
       await fetchCredits(token);
       
+      // Fetch admin settings for late fees and auto-lock
+      await fetchAdminSettings(token);
+      
       // Only fetch admin list if user is an admin
       if (token && role === 'admin') {
         await fetchAdminsWithCredits(token);
