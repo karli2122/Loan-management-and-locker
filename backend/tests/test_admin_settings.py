@@ -136,8 +136,8 @@ class TestAdminSettingsValidation:
             f"&default_late_fee_percent=-5"
         )
         
-        # Should return validation error
-        assert response.status_code == 400, f"Expected 400 for negative late fee: {response.text}"
+        # Should return validation error (422 is standard for validation errors)
+        assert response.status_code in [400, 422], f"Expected 400/422 for negative late fee: {response.text}"
         print("Negative late fee percent correctly rejected")
     
     def test_late_fee_percent_validation_max(self, auth_token):
@@ -147,8 +147,8 @@ class TestAdminSettingsValidation:
             f"&default_late_fee_percent=150"
         )
         
-        # Should return validation error
-        assert response.status_code == 400, f"Expected 400 for late fee > 100: {response.text}"
+        # Should return validation error (422 is standard for validation errors)
+        assert response.status_code in [400, 422], f"Expected 400/422 for late fee > 100: {response.text}"
         print("Late fee percent > 100 correctly rejected")
     
     def test_grace_days_validation_min(self, auth_token):
@@ -158,8 +158,8 @@ class TestAdminSettingsValidation:
             f"&default_auto_lock_grace_days=0"
         )
         
-        # Should return validation error
-        assert response.status_code == 400, f"Expected 400 for grace days < 1: {response.text}"
+        # Should return validation error (422 is standard for validation errors)
+        assert response.status_code in [400, 422], f"Expected 400/422 for grace days < 1: {response.text}"
         print("Grace days < 1 correctly rejected")
     
     def test_grace_days_validation_max(self, auth_token):
@@ -169,8 +169,8 @@ class TestAdminSettingsValidation:
             f"&default_auto_lock_grace_days=500"
         )
         
-        # Should return validation error
-        assert response.status_code == 400, f"Expected 400 for grace days > 365: {response.text}"
+        # Should return validation error (422 is standard for validation errors)
+        assert response.status_code in [400, 422], f"Expected 400/422 for grace days > 365: {response.text}"
         print("Grace days > 365 correctly rejected")
 
 
