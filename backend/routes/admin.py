@@ -79,7 +79,7 @@ async def register_admin(admin_data: AdminCreate, admin_token: str = Query(defau
 
 
 @router.post("/admin/login", response_model=AdminResponse)
-async def login_admin(login_data: AdminLogin):
+async def login_admin(login_data: AdminLogin, request: Request = None):
     """Authenticate admin and return token."""
     admin = await db.admins.find_one({"username": login_data.username})
     if not admin or not verify_password(login_data.password, admin["password_hash"]):
@@ -100,6 +100,15 @@ async def login_admin(login_data: AdminLogin):
         {"admin_id": admin["id"]},
         {"$set": {"token": token, "created_at": datetime.utcnow(), "expires_at": expires_at}},
         upsert=True
+    )
+    
+    # Log login action
+    ip_address = request.client.host if request and request.client else None
+    await log_audit(
+        admin_id=admin["id"],
+        action_type=AuditAction.LOGIN,
+        details=f"Logged in successfully",
+        ip_address=ip_address
     )
     
     return AdminResponse(
