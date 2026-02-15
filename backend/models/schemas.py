@@ -135,6 +135,10 @@ class Client(BaseModel):
     admin_mode_active: bool = False
     last_heartbeat: Optional[datetime] = None
     uninstall_allowed: bool = False
+    
+    # Credit Score (0-1000, 500 = neutral)
+    credit_score: int = 500
+    credit_score_updated_at: Optional[datetime] = None
 
 
 class ClientCreate(BaseModel):
