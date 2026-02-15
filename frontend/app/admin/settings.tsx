@@ -199,6 +199,114 @@ export default function AdminSettings() {
     }
   };
 
+  const fetchAdminSettings = async (token: string) => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/settings?admin_token=${token}`);
+      if (response.ok) {
+        const data = await response.json();
+        setLateFeePercent(String(data.default_late_fee_percent || 2.0));
+        setAutoLockGraceDays(String(data.default_auto_lock_grace_days || 3));
+        setAutoLockEnabled(data.default_auto_lock_enabled !== false);
+      }
+    } catch (error) {
+      console.error('Error fetching admin settings:', error);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    if (!adminToken) return;
+    
+    const feePercent = parseFloat(lateFeePercent);
+    const graceDays = parseInt(autoLockGraceDays);
+    
+    if (isNaN(feePercent) || feePercent < 0 || feePercent > 100) {
+      Alert.alert(
+        language === 'et' ? 'Viga' : 'Error',
+        language === 'et' ? 'Viivise protsent peab olema 0-100' : 'Late fee percent must be 0-100'
+      );
+      return;
+    }
+    
+    if (isNaN(graceDays) || graceDays < 1 || graceDays > 365) {
+      Alert.alert(
+        language === 'et' ? 'Viga' : 'Error',
+        language === 'et' ? 'Ooteaeg peab olema 1-365 päeva' : 'Grace period must be 1-365 days'
+      );
+      return;
+    }
+    
+    setSettingsSaving(true);
+    try {
+      const response = await fetch(
+        `${API_URL}/api/admin/settings?admin_token=${adminToken}&default_late_fee_percent=${feePercent}&default_auto_lock_grace_days=${graceDays}&default_auto_lock_enabled=${autoLockEnabled}`,
+        { method: 'PUT' }
+      );
+      
+      if (response.ok) {
+        Alert.alert(
+          language === 'et' ? 'Õnnestus' : 'Success',
+          language === 'et' ? 'Seaded salvestatud' : 'Settings saved successfully'
+        );
+      } else {
+        throw new Error('Failed to save settings');
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      Alert.alert(
+        language === 'et' ? 'Viga' : 'Error',
+        language === 'et' ? 'Seadete salvestamine ebaõnnestus' : 'Failed to save settings'
+      );
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const handleApplySettingsToAll = async () => {
+    if (!adminToken) return;
+    
+    Alert.alert(
+      language === 'et' ? 'Kinnita' : 'Confirm',
+      language === 'et' 
+        ? 'Kas rakendada need seaded kõikidele olemasolevatele klientidele?' 
+        : 'Apply these settings to all existing clients?',
+      [
+        { text: language === 'et' ? 'Tühista' : 'Cancel', style: 'cancel' },
+        {
+          text: language === 'et' ? 'Rakenda' : 'Apply',
+          onPress: async () => {
+            setSettingsSaving(true);
+            try {
+              const response = await fetch(
+                `${API_URL}/api/admin/settings/apply-to-all?admin_token=${adminToken}`,
+                { method: 'POST' }
+              );
+              
+              if (response.ok) {
+                const data = await response.json();
+                Alert.alert(
+                  language === 'et' ? 'Õnnestus' : 'Success',
+                  language === 'et' 
+                    ? `Seaded rakendatud ${data.clients_updated} kliendile` 
+                    : `Settings applied to ${data.clients_updated} clients`
+                );
+              } else {
+                throw new Error('Failed to apply settings');
+              }
+            } catch (error) {
+              console.error('Error applying settings:', error);
+              Alert.alert(
+                language === 'et' ? 'Viga' : 'Error',
+                language === 'et' ? 'Seadete rakendamine ebaõnnestus' : 'Failed to apply settings'
+              );
+            } finally {
+              setSettingsSaving(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleAddAdmin = async () => {
     if (!newUsername.trim() || !newPassword.trim() || !newFirstName.trim() || !newLastName.trim()) {
       Alert.alert(
