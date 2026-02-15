@@ -162,7 +162,6 @@ export default function AddLoan() {
 
     const loanAmountNum = parseFloat(loanAmount);
     const interestRateNum = parseFloat(interestRate);
-    const tenureNum = parseInt(tenure, 10);
 
     if (!loanAmount.trim() || isNaN(loanAmountNum) || loanAmountNum <= 0) {
       Alert.alert(
@@ -180,10 +179,20 @@ export default function AddLoan() {
       return;
     }
 
-    if (!tenure.trim() || isNaN(tenureNum) || tenureNum <= 0) {
+    if (!dueDate) {
       Alert.alert(
         language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Palun sisesta kehtiv periood' : 'Please enter a valid tenure'
+        language === 'et' ? 'Palun vali tähtaeg' : 'Please select a due date'
+      );
+      return;
+    }
+
+    // Validate due date is in the future
+    const selectedDate = new Date(dueDate);
+    if (selectedDate <= new Date()) {
+      Alert.alert(
+        language === 'et' ? 'Viga' : 'Error',
+        language === 'et' ? 'Tähtaeg peab olema tulevikus' : 'Due date must be in the future'
       );
       return;
     }
