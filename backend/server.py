@@ -27,6 +27,8 @@ from routes import (
     reminders_router,
     contracts_router,
     client_auth_router,
+    audit_logs_router,
+    credit_score_router,
 )
 
 # Configure logging
