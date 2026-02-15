@@ -63,7 +63,7 @@ export default function AddLoan() {
   const [showPlanPicker, setShowPlanPicker] = useState(false);
   const [loanAmount, setLoanAmount] = useState('');
   const [interestRate, setInterestRate] = useState('10');
-  const [tenure, setTenure] = useState('12');
+  const [dueDate, setDueDate] = useState('');
 
   useEffect(() => {
     fetchClients();
