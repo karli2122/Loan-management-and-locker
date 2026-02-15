@@ -661,8 +661,39 @@ Refactored the 3131-line `server.py` into modular route files:
 
 **Note:** Currently no clients have overdue payments (all next_payment_due dates are in the future), so late fee UI elements correctly don't display. The feature will activate when payments become overdue.
 
+### Session 17b: Auto-Lock Integration - Phase 2 (Feb 15, 2026)
+**COMPLETED - Backend Implementation**
+
+1. **Auto-Lock Processing Endpoint** - IMPLEMENTED ✅
+   - `POST /api/auto-lock/process` - Locks devices for all clients exceeding their grace period
+   - Creates admin notification when device is auto-locked
+   - Returns list of locked clients with details
+
+2. **Pending Auto-Locks Endpoint** - IMPLEMENTED ✅
+   - `GET /api/auto-lock/pending` - Returns clients categorized by auto-lock status:
+     - `pending_lock`: Overdue beyond grace period, not yet locked
+     - `already_locked`: Already auto-locked
+     - `approaching_lock`: Overdue but within grace period
+
+3. **Integrated Late Fee + Auto-Lock** - IMPLEMENTED ✅
+   - Updated `POST /api/late-fees/calculate-all` with `apply_auto_lock` parameter
+   - When `apply_auto_lock=true`, calculates late fees AND auto-locks devices in one operation
+   - Response now includes `devices_auto_locked` count
+
+4. **Auto-Lock Configuration** - ALREADY EXISTS ✅
+   - Uses existing Client fields: `auto_lock_enabled` (default: true), `auto_lock_grace_days` (default: 3)
+   - `PUT /api/loans/{client_id}/settings` endpoint already supports updating these fields
+
+**Files Modified:**
+- `backend/routes/loans.py` - Added 2 new endpoints, enhanced calculate-all endpoint
+
+**Testing Results:** 100% pass rate
+- Backend: 10/10 tests passed
+- Test file: `/app/backend/tests/test_auto_lock.py`
+
+**Note:** Currently no clients have overdue payments, so auto-lock returns 0 locked devices. The feature activates when `days_overdue > auto_lock_grace_days`.
+
 ## Current Backlog
-- P0: Phase 2 - Auto-Lock Integration (auto-lock device when loan is overdue by X days)
 - P0: Phase 3 - Admin Configuration UI (settings page for late fee rate and grace period)
 - P0: Client app crash on home screen (Android-specific, needs APK testing)
 - P2: Add data-testid attributes to interactive elements
