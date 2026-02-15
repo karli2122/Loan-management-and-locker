@@ -790,8 +790,6 @@ All 3 phases successfully implemented:
 - Bug fixed: NotFoundException HTTP status code mapping (testing agent)
 
 ## Current Backlog
-- P1: Audit Log - Track all admin actions
-- P1: Client Credit Score Tracking
 - P2: Dark/Light Theme Toggle
 - P3: Android Management API (AMAPI) Integration
 - P3: Push notifications (FCM)
