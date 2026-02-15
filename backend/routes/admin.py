@@ -284,3 +284,108 @@ async def list_admins_with_credits(admin_token: str = Query(...)):
     ).to_list(1000)
     
     return admins
+
+
+# ===================== ADMIN SETTINGS ENDPOINTS =====================
+
+@router.get("/admin/settings")
+async def get_admin_settings(admin_token: str = Query(...)):
+    """Get current admin's settings for late fees and auto-lock defaults."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Try to find existing settings
+    settings = await db.admin_settings.find_one({"admin_id": admin_id}, {"_id": 0})
+    
+    if not settings:
+        # Return default settings if none exist
+        return {
+            "admin_id": admin_id,
+            "default_late_fee_percent": 2.0,
+            "default_auto_lock_grace_days": 3,
+            "default_auto_lock_enabled": True
+        }
+    
+    return settings
+
+
+@router.put("/admin/settings")
+async def update_admin_settings(
+    admin_token: str = Query(...),
+    default_late_fee_percent: float = Query(default=None),
+    default_auto_lock_grace_days: int = Query(default=None),
+    default_auto_lock_enabled: bool = Query(default=None)
+):
+    """Update admin's default settings for late fees and auto-lock."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Build update dict with only provided values
+    update_data = {"updated_at": datetime.utcnow()}
+    
+    if default_late_fee_percent is not None:
+        if default_late_fee_percent < 0 or default_late_fee_percent > 100:
+            raise ValidationException("Late fee percent must be between 0 and 100")
+        update_data["default_late_fee_percent"] = default_late_fee_percent
+    
+    if default_auto_lock_grace_days is not None:
+        if default_auto_lock_grace_days < 1 or default_auto_lock_grace_days > 365:
+            raise ValidationException("Grace days must be between 1 and 365")
+        update_data["default_auto_lock_grace_days"] = default_auto_lock_grace_days
+    
+    if default_auto_lock_enabled is not None:
+        update_data["default_auto_lock_enabled"] = default_auto_lock_enabled
+    
+    # Upsert settings
+    result = await db.admin_settings.update_one(
+        {"admin_id": admin_id},
+        {
+            "$set": update_data,
+            "$setOnInsert": {
+                "id": str(__import__('uuid').uuid4()),
+                "admin_id": admin_id,
+                "created_at": datetime.utcnow()
+            }
+        },
+        upsert=True
+    )
+    
+    # Fetch and return updated settings
+    settings = await db.admin_settings.find_one({"admin_id": admin_id}, {"_id": 0})
+    
+    return {
+        "message": "Settings updated successfully",
+        "settings": settings
+    }
+
+
+@router.post("/admin/settings/apply-to-all")
+async def apply_settings_to_all_clients(admin_token: str = Query(...)):
+    """Apply current admin settings as defaults to all existing clients."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Get admin's settings
+    settings = await db.admin_settings.find_one({"admin_id": admin_id})
+    if not settings:
+        settings = {
+            "default_auto_lock_grace_days": 3,
+            "default_auto_lock_enabled": True
+        }
+    
+    # Update all clients with these defaults
+    result = await db.clients.update_many(
+        {"admin_id": admin_id},
+        {
+            "$set": {
+                "auto_lock_grace_days": settings.get("default_auto_lock_grace_days", 3),
+                "auto_lock_enabled": settings.get("default_auto_lock_enabled", True)
+            }
+        }
+    )
+    
+    return {
+        "message": "Settings applied to all clients",
+        "clients_updated": result.modified_count,
+        "applied_settings": {
+            "auto_lock_grace_days": settings.get("default_auto_lock_grace_days", 3),
+            "auto_lock_enabled": settings.get("default_auto_lock_enabled", True)
+        }
+    }
