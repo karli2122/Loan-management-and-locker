@@ -133,7 +133,10 @@ export default function AddLoan() {
   const handlePlanSelect = (plan: LoanPlan) => {
     setSelectedPlan(plan);
     setInterestRate(plan.interest_rate.toString());
-    setTenure(plan.min_tenure_months.toString());
+    // Set default due date based on plan's min tenure
+    const defaultDate = new Date();
+    defaultDate.setMonth(defaultDate.getMonth() + plan.min_tenure_months);
+    setDueDate(defaultDate.toISOString().split('T')[0]);
     setShowPlanPicker(false);
   };
 
