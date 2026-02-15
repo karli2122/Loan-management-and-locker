@@ -46,9 +46,13 @@ export default function LoansTab() {
 
   const fetchClients = async () => {
     try {
-      const adminId = await AsyncStorage.getItem('admin_id');
-      const query = adminId ? `?limit=500&admin_id=${adminId}` : '?limit=500';
-      const response = await fetch(`${API_URL}/api/clients${query}`);
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      if (!adminToken) {
+        setClients([]);
+        setLoading(false);
+        return;
+      }
+      const response = await fetch(`${API_URL}/api/clients?limit=500&admin_token=${adminToken}`);
       if (!response.ok) {
         console.error('API error:', response.status);
         setClients([]);

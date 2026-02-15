@@ -15,54 +15,83 @@ import { useLanguage } from '../../../src/context/LanguageContext';
 import API_URL from '../../../src/constants/api';
 
 
-interface Payment {
+interface Transaction {
   id: string;
   client_id: string;
   client_name: string;
   amount: number;
-  payment_date: string;
-  payment_method: string;
+  date: string;
+  type: 'disbursement' | 'payment';
+  payment_method?: string;
   notes?: string;
 }
 
 export default function TransactionsTab() {
   const router = useRouter();
   const { language } = useLanguage();
-  const [payments, setPayments] = useState<Payment[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'disbursement' | 'payment'>('all');
 
-  const fetchPayments = async () => {
+  const fetchTransactions = async () => {
     try {
-      // Fetch all clients and extract their payments
-      const adminId = await AsyncStorage.getItem('admin_id');
-      const query = adminId ? `?limit=500&admin_id=${adminId}` : '?limit=500';
-      const response = await fetch(`${API_URL}/api/clients${query}`);
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      if (!adminToken) {
+        setTransactions([]);
+        setLoading(false);
+        return;
+      }
+      const response = await fetch(`${API_URL}/api/clients?limit=500&admin_token=${adminToken}`);
+      if (!response.ok) {
+        setTransactions([]);
+        setLoading(false);
+        return;
+      }
       const data = await response.json();
-      const allPayments: Payment[] = [];
+      const allTransactions: Transaction[] = [];
 
-      // Extract payments from all clients
-      const clients = data.clients || data;
+      const clients = data.clients || (Array.isArray(data) ? data : []);
       clients.forEach((client: any) => {
+        // Add loan disbursement as a transaction
+        const loanAmount = client.loan_amount || client.principal_amount || 0;
+        if (loanAmount > 0) {
+          allTransactions.push({
+            id: `disbursement-${client.id}`,
+            client_id: client.id,
+            client_name: client.name,
+            amount: loanAmount,
+            date: client.loan_start_date || client.created_at || new Date().toISOString(),
+            type: 'disbursement',
+            notes: language === 'et' ? 'Laenu väljastamine' : 'Loan disbursement',
+          });
+        }
+
+        // Add payments as transactions
         if (client.payments_history && Array.isArray(client.payments_history)) {
           client.payments_history.forEach((payment: any) => {
-            allPayments.push({
-              ...payment,
-              client_name: client.name,
+            allTransactions.push({
+              id: payment.id || `payment-${client.id}-${payment.payment_date}`,
               client_id: client.id,
+              client_name: client.name,
+              amount: payment.amount,
+              date: payment.payment_date,
+              type: 'payment',
+              payment_method: payment.payment_method,
+              notes: payment.notes,
             });
           });
         }
       });
 
       // Sort by date (most recent first)
-      allPayments.sort(
-        (a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime()
+      allTransactions.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       );
 
-      setPayments(allPayments);
+      setTransactions(allTransactions);
     } catch (error) {
-      console.error('Error fetching payments:', error);
+      console.error('Error fetching transactions:', error);
     } finally {
       setLoading(false);
     }
