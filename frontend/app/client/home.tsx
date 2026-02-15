@@ -567,6 +567,12 @@ export default function ClientHome() {
         checkAndSetupDeviceProtection().catch((err) =>
           console.error('Device protection check error on resume:', err)
         );
+        // Re-check accessibility on app resume (user may have just enabled it)
+        if (Platform.OS === 'android') {
+          devicePolicy.isAccessibilityEnabled().then(enabled => {
+            setIsAccessibilityEnabled(enabled);
+          }).catch(() => {});
+        }
       }
       appState.current = nextAppState;
     });
