@@ -422,6 +422,50 @@ Refactored the 3131-line `server.py` into modular route files:
 - P2: Add data-testid attributes to interactive elements
 - P3: Push notifications for payment reminders (requires FCM integration)
 
+### Session 14: Add Loan Features & UI Polish (Feb 15, 2026)
+**All features implemented and verified (100% test pass rate):**
+
+1. **P0 - Dropdown Padding (Add Loan)** - FIXED ✅
+   - Added `marginBottom: 16` to "Select Client" and "Select Loan Plan" picker buttons
+   - File: `frontend/app/admin/add-loan.tsx`
+
+2. **P0 - Admin Mode Status Auto-Refresh** - FIXED ✅
+   - Added 15-second auto-refresh interval for client data on Client Details page
+   - Admin mode badge now updates without manual page refresh
+   - File: `frontend/app/admin/client-details.tsx`
+
+3. **P0 - Support Chat Bottom Padding** - FIXED ✅
+   - Increased `paddingBottom` from 20 to 32 on input container
+   - File: `frontend/app/client/support-chat.tsx`
+
+4. **P1 - Due Date Calendar Picker** - IMPLEMENTED ✅
+   - Replaced "Periood (kuud)" / tenure input with "Tähtaeg" / date picker
+   - Uses HTML5 `<input type="date">` on web platform
+   - Shows calculated tenure in months below the date picker
+   - Backend accepts `due_date` (YYYY-MM-DD) and calculates `loan_tenure_months` automatically
+   - Validates due_date is in the future and format is correct
+   - Falls back to `loan_tenure_months` if `due_date` not provided
+   - Files: `frontend/app/admin/add-loan.tsx`, `backend/routes/loans.py`, `backend/models/schemas.py`
+
+5. **P2 - Pre-fill Interest from Loan Plan** - ALREADY WORKING ✅
+   - `handlePlanSelect` already sets interest rate and default due date from selected plan
+   - File: `frontend/app/admin/add-loan.tsx`
+
+6. **MongoDB Index Fix** - FIXED ✅
+   - Fixed `registration_code` index to be sparse (allows multiple empty strings)
+   - File: `backend/database.py`
+
+**Testing Results:** 100% pass rate (5/5 backend tests, frontend verified via screenshot)
+- Test file: `/app/backend/tests/test_loan_setup_due_date.py`
+
+**Files Modified:**
+- `backend/models/schemas.py` - Added `due_date: Optional[str]` to LoanSetup
+- `backend/routes/loans.py` - Updated `setup_loan` to accept and process `due_date`
+- `backend/database.py` - Fixed registration_code index (sparse)
+- `frontend/app/admin/add-loan.tsx` - Date picker, dropdown padding, plan pre-fill
+- `frontend/app/admin/client-details.tsx` - Auto-refresh interval
+- `frontend/app/client/support-chat.tsx` - Bottom padding increase
+
 ### Session 13: Bug Fixes - 7 Issues (Feb 15, 2026)
 **All 6 bugs/features implemented and verified (100% backend test pass rate):**
 
