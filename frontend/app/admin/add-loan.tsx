@@ -359,9 +359,10 @@ export default function AddLoan() {
 
           {clientMode === 'existing' ? (
             <TouchableOpacity
-              style={styles.pickerButton}
+              style={[styles.pickerButton, { marginBottom: 16 }]}
               onPress={() => setShowClientPicker(true)}
               disabled={loadingClients}
+              data-testid="select-client-picker"
             >
               <Ionicons name="person" size={20} color="#94A3B8" />
               <Text style={styles.pickerButtonText}>
@@ -443,9 +444,10 @@ export default function AddLoan() {
             {language === 'et' ? 'Laenuplaan (valikuline)' : 'Loan Plan (Optional)'}
           </Text>
           <TouchableOpacity
-            style={styles.pickerButton}
+            style={[styles.pickerButton, { marginBottom: 16 }]}
             onPress={() => setShowPlanPicker(true)}
             disabled={loadingPlans}
+            data-testid="select-plan-picker"
           >
             <Ionicons name="document-text" size={20} color="#94A3B8" />
             <Text style={styles.pickerButtonText}>
