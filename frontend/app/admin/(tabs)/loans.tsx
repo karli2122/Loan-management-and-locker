@@ -276,9 +276,9 @@ export default function LoansTab() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={[]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
           {language === 'et' ? 'Laenud' : 'Loans'}
         </Text>
         <TouchableOpacity
@@ -290,8 +290,8 @@ export default function LoansTab() {
       </View>
 
       {filter && (
-        <View style={styles.filterBanner}>
-          <Text style={styles.filterText}>
+        <View style={[styles.filterBanner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.filterText, { color: colors.textSecondary }]}>
             {filter === 'overdue'
               ? language === 'et'
                 ? 'Filtreeritud: võlglased'
@@ -301,28 +301,28 @@ export default function LoansTab() {
               : 'Filter: Paid'}
           </Text>
           <TouchableOpacity onPress={() => setFilter(undefined)}>
-            <Ionicons name="close-circle" size={20} color="#E2E8F0" />
+            <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
       )}
 
       <View style={styles.tabRow}>
         <TouchableOpacity
-          style={[styles.tabButton, tab === 'given' && styles.tabButtonActive]}
+          style={[styles.tabButton, { backgroundColor: colors.surface, borderColor: colors.border }, tab === 'given' && styles.tabButtonActive]}
           onPress={() => setTab('given')}
         >
-          <Text style={[styles.tabText, tab === 'given' && styles.tabTextActive]}>
+          <Text style={[styles.tabText, { color: colors.textMuted }, tab === 'given' && styles.tabTextActive]}>
             {language === 'et' ? 'Antud' : 'Given'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tabButton, tab === 'settled' && styles.tabButtonActive]}
+          style={[styles.tabButton, { backgroundColor: colors.surface, borderColor: colors.border }, tab === 'settled' && styles.tabButtonActive]}
           onPress={() => {
             setTab('settled');
             setPaymentFilter('all'); // Reset payment filter when switching to settled tab
           }}
         >
-          <Text style={[styles.tabText, tab === 'settled' && styles.tabTextActive]}>
+          <Text style={[styles.tabText, { color: colors.textMuted }, tab === 'settled' && styles.tabTextActive]}>
             {language === 'et' ? 'Tasutud' : 'Settled'}
           </Text>
         </TouchableOpacity>
@@ -337,64 +337,64 @@ export default function LoansTab() {
           contentContainerStyle={styles.paymentFilterContent}
         >
           <TouchableOpacity
-            style={[styles.paymentFilterButton, paymentFilter === 'all' && styles.paymentFilterButtonActive]}
+            style={[styles.paymentFilterButton, { backgroundColor: colors.surface, borderColor: colors.border }, paymentFilter === 'all' && styles.paymentFilterButtonActive]}
             onPress={() => setPaymentFilter('all')}
           >
-            <Text style={[styles.paymentFilterText, paymentFilter === 'all' && styles.paymentFilterTextActive]}>
+            <Text style={[styles.paymentFilterText, { color: colors.textMuted }, paymentFilter === 'all' && styles.paymentFilterTextActive]}>
               {language === 'et' ? 'Kõik' : 'All'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.paymentFilterButton, paymentFilter === 'today' && styles.paymentFilterButtonActive]}
+            style={[styles.paymentFilterButton, { backgroundColor: colors.surface, borderColor: colors.border }, paymentFilter === 'today' && styles.paymentFilterButtonActive]}
             onPress={() => setPaymentFilter('today')}
           >
             <Ionicons 
               name="today" 
               size={14} 
-              color={paymentFilter === 'today' ? '#fff' : '#94A3B8'} 
+              color={paymentFilter === 'today' ? '#fff' : colors.textMuted} 
               style={{ marginRight: 4 }} 
             />
-            <Text style={[styles.paymentFilterText, paymentFilter === 'today' && styles.paymentFilterTextActive]}>
+            <Text style={[styles.paymentFilterText, { color: colors.textMuted }, paymentFilter === 'today' && styles.paymentFilterTextActive]}>
               {language === 'et' ? 'Täna' : 'Today'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.paymentFilterButton, paymentFilter === 'tomorrow' && styles.paymentFilterButtonActive]}
+            style={[styles.paymentFilterButton, { backgroundColor: colors.surface, borderColor: colors.border }, paymentFilter === 'tomorrow' && styles.paymentFilterButtonActive]}
             onPress={() => setPaymentFilter('tomorrow')}
           >
             <Ionicons 
               name="calendar" 
               size={14} 
-              color={paymentFilter === 'tomorrow' ? '#fff' : '#94A3B8'} 
+              color={paymentFilter === 'tomorrow' ? '#fff' : colors.textMuted} 
               style={{ marginRight: 4 }} 
             />
-            <Text style={[styles.paymentFilterText, paymentFilter === 'tomorrow' && styles.paymentFilterTextActive]}>
+            <Text style={[styles.paymentFilterText, { color: colors.textMuted }, paymentFilter === 'tomorrow' && styles.paymentFilterTextActive]}>
               {language === 'et' ? 'Homme' : 'Tomorrow'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.paymentFilterButton, paymentFilter === 'next3days' && styles.paymentFilterButtonActive]}
+            style={[styles.paymentFilterButton, { backgroundColor: colors.surface, borderColor: colors.border }, paymentFilter === 'next3days' && styles.paymentFilterButtonActive]}
             onPress={() => setPaymentFilter('next3days')}
           >
             <Ionicons 
               name="calendar-outline" 
               size={14} 
-              color={paymentFilter === 'next3days' ? '#fff' : '#94A3B8'} 
+              color={paymentFilter === 'next3days' ? '#fff' : colors.textMuted} 
               style={{ marginRight: 4 }} 
             />
-            <Text style={[styles.paymentFilterText, paymentFilter === 'next3days' && styles.paymentFilterTextActive]}>
+            <Text style={[styles.paymentFilterText, { color: colors.textMuted }, paymentFilter === 'next3days' && styles.paymentFilterTextActive]}>
               {language === 'et' ? '3 päeva' : 'Next 3 days'}
             </Text>
           </TouchableOpacity>
         </ScrollView>
       )}
 
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#64748B" />
+      <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
+        <Ionicons name="search" size={20} color={colors.textMuted} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: colors.text }]}
           placeholder={language === 'et' ? 'Otsi kliente...' : 'Search clients...'}
-          placeholderTextColor="#64748B"
+          placeholderTextColor={colors.textMuted}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -410,8 +410,8 @@ export default function LoansTab() {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="people-outline" size={64} color="#64748B" />
-            <Text style={styles.emptyText}>
+            <Ionicons name="people-outline" size={64} color={colors.textMuted} />
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
               {language === 'et' ? 'Kliente ei leitud' : 'No clients found'}
             </Text>
           </View>
