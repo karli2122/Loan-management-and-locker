@@ -1259,6 +1259,73 @@ export default function ClientDetails() {
           </View>
         </View>
       </Modal>
+
+      {/* Edit Client Info Modal */}
+      <Modal visible={editClientModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              {language === 'et' ? 'Muuda kliendi andmeid' : 'Edit Client Info'}
+            </Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>{language === 'et' ? 'Nimi' : 'Name'}</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={editClientName}
+                onChangeText={setEditClientName}
+                placeholder={language === 'et' ? 'Kliendi nimi' : 'Client name'}
+                placeholderTextColor="#64748B"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>{language === 'et' ? 'Telefon' : 'Phone'}</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={editClientPhone}
+                onChangeText={setEditClientPhone}
+                placeholder={language === 'et' ? 'Telefoninumber' : 'Phone number'}
+                placeholderTextColor="#64748B"
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>{language === 'et' ? 'E-post' : 'Email'}</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={editClientEmail}
+                onChangeText={setEditClientEmail}
+                placeholder={language === 'et' ? 'E-posti aadress' : 'Email address'}
+                placeholderTextColor="#64748B"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={() => setEditClientModal(false)}
+              >
+                <Text style={styles.modalCancelText}>{t('cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalConfirmButton]}
+                onPress={handleSaveClientInfo}
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>{t('saveChanges')}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
