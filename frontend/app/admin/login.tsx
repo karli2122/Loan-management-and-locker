@@ -17,11 +17,13 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
+import { useTheme } from '../../src/context/ThemeContext';
 import API_URL, { API_BASE_URL, buildApiUrl } from '../../src/constants/api';
 
 export default function AdminLogin() {
   const router = useRouter();
   const { t } = useLanguage();
+  const { colors } = useTheme();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
