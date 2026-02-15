@@ -1,5 +1,5 @@
 """Admin routes - authentication, profile, credits management."""
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from datetime import datetime, timedelta
 import secrets
 import logging
@@ -16,6 +16,7 @@ from utils.auth import (
 from utils.exceptions import (
     ValidationException, AuthenticationException, AuthorizationException
 )
+from utils.audit import log_audit, AuditAction
 from config import TOKEN_EXPIRY_HOURS
 
 logger = logging.getLogger(__name__)
