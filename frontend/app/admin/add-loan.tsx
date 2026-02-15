@@ -769,6 +769,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 12,
   },
+  dueDateInfo: {
+    fontSize: 13,
+    color: '#94A3B8',
+    marginTop: 6,
+    marginLeft: 4,
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
