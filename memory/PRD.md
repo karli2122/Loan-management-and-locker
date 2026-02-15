@@ -730,11 +730,40 @@ All 3 phases successfully implemented:
 - **Phase 2**: Auto-lock processing endpoints ✅
 - **Phase 3**: Admin configuration UI ✅
 
+### Session 18: Multi-Admin Dashboard Analytics & Client Self-Service Portal (Feb 15, 2026)
+**COMPLETED - Both features fully implemented and tested**
+
+1. **Multi-Admin Dashboard Analytics** - IMPLEMENTED ✅
+   - Superadmins can now filter dashboard data by specific admin or view "All Admins" aggregate
+   - Backend changes:
+     - `GET /api/reports/collection` - Added `filter_admin_id` parameter (superadmin only)
+     - `GET /api/analytics/dashboard` - Added `filter_admin_id` parameter (superadmin only)
+     - `GET /api/heartbeat/summary` - Added `filter_admin_id` parameter (superadmin only)
+   - Frontend changes:
+     - Admin filter dropdown on dashboard (only visible to superadmins)
+     - Options: My Data, All Admins, or specific admin
+     - Data refreshes automatically when filter changes
+   - Files modified: `backend/routes/reports.py`, `frontend/app/admin/(tabs)/index.tsx`
+
+2. **Client Self-Service Portal** - IMPLEMENTED ✅
+   - Clients can log in using phone number + registration code
+   - View loan status, payment history, and device status
+   - Backend endpoints (new file: `backend/routes/client_auth.py`):
+     - `POST /api/client/login` - Authenticate with phone + registration_code
+     - `GET /api/client/portal/status` - Get loan summary, payment status, device status
+     - `GET /api/client/portal/payments` - Get payment history
+   - Frontend pages (new files):
+     - `/client/portal-login` - Login page with phone/code inputs
+     - `/client/portal-dashboard` - Dashboard with loan progress, payment status, device status
+
+**Testing Results:** 100% pass rate
+- Backend: 19/19 tests passed
+- Test file: `/app/backend/tests/test_multi_admin_client_portal.py`
+- Bug fixed: Logic error in `filter_admin_id='all'` handling (testing agent)
+
 ## Current Backlog
-- P1: Multi-Admin Dashboard Analytics
-- P1: Client Self-Service Portal
-- P2: Audit Log - Track all admin actions
-- P2: Client Credit Score Tracking
+- P1: Audit Log - Track all admin actions
+- P1: Client Credit Score Tracking
 - P2: Dark/Light Theme Toggle
 - P3: Android Management API (AMAPI) Integration
 - P3: Push notifications (FCM)
