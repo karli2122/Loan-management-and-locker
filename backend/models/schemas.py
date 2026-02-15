@@ -106,6 +106,9 @@ class Client(BaseModel):
     auto_lock_enabled: bool = True
     auto_lock_grace_days: int = 3
     
+    # Late fee status
+    is_late: bool = False
+    
     # Legacy fields
     emi_amount: float = 0.0
     emi_due_date: Optional[str] = None
