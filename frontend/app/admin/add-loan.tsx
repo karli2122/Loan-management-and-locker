@@ -879,6 +879,53 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 40,
   },
+  // EMI Preview Card
+  emiPreviewCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#10B98140',
+  },
+  emiPreviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  emiPreviewTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  emiPreviewGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  emiPreviewItem: {
+    flex: 1,
+    minWidth: '40%',
+    backgroundColor: '#0F172A',
+    borderRadius: 12,
+    padding: 14,
+  },
+  emiPreviewLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  emiPreviewValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#10B981',
+  },
+  emiPreviewValueSmall: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
   submitButtonDisabled: {
     opacity: 0.5,
   },
