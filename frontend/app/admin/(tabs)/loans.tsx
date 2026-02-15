@@ -139,11 +139,14 @@ export default function LoansTab() {
   }, [clients, filter, searchQuery, tab, paymentFilter]);
 
   const renderClient = ({ item }: { item: Client }) => {
-    // Calculate payment progress
+    // Calculate payment progress - check both principal_amount and total_amount_due
     const totalLoan = item.total_amount_due || item.principal_amount || 0;
     const paid = item.total_paid || 0;
     const outstanding = item.outstanding_balance ?? totalLoan;
     const progressPercent = totalLoan > 0 ? Math.min((paid / totalLoan) * 100, 100) : 0;
+    
+    // Check if client has any loan data
+    const hasLoanData = totalLoan > 0;
     
     // Format next payment date
     const formatPaymentDate = (dateStr?: string) => {
@@ -186,7 +189,7 @@ export default function LoansTab() {
           </View>
         </View>
         
-        {item.principal_amount && (
+        {hasLoanData && (
           <View style={styles.loanInfo}>
             {/* Progress Bar */}
             <View style={styles.progressContainer}>
@@ -202,7 +205,7 @@ export default function LoansTab() {
                 <Text style={styles.loanDetailLabel}>
                   {language === 'et' ? 'Laen' : 'Loan'}
                 </Text>
-                <Text style={styles.loanDetailValue}>€{item.principal_amount.toFixed(0)}</Text>
+                <Text style={styles.loanDetailValue}>€{totalLoan.toFixed(0)}</Text>
               </View>
               
               <View style={styles.loanDetailItem}>
