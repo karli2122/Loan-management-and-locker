@@ -862,6 +862,43 @@ export default function AdminSettings() {
           </View>
         </View>
 
+        {/* Theme Section */}
+        <View style={[styles.section, { backgroundColor: colors.background }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+            {language === 'et' ? 'Teema' : 'Theme'}
+          </Text>
+          <View style={styles.themeContainer} data-testid="theme-toggle-section">
+            <TouchableOpacity
+              style={[
+                styles.themeOption, 
+                isDark && styles.themeOptionActive,
+                { backgroundColor: colors.surface, borderColor: isDark ? colors.primary : colors.border }
+              ]}
+              onPress={() => !isDark && toggleTheme()}
+              data-testid="theme-dark-btn"
+            >
+              <Ionicons name="moon" size={22} color={isDark ? colors.primary : colors.textMuted} />
+              <Text style={[styles.themeText, { color: isDark ? colors.primary : colors.textMuted }]}>
+                {language === 'et' ? 'Tume' : 'Dark'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.themeOption, 
+                !isDark && styles.themeOptionActive,
+                { backgroundColor: colors.surface, borderColor: !isDark ? colors.primary : colors.border }
+              ]}
+              onPress={() => isDark && toggleTheme()}
+              data-testid="theme-light-btn"
+            >
+              <Ionicons name="sunny" size={22} color={!isDark ? colors.primary : colors.textMuted} />
+              <Text style={[styles.themeText, { color: !isDark ? colors.primary : colors.textMuted }]}>
+                {language === 'et' ? 'Hele' : 'Light'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Google Drive Backup Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
