@@ -73,6 +73,9 @@ export default function AdminSettings() {
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null);
   const [newCreditValue, setNewCreditValue] = useState('');
+  
+  // User search state
+  const [userSearchQuery, setUserSearchQuery] = useState('');
 
   const handleAuthError = async () => {
     await AsyncStorage.multiRemove(['admin_token', 'admin_stay_signed_in']);
@@ -819,7 +822,29 @@ export default function AdminSettings() {
               </TouchableOpacity>
             </View>
 
-            {admins.map((admin) => (
+            {/* User Search Field */}
+            <View style={styles.userSearchContainer}>
+              <Ionicons name="search" size={18} color="#64748B" />
+              <TextInput
+                style={styles.userSearchInput}
+                placeholder={language === 'et' ? 'Otsi kasutajaid...' : 'Search users...'}
+                placeholderTextColor="#64748B"
+                value={userSearchQuery}
+                onChangeText={setUserSearchQuery}
+                data-testid="user-search-input"
+              />
+              {userSearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setUserSearchQuery('')}>
+                  <Ionicons name="close-circle" size={18} color="#64748B" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {admins.filter(admin => 
+              admin.username.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+              (admin.first_name && admin.first_name.toLowerCase().includes(userSearchQuery.toLowerCase())) ||
+              (admin.last_name && admin.last_name.toLowerCase().includes(userSearchQuery.toLowerCase()))
+            ).map((admin) => (
             <View key={admin.id} style={styles.adminCard}>
               <View style={styles.adminAvatarSmall}>
                 <Text style={styles.adminAvatarText}>{admin.username.charAt(0).toUpperCase()}</Text>
