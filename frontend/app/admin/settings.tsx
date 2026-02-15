@@ -924,6 +924,123 @@ export default function AdminSettings() {
           </View>
         </View>
 
+        {/* Late Fee & Auto-Lock Settings Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            {language === 'et' ? 'Viivis ja automaatne lukustus' : 'Late Fee & Auto-Lock'}
+          </Text>
+          
+          <View style={styles.settingsCard} data-testid="late-fee-settings-card">
+            {/* Late Fee Percent */}
+            <View style={styles.settingRow}>
+              <View style={styles.settingLabelContainer}>
+                <Ionicons name="cash-outline" size={20} color="#F59E0B" />
+                <View>
+                  <Text style={styles.settingLabel}>
+                    {language === 'et' ? 'Viivise protsent' : 'Late Fee Percent'}
+                  </Text>
+                  <Text style={styles.settingHint}>
+                    {language === 'et' ? 'Protsent igakuisest maksest' : 'Percent of monthly payment'}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.settingInputWrapper}>
+                <TextInput
+                  style={styles.settingInput}
+                  value={lateFeePercent}
+                  onChangeText={setLateFeePercent}
+                  keyboardType="decimal-pad"
+                  placeholder="2.0"
+                  placeholderTextColor="#64748B"
+                  data-testid="late-fee-percent-input"
+                />
+                <Text style={styles.settingUnit}>%</Text>
+              </View>
+            </View>
+
+            {/* Auto-Lock Grace Days */}
+            <View style={styles.settingRow}>
+              <View style={styles.settingLabelContainer}>
+                <Ionicons name="time-outline" size={20} color="#EF4444" />
+                <View>
+                  <Text style={styles.settingLabel}>
+                    {language === 'et' ? 'Ooteaeg (päevad)' : 'Grace Period (days)'}
+                  </Text>
+                  <Text style={styles.settingHint}>
+                    {language === 'et' ? 'Päevi enne automaatset lukustust' : 'Days before auto-lock'}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.settingInputWrapper}>
+                <TextInput
+                  style={styles.settingInput}
+                  value={autoLockGraceDays}
+                  onChangeText={setAutoLockGraceDays}
+                  keyboardType="number-pad"
+                  placeholder="3"
+                  placeholderTextColor="#64748B"
+                  data-testid="auto-lock-grace-days-input"
+                />
+                <Text style={styles.settingUnit}>{language === 'et' ? 'p' : 'd'}</Text>
+              </View>
+            </View>
+
+            {/* Auto-Lock Enabled Toggle */}
+            <View style={styles.settingRow}>
+              <View style={styles.settingLabelContainer}>
+                <Ionicons name="lock-closed" size={20} color="#4F46E5" />
+                <View>
+                  <Text style={styles.settingLabel}>
+                    {language === 'et' ? 'Automaatne lukustus' : 'Auto-Lock Enabled'}
+                  </Text>
+                  <Text style={styles.settingHint}>
+                    {language === 'et' ? 'Lukusta seade automaatselt' : 'Lock device automatically'}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity 
+                style={[styles.toggle, autoLockEnabled && styles.toggleActive]}
+                onPress={() => setAutoLockEnabled(!autoLockEnabled)}
+                data-testid="auto-lock-toggle"
+              >
+                <View style={[styles.toggleKnob, autoLockEnabled && styles.toggleKnobActive]} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Save Button */}
+            <TouchableOpacity
+              style={[styles.saveSettingsButton, settingsSaving && styles.buttonDisabled]}
+              onPress={handleSaveSettings}
+              disabled={settingsSaving}
+              data-testid="save-settings-button"
+            >
+              {settingsSaving ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark" size={18} color="#fff" />
+                  <Text style={styles.saveSettingsButtonText}>
+                    {language === 'et' ? 'Salvesta seaded' : 'Save Settings'}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {/* Apply to All Clients Button */}
+            <TouchableOpacity
+              style={[styles.applyToAllButton, settingsSaving && styles.buttonDisabled]}
+              onPress={handleApplySettingsToAll}
+              disabled={settingsSaving}
+              data-testid="apply-to-all-button"
+            >
+              <Ionicons name="people" size={18} color="#4F46E5" />
+              <Text style={styles.applyToAllButtonText}>
+                {language === 'et' ? 'Rakenda kõikidele klientidele' : 'Apply to All Clients'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Admin Management Section - Only for Admins */}
         {currentUserRole === 'admin' && (
           <View style={styles.section}>
