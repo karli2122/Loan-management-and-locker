@@ -549,7 +549,7 @@ async def get_client_late_status(client_id: str, admin_token: str = Query(...)):
     if isinstance(next_due, str):
         try:
             next_due = datetime.fromisoformat(next_due.replace('Z', '+00:00').replace('+00:00', ''))
-        except:
+        except (ValueError, AttributeError):
             return {
                 "client_id": client_id,
                 "is_late": False,
