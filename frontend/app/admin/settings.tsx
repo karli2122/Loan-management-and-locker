@@ -33,6 +33,7 @@ interface Admin {
 export default function AdminSettings() {
   const router = useRouter();
   const { language, setLanguage } = useLanguage();
+  const { theme, toggleTheme, colors, isDark } = useTheme();
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(true);
   const [adminToken, setAdminToken] = useState<string | null>(null);
