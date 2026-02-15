@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">EMI Lock</string>
+    <string name="accessibility_service_description">EMI Lock uses accessibility to protect your device from unauthorized app removal. This prevents tampering with device protection settings while you have pending payments.</string>
+</resources>
