@@ -11,7 +11,7 @@ import {
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
@@ -36,6 +36,7 @@ interface LoanPlan {
 
 export default function AddLoan() {
   const router = useRouter();
+  const { clientId } = useLocalSearchParams();
   const { language } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [loadingClients, setLoadingClients] = useState(true);
