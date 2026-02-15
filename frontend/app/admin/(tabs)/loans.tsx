@@ -39,6 +39,7 @@ export default function LoansTab() {
   const router = useRouter();
   const params = useLocalSearchParams<{ filter?: string }>();
   const { language } = useLanguage();
+  const { colors } = useTheme();
   const [clients, setClients] = useState<Client[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
