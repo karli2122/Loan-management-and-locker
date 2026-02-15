@@ -968,6 +968,46 @@ export default function ClientDetails() {
               </View>
             )}
 
+            {/* Late Fee Information */}
+            {(client.is_late || (client.late_fees_accumulated || 0) > 0) && (
+              <View style={styles.lateFeeCard}>
+                <View style={styles.lateFeeHeader}>
+                  <Ionicons name="cash-outline" size={20} color="#DC2626" />
+                  <Text style={styles.lateFeeTitle}>
+                    {language === 'et' ? 'Viivis' : 'Late Fee'}
+                  </Text>
+                </View>
+                <View style={styles.lateFeeDetails}>
+                  <View style={styles.lateFeeDetailItem}>
+                    <Text style={styles.lateFeeLabel}>
+                      {language === 'et' ? 'Viivise summa' : 'Late Fee Amount'}
+                    </Text>
+                    <Text style={styles.lateFeeValue}>
+                      €{(client.late_fees_accumulated || 0).toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={styles.lateFeeDetailItem}>
+                    <Text style={styles.lateFeeLabel}>
+                      {language === 'et' ? 'Kokku maksta' : 'Total Due'}
+                    </Text>
+                    <Text style={styles.lateFeeValueTotal}>
+                      €{((client.outstanding_balance || 0) + (client.late_fees_accumulated || 0)).toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
+                {client.auto_lock_enabled && (client.days_overdue || 0) > 0 && (
+                  <View style={styles.autoLockWarning}>
+                    <Ionicons name="lock-closed" size={14} color="#F59E0B" />
+                    <Text style={styles.autoLockWarningText}>
+                      {language === 'et' 
+                        ? `Automaatne lukustus ${client.auto_lock_grace_days || 3} päeva pärast tähtaega`
+                        : `Auto-lock after ${client.auto_lock_grace_days || 3} days overdue`}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+
             {/* Contract Actions */}
             <View style={styles.contractActions}>
               <TouchableOpacity
