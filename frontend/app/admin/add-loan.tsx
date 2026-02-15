@@ -69,6 +69,17 @@ export default function AddLoan() {
     fetchLoanPlans();
   }, []);
 
+  // Pre-select client if clientId is passed in URL
+  useEffect(() => {
+    if (clientId && clients.length > 0) {
+      const preSelectedClient = clients.find(c => c.id === clientId);
+      if (preSelectedClient) {
+        setSelectedClient(preSelectedClient);
+        setClientMode('existing');
+      }
+    }
+  }, [clientId, clients]);
+
   const fetchClients = async () => {
     try {
       const adminToken = await AsyncStorage.getItem('admin_token');
