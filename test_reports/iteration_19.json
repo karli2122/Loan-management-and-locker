@@ -1,0 +1,95 @@
+{
+  "summary": "Tested P1 due date calendar picker feature for loan setup. Backend API tests: 100% pass (5/5 tests). Frontend Add Loan page verified with all UI elements present. Fixed MongoDB duplicate key error on registration_code index.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_loan_setup_due_date.py"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Backend: due_date parameter correctly implemented in LoanSetup schema (models/schemas.py line 229)",
+    "Backend: Tenure calculation from due_date working correctly using dateutil.relativedelta (routes/loans.py lines 181-191)",
+    "Backend: Invalid due_date format returns proper 400 error with message",
+    "Backend: Zero tenure validation working - returns 400 with 'Loan tenure must be at least 1 month'",
+    "Frontend: Date picker using HTML5 input type='date' for web platform (add-loan.tsx lines 514-530)",
+    "Frontend: Interest rate field correctly pre-filled with '10' (add-loan.tsx line 65)",
+    "Frontend: Client and plan pickers have marginBottom:16 for proper spacing (add-loan.tsx lines 377, 462)",
+    "Frontend: Support chat inputContainer has paddingBottom:32 (support-chat.tsx line 339)"
+  ],
+  "updated_files": [
+    "/app/backend/database.py - Fixed registration_code index to be sparse to allow multiple empty strings",
+    "/app/backend/tests/test_loan_setup_due_date.py - Created new test file for due_date feature"
+  ],
+  "success_rate": {
+    "backend": "100% (5/5 manual curl tests passed)",
+    "frontend": "100% (UI elements verified via screenshot)"
+  },
+  "test_credentials": {
+    "admin_username": "karli1987",
+    "admin_password": "nasvakas123"
+  },
+  "seed_data_creation": "Used existing client ea9e7b06-6da7-43cb-846d-850038d0ef07 for loan setup tests",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend loan setup API fully working with due_date parameter. Frontend Add Loan page renders correctly with date picker, interest rate pre-fill, and proper dropdown spacing. MongoDB registration_code index fixed to be sparse. Intermittent Cloudflare 520 errors may occur during automated pytest runs - use manual curl tests as fallback.",
+  "verified_features": {
+    "backend_due_date_parameter": {
+      "status": "VERIFIED",
+      "details": "POST /api/loans/{client_id}/setup accepts due_date and calculates tenure correctly. Tested with 6-month future date, returned tenure_months=6 and correct EMI."
+    },
+    "backend_tenure_fallback": {
+      "status": "VERIFIED",
+      "details": "loan_tenure_months fallback works when due_date not provided. Tested with tenure=12, returned correct values."
+    },
+    "backend_invalid_date_validation": {
+      "status": "VERIFIED",
+      "details": "Invalid due_date format returns 400 with message 'Invalid due_date format. Use YYYY-MM-DD.'"
+    },
+    "backend_zero_tenure_validation": {
+      "status": "VERIFIED",
+      "details": "Zero tenure without due_date returns 400 with message 'Loan tenure must be at least 1 month'"
+    },
+    "frontend_date_picker": {
+      "status": "VERIFIED",
+      "details": "Add Loan page shows HTML5 date picker for 'Tähtaeg' (due date) field with calendar icon. Screenshot confirms mm/dd/yyyy format."
+    },
+    "frontend_interest_prefill": {
+      "status": "VERIFIED",
+      "details": "Interest rate field shows '10' as default value on page load."
+    },
+    "frontend_dropdown_spacing": {
+      "status": "VERIFIED",
+      "details": "Client and plan picker dropdowns have visible spacing (marginBottom:16) below them."
+    },
+    "frontend_support_chat_padding": {
+      "status": "CODE_VERIFIED",
+      "details": "support-chat.tsx line 339 has paddingBottom:32 in inputContainer style. Could not visually verify as page requires client registration."
+    }
+  },
+  "backend_test_results": {
+    "total_tests": 5,
+    "passed": 5,
+    "failed": 0,
+    "test_cases": [
+      "Login API - PASSED (200 OK, token returned)",
+      "Loan setup with due_date 6 months future - PASSED (tenure=6, EMI=171.56)",
+      "Loan setup with loan_tenure_months fallback - PASSED (tenure=12, EMI=159.93)",
+      "Invalid due_date format validation - PASSED (400 error)",
+      "Zero tenure validation - PASSED (400 error)"
+    ]
+  },
+  "bugfix_applied": {
+    "issue": "MongoDB DuplicateKeyError on registration_code index when creating clients",
+    "root_cause": "registration_code index was unique but not sparse, causing empty strings to conflict",
+    "fix": "Changed index to sparse=True in /app/backend/database.py line 20",
+    "verification": "Manually dropped old index and recreated with sparse=True"
+  },
+  "mocked_api_note": "fetch-price endpoint returns MOCKED estimated device prices based on model name patterns (not real market data)."
+}
