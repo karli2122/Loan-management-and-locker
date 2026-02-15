@@ -1792,4 +1792,22 @@ const styles = StyleSheet.create({
   creditConfirmButton: {
     backgroundColor: '#F59E0B',
   },
+  // User search styles
+  userSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+    gap: 8,
+  },
+  userSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#fff',
+  },
 });
