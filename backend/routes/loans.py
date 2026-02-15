@@ -402,8 +402,207 @@ async def update_loan_settings(
 
 @router.post("/late-fees/calculate-all")
 async def calculate_all_late_fees(admin_token: str = Query(...)):
-    """Manually trigger late fee calculation for all clients."""
-    await get_admin_id_from_token(admin_token)
+    """Calculate and apply late fees for all overdue clients."""
+    admin_id = await get_admin_id_from_token(admin_token)
     
-    # This would typically be a background job
-    return {"message": "Late fee calculation triggered"}
+    # Get all clients with active loans for this admin
+    clients = await db.clients.find({
+        "admin_id": admin_id,
+        "next_payment_due": {"$exists": True, "$ne": None},
+        "outstanding_balance": {"$gt": 0}
+    }).to_list(1000)
+    
+    updated_count = 0
+    total_late_fees = 0.0
+    
+    now = datetime.utcnow()
+    
+    for client in clients:
+        next_due = client.get("next_payment_due")
+        if not next_due:
+            continue
+        
+        # Handle both datetime and string formats
+        if isinstance(next_due, str):
+            try:
+                next_due = datetime.fromisoformat(next_due.replace('Z', '+00:00').replace('+00:00', ''))
+            except:
+                continue
+        
+        # Calculate days overdue
+        days_overdue = (now - next_due).days
+        
+        if days_overdue <= 0:
+            # Not overdue - ensure is_late is False
+            await db.clients.update_one(
+                {"id": client["id"]},
+                {"$set": {
+                    "days_overdue": 0,
+                    "is_late": False
+                }}
+            )
+            continue
+        
+        # Get late fee percentage (default 2%)
+        late_fee_percent = 2.0
+        
+        # Try to get from loan plan if client has one
+        loan_plan_id = client.get("loan_plan_id")
+        if loan_plan_id:
+            loan_plan = await db.loan_plans.find_one({"id": loan_plan_id})
+            if loan_plan:
+                late_fee_percent = loan_plan.get("late_fee_percent", 2.0)
+        
+        # Calculate late fee
+        monthly_emi = client.get("monthly_emi", 0)
+        late_fee = calculate_late_fee(monthly_emi, late_fee_percent, days_overdue)
+        
+        # Update client
+        await db.clients.update_one(
+            {"id": client["id"]},
+            {"$set": {
+                "days_overdue": days_overdue,
+                "late_fees_accumulated": late_fee,
+                "is_late": True
+            }}
+        )
+        
+        updated_count += 1
+        total_late_fees += late_fee
+    
+    return {
+        "message": "Late fee calculation complete",
+        "clients_processed": len(clients),
+        "clients_with_late_fees": updated_count,
+        "total_late_fees": round(total_late_fees, 2)
+    }
+
+
+@router.get("/late-fees/summary")
+async def get_late_fees_summary(admin_token: str = Query(...)):
+    """Get summary of all late fees for admin's clients."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Get all clients with late fees
+    late_clients = await db.clients.find({
+        "admin_id": admin_id,
+        "is_late": True,
+        "days_overdue": {"$gt": 0}
+    }, {"_id": 0}).to_list(1000)
+    
+    # Calculate summary
+    total_late_fees = sum(c.get("late_fees_accumulated", 0) for c in late_clients)
+    total_overdue_balance = sum(c.get("outstanding_balance", 0) for c in late_clients)
+    
+    # Categorize by severity
+    mild_overdue = [c for c in late_clients if c.get("days_overdue", 0) <= 7]
+    moderate_overdue = [c for c in late_clients if 7 < c.get("days_overdue", 0) <= 30]
+    severe_overdue = [c for c in late_clients if c.get("days_overdue", 0) > 30]
+    
+    return {
+        "total_late_clients": len(late_clients),
+        "total_late_fees": round(total_late_fees, 2),
+        "total_overdue_balance": round(total_overdue_balance, 2),
+        "breakdown": {
+            "mild_1_7_days": len(mild_overdue),
+            "moderate_8_30_days": len(moderate_overdue),
+            "severe_over_30_days": len(severe_overdue)
+        },
+        "late_clients": [
+            {
+                "id": c["id"],
+                "name": c["name"],
+                "phone": c.get("phone", ""),
+                "days_overdue": c.get("days_overdue", 0),
+                "late_fee": c.get("late_fees_accumulated", 0),
+                "outstanding_balance": c.get("outstanding_balance", 0),
+                "monthly_emi": c.get("monthly_emi", 0)
+            }
+            for c in sorted(late_clients, key=lambda x: x.get("days_overdue", 0), reverse=True)
+        ]
+    }
+
+
+@router.get("/clients/{client_id}/late-status")
+async def get_client_late_status(client_id: str, admin_token: str = Query(...)):
+    """Get late fee status for a specific client with real-time calculation."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    await enforce_client_scope(client, admin_id)
+    
+    # Calculate real-time late status
+    next_due = client.get("next_payment_due")
+    if not next_due:
+        return {
+            "client_id": client_id,
+            "is_late": False,
+            "days_overdue": 0,
+            "late_fee": 0,
+            "message": "No payment due date set"
+        }
+    
+    # Handle both datetime and string formats
+    if isinstance(next_due, str):
+        try:
+            next_due = datetime.fromisoformat(next_due.replace('Z', '+00:00').replace('+00:00', ''))
+        except:
+            return {
+                "client_id": client_id,
+                "is_late": False,
+                "days_overdue": 0,
+                "late_fee": 0,
+                "message": "Invalid due date format"
+            }
+    
+    now = datetime.utcnow()
+    days_overdue = (now - next_due).days
+    
+    if days_overdue <= 0:
+        return {
+            "client_id": client_id,
+            "is_late": False,
+            "days_overdue": 0,
+            "late_fee": 0,
+            "next_payment_due": next_due.isoformat() if hasattr(next_due, 'isoformat') else str(next_due),
+            "message": "Payment not yet due"
+        }
+    
+    # Get late fee percentage
+    late_fee_percent = 2.0
+    loan_plan_id = client.get("loan_plan_id")
+    if loan_plan_id:
+        loan_plan = await db.loan_plans.find_one({"id": loan_plan_id})
+        if loan_plan:
+            late_fee_percent = loan_plan.get("late_fee_percent", 2.0)
+    
+    # Calculate late fee
+    monthly_emi = client.get("monthly_emi", 0)
+    late_fee = calculate_late_fee(monthly_emi, late_fee_percent, days_overdue)
+    
+    # Update client record with current late status
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {
+            "days_overdue": days_overdue,
+            "late_fees_accumulated": late_fee,
+            "is_late": True
+        }}
+    )
+    
+    return {
+        "client_id": client_id,
+        "is_late": True,
+        "days_overdue": days_overdue,
+        "late_fee": round(late_fee, 2),
+        "late_fee_percent": late_fee_percent,
+        "monthly_emi": monthly_emi,
+        "outstanding_balance": client.get("outstanding_balance", 0),
+        "total_with_late_fee": round(client.get("outstanding_balance", 0) + late_fee, 2),
+        "next_payment_due": next_due.isoformat() if hasattr(next_due, 'isoformat') else str(next_due),
+        "auto_lock_enabled": client.get("auto_lock_enabled", True),
+        "auto_lock_grace_days": client.get("auto_lock_grace_days", 3)
+    }
