@@ -17,7 +17,7 @@ async def create_indexes():
         logger.info("Creating database indexes...")
         # Client collection indexes
         await db.clients.create_index("id", unique=True)
-        await db.clients.create_index("registration_code", unique=True)
+        await db.clients.create_index("registration_code", unique=True, sparse=True)
         await db.clients.create_index("is_locked")
         await db.clients.create_index("is_registered")
         await db.clients.create_index([("next_payment_due", 1), ("outstanding_balance", 1)])
