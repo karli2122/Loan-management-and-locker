@@ -426,7 +426,7 @@ async def calculate_all_late_fees(admin_token: str = Query(...)):
         if isinstance(next_due, str):
             try:
                 next_due = datetime.fromisoformat(next_due.replace('Z', '+00:00').replace('+00:00', ''))
-            except:
+            except (ValueError, AttributeError):
                 continue
         
         # Calculate days overdue
