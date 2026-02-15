@@ -18,11 +18,8 @@ router = APIRouter(tags=["Clients"])
 
 @router.post("/clients", response_model=Client)
 async def create_client(client_data: ClientCreate, admin_token: str = Query(...)):
-    """Create a new client with auto-generated registration code."""
+    """Create a new client (without registration key - must be generated manually)."""
     admin_id = await get_admin_id_from_token(admin_token)
-    
-    # Auto-generate registration code for new clients
-    registration_code = secrets.token_hex(4).upper()
     
     client = Client(
         name=client_data.name,
@@ -37,8 +34,7 @@ async def create_client(client_data: ClientCreate, admin_token: str = Query(...)
         loan_amount=client_data.loan_amount,
         down_payment=client_data.down_payment,
         interest_rate=client_data.interest_rate,
-        loan_tenure_months=client_data.loan_tenure_months,
-        registration_code=registration_code  # Auto-generated
+        loan_tenure_months=client_data.loan_tenure_months
     )
     
     await db.clients.insert_one(client.dict())
