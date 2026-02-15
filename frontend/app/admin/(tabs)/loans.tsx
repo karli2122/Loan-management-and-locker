@@ -30,6 +30,8 @@ interface Client {
   outstanding_balance?: number;
   days_overdue?: number;
   total_paid?: number;
+  is_late?: boolean;
+  late_fees_accumulated?: number;
 }
 
 export default function LoansTab() {
