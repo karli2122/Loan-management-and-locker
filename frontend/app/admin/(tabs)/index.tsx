@@ -102,6 +102,54 @@ export default function Dashboard() {
     }
   };
 
+  const fetchHeartbeat = async () => {
+    try {
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      if (!adminToken) return;
+      const response = await fetch(`${API_URL}/api/heartbeat/summary?admin_token=${adminToken}`);
+      if (response.ok) {
+        const data = await response.json();
+        setHeartbeat({
+          total_registered: data.total_registered,
+          online_count: data.online_count,
+          warning_count: data.warning_count,
+          critical_count: data.critical_count,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch heartbeat:', error);
+    }
+  };
+
+  const fetchRevenueChart = async () => {
+    try {
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      if (!adminToken) return;
+      const response = await fetch(`${API_URL}/api/analytics/dashboard?admin_token=${adminToken}`);
+      if (response.ok) {
+        const data = await response.json();
+        const revenue = data.monthly_revenue || {};
+        
+        // Generate last 6 months labels
+        const months: string[] = [];
+        const values: number[] = [];
+        const now = new Date();
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          const monthNames = language === 'et' 
+            ? ['Jaan','Veebr','Märts','Apr','Mai','Juuni','Juuli','Aug','Sept','Okt','Nov','Dets']
+            : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          months.push(monthNames[d.getMonth()]);
+          values.push(revenue[key] || 0);
+        }
+        setRevenueChart({ labels: months, data: values });
+      }
+    } catch (error) {
+      console.error('Failed to fetch revenue chart:', error);
+    }
+  };
+
   const loadUserData = async () => {
     const storedUsername = await AsyncStorage.getItem('admin_username');
     const role = await AsyncStorage.getItem('admin_role');
