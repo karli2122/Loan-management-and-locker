@@ -257,6 +257,15 @@ export default function LoansTab() {
                   </Text>
                 </View>
               )}
+              
+              {(item.is_late || (item.late_fees_accumulated ?? 0) > 0) && (
+                <View style={styles.lateFeeBadge}>
+                  <Ionicons name="cash" size={12} color="#DC2626" />
+                  <Text style={styles.lateFeeText}>
+                    {language === 'et' ? 'Viivis' : 'Late Fee'}: €{(item.late_fees_accumulated ?? 0).toFixed(2)}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         )}
