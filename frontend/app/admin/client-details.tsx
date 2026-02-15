@@ -434,6 +434,50 @@ export default function ClientDetails() {
     }
   };
 
+  const openEditClientModal = () => {
+    if (client) {
+      setEditClientName(client.name || '');
+      setEditClientPhone(client.phone || '');
+      setEditClientEmail(client.email || '');
+      setEditClientModal(true);
+    }
+  };
+
+  const handleSaveClientInfo = async () => {
+    if (!editClientName.trim()) {
+      Alert.alert(t('error'), language === 'et' ? 'Nimi on kohustuslik' : 'Name is required');
+      return;
+    }
+    
+    setActionLoading(true);
+    try {
+      const updateData: any = {};
+      if (editClientName.trim()) updateData.name = editClientName.trim();
+      if (editClientPhone.trim()) updateData.phone = editClientPhone.trim();
+      if (editClientEmail.trim()) updateData.email = editClientEmail.trim();
+
+      const adminQuery = await buildAdminTokenQuery();
+      const response = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to update client info');
+      }
+      
+      await fetchClient();
+      setEditClientModal(false);
+      Alert.alert(t('success'), language === 'et' ? 'Kliendi andmed uuendatud' : 'Client info updated');
+    } catch (error: any) {
+      Alert.alert(t('error'), error.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleRecordPayment = async () => {
     if (!paymentAmount) {
       Alert.alert(t('error'), language === 'et' ? 'Palun sisesta summa' : 'Please enter payment amount');
