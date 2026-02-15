@@ -531,6 +531,22 @@ async def calculate_all_late_fees(admin_token: str = Query(...), apply_auto_lock
                 )
                 await db.notifications.insert_one(notification.dict())
         
+        # Apply credit score penalty for late payments (only if transitioning to late)
+        was_late = client.get("is_late", False)
+        if not was_late and days_overdue > 0:
+            # First time becoming late - apply penalty
+            from routes.credit_score import update_credit_score
+            try:
+                await update_credit_score(
+                    client_id=client["id"],
+                    change_amount=CREDIT_SCORE_LATE_PAYMENT,
+                    reason=f"late_payment_detected_{days_overdue}_days",
+                    admin_id=admin_id
+                )
+                logger.info(f"Credit score penalty applied to client {client['id']}: {CREDIT_SCORE_LATE_PAYMENT} (late payment)")
+            except Exception as e:
+                logger.error(f"Failed to apply credit score penalty for client {client['id']}: {e}")
+        
         # Update client
         await db.clients.update_one(
             {"id": client["id"]},
