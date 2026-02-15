@@ -108,23 +108,30 @@ export default function LoansTab() {
 
   const filteredClients = useMemo(() => {
     let list = clients;
+    
+    // Helper to get loan amount (checks both fields)
+    const getLoanAmount = (c: Client) => c.total_amount_due || c.principal_amount || 0;
+    const getOutstanding = (c: Client) => c.outstanding_balance ?? getLoanAmount(c);
+    
     if (filter === 'overdue') {
       list = list.filter(
-        (c) => (c.outstanding_balance ?? 0) > 0 && (c.days_overdue ?? 0) > 0
+        (c) => getOutstanding(c) > 0 && (c.days_overdue ?? 0) > 0
       );
     } else if (filter === 'paid') {
       list = list.filter(
-        (c) => (c.outstanding_balance ?? c.total_amount_due ?? 0) === 0 && (c.total_paid ?? 0) > 0
+        (c) => getOutstanding(c) === 0 && (c.total_paid ?? 0) > 0
       );
     }
 
     if (tab === 'given') {
+      // Show clients with active loans (outstanding > 0)
       list = list.filter(
-        (c) => (c.outstanding_balance ?? c.total_amount_due ?? 0) > 0
+        (c) => getLoanAmount(c) > 0 && getOutstanding(c) > 0
       );
     } else if (tab === 'settled') {
+      // Show clients with settled loans (outstanding = 0 but had a loan)
       list = list.filter(
-        (c) => (c.outstanding_balance ?? c.total_amount_due ?? 0) === 0
+        (c) => getLoanAmount(c) > 0 && getOutstanding(c) === 0
       );
     }
 
