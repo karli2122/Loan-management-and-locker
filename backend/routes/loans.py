@@ -20,6 +20,10 @@ from utils.calculations import (
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Loans"])
 
+# Credit score adjustment values
+CREDIT_SCORE_ON_TIME_PAYMENT = 5     # +5 for on-time payment
+CREDIT_SCORE_LATE_PAYMENT = -10      # -10 for late payment
+
 
 # ===================== LOAN PLANS =====================
 
