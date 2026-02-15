@@ -949,4 +949,77 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155',
   },
+  // Admin Filter styles
+  adminFilterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#4F46E530',
+  },
+  adminFilterContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  adminFilterLabel: {
+    fontSize: 13,
+    color: '#94A3B8',
+  },
+  adminFilterValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4F46E5',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 16,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  modalOptionActive: {
+    backgroundColor: '#4F46E520',
+  },
+  modalOptionText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#94A3B8',
+  },
+  modalOptionTextActive: {
+    color: '#4F46E5',
+    fontWeight: '500',
+  },
+  modalDivider: {
+    height: 1,
+    backgroundColor: '#334155',
+    marginVertical: 8,
+  },
 });
