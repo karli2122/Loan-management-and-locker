@@ -303,3 +303,21 @@ class BulkOperationRequest(BaseModel):
     client_ids: List[str]
     action: str
     message: Optional[str] = None
+
+
+# ===================== ADMIN SETTINGS =====================
+
+class AdminSettings(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    admin_id: str
+    default_late_fee_percent: float = 2.0
+    default_auto_lock_grace_days: int = 3
+    default_auto_lock_enabled: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class AdminSettingsUpdate(BaseModel):
+    default_late_fee_percent: Optional[float] = None
+    default_auto_lock_grace_days: Optional[int] = None
+    default_auto_lock_enabled: Optional[bool] = None
