@@ -643,6 +643,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#EF4444',
   },
+  lateFeeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#DC262620',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DC262640',
+  },
+  lateFeeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#DC2626',
+  },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
