@@ -257,6 +257,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginHorizontal: 16,
+    marginVertical: 12,
+  },
+  filterTab: {
+    flex: 1,
+    backgroundColor: '#1E293B',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  filterTabActive: {
+    backgroundColor: '#4F46E5',
+    borderColor: '#4F46E5',
+  },
+  filterTabText: {
+    color: '#94A3B8',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  filterTabTextActive: {
+    color: '#fff',
+  },
   listContainer: {
     padding: 16,
     paddingBottom: 96,
@@ -282,6 +309,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
+  disbursementIcon: {
+    backgroundColor: '#F59E0B20',
+  },
   paymentInfo: {
     flex: 1,
   },
@@ -295,6 +325,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#94A3B8',
   },
+  typeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  disbursementBadge: {
+    backgroundColor: '#F59E0B20',
+  },
+  paymentBadge: {
+    backgroundColor: '#10B98120',
+  },
+  typeBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
   amountContainer: {
     alignItems: 'flex-end',
   },
@@ -303,6 +349,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#10B981',
     marginBottom: 4,
+  },
+  disbursementAmount: {
+    color: '#F59E0B',
   },
   paymentMethod: {
     fontSize: 11,
