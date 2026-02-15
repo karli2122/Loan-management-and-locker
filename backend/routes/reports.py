@@ -107,9 +107,10 @@ async def get_collection_report(
     # Determine which admin's data to fetch
     target_admin_id = admin_id
     if filter_admin_id and is_super_admin:
-        target_admin_id = filter_admin_id
-    elif filter_admin_id == "all" and is_super_admin:
-        target_admin_id = None  # Fetch all clients
+        if filter_admin_id == "all":
+            target_admin_id = None  # Fetch all clients
+        else:
+            target_admin_id = filter_admin_id
     
     query = {"admin_id": target_admin_id} if target_admin_id else {}
     clients = await db.clients.find(query, {"_id": 0}).to_list(1000)
