@@ -711,53 +711,54 @@ export default function Reports() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{language === 'et' ? 'Klientide staatus' : 'Client Status Distribution'}</Text>
             
-            {/* Pie Chart for Client Status */}
-            <View style={styles.chartContainer}>
-              <PieChart
-                data={[
-                  {
-                    name: language === 'et' ? 'Õigel ajal' : 'On Time',
-                    population: clientReport.summary?.on_time_clients || 0,
-                    color: '#10B981',
-                    legendFontColor: '#94A3B8',
-                    legendFontSize: 12,
-                  },
-                  {
-                    name: language === 'et' ? 'Ohus' : 'At Risk',
-                    population: clientReport.summary?.at_risk_clients || 0,
-                    color: '#F59E0B',
-                    legendFontColor: '#94A3B8',
-                    legendFontSize: 12,
-                  },
-                  {
-                    name: language === 'et' ? 'Maksejõuetu' : 'Defaulted',
-                    population: clientReport.summary?.defaulted_clients || 0,
-                    color: '#EF4444',
-                    legendFontColor: '#94A3B8',
-                    legendFontSize: 12,
-                  },
-                  {
-                    name: language === 'et' ? 'Lõpetatud' : 'Completed',
-                    population: clientReport.summary?.completed_clients || 0,
-                    color: '#4F46E5',
-                    legendFontColor: '#94A3B8',
-                    legendFontSize: 12,
-                  },
-                ]}
-                width={screenWidth - 40}
-                height={220}
-                chartConfig={{
-                  backgroundColor: '#1E293B',
-                  backgroundGradientFrom: '#1E293B',
-                  backgroundGradientTo: '#1E293B',
-                  color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                }}
-                accessor="population"
-                backgroundColor="transparent"
-                paddingLeft="15"
-                absolute
-              />
-            </View>
+            {/* Pie Chart for Client Status - only show if there's data */}
+            {(() => {
+              const onTime = clientReport.summary?.on_time_clients || 0;
+              const atRisk = clientReport.summary?.at_risk_clients || 0;
+              const defaulted = clientReport.summary?.defaulted_clients || 0;
+              const completed = clientReport.summary?.completed_clients || 0;
+              const total = onTime + atRisk + defaulted + completed;
+              
+              // Only render PieChart if there's actual data
+              if (total === 0) {
+                return (
+                  <View style={styles.noPriceCard}>
+                    <Ionicons name="pie-chart-outline" size={24} color="#64748B" />
+                    <Text style={styles.noPriceText}>
+                      {language === 'et' ? 'Andmeid pole veel' : 'No data available yet'}
+                    </Text>
+                  </View>
+                );
+              }
+              
+              // Filter out zero-value entries to prevent chart issues
+              const chartData = [
+                { name: language === 'et' ? 'Õigel ajal' : 'On Time', population: onTime, color: '#10B981', legendFontColor: '#94A3B8', legendFontSize: 12 },
+                { name: language === 'et' ? 'Ohus' : 'At Risk', population: atRisk, color: '#F59E0B', legendFontColor: '#94A3B8', legendFontSize: 12 },
+                { name: language === 'et' ? 'Maksejõuetu' : 'Defaulted', population: defaulted, color: '#EF4444', legendFontColor: '#94A3B8', legendFontSize: 12 },
+                { name: language === 'et' ? 'Lõpetatud' : 'Completed', population: completed, color: '#4F46E5', legendFontColor: '#94A3B8', legendFontSize: 12 },
+              ].filter(item => item.population > 0);
+              
+              return (
+                <View style={styles.chartContainer}>
+                  <PieChart
+                    data={chartData}
+                    width={screenWidth - 40}
+                    height={220}
+                    chartConfig={{
+                      backgroundColor: '#1E293B',
+                      backgroundGradientFrom: '#1E293B',
+                      backgroundGradientTo: '#1E293B',
+                      color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                    }}
+                    accessor="population"
+                    backgroundColor="transparent"
+                    paddingLeft="15"
+                    absolute
+                  />
+                </View>
+              );
+            })()}
 
             {(clientReport.details?.at_risk?.length || 0) > 0 && (
               <View style={styles.alertBox}>
@@ -812,44 +813,59 @@ export default function Reports() {
             </View>
 
             <Text style={styles.trendTitle}>{language === 'et' ? '6-kuu tulude trend' : '6-Month Revenue Trend'}</Text>
-            <View style={styles.chartContainer}>
-              <LineChart
-                data={{
-                  labels: (financialReport.monthly_trend || []).map((m: any) => {
-                    const [month] = (m.month || '').split(' ');
-                    return month.substring(0, 3);
-                  }),
-                  datasets: [
-                    {
-                      data: (financialReport.monthly_trend || []).map((m: any) => m.revenue || 0),
-                    },
-                  ],
-                }}
-                width={screenWidth - 40}
-                height={220}
-                chartConfig={{
-                  backgroundColor: '#1E293B',
-                  backgroundGradientFrom: '#1E293B',
-                  backgroundGradientTo: '#334155',
-                  decimalPlaces: 0,
-                  color: (opacity = 1) => `rgba(79, 70, 229, ${opacity})`,
-                  labelColor: (opacity = 1) => `rgba(148, 163, 184, ${opacity})`,
-                  style: {
-                    borderRadius: 16,
-                  },
-                  propsForDots: {
-                    r: '6',
-                    strokeWidth: '2',
-                    stroke: '#4F46E5',
-                  },
-                }}
-                bezier
-                style={{
-                  marginVertical: 8,
-                  borderRadius: 16,
-                }}
-              />
-            </View>
+            {/* Line chart - only render if there's trend data */}
+            {(() => {
+              const trendData = financialReport.monthly_trend || [];
+              const hasData = trendData.length > 0 && trendData.some((m: any) => (m.revenue || 0) > 0);
+              
+              if (!hasData) {
+                return (
+                  <View style={styles.noPriceCard}>
+                    <Ionicons name="analytics-outline" size={24} color="#64748B" />
+                    <Text style={styles.noPriceText}>
+                      {language === 'et' ? 'Trendiandmeid pole veel' : 'No trend data available yet'}
+                    </Text>
+                  </View>
+                );
+              }
+              
+              // Ensure we have at least one data point to avoid chart crash
+              const chartLabels = trendData.map((m: any) => {
+                const [month] = (m.month || '').split(' ');
+                return month.substring(0, 3);
+              });
+              const chartValues = trendData.map((m: any) => m.revenue || 0);
+              
+              // If all values are 0, add a small dummy to prevent crash
+              const hasNonZero = chartValues.some((v: number) => v > 0);
+              const safeChartValues = hasNonZero ? chartValues : [0.01];
+              const safeChartLabels = hasNonZero ? chartLabels : [''];
+              
+              return (
+                <View style={styles.chartContainer}>
+                  <LineChart
+                    data={{
+                      labels: safeChartLabels,
+                      datasets: [{ data: safeChartValues }],
+                    }}
+                    width={screenWidth - 40}
+                    height={220}
+                    chartConfig={{
+                      backgroundColor: '#1E293B',
+                      backgroundGradientFrom: '#1E293B',
+                      backgroundGradientTo: '#334155',
+                      decimalPlaces: 0,
+                      color: (opacity = 1) => `rgba(79, 70, 229, ${opacity})`,
+                      labelColor: (opacity = 1) => `rgba(148, 163, 184, ${opacity})`,
+                      style: { borderRadius: 16 },
+                      propsForDots: { r: '6', strokeWidth: '2', stroke: '#4F46E5' },
+                    }}
+                    bezier
+                    style={{ marginVertical: 8, borderRadius: 16 }}
+                  />
+                </View>
+              );
+            })()}
 
             {/* Trend summary */}
             <View style={styles.trendSummary}>
