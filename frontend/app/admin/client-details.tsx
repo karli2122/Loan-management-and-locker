@@ -774,7 +774,17 @@ export default function ClientDetails() {
 
         {/* Contact Info */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('contactInfo')}</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{t('contactInfo')}</Text>
+            <TouchableOpacity 
+              style={styles.editButton}
+              onPress={openEditClientModal}
+              data-testid="edit-client-btn"
+            >
+              <Ionicons name="create-outline" size={18} color="#4F46E5" />
+              <Text style={styles.editButtonText}>{t('edit')}</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.infoRow}>
             <Ionicons name="call" size={18} color="#64748B" />
             <Text style={styles.infoText}>{client.phone}</Text>
