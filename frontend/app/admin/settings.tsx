@@ -822,6 +822,21 @@ export default function AdminSettings() {
             </Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
+
+          {/* Audit Log - Superadmin Only */}
+          {isSuperAdmin && (
+            <TouchableOpacity
+              style={[styles.actionButton, { marginTop: 8 }]}
+              onPress={() => router.push('/admin/audit-log')}
+              data-testid="audit-log-btn"
+            >
+              <Ionicons name="document-text" size={20} color="#10B981" />
+              <Text style={styles.actionButtonText}>
+                {language === 'et' ? 'Tegevuste logi' : 'Audit Log'}
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color="#64748B" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Language Section */}
