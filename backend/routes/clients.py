@@ -51,7 +51,13 @@ async def list_clients(admin_token: str = Query(...)):
         {"_id": 0}
     ).to_list(1000)
     
-    return clients
+    # Ensure loan fields are properly mapped for frontend compatibility
+    for client in clients:
+        # Map loan_amount to principal_amount for frontend compatibility
+        if client.get("loan_amount") and not client.get("principal_amount"):
+            client["principal_amount"] = client["loan_amount"]
+    
+    return {"clients": clients}
 
 
 @router.get("/clients/silent")
