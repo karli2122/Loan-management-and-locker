@@ -10,7 +10,7 @@ import os
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://late-fee-dashboard.preview.emergentagent.com"
+    BASE_URL = "https://dark-light-admin-1.preview.emergentagent.com"
 
 # Test credentials
 ADMIN_USERNAME = "karli1987"

@@ -7,7 +7,7 @@ function normalize(url: string) {
   return clean;
 }
 
-export const FALLBACK_BACKEND = 'https://late-fee-dashboard.preview.emergentagent.com';
+export const FALLBACK_BACKEND = 'https://dark-light-admin-1.preview.emergentagent.com';
 
 const rawCandidate =
   process.env.EXPO_PUBLIC_BACKEND_URL ||

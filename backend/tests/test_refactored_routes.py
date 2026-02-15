@@ -16,7 +16,7 @@ import os
 from datetime import datetime
 
 # Use the public URL for testing
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://late-fee-dashboard.preview.emergentagent.com')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://dark-light-admin-1.preview.emergentagent.com')
 
 # Test credentials from review request
 ADMIN_USERNAME = "karli1987"
