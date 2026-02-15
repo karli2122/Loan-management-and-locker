@@ -32,13 +32,13 @@ class TestSuperadminAuthentication:
         assert response.status_code == 200, f"Login failed: {response.text}"
         
         data = response.json()
-        assert "admin_token" in data, f"No admin_token in response: {data}"
-        assert "admin_id" in data, f"No admin_id in response: {data}"
+        assert "token" in data, f"No token in response: {data}"
+        assert "id" in data, f"No id in response: {data}"
         assert "is_super_admin" in data, f"No is_super_admin flag: {data}"
         assert data["is_super_admin"] is True, f"User is not superadmin: {data}"
         
-        print(f"Superadmin login successful: admin_id={data['admin_id']}, token={data['admin_token'][:20]}...")
-        return data["admin_token"], data["admin_id"]
+        print(f"Superadmin login successful: admin_id={data['id']}, token={data['token'][:20]}...")
+        return data["token"], data["id"]
 
 
 @pytest.fixture(scope="module")
@@ -51,7 +51,7 @@ def superadmin_token():
     if response.status_code != 200:
         pytest.skip(f"Could not authenticate superadmin: {response.text}")
     data = response.json()
-    return data["admin_token"], data["admin_id"]
+    return data["token"], data["id"]
 
 
 @pytest.fixture(scope="module")
