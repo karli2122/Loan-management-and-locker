@@ -802,7 +802,11 @@ All 3 phases successfully implemented:
      - New "Teema" / "Theme" section with Dark/Light toggle buttons
      - Icons: Moon for dark, Sun for light
      - Visual feedback with active border highlight
-   - Settings page header and some sections now use dynamic theme colors
+   - Extended theme support to major pages:
+     - Dashboard (`frontend/app/admin/(tabs)/index.tsx`) - full theme support
+     - Loans page (`frontend/app/admin/(tabs)/loans.tsx`) - full theme support
+     - Login page (`frontend/app/admin/login.tsx`) - full theme support
+     - Settings page - full theme support with dynamic colors
 
 2. **Automatic Credit Score Adjustments** - IMPLEMENTED ✅
    - Updated payment recording endpoint (`backend/routes/loans.py`):
@@ -819,12 +823,16 @@ All 3 phases successfully implemented:
 - `frontend/src/context/ThemeContext.tsx` (NEW) - Theme context with dark/light support
 - `frontend/app/_layout.tsx` - Added ThemeProvider
 - `frontend/app/admin/settings.tsx` - Added theme toggle UI and dynamic colors
+- `frontend/app/admin/(tabs)/index.tsx` - Added theme support to Dashboard
+- `frontend/app/admin/(tabs)/loans.tsx` - Added theme support to Loans page
+- `frontend/app/admin/login.tsx` - Added theme support to Login page
 - `backend/routes/loans.py` - Added automatic credit score adjustments
 
 **Testing Results:**
 - Backend payment endpoint tested via curl - credit score correctly increased by +5
 - Theme toggle UI visible and functional in Settings page
 - Theme preference persisted in local storage
+- Dashboard, Loans, Login pages now use dynamic theme colors
 
 ## Current Backlog
 - P3: Android Management API (AMAPI) Integration
