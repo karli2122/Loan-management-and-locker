@@ -325,3 +325,36 @@ class AdminSettingsUpdate(BaseModel):
     default_late_fee_percent: Optional[float] = None
     default_auto_lock_grace_days: Optional[int] = None
     default_auto_lock_enabled: Optional[bool] = None
+
+
+# ===================== AUDIT LOG =====================
+
+class AuditLog(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    admin_id: str
+    admin_username: str = ""
+    action_type: str  # login, client_create, client_update, client_delete, loan_setup, payment_record, lock, unlock, settings_change, etc.
+    target_type: str = ""  # client, loan_plan, admin, settings, etc.
+    target_id: Optional[str] = None
+    target_name: Optional[str] = None
+    details: str = ""
+    ip_address: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ===================== CREDIT SCORE =====================
+
+class CreditScoreHistory(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    client_id: str
+    previous_score: int
+    new_score: int
+    change_amount: int
+    reason: str  # payment_made, late_payment, loan_completed, manual_adjustment, loan_setup
+    admin_id: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class CreditScoreUpdate(BaseModel):
+    score: int = Field(..., ge=0, le=1000)
+    reason: str = ""
