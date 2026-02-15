@@ -289,6 +289,79 @@ async def send_warning(client_id: str, message: str = Query(...), admin_token: s
     return {"message": "Warning sent", "client_id": client_id}
 
 
+@router.get("/clients/{client_id}/fetch-price")
+async def fetch_device_price(client_id: str, admin_token: str = Query(...)):
+    """Fetch estimated price for a client's device.
+    
+    This is a placeholder implementation that returns a mock price based on device model.
+    In production, this would integrate with a real price lookup service.
+    """
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    await enforce_client_scope(client, admin_id)
+    
+    device_model = client.get("device_model", "").lower()
+    device_make = client.get("device_make", "").lower()
+    
+    if not device_model or device_model == "unknown device":
+        raise HTTPException(status_code=400, detail="Device model not available. Please register the device first.")
+    
+    # Simple price estimation based on device model patterns
+    # In production, this would call an external price API
+    estimated_price = 150.0  # Base price
+    
+    # Adjust price based on device model
+    if "iphone" in device_model or "iphone" in device_make:
+        if "14" in device_model or "15" in device_model:
+            estimated_price = 450.0
+        elif "13" in device_model:
+            estimated_price = 350.0
+        elif "12" in device_model:
+            estimated_price = 280.0
+        elif "11" in device_model:
+            estimated_price = 220.0
+        else:
+            estimated_price = 180.0
+    elif "samsung" in device_model or "samsung" in device_make or "galaxy" in device_model:
+        if "s24" in device_model or "s23" in device_model:
+            estimated_price = 400.0
+        elif "s22" in device_model or "s21" in device_model:
+            estimated_price = 300.0
+        elif "a5" in device_model:
+            estimated_price = 200.0
+        else:
+            estimated_price = 150.0
+    elif "pixel" in device_model:
+        estimated_price = 250.0
+    elif "huawei" in device_model or "huawei" in device_make:
+        estimated_price = 180.0
+    elif "xiaomi" in device_model or "xiaomi" in device_make:
+        estimated_price = 120.0
+    elif "oneplus" in device_model or "oneplus" in device_make:
+        estimated_price = 200.0
+    
+    # Update client with fetched price
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {
+            "used_price_eur": estimated_price,
+            "price_fetched_at": datetime.utcnow()
+        }}
+    )
+    
+    return {
+        "client_id": client_id,
+        "device_model": client.get("device_model"),
+        "device_make": client.get("device_make"),
+        "used_price_eur": estimated_price,
+        "note": "Estimated based on device model. Actual market value may vary."
+    }
+
+
 @router.post("/clients/{client_id}/report-tamper")
 async def report_tamper(client_id: str):
     """Report a tamper attempt from client device."""
