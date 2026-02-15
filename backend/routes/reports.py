@@ -11,6 +11,68 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Reports"])
 
 
+@router.get("/heartbeat/summary")
+async def get_heartbeat_summary(admin_token: str = Query(...)):
+    """Get heartbeat monitoring summary with severity breakdown."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    now = datetime.utcnow()
+    clients = await db.clients.find(
+        {"admin_id": admin_id, "is_registered": True},
+        {"_id": 0, "id": 1, "name": 1, "device_model": 1, "last_heartbeat": 1, "is_locked": 1}
+    ).to_list(1000)
+    
+    online = []
+    warning = []
+    critical = []
+    never_reported = []
+    
+    for client in clients:
+        hb = client.get("last_heartbeat")
+        entry = {
+            "id": client["id"],
+            "name": client.get("name", "Unknown"),
+            "device_model": client.get("device_model", "Unknown"),
+            "is_locked": client.get("is_locked", False),
+            "last_heartbeat": hb.isoformat() if hb else None,
+        }
+        
+        if not hb:
+            entry["severity"] = "critical"
+            entry["minutes_ago"] = None
+            never_reported.append(entry)
+        else:
+            minutes_ago = (now - hb).total_seconds() / 60
+            entry["minutes_ago"] = round(minutes_ago)
+            
+            if minutes_ago <= 30:
+                entry["severity"] = "online"
+                online.append(entry)
+            elif minutes_ago <= 120:
+                entry["severity"] = "warning"
+                warning.append(entry)
+            else:
+                entry["severity"] = "critical"
+                critical.append(entry)
+    
+    all_critical = critical + never_reported
+    all_silent = warning + all_critical
+    
+    return {
+        "total_registered": len(clients),
+        "online_count": len(online),
+        "warning_count": len(warning),
+        "critical_count": len(all_critical),
+        "online": online,
+        "warning": warning,
+        "critical": all_critical,
+        "thresholds": {
+            "online_minutes": 30,
+            "warning_minutes": 120,
+        }
+    }
+
+
 @router.get("/reports/collection")
 async def get_collection_report(admin_token: str = Query(...)):
     """Get collection report for an admin."""
