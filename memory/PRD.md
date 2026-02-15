@@ -603,9 +603,28 @@ Refactored the 3131-line `server.py` into modular route files:
 - Frontend: All 7 features verified working
 - Test file: `/app/backend/tests/test_bug_fixes_iteration20.py`
 
+### Session 16b: Heartbeat Monitoring + Revenue Chart (Feb 15, 2026)
+
+1. **Heartbeat Monitoring Card** - IMPLEMENTED ✅
+   - New backend endpoint: `GET /api/heartbeat/summary?admin_token=TOKEN`
+   - Returns severity breakdown: online (<30min), warning (30-120min), critical (>120min)
+   - Dashboard card shows: colored dots (green/amber/red), counts, alert message for critical devices
+   - Clickable → navigates to Device Management page
+   - Files: `backend/routes/reports.py`, `frontend/app/admin/(tabs)/index.tsx`
+
+2. **Monthly Revenue Trend Chart** - IMPLEMENTED ✅
+   - Uses `/api/analytics/dashboard` endpoint which returns `monthly_revenue` data
+   - LineChart (react-native-chart-kit) showing last 6 months of revenue
+   - Bezier curve, themed styling matching dark dashboard aesthetic
+   - File: `frontend/app/admin/(tabs)/index.tsx`
+
+**Testing Results:** 100% pass rate
+- Backend: 16/16 tests passed
+- Frontend: 100% verified
+- Test file: `/app/backend/tests/test_heartbeat_revenue_features.py`
+
 ## Current Backlog
 - P0: Client app crash on home screen (Android-specific, needs APK testing)
 - P2: Add data-testid attributes to interactive elements
-- P2: Heartbeat Monitoring improvements
 - P3: Android Management API (AMAPI) Integration
 - P3: Push notifications (FCM)
