@@ -486,7 +486,7 @@ export default function Dashboard() {
 
         {/* Heartbeat Monitoring Card */}
         <TouchableOpacity
-          style={styles.heartbeatCard}
+          style={[styles.heartbeatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={() => router.push('/admin/device-management')}
           activeOpacity={0.8}
           data-testid="heartbeat-card"
@@ -494,33 +494,33 @@ export default function Dashboard() {
           <View style={styles.heartbeatHeader}>
             <View style={styles.heartbeatTitleRow}>
               <Ionicons name="pulse" size={20} color="#10B981" />
-              <Text style={styles.heartbeatTitle}>
+              <Text style={[styles.heartbeatTitle, { color: colors.text }]}>
                 {language === 'et' ? 'Seadmete olek' : 'Device Heartbeat'}
               </Text>
             </View>
-            <Text style={styles.heartbeatSubtitle}>
+            <Text style={[styles.heartbeatSubtitle, { color: colors.textMuted }]}>
               {heartbeat.total_registered} {language === 'et' ? 'registreeritud' : 'registered'}
             </Text>
           </View>
           <View style={styles.heartbeatGrid}>
             <View style={styles.heartbeatItem}>
               <View style={[styles.heartbeatDot, { backgroundColor: '#10B981' }]} />
-              <Text style={styles.heartbeatCount}>{heartbeat.online_count}</Text>
-              <Text style={styles.heartbeatLabel}>{language === 'et' ? 'Aktiivne' : 'Online'}</Text>
+              <Text style={[styles.heartbeatCount, { color: colors.text }]}>{heartbeat.online_count}</Text>
+              <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Aktiivne' : 'Online'}</Text>
             </View>
             <View style={styles.heartbeatItem}>
               <View style={[styles.heartbeatDot, { backgroundColor: '#F59E0B' }]} />
-              <Text style={styles.heartbeatCount}>{heartbeat.warning_count}</Text>
-              <Text style={styles.heartbeatLabel}>{language === 'et' ? 'Hoiatus' : 'Warning'}</Text>
+              <Text style={[styles.heartbeatCount, { color: colors.text }]}>{heartbeat.warning_count}</Text>
+              <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Hoiatus' : 'Warning'}</Text>
             </View>
             <View style={styles.heartbeatItem}>
               <View style={[styles.heartbeatDot, { backgroundColor: '#EF4444' }]} />
-              <Text style={styles.heartbeatCount}>{heartbeat.critical_count}</Text>
-              <Text style={styles.heartbeatLabel}>{language === 'et' ? 'Kriitiline' : 'Critical'}</Text>
+              <Text style={[styles.heartbeatCount, { color: colors.text }]}>{heartbeat.critical_count}</Text>
+              <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Kriitiline' : 'Critical'}</Text>
             </View>
           </View>
           {heartbeat.critical_count > 0 && (
-            <View style={styles.heartbeatAlert}>
+            <View style={[styles.heartbeatAlert, { borderTopColor: colors.border }]}>
               <Ionicons name="warning" size={14} color="#EF4444" />
               <Text style={styles.heartbeatAlertText}>
                 {heartbeat.critical_count} {language === 'et' ? 'seadet pole vastanud >2h' : 'device(s) unresponsive >2h'}
@@ -531,8 +531,8 @@ export default function Dashboard() {
 
         {/* Monthly Revenue Trend Chart */}
         {revenueChart.labels.length > 0 && (
-          <View style={styles.chartContainer} data-testid="revenue-chart">
-            <Text style={styles.sectionTitle}>
+          <View style={[styles.chartContainer, { backgroundColor: colors.surface, borderColor: colors.border }]} data-testid="revenue-chart">
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
               {language === 'et' ? 'Igakuine tulu' : 'Monthly Revenue'}
             </Text>
             <LineChart
@@ -545,12 +545,12 @@ export default function Dashboard() {
               yAxisLabel="€"
               yAxisSuffix=""
               chartConfig={{
-                backgroundColor: '#1E293B',
-                backgroundGradientFrom: '#1E293B',
-                backgroundGradientTo: '#1E293B',
+                backgroundColor: colors.surface,
+                backgroundGradientFrom: colors.surface,
+                backgroundGradientTo: colors.surface,
                 decimalPlaces: 0,
                 color: (opacity = 1) => `rgba(79, 70, 229, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(148, 163, 184, ${opacity})`,
+                labelColor: (opacity = 1) => isDark ? `rgba(148, 163, 184, ${opacity})` : `rgba(71, 85, 105, ${opacity})`,
                 style: { borderRadius: 12 },
                 propsForDots: {
                   r: '5',
@@ -559,7 +559,7 @@ export default function Dashboard() {
                 },
                 propsForBackgroundLines: {
                   strokeDasharray: '',
-                  stroke: '#334155',
+                  stroke: colors.border,
                   strokeWidth: 0.5,
                 },
               }}
@@ -571,103 +571,103 @@ export default function Dashboard() {
 
         <View style={styles.actionsContainer}>
           <TouchableOpacity
-            style={styles.actionCard}
+            style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => router.push('/admin/clients')}
           >
             <View style={[styles.actionIcon, { backgroundColor: '#4F46E5' }]}>
               <Ionicons name="people" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>{t('viewClients')}</Text>
-            <Text style={styles.actionDescription}>{language === 'et' ? 'Vaata ja halda kliente' : 'View and manage clients'}</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+            <Text style={[styles.actionTitle, { color: colors.text }]}>{t('viewClients')}</Text>
+            <Text style={[styles.actionDescription, { color: colors.textMuted }]}>{language === 'et' ? 'Vaata ja halda kliente' : 'View and manage clients'}</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.actionCard}
+            style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => router.push('/admin/device-management')}
           >
             <View style={[styles.actionIcon, { backgroundColor: '#F59E0B' }]}>
               <Ionicons name="phone-portrait" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>{language === 'et' ? 'Seadmehaldus' : 'Device Management'}</Text>
-            <Text style={styles.actionDescription}>{language === 'et' ? 'Lukusta/vabasta seadmeid' : 'Lock/unlock devices'}</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+            <Text style={[styles.actionTitle, { color: colors.text }]}>{language === 'et' ? 'Seadmehaldus' : 'Device Management'}</Text>
+            <Text style={[styles.actionDescription, { color: colors.textMuted }]}>{language === 'et' ? 'Lukusta/vabasta seadmeid' : 'Lock/unlock devices'}</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
           {userRole === 'admin' && (
             <TouchableOpacity
-              style={styles.actionCard}
+              style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
               onPress={() => router.push('/admin/settings')}
             >
               <View style={[styles.actionIcon, { backgroundColor: '#8B5CF6' }]}>
                 <Ionicons name="settings" size={24} color="#fff" />
               </View>
-              <Text style={styles.actionTitle}>{t('settings')}</Text>
-              <Text style={styles.actionDescription}>{t('adminManagement')}</Text>
-              <Ionicons name="chevron-forward" size={20} color="#64748B" />
+              <Text style={[styles.actionTitle, { color: colors.text }]}>{t('settings')}</Text>
+              <Text style={[styles.actionDescription, { color: colors.textMuted }]}>{t('adminManagement')}</Text>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           )}
 
           <TouchableOpacity
-            style={styles.actionCard}
+            style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => router.push('/admin/reports')}
           >
             <View style={[styles.actionIcon, { backgroundColor: '#06B6D4' }]}>
               <Ionicons name="bar-chart" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>{language === 'et' ? 'Aruanded' : 'Reports'}</Text>
-            <Text style={styles.actionDescription}>{language === 'et' ? 'Finantsanalüütika ja aruanded' : 'Financial analytics & reports'}</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+            <Text style={[styles.actionTitle, { color: colors.text }]}>{language === 'et' ? 'Aruanded' : 'Reports'}</Text>
+            <Text style={[styles.actionDescription, { color: colors.textMuted }]}>{language === 'et' ? 'Finantsanalüütika ja aruanded' : 'Financial analytics & reports'}</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.actionCard}
+            style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => router.push('/admin/loan-plans')}
           >
             <View style={[styles.actionIcon, { backgroundColor: '#EC4899' }]}>
               <Ionicons name="pricetag" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>{language === 'et' ? 'Laenuplaanid' : 'Loan Plans'}</Text>
-            <Text style={styles.actionDescription}>{language === 'et' ? 'Halda laenuplaane' : 'Manage loan plans'}</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+            <Text style={[styles.actionTitle, { color: colors.text }]}>{language === 'et' ? 'Laenuplaanid' : 'Loan Plans'}</Text>
+            <Text style={[styles.actionDescription, { color: colors.textMuted }]}>{language === 'et' ? 'Halda laenuplaane' : 'Manage loan plans'}</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.actionCard}
+            style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => router.push('/admin/calculator')}
           >
             <View style={[styles.actionIcon, { backgroundColor: '#14B8A6' }]}>
               <Ionicons name="calculator" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>{language === 'et' ? 'Laenukalkulaator' : 'Loan Calculator'}</Text>
-            <Text style={styles.actionDescription}>{language === 'et' ? 'Arvuta laenumaksed' : 'Calculate loan payments'}</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+            <Text style={[styles.actionTitle, { color: colors.text }]}>{language === 'et' ? 'Laenukalkulaator' : 'Loan Calculator'}</Text>
+            <Text style={[styles.actionDescription, { color: colors.textMuted }]}>{language === 'et' ? 'Arvuta laenumaksed' : 'Calculate loan payments'}</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.actionCard}
+            style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => router.push('/admin/notifications')}
             data-testid="notifications-btn"
           >
             <View style={[styles.actionIcon, { backgroundColor: '#EF4444' }]}>
               <Ionicons name="notifications" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>{language === 'et' ? 'Teavitused' : 'Notifications'}</Text>
-            <Text style={styles.actionDescription}>{language === 'et' ? 'Turvateavitused ja hoiatused' : 'Security alerts & warnings'}</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+            <Text style={[styles.actionTitle, { color: colors.text }]}>{language === 'et' ? 'Teavitused' : 'Notifications'}</Text>
+            <Text style={[styles.actionDescription, { color: colors.textMuted }]}>{language === 'et' ? 'Turvateavitused ja hoiatused' : 'Security alerts & warnings'}</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.actionCard}
+            style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => router.push('/admin/client-map')}
             data-testid="client-map-btn"
           >
             <View style={[styles.actionIcon, { backgroundColor: '#06B6D4' }]}>
               <Ionicons name="map" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>{language === 'et' ? 'Klientide kaart' : 'Client Map'}</Text>
-            <Text style={styles.actionDescription}>{language === 'et' ? 'Seadmete asukohad' : 'Device locations'}</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+            <Text style={[styles.actionTitle, { color: colors.text }]}>{language === 'et' ? 'Klientide kaart' : 'Client Map'}</Text>
+            <Text style={[styles.actionDescription, { color: colors.textMuted }]}>{language === 'et' ? 'Seadmete asukohad' : 'Device locations'}</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
       </ScrollView>
