@@ -999,11 +999,11 @@ export default function ClientDetails() {
           <View style={styles.actionsSection}>
             <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
             
-            {/* Record Payment Button (if no loan_start_date, show option to go to loan management) */}
+            {/* Record Payment Button (if no loan_start_date, show option to go to add loan) */}
             {!client.loan_start_date && (
               <TouchableOpacity
                 style={[styles.actionButton, styles.setupLoanButton]}
-                onPress={() => router.push(`/admin/loan-management?id=${client.id}`)}
+                onPress={() => router.push(`/admin/add-loan?clientId=${client.id}`)}
                 disabled={actionLoading}
               >
                 <Ionicons name="wallet" size={20} color="#fff" />
