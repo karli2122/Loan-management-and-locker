@@ -430,9 +430,17 @@ export default function ClientHome() {
       // Wait for state to update before making API calls
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Now make API calls
+      // SEQUENTIAL permission requests to avoid race condition
+      // Step 1: Fetch status (no permission needed)
       await fetchStatus(id);
+      
+      // Step 2: Request location permission (wait for user response)
       await updateLocation(id);
+      
+      // Small delay between permission dialogs
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Step 3: Request notification permission (wait for user response)
       await registerPushToken(id);
     } catch (error) {
       console.error('loadClientData error:', error);
