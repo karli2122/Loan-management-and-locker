@@ -65,6 +65,7 @@ export default function AddLoan() {
   const [interestRate, setInterestRate] = useState('2');
   const [givenDate, setGivenDate] = useState(new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState('');
+  const [isRenewal, setIsRenewal] = useState(false);
 
   useEffect(() => {
     fetchClients();
@@ -81,6 +82,38 @@ export default function AddLoan() {
       }
     }
   }, [clientId, clients]);
+
+  // Pre-fill from last archived loan when renew=true
+  useEffect(() => {
+    if (renew === 'true' && clientId) {
+      setIsRenewal(true);
+      fetchLastLoanForRenewal();
+    }
+  }, [renew, clientId]);
+
+  const fetchLastLoanForRenewal = async () => {
+    try {
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      if (!adminToken) return;
+      const response = await fetch(
+        `${API_URL}/api/paid-loans/${clientId}/latest?admin_token=${adminToken}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        if (data.loan_amount) setLoanAmount(String(data.loan_amount));
+        if (data.interest_rate) setInterestRate(String(data.interest_rate));
+        if (data.loan_tenure_months) {
+          // Calculate due date from today + same tenure
+          const today = new Date();
+          const due = new Date(today);
+          due.setMonth(due.getMonth() + data.loan_tenure_months);
+          setDueDate(due.toISOString().split('T')[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching last loan for renewal:', error);
+    }
+  };
 
   // Real-time EMI calculator (using monthly interest rate)
   const emiPreview = React.useMemo(() => {
