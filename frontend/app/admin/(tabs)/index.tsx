@@ -1094,4 +1094,55 @@ const styles = StyleSheet.create({
     backgroundColor: '#334155',
     marginVertical: 8,
   },
+  // Interest Earned Card styles
+  interestCard: {
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderWidth: 1,
+  },
+  interestCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  interestCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  interestCardBody: {
+    gap: 16,
+  },
+  interestMainStat: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  interestMainValue: {
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  interestMainLabel: {
+    fontSize: 13,
+  },
+  interestDivider: {
+    height: 1,
+  },
+  interestSubStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  interestSubStat: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  interestSubValue: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  interestSubLabel: {
+    fontSize: 11,
+  },
 });
