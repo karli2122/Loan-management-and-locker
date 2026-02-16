@@ -9,7 +9,6 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -18,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
 import { getErrorMessage } from '../../src/utils/errorHandler';
+import { DatePicker } from '../../src/components/DatePicker';
 
 interface Client {
   id: string;
@@ -540,45 +540,13 @@ export default function AddLoan() {
           <Text style={styles.label}>
             {language === 'et' ? 'Tähtaeg' : 'Due Date'}
           </Text>
-          {Platform.OS === 'web' ? (
-            <View style={styles.inputContainer}>
-              <Ionicons name="calendar" size={20} color="#64748B" />
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e: any) => setDueDate(e.target.value)}
-                min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
-                style={{
-                  flex: 1,
-                  fontSize: 16,
-                  color: '#fff',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  outline: 'none',
-                  fontFamily: 'inherit',
-                  colorScheme: 'dark',
-                }}
-                data-testid="due-date-input"
-              />
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={styles.inputContainer}
-              onPress={() => {
-                // Fallback for native: set a default date 12 months from now
-                if (!dueDate) {
-                  const defaultDate = new Date();
-                  defaultDate.setMonth(defaultDate.getMonth() + 12);
-                  setDueDate(defaultDate.toISOString().split('T')[0]);
-                }
-              }}
-            >
-              <Ionicons name="calendar" size={20} color="#64748B" />
-              <Text style={{ flex: 1, fontSize: 16, color: dueDate ? '#fff' : '#64748B' }}>
-                {dueDate || (language === 'et' ? 'Vali kuupäev' : 'Select date')}
-              </Text>
-            </TouchableOpacity>
-          )}
+          <DatePicker
+            value={dueDate}
+            onChange={setDueDate}
+            placeholder={language === 'et' ? 'Vali kuupäev' : 'Select date'}
+            minDate={new Date(Date.now() + 86400000)}
+            testID="due-date-input"
+          />
           {dueDate && (
             <Text style={styles.dueDateInfo} data-testid="due-date-info">
               {(() => {
