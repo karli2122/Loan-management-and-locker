@@ -10,7 +10,7 @@ Dashboard analytics, client portal, and loan management features for an EMI devi
 
 ## Tech Stack
 - **Frontend**: React Native (Expo), react-native-chart-kit, TypeScript
-- **Backend**: FastAPI, MongoDB, Pydantic
+- **Backend**: FastAPI, MongoDB, Pydantic, PyMuPDF, emergentintegrations (GPT-4.1)
 - **Auth**: Token-based admin auth, registration code client auth
 
 ## What's Been Implemented
@@ -37,17 +37,27 @@ Dashboard analytics, client portal, and loan management features for an EMI devi
 - Removed Payment History from client portal dashboard
 
 ### Phase 4 - Loan Renewal (Feb 16, 2026)
-- **Backend**: `GET /api/paid-loans/{client_id}/latest` — fetches most recent archived loan
-- **Client Details**: "Renew Loan" button (green) for clients with no active loan but with loan history
-- **Add Loan Page**: Renewal mode with pre-filled form (amount, interest rate, tenure/due date) from last archived loan
-- **Renewal Banner**: Visual indicator on add-loan page when in renewal mode
+- Backend: `GET /api/paid-loans/{client_id}/latest` — fetches most recent archived loan
+- Client Details: "Renew Loan" button for returning clients
+- Add Loan Page: Renewal mode with pre-filled form from last archived loan
+- Renewal Banner on add-loan page
+
+### Phase 5 - Bank Statement Analyzer (Feb 16, 2026)
+- **Backend**: `POST /api/bank-statements/analyze` — file upload (.pdf/.asice), PDF text extraction, AI-powered analysis
+- **Backend**: `GET /api/bank-statements/history` — past analysis records
+- **Frontend**: Bank Analyzer page at `/admin/bank-analyzer` with file upload UI
+- **Features Tab**: Added Bank Statement Analyzer link under Analytics section
+- **AI Analysis**: GPT-4.1 via Emergent LLM key for income/expense categorization, risk indicators
+- **Supported Banks**: Swedbank, SEB, LHV, Coop Pank, Revolut, Paysera, Mytu, Bunq, N26, Wise
+- **.asice Support**: Extracts PDF from ASiC-E containers (Estonian digital signature format)
 
 ## Key API Endpoints
+- `POST /api/bank-statements/analyze` - Upload & analyze bank statement
+- `GET /api/bank-statements/history` - Past analyses
 - `GET /api/paid-loans/summary` - Total + monthly interest, 6-month trend
-- `GET /api/paid-loans/{client_id}/latest` - Latest archived loan for renewal pre-fill
-- `GET /api/loans/{client_id}/payments` - Payment history for a client
+- `GET /api/paid-loans/{client_id}/latest` - Latest archived loan for renewal
+- `GET /api/loans/{client_id}/payments` - Payment history
 - `POST /api/loans/{client_id}/payments` - Record payment (auto-archives on final)
-- `POST /api/admin/login` - Admin authentication
 
 ## Backlog
 - P3: Android Management API (AMAPI) Integration
