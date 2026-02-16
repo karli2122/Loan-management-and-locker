@@ -995,6 +995,7 @@ export default function ClientHome() {
         </View>
 
         {/* Loan Card */}
+        {(status?.loan_amount ?? 0) > 0 ? (
         <View style={styles.loanCard}>
           <Text style={styles.loanCardTitle}>{language === 'et' ? 'Laenu andmed' : 'Loan Details'}</Text>
           <View style={styles.loanDetails}>
@@ -1009,60 +1010,17 @@ export default function ClientHome() {
             </View>
           </View>
         </View>
-
-        {/* Quick Actions */}
-        <View style={styles.actionsSection}>
-          <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
-          
-          <TouchableOpacity style={styles.actionCard} onPress={onRefresh}>
-            <View style={[styles.actionIcon, { backgroundColor: '#10B981' }]}>
-              <Ionicons name="refresh" size={24} color="#fff" />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>{t('refreshStatus')}</Text>
-              <Text style={styles.actionDescription}>{t('checkForUpdates')}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.actionCard} 
-            onPress={() => router.push('/client/payment-history')}
-            data-testid="payment-history-btn"
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#3B82F6' }]}>
-              <Ionicons name="receipt" size={24} color="#fff" />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>
-                {language === 'et' ? 'Maksete ajalugu' : 'Payment History'}
-              </Text>
-              <Text style={styles.actionDescription}>
-                {language === 'et' ? 'Vaata oma makseid' : 'View your payments'}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.actionCard} 
-            onPress={() => router.push('/client/support-chat')}
-            data-testid="support-chat-btn"
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#8B5CF6' }]}>
-              <Ionicons name="chatbubbles" size={24} color="#fff" />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>
-                {language === 'et' ? 'Tugi' : 'Support Chat'}
-              </Text>
-              <Text style={styles.actionDescription}>
-                {language === 'et' ? 'Võta meiega ühendust' : 'Contact us for help'}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
+        ) : (
+        <View style={styles.allPaidCard} data-testid="all-paid-card">
+          <Ionicons name="checkmark-circle" size={48} color="#10B981" />
+          <Text style={styles.allPaidTitle}>
+            {language === 'et' ? 'Kõik makstud' : 'All Paid'}
+          </Text>
+          <Text style={styles.allPaidSubtext}>
+            {language === 'et' ? 'Teil pole aktiivseid laene' : 'You have no active loans'}
+          </Text>
         </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
