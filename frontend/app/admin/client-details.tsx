@@ -1101,6 +1101,32 @@ export default function ClientDetails() {
           </View>
         )}
 
+        {/* Tab Navigation */}
+        <View style={[styles.tabContainer, { backgroundColor: colors.surface, borderColor: colors.border }]} data-testid="client-detail-tabs">
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'loan' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('loan')}
+            data-testid="tab-active-loan"
+          >
+            <Ionicons name="wallet" size={16} color={activeTab === 'loan' ? '#4F46E5' : '#94A3B8'} />
+            <Text style={[styles.tabButtonText, activeTab === 'loan' && styles.tabButtonTextActive]}>
+              {language === 'et' ? 'Aktiivne laen' : 'Active Loan'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'payments' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('payments')}
+            data-testid="tab-payment-history"
+          >
+            <Ionicons name="receipt" size={16} color={activeTab === 'payments' ? '#4F46E5' : '#94A3B8'} />
+            <Text style={[styles.tabButtonText, activeTab === 'payments' && styles.tabButtonTextActive]}>
+              {language === 'et' ? 'Makseajalugu' : 'Payment History'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {activeTab === 'loan' && (
+        <>
         {/* Loan Overview Section */}
         {client.loan_start_date && (
           <View style={styles.section}>
