@@ -591,30 +591,57 @@ export default function LoansTab() {
         <Ionicons name="search" size={20} color={colors.textMuted} />
         <TextInput
           style={[styles.searchInput, { color: colors.text }]}
-          placeholder={language === 'et' ? 'Otsi kliente...' : 'Search clients...'}
+          placeholder={tab === 'archived' 
+            ? (language === 'et' ? 'Otsi arhiveeritud laene...' : 'Search archived loans...')
+            : (language === 'et' ? 'Otsi kliente...' : 'Search clients...')}
           placeholderTextColor={colors.textMuted}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
       </View>
 
-      <FlatList
-        data={filteredClients}
-        renderItem={renderClient}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="people-outline" size={64} color={colors.textMuted} />
-            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-              {language === 'et' ? 'Kliente ei leitud' : 'No clients found'}
-            </Text>
-          </View>
-        }
-      />
+      {tab === 'archived' ? (
+        <FlatList
+          data={filteredPaidLoans}
+          renderItem={renderPaidLoan}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="archive-outline" size={64} color={colors.textMuted} />
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                {language === 'et' ? 'Arhiveeritud laene ei leitud' : 'No archived loans found'}
+              </Text>
+              <Text style={[styles.emptySubText, { color: colors.textMuted }]}>
+                {language === 'et' 
+                  ? 'Kui klient on laenu tagasi maksnud, arhiveerige see "Tasutud" vahelehelt'
+                  : 'When a client has paid their loan, archive it from the "Settled" tab'}
+              </Text>
+            </View>
+          }
+        />
+      ) : (
+        <FlatList
+          data={filteredClients}
+          renderItem={renderClient}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="people-outline" size={64} color={colors.textMuted} />
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                {language === 'et' ? 'Kliente ei leitud' : 'No clients found'}
+              </Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
