@@ -236,7 +236,7 @@ async def get_client_loan_history(
 
 @router.get("/paid-loans/summary")
 async def get_paid_loans_summary(admin_token: str = Query(...)):
-    """Get summary statistics for all archived loans."""
+    """Get summary statistics for all archived loans, including current month breakdown."""
     admin_id = await get_admin_id_from_token(admin_token)
     
     # Get all paid loans for this admin
@@ -251,7 +251,9 @@ async def get_paid_loans_summary(admin_token: str = Query(...)):
             "total_principal_disbursed": 0,
             "total_amount_collected": 0,
             "total_interest_earned": 0,
-            "total_payments_received": 0
+            "total_payments_received": 0,
+            "current_month_interest": 0,
+            "current_month_loans_archived": 0
         }
     
     total_principal = sum(pl.get("loan_amount", 0) for pl in paid_loans)
@@ -259,12 +261,25 @@ async def get_paid_loans_summary(admin_token: str = Query(...)):
     total_interest = sum(pl.get("total_interest", 0) for pl in paid_loans)
     total_payments = sum(pl.get("payment_count", 0) for pl in paid_loans)
     
+    # Calculate current month interest
+    now = datetime.utcnow()
+    month_start = datetime(now.year, now.month, 1)
+    current_month_interest = 0
+    current_month_count = 0
+    for pl in paid_loans:
+        archived_at = pl.get("archived_at")
+        if isinstance(archived_at, datetime) and archived_at >= month_start:
+            current_month_interest += pl.get("total_interest", 0)
+            current_month_count += 1
+    
     return {
         "total_loans_archived": len(paid_loans),
         "total_principal_disbursed": round(total_principal, 2),
         "total_amount_collected": round(total_collected, 2),
         "total_interest_earned": round(total_interest, 2),
-        "total_payments_received": total_payments
+        "total_payments_received": total_payments,
+        "current_month_interest": round(current_month_interest, 2),
+        "current_month_loans_archived": current_month_count
     }
 
 
