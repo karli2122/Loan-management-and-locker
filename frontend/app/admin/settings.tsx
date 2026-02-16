@@ -771,22 +771,22 @@ export default function AdminSettings() {
           </View>
 
           {/* Credit Balance Display */}
-          <View style={styles.creditCard} data-testid="credit-balance-card">
+          <View style={[styles.creditCard, { backgroundColor: colors.surface }]} data-testid="credit-balance-card">
             <View style={styles.creditIconContainer}>
-              <Ionicons name="ticket" size={24} color="#F59E0B" />
+              <Ionicons name="ticket" size={24} color={colors.warning} />
             </View>
             <View style={styles.creditInfo}>
-              <Text style={styles.creditLabel}>
+              <Text style={[styles.creditLabel, { color: colors.textMuted }]}>
                 {language === 'et' ? 'Krediidi saldo' : 'Credit Balance'}
               </Text>
-              <Text style={styles.creditValue}>
+              <Text style={[styles.creditValue, { color: colors.text }]}>
                 {isSuperAdmin ? '∞' : userCredits}
               </Text>
             </View>
             {isSuperAdmin && (
               <View style={styles.superAdminTag}>
-                <Ionicons name="shield-checkmark" size={14} color="#10B981" />
-                <Text style={styles.superAdminText}>
+                <Ionicons name="shield-checkmark" size={14} color={colors.success} />
+                <Text style={[styles.superAdminText, { color: colors.success }]}>
                   {language === 'et' ? 'Peaadmin' : 'Superadmin'}
                 </Text>
               </View>
@@ -794,8 +794,8 @@ export default function AdminSettings() {
           </View>
           {!isSuperAdmin && userCredits <= 2 && (
             <View style={styles.lowCreditWarning}>
-              <Ionicons name="warning" size={16} color="#F59E0B" />
-              <Text style={styles.lowCreditText}>
+              <Ionicons name="warning" size={16} color={colors.warning} />
+              <Text style={[styles.lowCreditText, { color: colors.warning }]}>
                 {language === 'et' 
                   ? 'Krediit hakkab lõppema. Pöördu peaadmini poole.' 
                   : 'Low credits. Contact superadmin for more.'}
@@ -804,10 +804,10 @@ export default function AdminSettings() {
           )}
 
           <TouchableOpacity
-            style={styles.actionButton}
+            style={[styles.actionButton, { backgroundColor: colors.surface }]}
             onPress={() => setShowEditProfile(true)}
           >
-            <Ionicons name="person" size={20} color="#4F46E5" />
+            <Ionicons name="person" size={20} color={colors.primary} />
             <Text style={styles.actionButtonText}>
               {language === 'et' ? 'Muuda profiili' : 'Edit Profile'}
             </Text>
