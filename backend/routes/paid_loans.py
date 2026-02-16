@@ -191,7 +191,7 @@ async def get_paid_loans(
 
 @router.get("/paid-loans/summary")
 async def get_paid_loans_summary(admin_token: str = Query(...)):
-    """Get summary statistics for all archived loans, including current month breakdown."""
+    """Get summary statistics for all archived loans, including current month breakdown and 6-month trend."""
     admin_id = await get_admin_id_from_token(admin_token)
     
     # Get all paid loans for this admin
@@ -199,6 +199,18 @@ async def get_paid_loans_summary(admin_token: str = Query(...)):
         {"admin_id": admin_id},
         {"_id": 0, "loan_amount": 1, "total_paid": 1, "total_interest": 1, "payment_count": 1, "archived_at": 1}
     ).to_list(10000)
+    
+    # Build 6-month trend (always return 6 entries, even with no data)
+    now = datetime.utcnow()
+    monthly_trend = []
+    for i in range(5, -1, -1):
+        # Calculate month offset
+        year = now.year
+        month = now.month - i
+        while month <= 0:
+            month += 12
+            year -= 1
+        monthly_trend.append({"year": year, "month": month, "interest": 0.0})
     
     if not paid_loans:
         return {
@@ -208,7 +220,8 @@ async def get_paid_loans_summary(admin_token: str = Query(...)):
             "total_interest_earned": 0,
             "total_payments_received": 0,
             "current_month_interest": 0,
-            "current_month_loans_archived": 0
+            "current_month_loans_archived": 0,
+            "monthly_interest_trend": monthly_trend
         }
     
     total_principal = sum(pl.get("loan_amount", 0) for pl in paid_loans)
@@ -216,16 +229,30 @@ async def get_paid_loans_summary(admin_token: str = Query(...)):
     total_interest = sum(pl.get("total_interest", 0) for pl in paid_loans)
     total_payments = sum(pl.get("payment_count", 0) for pl in paid_loans)
     
-    # Calculate current month interest
-    now = datetime.utcnow()
+    # Calculate current month interest and populate trend
     month_start = datetime(now.year, now.month, 1)
     current_month_interest = 0
     current_month_count = 0
+    
+    # Build a lookup for quick trend population
+    trend_lookup = {}
+    for entry in monthly_trend:
+        trend_lookup[(entry["year"], entry["month"])] = entry
+    
     for pl in paid_loans:
         archived_at = pl.get("archived_at")
-        if isinstance(archived_at, datetime) and archived_at >= month_start:
-            current_month_interest += pl.get("total_interest", 0)
-            current_month_count += 1
+        if isinstance(archived_at, datetime):
+            if archived_at >= month_start:
+                current_month_interest += pl.get("total_interest", 0)
+                current_month_count += 1
+            # Add to trend if within range
+            key = (archived_at.year, archived_at.month)
+            if key in trend_lookup:
+                trend_lookup[key]["interest"] += pl.get("total_interest", 0)
+    
+    # Round trend values
+    for entry in monthly_trend:
+        entry["interest"] = round(entry["interest"], 2)
     
     return {
         "total_loans_archived": len(paid_loans),
@@ -234,7 +261,8 @@ async def get_paid_loans_summary(admin_token: str = Query(...)):
         "total_interest_earned": round(total_interest, 2),
         "total_payments_received": total_payments,
         "current_month_interest": round(current_month_interest, 2),
-        "current_month_loans_archived": current_month_count
+        "current_month_loans_archived": current_month_count,
+        "monthly_interest_trend": monthly_trend
     }
 
 
