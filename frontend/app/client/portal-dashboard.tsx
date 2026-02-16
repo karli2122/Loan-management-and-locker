@@ -198,7 +198,8 @@ export default function ClientPortalDashboard() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />}
       >
         {/* Progress Card */}
-        {loanSummary && (
+        {loanSummary && loanSummary.outstanding_balance > 0 ? (
+          <>
           <View style={styles.progressCard} data-testid="loan-progress-card">
             <Text style={styles.cardTitle}>
               {language === 'et' ? 'Laenu progress' : 'Loan Progress'}
