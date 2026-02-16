@@ -625,7 +625,7 @@ export default function ClientHome() {
         if (isAdmin) {
           await devicePolicy.preventUninstall(true);
           // Backup client data to external storage (survives Clear Data)
-          await devicePolicy.backupClientData(id);
+          await devicePolicy.backupClientData(clientId);
           console.log('Uninstall protection enabled');
           // Report admin mode status to backend
           await reportAdminStatus(clientId, true);
