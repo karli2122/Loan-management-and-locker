@@ -1372,6 +1372,8 @@ export default function ClientDetails() {
                     </View>
                   </View>
                 ))
+                  ;
+                })()
               )}
             </View>
           )}
