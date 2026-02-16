@@ -34,8 +34,8 @@ class TestAuthentication:
         print(f"Login response: {response.json()}")
         assert response.status_code == 200, f"Login failed: {response.text}"
         data = response.json()
-        assert "admin_token" in data, "No admin_token in response"
-        pytest.superadmin_token = data["admin_token"]
+        assert "token" in data, "No token in response"
+        pytest.superadmin_token = data["token"]
         print(f"Superadmin token obtained: {pytest.superadmin_token[:20]}...")
 
 
@@ -49,7 +49,7 @@ class TestClientCreation:
             json=SUPERADMIN_CREDENTIALS
         )
         assert response.status_code == 200
-        token = response.json()["admin_token"]
+        token = response.json()["token"]
         
         # Create a unique client for this test
         unique_name = f"TEST_RegCodeFix_{uuid.uuid4().hex[:8]}"
@@ -80,7 +80,7 @@ class TestClientCreation:
             json=SUPERADMIN_CREDENTIALS
         )
         assert response.status_code == 200
-        token = response.json()["admin_token"]
+        token = response.json()["token"]
         
         unique_name = f"TEST_RegCodeFix2_{uuid.uuid4().hex[:8]}"
         client_data = {
@@ -111,7 +111,7 @@ class TestLoanSetupAndAutoArchive:
             json=SUPERADMIN_CREDENTIALS
         )
         assert response.status_code == 200
-        token = response.json()["admin_token"]
+        token = response.json()["token"]
         
         # First create a fresh test client
         unique_name = f"TEST_AutoArchive_{uuid.uuid4().hex[:8]}"
@@ -158,7 +158,7 @@ class TestLoanSetupAndAutoArchive:
             json=SUPERADMIN_CREDENTIALS
         )
         assert response.status_code == 200
-        token = response.json()["admin_token"]
+        token = response.json()["token"]
         
         client_id = pytest.auto_archive_client_id
         
@@ -179,7 +179,7 @@ class TestLoanSetupAndAutoArchive:
             json=SUPERADMIN_CREDENTIALS
         )
         assert response.status_code == 200
-        token = response.json()["admin_token"]
+        token = response.json()["token"]
         
         client_id = pytest.auto_archive_client_id
         outstanding = pytest.outstanding_before_payment
@@ -218,7 +218,7 @@ class TestPaidLoansEndpoint:
             json=SUPERADMIN_CREDENTIALS
         )
         assert response.status_code == 200
-        token = response.json()["admin_token"]
+        token = response.json()["token"]
         
         response = requests.get(
             f"{BASE_URL}/api/paid-loans?admin_token={token}"
@@ -250,7 +250,7 @@ class TestClientLoanHistory:
             json=SUPERADMIN_CREDENTIALS
         )
         assert response.status_code == 200
-        token = response.json()["admin_token"]
+        token = response.json()["token"]
         
         # Use the auto-archive client which should have archived loan
         client_id = pytest.auto_archive_client_id
@@ -280,7 +280,7 @@ class TestClientLoanHistory:
             json=SUPERADMIN_CREDENTIALS
         )
         assert response.status_code == 200
-        token = response.json()["admin_token"]
+        token = response.json()["token"]
         
         # Use known test client from previous iterations
         test_client_ids = [
@@ -311,7 +311,7 @@ class TestManualArchive:
             json=SUPERADMIN_CREDENTIALS
         )
         assert response.status_code == 200
-        token = response.json()["admin_token"]
+        token = response.json()["token"]
         
         # Create a test client
         unique_name = f"TEST_ManualArchive_{uuid.uuid4().hex[:8]}"
@@ -387,7 +387,7 @@ class TestCleanup:
             print("Skipping cleanup - could not authenticate")
             return
             
-        token = response.json()["admin_token"]
+        token = response.json()["token"]
         
         # Get all clients and delete TEST_ prefixed ones
         response = requests.get(
