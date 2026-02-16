@@ -281,12 +281,12 @@ export default function ClientsList() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.surface }]} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>{t('clients')}</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{t('clients')}</Text>
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => router.push('/admin/add-client')}
@@ -295,12 +295,12 @@ export default function ClientsList() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#64748B" style={styles.searchIcon} />
+      <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
+        <Ionicons name="search" size={20} color={colors.textMuted} style={styles.searchIcon} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: colors.text }]}
           placeholder={t('searchPlaceholder')}
-          placeholderTextColor="#64748B"
+          placeholderTextColor={colors.textMuted}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -308,25 +308,26 @@ export default function ClientsList() {
 
       <View style={styles.filterContainer}>
         <TouchableOpacity
-          style={styles.filterDropdown}
+          style={[styles.filterDropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={() => setShowFilterPicker(true)}
           data-testid="filter-dropdown"
         >
           {filter === 'silent' && <Ionicons name="alert-circle" size={16} color="#F97316" style={{marginRight: 6}} />}
           <Text style={[
             styles.filterDropdownText,
+            { color: colors.text },
             filter === 'silent' && styles.silentFilterDropdownText
           ]}>
             {getFilterLabel(filter)}
           </Text>
-          <Ionicons name="chevron-down" size={18} color="#94A3B8" />
+          <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
         </TouchableOpacity>
       </View>
 
       {filter === 'silent' && silentLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#F97316" />
-          <Text style={styles.loadingText}>
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>
             {language === 'et' ? 'Laadin kadunud kliente...' : 'Loading silent clients...'}
           </Text>
         </View>
@@ -341,11 +342,11 @@ export default function ClientsList() {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="checkmark-circle" size={64} color="#10B981" />
-              <Text style={styles.emptyText}>
+              <Ionicons name="checkmark-circle" size={64} color={colors.success} />
+              <Text style={[styles.emptyText, { color: colors.text }]}>
                 {language === 'et' ? 'Kadunud kliente pole!' : 'No silent clients!'}
               </Text>
-              <Text style={styles.emptySubText}>
+              <Text style={[styles.emptySubText, { color: colors.textMuted }]}>
                 {language === 'et' ? 'Kõik seadmed on ühendatud' : 'All devices are connected'}
               </Text>
             </View>
@@ -358,12 +359,12 @@ export default function ClientsList() {
           renderItem={renderClient}
           contentContainerStyle={styles.listContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="people-outline" size={64} color="#334155" />
-              <Text style={styles.emptyText}>{t('noClientsFound')}</Text>
+              <Ionicons name="people-outline" size={64} color={colors.textMuted} />
+              <Text style={[styles.emptyText, { color: colors.text }]}>{t('noClientsFound')}</Text>
             </View>
           }
         />
