@@ -79,6 +79,12 @@ export default function Dashboard() {
     labels: [],
     data: [],
   });
+  const [interestSummary, setInterestSummary] = useState({
+    total_interest_earned: 0,
+    current_month_interest: 0,
+    total_loans_archived: 0,
+    current_month_loans_archived: 0,
+  });
   
   // Admin filter state
   const [adminList, setAdminList] = useState<AdminUser[]>([]);
