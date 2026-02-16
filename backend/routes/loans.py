@@ -8,7 +8,7 @@ import logging
 from database import db
 from models.schemas import (
     LoanPlan, LoanPlanCreate, LoanSetup, LoanSettings,
-    Payment, PaymentCreate
+    Payment, PaymentCreate, LoanEdit
 )
 from utils.auth import get_admin_id_from_token, enforce_client_scope
 from utils.exceptions import ValidationException
