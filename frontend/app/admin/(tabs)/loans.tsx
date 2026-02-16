@@ -397,6 +397,22 @@ export default function LoansTab() {
             {language === 'et' ? 'Tasutud' : 'Settled'}
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, { backgroundColor: colors.surface, borderColor: colors.border }, tab === 'archived' && styles.tabButtonActive]}
+          onPress={() => {
+            setTab('archived');
+            setPaymentFilter('all');
+          }}
+        >
+          <Text style={[styles.tabText, { color: colors.textMuted }, tab === 'archived' && styles.tabTextActive]}>
+            {language === 'et' ? 'Arhiveeritud' : 'Archived'}
+          </Text>
+          {paidLoans.length > 0 && (
+            <View style={styles.badgeSmall}>
+              <Text style={styles.badgeTextSmall}>{paidLoans.length}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
       {/* Payment Date Filter - Only show for 'given' tab */}
