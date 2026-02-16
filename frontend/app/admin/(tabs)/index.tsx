@@ -722,10 +722,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#94A3B8',
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   username: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
+  },
+  headerCredits: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: '#F59E0B20',
+  },
+  headerCreditsText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#F59E0B',
   },
   content: {
     flex: 1,
