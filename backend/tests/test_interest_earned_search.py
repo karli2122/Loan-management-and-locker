@@ -182,7 +182,7 @@ class TestCreateAndVerifyArchivedLoan:
             json={
                 "loan_amount": 100.0,
                 "interest_rate": 5.0,
-                "tenure_months": 2
+                "loan_tenure_months": 2
             }
         )
         assert loan_response.status_code == 200, f"Loan setup failed: {loan_response.text}"
