@@ -289,6 +289,7 @@ export default function AddLoan() {
       const loanData = {
         loan_amount: loanAmountNum,
         interest_rate: interestRateNum,
+        given_date: givenDate,
         due_date: dueDate,
         down_payment: 0,
       };
