@@ -2906,6 +2906,9 @@ const styles = StyleSheet.create({
     color: '#4F46E5',
     fontWeight: '600',
   },
+  renewLoanButton: {
+    backgroundColor: '#10B981',
+  },
   // Payment history item styles
   paymentHistoryItem: {
     flexDirection: 'row',
