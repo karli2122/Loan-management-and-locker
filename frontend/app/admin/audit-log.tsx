@@ -159,13 +159,13 @@ export default function AuditLogPage() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: colors.surface }]}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
           {language === 'et' ? 'Tegevuste logi' : 'Audit Log'}
         </Text>
         <View style={{ width: 40 }} />
@@ -174,30 +174,30 @@ export default function AuditLogPage() {
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {/* Summary Card */}
         {summary && (
-          <View style={styles.summaryCard} data-testid="audit-summary-card">
-            <Text style={styles.summaryTitle}>
+          <View style={[styles.summaryCard, { backgroundColor: colors.surface }]} data-testid="audit-summary-card">
+            <Text style={[styles.summaryTitle, { color: colors.text }]}>
               {language === 'et' ? 'Viimased 7 päeva' : 'Last 7 Days'}
             </Text>
             <View style={styles.summaryStats}>
               <View style={styles.summaryStat}>
-                <Text style={styles.summaryStatValue}>{summary.total_actions}</Text>
-                <Text style={styles.summaryStatLabel}>
+                <Text style={[styles.summaryStatValue, { color: colors.text }]}>{summary.total_actions}</Text>
+                <Text style={[styles.summaryStatLabel, { color: colors.textMuted }]}>
                   {language === 'et' ? 'Tegevusi' : 'Actions'}
                 </Text>
               </View>
               <View style={styles.summaryStat}>
-                <Text style={styles.summaryStatValue}>{Object.keys(summary.action_counts).length}</Text>
-                <Text style={styles.summaryStatLabel}>
+                <Text style={[styles.summaryStatValue, { color: colors.text }]}>{Object.keys(summary.action_counts).length}</Text>
+                <Text style={[styles.summaryStatLabel, { color: colors.textMuted }]}>
                   {language === 'et' ? 'Tüüpe' : 'Types'}
                 </Text>
               </View>
               <View style={styles.summaryStat}>
-                <Text style={styles.summaryStatValue}>{summary.top_admins.length}</Text>
-                <Text style={styles.summaryStatLabel}>
+                <Text style={[styles.summaryStatValue, { color: colors.text }]}>{summary.top_admins.length}</Text>
+                <Text style={[styles.summaryStatLabel, { color: colors.textMuted }]}>
                   {language === 'et' ? 'Adminid' : 'Admins'}
                 </Text>
               </View>
@@ -208,20 +208,20 @@ export default function AuditLogPage() {
         {/* Filter Chips */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterContainer}>
           <TouchableOpacity
-            style={[styles.filterChip, !filter && styles.filterChipActive]}
+            style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, !filter && styles.filterChipActive]}
             onPress={() => setFilter(null)}
           >
-            <Text style={[styles.filterChipText, !filter && styles.filterChipTextActive]}>
+            <Text style={[styles.filterChipText, { color: colors.textMuted }, !filter && styles.filterChipTextActive]}>
               {language === 'et' ? 'Kõik' : 'All'}
             </Text>
           </TouchableOpacity>
           {actionTypes.slice(0, 6).map((type) => (
             <TouchableOpacity
               key={type}
-              style={[styles.filterChip, filter === type && styles.filterChipActive]}
+              style={[styles.filterChip, { backgroundColor: colors.surface, borderColor: colors.border }, filter === type && styles.filterChipActive]}
               onPress={() => setFilter(type)}
             >
-              <Text style={[styles.filterChipText, filter === type && styles.filterChipTextActive]}>
+              <Text style={[styles.filterChipText, { color: colors.textMuted }, filter === type && styles.filterChipTextActive]}>
                 {formatActionType(type)}
               </Text>
             </TouchableOpacity>
