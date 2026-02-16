@@ -960,7 +960,64 @@ All 3 phases successfully implemented:
 - Backend: 7/7 tests passed (archive, list, validation tests)
 - Frontend: All tab navigation and archive button functionality verified
 
-**Pending Items:**
-- Theme persistence bug still not fixed (P1)
-- Full theme support for all pages (P2)
+### Session 24: Theme Persistence Fix & Loan History (Feb 16, 2026)
+**COMPLETED - Theme Bug Fixed & Client Loan History Feature Implemented**
+
+1. **Theme Persistence Bug Fix** ✅
+   - Root cause: Components had hardcoded colors in StyleSheet that overrode theme values
+   - Fixed by applying dynamic theme colors via inline styles using `useTheme()` hook
+   - Updated pages:
+     - `loans.tsx` - Client cards, tabs, filter buttons
+     - `clients.tsx` - Search bar, client cards, filter dropdown, modal
+     - `transactions.tsx` - Transaction cards, filter tabs, headers
+     - `reports.tsx` - Summary cards, filter buttons, charts
+     - `audit-log.tsx` - Log items, summary card, filter chips
+     - `client-details.tsx` - Header, info card, sections
+     - `settings.tsx` - Credit card, action buttons, language toggles
+   - Theme toggle works correctly (Tume/Dark and Hele/Light)
+   - Theme persists in localStorage via AsyncStorage
+
+2. **Client Loan History Feature** ✅
+   - Backend: Added `GET /api/clients/{client_id}/loan-history` endpoint
+     - Returns all archived loans for a specific client
+     - Includes loan amount, interest rate, total paid, payment count, etc.
+   - Frontend: Added "Laenu ajalugu" (Loan History) section to client-details.tsx
+     - Collapsible section with expand/collapse toggle
+     - Shows archived loan cards with:
+       - Paid badge and archive date
+       - Loan amount, interest rate, total paid
+       - Interest earned, payment count
+     - Uses theme colors for consistent styling
+     - Lazy loads data when section is expanded
+
+3. **Theme Colors Applied To All Major Pages** ✅
+   - Dashboard (index.tsx) - Already had theme support
+   - Loans (loans.tsx) - Full theme support
+   - Clients (clients.tsx) - Full theme support  
+   - Transactions (transactions.tsx) - Full theme support
+   - Reports (reports.tsx) - Full theme support
+   - Audit Log (audit-log.tsx) - Full theme support
+   - Client Details (client-details.tsx) - Full theme support
+   - Settings (settings.tsx) - Full theme support
+
+**Files Modified:**
+- `backend/routes/paid_loans.py` - Added client loan history endpoint
+- `frontend/app/admin/(tabs)/loans.tsx` - Theme colors for client cards
+- `frontend/app/admin/clients.tsx` - Added useTheme, dynamic colors
+- `frontend/app/admin/(tabs)/transactions.tsx` - Added useTheme, dynamic colors
+- `frontend/app/admin/reports.tsx` - Added useTheme, dynamic colors
+- `frontend/app/admin/audit-log.tsx` - Added useTheme, dynamic colors
+- `frontend/app/admin/client-details.tsx` - Added useTheme, loan history section
+- `frontend/app/admin/settings.tsx` - Enhanced theme color usage
+
+**Testing Results:** 100% frontend pass rate (test report: `/app/test_reports/iteration_30.json`)
+- Theme toggle functionality verified
+- Theme persistence in localStorage confirmed
+- Dark/light theme colors apply correctly across all pages
+
+## Current Backlog
+- P3: Automate loan archiving when fully paid (currently manual via Archive button)
+- P3: Remove "Tasutud" (Settled) tab after implementing auto-archive
+- P3: Android Management API (AMAPI) Integration
+- P3: Push notifications (FCM)
 
