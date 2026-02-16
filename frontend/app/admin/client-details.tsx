@@ -66,6 +66,8 @@ interface Client {
   next_payment_due?: string | null;
   days_overdue?: number;
   loan_start_date?: string | null;
+  loan_due_date?: string | null;
+  interest_rate?: number;
   // Late fee fields
   is_late?: boolean;
   late_fees_accumulated?: number;
