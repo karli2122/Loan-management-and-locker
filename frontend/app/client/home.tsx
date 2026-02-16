@@ -607,6 +607,7 @@ export default function ClientHome() {
     return () => {
       isMounted.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Run once on mount only; functions are stable refs
   }, []);
 
   // Separate effect for polling and app state - depends on clientId
@@ -652,6 +653,7 @@ export default function ClientHome() {
       subscription.remove();
       backHandler.remove();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Functions use clientId from closure; adding them would cause infinite loops
   }, [clientId, status?.is_locked]);
 
   // Initialize protection and check for reboot (tamper detection disabled to prevent crashes)
@@ -700,6 +702,7 @@ export default function ClientHome() {
     };
 
     initializeProtection();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reportReboot is stable; only re-run when clientId changes
   }, [clientId]);
 
   const reportAdminStatus = async (id: string, adminActive: boolean) => {
@@ -767,6 +770,7 @@ export default function ClientHome() {
     await fetchStatus(clientId);
     await updateLocation(clientId);
     setRefreshing(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchStatus/updateLocation are stable; only depend on clientId
   }, [clientId]);
 
   const handleClearWarning = async () => {
