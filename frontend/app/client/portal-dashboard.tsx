@@ -231,7 +231,6 @@ export default function ClientPortalDashboard() {
               </View>
             </View>
           </View>
-        )}
 
         {/* Payment Status Card */}
         {paymentStatus && (
