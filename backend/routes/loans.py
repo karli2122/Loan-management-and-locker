@@ -177,15 +177,23 @@ async def setup_loan(client_id: str, loan_data: LoanSetup, admin_token: str = Qu
     
     await enforce_client_scope(client, admin_id)
     
+    # Determine loan start date: use given_date if provided, otherwise use current date
+    if loan_data.given_date:
+        try:
+            loan_start = datetime.fromisoformat(loan_data.given_date.replace('Z', '+00:00').split('T')[0])
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="Invalid given_date format. Use YYYY-MM-DD.")
+    else:
+        loan_start = datetime.utcnow()
+    
     # Determine tenure: use due_date if provided, otherwise use loan_tenure_months
-    loan_start = datetime.utcnow()
     tenure_months = loan_data.loan_tenure_months
     due_date_str = loan_data.due_date
     
     if due_date_str:
         try:
             due_date_parsed = datetime.fromisoformat(due_date_str.replace('Z', '+00:00').split('T')[0])
-            # Calculate months between now and due date
+            # Calculate months between loan start and due date
             diff = relativedelta(due_date_parsed, loan_start)
             tenure_months = diff.years * 12 + diff.months
             if diff.days > 0:
@@ -198,10 +206,10 @@ async def setup_loan(client_id: str, loan_data: LoanSetup, admin_token: str = Qu
     if tenure_months < 1:
         raise HTTPException(status_code=400, detail="Loan tenure must be at least 1 month")
     
-    # Calculate EMI using reducing balance
+    # Calculate EMI using reducing balance (interest_rate is now monthly)
     emi_data = calculate_reducing_balance_emi(
         loan_data.loan_amount - loan_data.down_payment,
-        loan_data.interest_rate,
+        loan_data.interest_rate * 12,  # Convert monthly to yearly for the calculation
         tenure_months
     )
     
@@ -210,7 +218,7 @@ async def setup_loan(client_id: str, loan_data: LoanSetup, admin_token: str = Qu
     update_fields = {
         "loan_amount": loan_data.loan_amount,
         "down_payment": loan_data.down_payment,
-        "interest_rate": loan_data.interest_rate,
+        "interest_rate": loan_data.interest_rate,  # Store as monthly rate
         "loan_tenure_months": tenure_months,
         "monthly_emi": emi_data["monthly_emi"],
         "total_amount_due": emi_data["total_amount"],
@@ -221,6 +229,9 @@ async def setup_loan(client_id: str, loan_data: LoanSetup, admin_token: str = Qu
     
     if due_date_str:
         update_fields["loan_due_date"] = due_date_str
+    
+    if loan_data.given_date:
+        update_fields["loan_given_date"] = loan_data.given_date
     
     await db.clients.update_one(
         {"id": client_id},
