@@ -126,7 +126,7 @@ export default function TransactionsTab() {
     const isDisbursement = item.type === 'disbursement';
     return (
       <TouchableOpacity
-        style={styles.paymentCard}
+        style={[styles.paymentCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
         onPress={() => router.push(`/admin/client-details?id=${item.client_id}`)}
         data-testid={`transaction-${item.id}`}
       >
@@ -135,13 +135,13 @@ export default function TransactionsTab() {
             <Ionicons 
               name={isDisbursement ? 'arrow-up-circle' : 'cash'} 
               size={24} 
-              color={isDisbursement ? '#F59E0B' : '#10B981'} 
+              color={isDisbursement ? colors.warning : colors.success} 
             />
           </View>
           <View style={styles.paymentInfo}>
-            <Text style={styles.clientName}>{item.client_name}</Text>
+            <Text style={[styles.clientName, { color: colors.text }]}>{item.client_name}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={styles.paymentDate}>{formatDate(item.date)}</Text>
+              <Text style={[styles.paymentDate, { color: colors.textMuted }]}>{formatDate(item.date)}</Text>
               <View style={[styles.typeBadge, isDisbursement ? styles.disbursementBadge : styles.paymentBadge]}>
                 <Text style={styles.typeBadgeText}>
                   {isDisbursement 
@@ -152,16 +152,16 @@ export default function TransactionsTab() {
             </View>
           </View>
           <View style={styles.amountContainer}>
-            <Text style={[styles.amount, isDisbursement && styles.disbursementAmount]}>
+            <Text style={[styles.amount, { color: isDisbursement ? colors.warning : colors.success }]}>
               {isDisbursement ? '-' : '+'}€{item.amount.toFixed(2)}
             </Text>
             {item.payment_method && (
-              <Text style={styles.paymentMethod}>{item.payment_method}</Text>
+              <Text style={[styles.paymentMethod, { color: colors.textMuted }]}>{item.payment_method}</Text>
             )}
           </View>
         </View>
         {item.notes && (
-          <Text style={styles.notes} numberOfLines={2}>
+          <Text style={[styles.notes, { color: colors.textMuted }]} numberOfLines={2}>
             {item.notes}
           </Text>
         )}
@@ -170,9 +170,9 @@ export default function TransactionsTab() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={[]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
           {language === 'et' ? 'Tehingud' : 'Transactions'}
         </Text>
         <TouchableOpacity
@@ -186,26 +186,26 @@ export default function TransactionsTab() {
       {/* Filter tabs */}
       <View style={styles.filterRow}>
         <TouchableOpacity
-          style={[styles.filterTab, filter === 'all' && styles.filterTabActive]}
+          style={[styles.filterTab, { backgroundColor: colors.surface, borderColor: colors.border }, filter === 'all' && styles.filterTabActive]}
           onPress={() => setFilter('all')}
         >
-          <Text style={[styles.filterTabText, filter === 'all' && styles.filterTabTextActive]}>
+          <Text style={[styles.filterTabText, { color: colors.textMuted }, filter === 'all' && styles.filterTabTextActive]}>
             {language === 'et' ? 'Kõik' : 'All'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterTab, filter === 'disbursement' && styles.filterTabActive]}
+          style={[styles.filterTab, { backgroundColor: colors.surface, borderColor: colors.border }, filter === 'disbursement' && styles.filterTabActive]}
           onPress={() => setFilter('disbursement')}
         >
-          <Text style={[styles.filterTabText, filter === 'disbursement' && styles.filterTabTextActive]}>
+          <Text style={[styles.filterTabText, { color: colors.textMuted }, filter === 'disbursement' && styles.filterTabTextActive]}>
             {language === 'et' ? 'Väljastused' : 'Disbursements'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterTab, filter === 'payment' && styles.filterTabActive]}
+          style={[styles.filterTab, { backgroundColor: colors.surface, borderColor: colors.border }, filter === 'payment' && styles.filterTabActive]}
           onPress={() => setFilter('payment')}
         >
-          <Text style={[styles.filterTabText, filter === 'payment' && styles.filterTabTextActive]}>
+          <Text style={[styles.filterTabText, { color: colors.textMuted }, filter === 'payment' && styles.filterTabTextActive]}>
             {language === 'et' ? 'Maksed' : 'Payments'}
           </Text>
         </TouchableOpacity>
@@ -217,12 +217,12 @@ export default function TransactionsTab() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="receipt-outline" size={64} color="#64748B" />
-            <Text style={styles.emptyText}>
+            <Ionicons name="receipt-outline" size={64} color={colors.textMuted} />
+            <Text style={[styles.emptyText, { color: colors.text }]}>
               {language === 'et' ? 'Tehinguid ei leitud' : 'No transactions found'}
             </Text>
           </View>
