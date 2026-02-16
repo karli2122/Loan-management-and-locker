@@ -235,12 +235,12 @@ export default function ClientsList() {
     
     return (
       <TouchableOpacity
-        style={styles.clientCard}
+        style={[styles.clientCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
         onPress={() => router.push({ pathname: '/admin/client-details', params: { id: item.id } })}
       >
         <View style={styles.clientInfo}>
           <View style={styles.clientHeader}>
-            <Text style={styles.clientName}>{item.name || 'N/A'}</Text>
+            <Text style={[styles.clientName, { color: colors.text }]}>{item.name || 'N/A'}</Text>
             <View style={[styles.statusBadge, item.is_locked ? styles.lockedBadge : styles.unlockedBadge]}>
               <Ionicons
                 name={item.is_locked ? 'lock-closed' : 'lock-open'}
@@ -252,9 +252,9 @@ export default function ClientsList() {
               </Text>
             </View>
           </View>
-          <Text style={styles.clientPhone}>{item.phone || 'N/A'}</Text>
+          <Text style={[styles.clientPhone, { color: colors.textMuted }]}>{item.phone || 'N/A'}</Text>
           <View style={styles.clientMeta}>
-            <Text style={styles.emiAmount}>{t('emi')}: €{(item.emi_amount || 0).toLocaleString()}</Text>
+            <Text style={[styles.emiAmount, { color: colors.textSecondary }]}>{t('emi')}: €{(item.emi_amount || 0).toLocaleString()}</Text>
             {item.is_registered ? (
               <View style={styles.registeredBadge}>
                 <Ionicons name="checkmark-circle" size={14} color="#10B981" />
@@ -268,14 +268,14 @@ export default function ClientsList() {
             )}
           </View>
           {item.registration_code ? (
-            <Text style={styles.regCode}>{t('code')}: {item.registration_code}</Text>
+            <Text style={[styles.regCode, { color: colors.textMuted }]}>{t('code')}: {item.registration_code}</Text>
           ) : (
-            <Text style={styles.regCodeNotGenerated}>
+            <Text style={[styles.regCodeNotGenerated, { color: colors.textMuted }]}>
               {language === 'et' ? 'Võti: pole genereeritud' : 'Key: not generated'}
             </Text>
           )}
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#64748B" />
+        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
       </TouchableOpacity>
     );
   };
