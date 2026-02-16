@@ -56,12 +56,14 @@ export default function LoansTab() {
   const { language } = useLanguage();
   const { colors } = useTheme();
   const [clients, setClients] = useState<Client[]>([]);
+  const [paidLoans, setPaidLoans] = useState<PaidLoan[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string | undefined>(undefined);
-  const [tab, setTab] = useState<'given' | 'settled'>('given');
+  const [tab, setTab] = useState<'given' | 'settled' | 'archived'>('given');
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'today' | 'tomorrow' | 'next3days'>('all');
+  const [archivingClient, setArchivingClient] = useState<string | null>(null);
 
   const fetchClients = async () => {
     try {
