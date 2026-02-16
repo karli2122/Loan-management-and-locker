@@ -207,11 +207,6 @@ export default function LoansTab() {
       list = list.filter(
         (c) => getLoanAmount(c) > 0 && getOutstanding(c) > 0
       );
-    } else if (tab === 'settled') {
-      // Show clients with settled loans (outstanding = 0 but had a loan)
-      list = list.filter(
-        (c) => getLoanAmount(c) > 0 && getOutstanding(c) === 0
-      );
     }
 
     // Apply payment date filter
