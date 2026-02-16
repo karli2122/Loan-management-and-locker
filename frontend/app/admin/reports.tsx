@@ -36,6 +36,7 @@ interface MonthData {
 export default function Reports() {
   const router = useRouter();
   const { language } = useLanguage();
+  const { colors } = useTheme();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
