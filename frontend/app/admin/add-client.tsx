@@ -219,14 +219,22 @@ export default function AddClient() {
               />
             </View>
 
+            <Text style={styles.label}>{language === 'et' ? 'Laenu antud kuupäev' : 'Loan Given Date'}</Text>
+            <DatePicker
+              value={form.loan_given_date}
+              onChange={(date) => setForm({ ...form, loan_given_date: date })}
+              placeholder={language === 'et' ? 'Vali kuupäev' : 'Select date'}
+              testID="loan-given-date-input"
+            />
+
             <Text style={styles.label}>{t('emiDueDate')}</Text>
-            <TouchableOpacity style={styles.inputContainer} onPress={openDatePicker}>
-              <Ionicons name="calendar" size={20} color="#64748B" style={styles.inputIcon} />
-              <Text style={[styles.input, { paddingVertical: 18 }, !form.emi_due_date && { color: '#64748B' }]}>
-                {form.emi_due_date || 'DD/MM/YYYY'}
-              </Text>
-              <Ionicons name="chevron-down" size={20} color="#64748B" />
-            </TouchableOpacity>
+            <DatePicker
+              value={form.emi_due_date}
+              onChange={(date) => setForm({ ...form, emi_due_date: date })}
+              placeholder={language === 'et' ? 'Vali kuupäev' : 'Select date'}
+              minDate={new Date(Date.now() + 86400000)}
+              testID="emi-due-date-input"
+            />
 
             <TouchableOpacity
               style={[styles.submitButton, loading && styles.submitButtonDisabled]}
