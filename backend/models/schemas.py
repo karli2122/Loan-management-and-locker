@@ -237,6 +237,14 @@ class LoanSetup(BaseModel):
     down_payment: float = 0.0
 
 
+class LoanEdit(BaseModel):
+    """Model for editing existing loan details."""
+    loan_amount: Optional[float] = None
+    interest_rate: Optional[float] = None  # Monthly interest rate
+    loan_start_date: Optional[str] = None  # YYYY-MM-DD format
+    due_date: Optional[str] = None  # YYYY-MM-DD format
+
+
 class LoanSettings(BaseModel):
     auto_lock_enabled: bool
     auto_lock_grace_days: int
