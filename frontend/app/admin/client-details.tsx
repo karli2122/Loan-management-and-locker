@@ -140,6 +140,11 @@ export default function ClientDetails() {
     total_interest: number;
   } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'loan' | 'payments'>('loan');
+  // Payment history state
+  const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
+  const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
   
   const getAdminToken = async () => {
     return await AsyncStorage.getItem('admin_token');
