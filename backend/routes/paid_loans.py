@@ -190,6 +190,35 @@ async def get_paid_loan_details(paid_loan_id: str, admin_token: str = Query(...)
     return paid_loan
 
 
+@router.get("/clients/{client_id}/loan-history")
+async def get_client_loan_history(
+    client_id: str,
+    admin_token: str = Query(...)
+):
+    """Get all archived loans for a specific client."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Verify the client exists and belongs to this admin
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    await enforce_client_scope(client, admin_id)
+    
+    # Get all paid loans for this client
+    paid_loans = await db.paid_loans.find(
+        {"client_id": client_id, "admin_id": admin_id},
+        {"_id": 0}
+    ).sort("archived_at", -1).to_list(100)
+    
+    return {
+        "client_id": client_id,
+        "client_name": client.get("name", "Unknown"),
+        "loan_history": paid_loans,
+        "total_loans": len(paid_loans)
+    }
+
+
 @router.get("/paid-loans/summary")
 async def get_paid_loans_summary(admin_token: str = Query(...)):
     """Get summary statistics for all archived loans."""
