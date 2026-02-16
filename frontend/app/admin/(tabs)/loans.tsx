@@ -692,7 +692,7 @@ const styles = StyleSheet.create({
   paymentFilterContainer: {
     marginHorizontal: 16,
     marginBottom: 12,
-    maxHeight: 40,
+    maxHeight: 48,
   },
   paymentFilterContent: {
     gap: 8,
@@ -702,8 +702,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#1E293B',
     borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderWidth: 1,
     borderColor: '#334155',
   },
