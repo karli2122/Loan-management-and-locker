@@ -913,7 +913,7 @@ export default function ClientDetails() {
             <Text style={[styles.regCodeHidden, { color: colors.textMuted }]}>
               {language === 'et' ? 'Võtit pole veel genereeritud' : 'Key not generated yet'}
             </Text>
-          )}}
+          )}
         </View>
         {/* Generate Key Button - show for all cases */}
         <TouchableOpacity
