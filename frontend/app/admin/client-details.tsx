@@ -2616,4 +2616,65 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
+  // Loan History styles
+  loanHistoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  loanHistoryHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  loanHistoryContent: {
+    marginTop: 12,
+  },
+  emptyLoanHistory: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: 8,
+  },
+  emptyLoanHistoryText: {
+    fontSize: 14,
+  },
+  loanHistoryCard: {
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+  },
+  loanHistoryCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  loanHistoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  loanHistoryBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  loanHistoryDate: {
+    fontSize: 12,
+  },
+  loanHistoryDetails: {
+    gap: 8,
+  },
+  loanHistoryDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  loanHistoryLabel: {
+    fontSize: 13,
+  },
+  loanHistoryValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });
