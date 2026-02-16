@@ -238,6 +238,169 @@ async def setup_loan(client_id: str, loan_data: LoanSetup, admin_token: str = Qu
     }
 
 
+@router.put("/loans/{client_id}/edit")
+async def edit_loan(client_id: str, loan_data: LoanEdit, admin_token: str = Query(...)):
+    """Edit existing loan details for a client.
+    
+    Allows editing: loan_amount, interest_rate (monthly), loan_start_date, due_date.
+    Automatically recalculates total_amount_due, monthly_emi, and outstanding_balance.
+    """
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    await enforce_client_scope(client, admin_id)
+    
+    # Get current values as defaults
+    loan_amount = loan_data.loan_amount if loan_data.loan_amount is not None else client.get("loan_amount", 0)
+    interest_rate = loan_data.interest_rate if loan_data.interest_rate is not None else client.get("interest_rate", 0)
+    
+    # Parse start date
+    if loan_data.loan_start_date:
+        try:
+            loan_start = datetime.fromisoformat(loan_data.loan_start_date.replace('Z', '+00:00').split('T')[0])
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="Invalid loan_start_date format. Use YYYY-MM-DD.")
+    else:
+        loan_start = client.get("loan_start_date") or datetime.utcnow()
+    
+    # Parse due date and calculate tenure
+    if loan_data.due_date:
+        try:
+            due_date_parsed = datetime.fromisoformat(loan_data.due_date.replace('Z', '+00:00').split('T')[0])
+            # Calculate months between start date and due date
+            diff = relativedelta(due_date_parsed, loan_start)
+            tenure_months = diff.years * 12 + diff.months
+            if diff.days > 0:
+                tenure_months += 1  # Round up partial months
+            if tenure_months < 1:
+                tenure_months = 1
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="Invalid due_date format. Use YYYY-MM-DD.")
+    else:
+        # Use existing tenure or calculate from existing due date
+        tenure_months = client.get("loan_tenure_months", 12)
+    
+    # Calculate down payment (keep existing)
+    down_payment = client.get("down_payment", 0)
+    
+    # Calculate EMI using reducing balance method
+    principal = loan_amount - down_payment
+    if principal <= 0:
+        raise HTTPException(status_code=400, detail="Loan amount must be greater than down payment")
+    
+    emi_data = calculate_reducing_balance_emi(principal, interest_rate, tenure_months)
+    
+    # Calculate next payment due date (from start date + 1 month)
+    next_due = loan_start + relativedelta(months=1)
+    
+    # Calculate new outstanding balance (total amount - already paid)
+    total_paid = client.get("total_paid", 0)
+    new_outstanding = max(0, emi_data["total_amount"] - total_paid)
+    
+    update_fields = {
+        "loan_amount": loan_amount,
+        "interest_rate": interest_rate,
+        "loan_tenure_months": tenure_months,
+        "monthly_emi": emi_data["monthly_emi"],
+        "total_amount_due": emi_data["total_amount"],
+        "outstanding_balance": new_outstanding,
+        "loan_start_date": loan_start,
+        "next_payment_due": next_due
+    }
+    
+    if loan_data.due_date:
+        update_fields["loan_due_date"] = loan_data.due_date
+    
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": update_fields}
+    )
+    
+    return {
+        "message": "Loan updated successfully",
+        "client_id": client_id,
+        "loan_details": {
+            "loan_amount": loan_amount,
+            "interest_rate": interest_rate,
+            "tenure_months": tenure_months,
+            "monthly_emi": emi_data["monthly_emi"],
+            "total_amount_due": emi_data["total_amount"],
+            "outstanding_balance": new_outstanding,
+            "total_paid": total_paid,
+            "loan_start_date": loan_start.isoformat(),
+            "loan_due_date": loan_data.due_date,
+            "next_payment_due": next_due.isoformat()
+        }
+    }
+
+
+@router.get("/loans/{client_id}/preview")
+async def preview_loan_calculation(
+    client_id: str,
+    loan_amount: float = Query(...),
+    interest_rate: float = Query(...),
+    loan_start_date: str = Query(...),
+    due_date: str = Query(...),
+    admin_token: str = Query(...)
+):
+    """Preview loan calculation without saving.
+    
+    Returns calculated monthly EMI and total amount based on provided values.
+    """
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    await enforce_client_scope(client, admin_id)
+    
+    # Parse dates
+    try:
+        loan_start = datetime.fromisoformat(loan_start_date.replace('Z', '+00:00').split('T')[0])
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid loan_start_date format. Use YYYY-MM-DD.")
+    
+    try:
+        due_date_parsed = datetime.fromisoformat(due_date.replace('Z', '+00:00').split('T')[0])
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid due_date format. Use YYYY-MM-DD.")
+    
+    # Calculate tenure in months
+    diff = relativedelta(due_date_parsed, loan_start)
+    tenure_months = diff.years * 12 + diff.months
+    if diff.days > 0:
+        tenure_months += 1
+    if tenure_months < 1:
+        tenure_months = 1
+    
+    # Get down payment
+    down_payment = client.get("down_payment", 0)
+    principal = loan_amount - down_payment
+    
+    if principal <= 0:
+        raise HTTPException(status_code=400, detail="Loan amount must be greater than down payment")
+    
+    # Calculate EMI
+    emi_data = calculate_reducing_balance_emi(principal, interest_rate, tenure_months)
+    
+    return {
+        "preview": {
+            "loan_amount": loan_amount,
+            "interest_rate": interest_rate,
+            "tenure_months": tenure_months,
+            "monthly_emi": emi_data["monthly_emi"],
+            "total_amount_due": emi_data["total_amount"],
+            "total_interest": emi_data["total_interest"],
+            "down_payment": down_payment,
+            "principal": principal
+        }
+    }
+
+
 # ===================== PAYMENTS =====================
 
 @router.post("/loans/{client_id}/payments")
