@@ -109,28 +109,45 @@ export default function ClientHome() {
   }, [getPushToken]);
 
   // Retry mechanism for checking admin status after request
-  // Gives user up to 30 seconds to complete the admin permission flow
-  const checkAdminStatusWithRetry = async (maxAttempts = 30, delayMs = 1000) => {
+  // Gives user up to 15 seconds to complete the admin permission flow (non-blocking)
+  const checkAdminStatusWithRetry = async (maxAttempts = 15, delayMs = 1000) => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      await new Promise(resolve => setTimeout(resolve, delayMs));
-      const isActive = await devicePolicy.isAdminActive();
-      if (isActive) {
-        setIsAdminActive(true);
-        setSetupComplete(true);
-        const result = await devicePolicy.preventUninstall(true);
-        if (result === 'success') {
-          console.log(`Device Admin confirmed active on attempt ${attempt}, uninstall protection enabled`);
-        } else {
-          console.log(`Device Admin active but uninstall protection failed: ${result}`);
-        }
-        // Report admin mode active to backend so admin app shows it
-        const storedId = await AsyncStorage.getItem('client_id');
-        if (storedId) {
-          await reportAdminStatus(storedId, true);
-        }
-        return true;
+      // Check if component is still mounted before continuing
+      if (!isMounted.current) {
+        console.log('Component unmounted, stopping admin check');
+        return false;
       }
-      console.log(`Admin check attempt ${attempt}/${maxAttempts} - not active yet`);
+      
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+      
+      try {
+        const isActive = await devicePolicy.isAdminActive();
+        if (isActive) {
+          setIsAdminActive(true);
+          setSetupComplete(true);
+          
+          try {
+            const result = await devicePolicy.preventUninstall(true);
+            if (result === 'success') {
+              console.log(`Device Admin confirmed active on attempt ${attempt}, uninstall protection enabled`);
+            } else {
+              console.log(`Device Admin active but uninstall protection failed: ${result}`);
+            }
+          } catch (uninstallError) {
+            console.log('Uninstall protection error:', uninstallError);
+          }
+          
+          // Report admin mode active to backend so admin app shows it
+          const storedId = await AsyncStorage.getItem('client_id');
+          if (storedId) {
+            await reportAdminStatus(storedId, true);
+          }
+          return true;
+        }
+        console.log(`Admin check attempt ${attempt}/${maxAttempts} - not active yet`);
+      } catch (checkError) {
+        console.log(`Admin check attempt ${attempt} error:`, checkError);
+      }
     }
     console.log('Admin status check timed out - user may not have granted permission');
     return false;
