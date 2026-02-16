@@ -1022,16 +1022,26 @@ export default function ClientDetails() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>{language === 'et' ? 'Laenu ülevaade' : 'Loan Overview'}</Text>
-              <TouchableOpacity 
-                style={styles.recordPaymentBtn}
-                onPress={() => {
-                  setPaymentAmount(client.monthly_emi?.toFixed(2) || '');
-                  setPaymentModal(true);
-                }}
-              >
-                <Ionicons name="card" size={16} color="#10B981" />
-                <Text style={styles.recordPaymentBtnText}>{language === 'et' ? 'Lisa makse' : 'Record Payment'}</Text>
-              </TouchableOpacity>
+              <View style={styles.loanHeaderButtons}>
+                <TouchableOpacity 
+                  style={styles.editLoanBtn}
+                  onPress={openEditLoanModal}
+                  data-testid="edit-loan-btn"
+                >
+                  <Ionicons name="create-outline" size={16} color="#4F46E5" />
+                  <Text style={styles.editLoanBtnText}>{language === 'et' ? 'Muuda' : 'Edit'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.recordPaymentBtn}
+                  onPress={() => {
+                    setPaymentAmount(client.monthly_emi?.toFixed(2) || '');
+                    setPaymentModal(true);
+                  }}
+                >
+                  <Ionicons name="card" size={16} color="#10B981" />
+                  <Text style={styles.recordPaymentBtnText}>{language === 'et' ? 'Lisa makse' : 'Record Payment'}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
             
             {/* Loan Progress */}
