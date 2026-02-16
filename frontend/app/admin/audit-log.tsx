@@ -40,6 +40,7 @@ interface Summary {
 export default function AuditLogPage() {
   const router = useRouter();
   const { language } = useLanguage();
+  const { colors } = useTheme();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
