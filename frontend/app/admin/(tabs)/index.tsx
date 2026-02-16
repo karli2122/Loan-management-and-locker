@@ -85,6 +85,10 @@ export default function Dashboard() {
     total_loans_archived: 0,
     current_month_loans_archived: 0,
   });
+  const [interestTrend, setInterestTrend] = useState<{ labels: string[]; data: number[] }>({
+    labels: [],
+    data: [],
+  });
   
   // Admin filter state
   const [adminList, setAdminList] = useState<AdminUser[]>([]);
@@ -216,6 +220,17 @@ export default function Dashboard() {
           total_loans_archived: data.total_loans_archived ?? 0,
           current_month_loans_archived: data.current_month_loans_archived ?? 0,
         });
+        // Parse monthly interest trend
+        const trend = data.monthly_interest_trend || [];
+        if (trend.length > 0) {
+          const monthNamesEt = ['Jaan','Veebr','Märts','Apr','Mai','Juuni','Juuli','Aug','Sept','Okt','Nov','Dets'];
+          const monthNamesEn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          const names = language === 'et' ? monthNamesEt : monthNamesEn;
+          setInterestTrend({
+            labels: trend.map((t: any) => names[t.month - 1]),
+            data: trend.map((t: any) => t.interest),
+          });
+        }
       }
     } catch (error) {
       console.error('Failed to fetch interest summary:', error);
