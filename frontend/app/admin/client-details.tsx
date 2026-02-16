@@ -102,6 +102,19 @@ export default function ClientDetails() {
   const [userCredits, setUserCredits] = useState<number>(5);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
+  // Edit Loan Modal state
+  const [editLoanModal, setEditLoanModal] = useState(false);
+  const [editLoanAmount, setEditLoanAmount] = useState('');
+  const [editInterestRate, setEditInterestRate] = useState('');
+  const [editLoanStartDate, setEditLoanStartDate] = useState('');
+  const [editLoanDueDate, setEditLoanDueDate] = useState('');
+  const [loanPreview, setLoanPreview] = useState<{
+    monthly_emi: number;
+    total_amount_due: number;
+    tenure_months: number;
+    total_interest: number;
+  } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   
   const getAdminToken = async () => {
     return await AsyncStorage.getItem('admin_token');
