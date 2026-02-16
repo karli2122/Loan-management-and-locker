@@ -241,12 +241,12 @@ export default function ClientDetails() {
     }
   };
 
-  // Fetch loan history when expanding the section
+  // Fetch loan history when expanding the section or when client has no active loan (for renew button)
   useEffect(() => {
-    if (showLoanHistory && loanHistory.length === 0) {
+    if ((showLoanHistory || (client && !client.loan_start_date)) && loanHistory.length === 0) {
       fetchLoanHistory();
     }
-  }, [showLoanHistory]);
+  }, [showLoanHistory, client]);
 
   // Fetch payment history when switching to payments tab
   const fetchPaymentHistory = async () => {
