@@ -107,6 +107,10 @@ export default function ClientDetails() {
   const [userCredits, setUserCredits] = useState<number>(5);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
+  // Loan History state
+  const [loanHistory, setLoanHistory] = useState<LoanHistoryItem[]>([]);
+  const [loanHistoryLoading, setLoanHistoryLoading] = useState(false);
+  const [showLoanHistory, setShowLoanHistory] = useState(false);
   // Edit Loan Modal state
   const [editLoanModal, setEditLoanModal] = useState(false);
   const [editLoanAmount, setEditLoanAmount] = useState('');
