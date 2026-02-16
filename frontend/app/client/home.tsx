@@ -293,6 +293,8 @@ export default function ClientHome() {
           { cancelable: !wasDisabled }
         );
       } else {
+        // Admin is already active - update state and enable protection
+        setIsAdminActive(true);
         isRequestingAdmin.current = false;
         // Ensure uninstall protection is enabled and check result
         try {
@@ -301,6 +303,12 @@ export default function ClientHome() {
             console.log('Device Admin active - uninstall protection enabled');
           } else {
             console.log(`Device Admin active but uninstall protection failed: ${result}`);
+          }
+          
+          // Report admin mode status to backend
+          const storedId = await AsyncStorage.getItem('client_id');
+          if (storedId) {
+            await reportAdminStatus(storedId, true);
           }
         } catch (e) {
           console.log('preventUninstall error:', e);
