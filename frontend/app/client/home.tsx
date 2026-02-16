@@ -203,9 +203,9 @@ export default function ClientHome() {
       return;
     }
 
-    // Don't show prompt more than once every 30 seconds
+    // Don't show prompt more than once every 60 seconds (increased from 30)
     const now = Date.now();
-    if (now - lastAdminPromptTime < 30000) {
+    if (now - lastAdminPromptTime < 60000) {
       console.log('Admin prompt shown recently, skipping...');
       return;
     }
@@ -216,7 +216,13 @@ export default function ClientHome() {
 
       if (!admin) {
         // Check if admin was forcefully disabled (tamper attempt)
-        const wasDisabled = await devicePolicy.wasAdminDisabled();
+        let wasDisabled = false;
+        try {
+          wasDisabled = await devicePolicy.wasAdminDisabled();
+        } catch (e) {
+          console.log('wasAdminDisabled check failed:', e);
+        }
+        
         if (wasDisabled) {
           console.log('TAMPER DETECTED: Admin was forcefully disabled!');
           // Report tamper attempt to backend
@@ -226,7 +232,11 @@ export default function ClientHome() {
             await reportAdminStatus(storedId, false);
           }
           // Clear the flag so we don't report it again
-          await devicePolicy.clearTamperFlags();
+          try {
+            await devicePolicy.clearTamperFlags();
+          } catch (e) {
+            console.log('clearTamperFlags failed:', e);
+          }
         }
 
         console.log('Device Admin not active - prompting user');
@@ -243,6 +253,7 @@ export default function ClientHome() {
               ? 'Seadme turvaliseks kasutamiseks luba administraatori õigused.'
               : 'To secure your device, please enable Device Admin permissions.');
 
+        // Show alert with both options - not blocking the main thread
         Alert.alert(
           title,
           message,
@@ -251,29 +262,54 @@ export default function ClientHome() {
               text: language === 'et' ? 'Luba kohe' : 'Enable Now',
               onPress: async () => {
                 try {
-                  await devicePolicy.requestAdmin();
-                  console.log('Device Admin request dispatched');
-                  const granted = await checkAdminStatusWithRetry();
-                  isRequestingAdmin.current = false;
+                  const result = await devicePolicy.requestAdmin();
+                  console.log('Device Admin request result:', result);
+                  
+                  // Only start retry if the request was dispatched successfully
+                  if (result !== 'error' && result !== 'error_module_not_available' && result !== 'error_no_activity') {
+                    // Run retry check in background - don't block
+                    checkAdminStatusWithRetry(10, 1000).then(granted => {
+                      isRequestingAdmin.current = false;
+                      if (!granted) {
+                        console.log('Admin not granted after retry period');
+                      }
+                    }).catch(() => {
+                      isRequestingAdmin.current = false;
+                    });
+                  } else {
+                    isRequestingAdmin.current = false;
+                  }
                 } catch (e) {
                   console.log('Admin request failed:', e);
                   isRequestingAdmin.current = false;
                 }
               },
             },
+            // Add a "Later" option for non-tamper cases to prevent blocking
+            ...(wasDisabled ? [] : [{
+              text: language === 'et' ? 'Hiljem' : 'Later',
+              style: 'cancel' as const,
+              onPress: () => {
+                isRequestingAdmin.current = false;
+                console.log('User deferred admin permission');
+              },
+            }]),
           ],
-          // After tamper, don't allow dismissal; otherwise allow "Later"
-          wasDisabled ? { cancelable: false } : { cancelable: true }
+          { cancelable: !wasDisabled }
         );
       } else {
         setSetupComplete(true);
         isRequestingAdmin.current = false;
         // Ensure uninstall protection is enabled and check result
-        const result = await devicePolicy.preventUninstall(true);
-        if (result === 'success') {
-          console.log('Device Admin active - uninstall protection enabled');
-        } else {
-          console.log(`Device Admin active but uninstall protection failed: ${result}`);
+        try {
+          const result = await devicePolicy.preventUninstall(true);
+          if (result === 'success') {
+            console.log('Device Admin active - uninstall protection enabled');
+          } else {
+            console.log(`Device Admin active but uninstall protection failed: ${result}`);
+          }
+        } catch (e) {
+          console.log('preventUninstall error:', e);
         }
       }
     } catch (error) {
