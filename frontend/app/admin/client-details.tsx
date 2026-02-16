@@ -2857,4 +2857,73 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  // Tab styles
+  tabContainer: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    padding: 4,
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 4,
+    borderWidth: 1,
+  },
+  tabButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+  },
+  tabButtonActive: {
+    backgroundColor: '#4F46E520',
+  },
+  tabButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#94A3B8',
+  },
+  tabButtonTextActive: {
+    color: '#4F46E5',
+    fontWeight: '600',
+  },
+  // Payment history item styles
+  paymentHistoryItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  paymentHistoryLeft: {
+    gap: 2,
+  },
+  paymentHistoryAmount: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  paymentHistoryDate: {
+    fontSize: 12,
+  },
+  paymentHistoryRight: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  paymentMethodBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  paymentMethodLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  paymentHistoryNotes: {
+    fontSize: 11,
+    maxWidth: 140,
+  },
 });
