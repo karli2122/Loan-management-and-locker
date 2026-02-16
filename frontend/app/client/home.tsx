@@ -927,10 +927,15 @@ export default function ClientHome() {
                   
                   // Only start retry if the request was dispatched successfully
                   if (result !== 'error' && result !== 'error_module_not_available') {
-                    // Run check in background
-                    checkAdminStatusWithRetry(10, 1000).then(granted => {
+                    // Give the system dialog time to appear before starting retry checks
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    // Run check in background - increased to 20 attempts
+                    checkAdminStatusWithRetry(20, 1000).then(granted => {
                       isRequestingAdmin.current = false;
-                      if (!granted) {
+                      if (granted) {
+                        console.log('Admin permission successfully granted via Enable button!');
+                      } else {
                         console.log('Admin not granted after enable button press');
                       }
                     }).catch(() => {
