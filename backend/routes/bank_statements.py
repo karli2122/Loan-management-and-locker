@@ -1,0 +1,216 @@
+"""Bank Statement Analyzer - Upload and analyze bank statements with AI."""
+import os
+import zipfile
+import tempfile
+import json
+import uuid
+import logging
+from datetime import datetime, timezone
+from io import BytesIO
+from fastapi import APIRouter, UploadFile, File, Query, HTTPException
+from dotenv import load_dotenv
+
+from database import db
+from utils.auth import get_admin_id_from_token
+
+load_dotenv()
+
+logger = logging.getLogger(__name__)
+router = APIRouter(tags=["Bank Statements"])
+
+SUPPORTED_BANKS = [
+    "Swedbank", "SEB", "LHV", "Coop Pank",
+    "Revolut", "Paysera", "Mytu", "Bunq", "N26", "Wise"
+]
+
+MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
+
+
+def extract_pdf_from_asice(file_bytes: bytes) -> bytes:
+    """Extract PDF content from an ASiC-E (.asice) container (ZIP-based)."""
+    try:
+        with zipfile.ZipFile(BytesIO(file_bytes), 'r') as zf:
+            for name in zf.namelist():
+                if name.lower().endswith('.pdf'):
+                    return zf.read(name)
+            raise ValueError("No PDF found inside .asice container")
+    except zipfile.BadZipFile:
+        raise ValueError("Invalid .asice file - not a valid container")
+
+
+def extract_text_from_pdf(pdf_bytes: bytes) -> str:
+    """Extract text from PDF bytes using PyMuPDF."""
+    import fitz
+    text_parts = []
+    with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+        for page in doc:
+            text_parts.append(page.get_text())
+    return "\n".join(text_parts)
+
+
+async def analyze_with_ai(statement_text: str) -> dict:
+    """Send bank statement text to GPT for income/expense analysis."""
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="AI analysis key not configured")
+
+    chat = LlmChat(
+        api_key=api_key,
+        session_id=f"bank-analysis-{uuid.uuid4().hex[:8]}",
+        system_message="""You are a financial analyst specializing in Estonian and European bank statements. 
+Analyze the provided bank statement text and return a JSON response with the following structure:
+{
+  "bank_name": "detected bank name",
+  "period": "statement period (e.g. '01.01.2025 - 31.01.2025')",
+  "currency": "EUR or detected currency",
+  "account_holder": "name if visible",
+  "summary": {
+    "total_income": 0.00,
+    "total_expenses": 0.00,
+    "net_balance": 0.00,
+    "opening_balance": 0.00,
+    "closing_balance": 0.00
+  },
+  "income_categories": [
+    {"category": "Salary", "total": 0.00, "count": 0},
+    {"category": "Transfers In", "total": 0.00, "count": 0}
+  ],
+  "expense_categories": [
+    {"category": "Rent/Housing", "total": 0.00, "count": 0},
+    {"category": "Groceries", "total": 0.00, "count": 0},
+    {"category": "Transport", "total": 0.00, "count": 0},
+    {"category": "Utilities", "total": 0.00, "count": 0},
+    {"category": "Entertainment", "total": 0.00, "count": 0},
+    {"category": "Subscriptions", "total": 0.00, "count": 0},
+    {"category": "Other", "total": 0.00, "count": 0}
+  ],
+  "monthly_breakdown": [
+    {"month": "2025-01", "income": 0.00, "expenses": 0.00}
+  ],
+  "risk_indicators": {
+    "has_regular_income": true,
+    "income_stability": "stable/unstable/unknown",
+    "high_expense_ratio": false,
+    "gambling_detected": false,
+    "loan_payments_detected": false,
+    "notes": "brief risk assessment"
+  }
+}
+Return ONLY valid JSON, no markdown or explanation. If a field cannot be determined, use null.
+Categorize ALL transactions. Supported banks: Swedbank, SEB, LHV, Coop Pank, Revolut, Paysera, Mytu, Bunq, N26, Wise."""
+    ).with_model("openai", "gpt-4.1")
+
+    # Truncate text if too long (GPT context limit)
+    max_chars = 80000
+    if len(statement_text) > max_chars:
+        statement_text = statement_text[:max_chars] + "\n\n[Statement truncated due to length]"
+
+    user_message = UserMessage(
+        text=f"Analyze this bank statement:\n\n{statement_text}"
+    )
+
+    response = await chat.send_message(user_message)
+
+    # Parse the JSON response
+    try:
+        # Clean response - remove markdown code blocks if present
+        cleaned = response.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        if cleaned.startswith("json"):
+            cleaned = cleaned[4:]
+        return json.loads(cleaned.strip())
+    except json.JSONDecodeError:
+        logger.error(f"Failed to parse AI response as JSON: {response[:200]}")
+        return {
+            "error": "AI analysis returned non-structured response",
+            "raw_response": response[:2000]
+        }
+
+
+@router.post("/bank-statements/analyze")
+async def analyze_bank_statement(
+    file: UploadFile = File(...),
+    admin_token: str = Query(...),
+    client_id: str = Query(None),
+):
+    """Upload and analyze a bank statement (.pdf or .asice)."""
+    admin_id = await get_admin_id_from_token(admin_token)
+
+    # Validate file type
+    filename = file.filename or ""
+    ext = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""
+    if ext not in ("pdf", "asice"):
+        raise HTTPException(status_code=400, detail="Only .pdf and .asice files are supported")
+
+    # Read file
+    file_bytes = await file.read()
+    if len(file_bytes) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File too large (max 20MB)")
+    if len(file_bytes) == 0:
+        raise HTTPException(status_code=400, detail="Empty file")
+
+    # Extract PDF if .asice
+    try:
+        if ext == "asice":
+            pdf_bytes = extract_pdf_from_asice(file_bytes)
+        else:
+            pdf_bytes = file_bytes
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Extract text from PDF
+    try:
+        statement_text = extract_text_from_pdf(pdf_bytes)
+    except Exception as e:
+        logger.error(f"PDF text extraction failed: {e}")
+        raise HTTPException(status_code=400, detail="Could not extract text from PDF. The file may be image-based or corrupted.")
+
+    if not statement_text.strip():
+        raise HTTPException(status_code=400, detail="No text could be extracted from the PDF. It may be a scanned/image-based document.")
+
+    # Analyze with AI
+    try:
+        analysis = await analyze_with_ai(statement_text)
+    except Exception as e:
+        logger.error(f"AI analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
+
+    # Store the analysis result
+    record = {
+        "id": str(uuid.uuid4()),
+        "admin_id": admin_id,
+        "client_id": client_id,
+        "filename": filename,
+        "file_type": ext,
+        "analyzed_at": datetime.now(timezone.utc).isoformat(),
+        "analysis": analysis,
+        "text_length": len(statement_text),
+    }
+    await db.bank_statement_analyses.insert_one(record)
+    record.pop("_id", None)
+
+    return record
+
+
+@router.get("/bank-statements/history")
+async def get_analysis_history(
+    admin_token: str = Query(...),
+    client_id: str = Query(None),
+):
+    """Get past bank statement analyses."""
+    admin_id = await get_admin_id_from_token(admin_token)
+
+    query = {"admin_id": admin_id}
+    if client_id:
+        query["client_id"] = client_id
+
+    records = await db.bank_statement_analyses.find(
+        query, {"_id": 0}
+    ).sort("analyzed_at", -1).to_list(50)
+
+    return records
