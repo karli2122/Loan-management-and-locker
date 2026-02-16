@@ -251,6 +251,7 @@ export default function Dashboard() {
     fetchStats(selectedAdminId);
     fetchHeartbeat(selectedAdminId);
     fetchRevenueChart(selectedAdminId);
+    fetchInterestSummary();
   }, []);
 
   // Fetch admin list for superadmins
@@ -276,6 +277,7 @@ export default function Dashboard() {
       loadUserData(),
       fetchHeartbeat(selectedAdminId),
       fetchRevenueChart(selectedAdminId),
+      fetchInterestSummary(),
     ]);
     setRefreshing(false);
   }, [selectedAdminId]);
