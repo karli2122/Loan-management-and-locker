@@ -7,7 +7,8 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "APP_MODE": "admin"
+        "APP_MODE": "admin",
+        "EXPO_PUBLIC_BACKEND_URL": "https://loan-trends.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
@@ -18,7 +19,8 @@
     "admin-preview": {
       "distribution": "internal",
       "env": {
-        "APP_MODE": "admin"
+        "APP_MODE": "admin",
+        "EXPO_PUBLIC_BACKEND_URL": "https://loan-trends.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
@@ -30,7 +32,8 @@
     "admin-production": {
       "distribution": "store",
       "env": {
-        "APP_MODE": "admin"
+        "APP_MODE": "admin",
+        "EXPO_PUBLIC_BACKEND_URL": "https://loan-trends.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
@@ -43,7 +46,8 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "APP_MODE": "client"
+        "APP_MODE": "client",
+        "EXPO_PUBLIC_BACKEND_URL": "https://loan-trends.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
@@ -55,7 +59,8 @@
       "distribution": "internal",
       "credentialsSource": "remote",
       "env": {
-        "APP_MODE": "client"
+        "APP_MODE": "client",
+        "EXPO_PUBLIC_BACKEND_URL": "https://loan-trends.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
@@ -68,7 +73,8 @@
       "distribution": "store",
       "credentialsSource": "remote",
       "env": {
-        "APP_MODE": "client"
+        "APP_MODE": "client",
+        "EXPO_PUBLIC_BACKEND_URL": "https://loan-trends.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
