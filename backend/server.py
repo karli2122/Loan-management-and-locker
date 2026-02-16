@@ -97,6 +97,7 @@ app.include_router(client_auth_router, prefix="/api")
 app.include_router(audit_logs_router, prefix="/api")
 app.include_router(credit_score_router, prefix="/api")
 app.include_router(paid_loans_router, prefix="/api")
+app.include_router(bank_statements_router, prefix="/api")
 
 
 # ===================== ROOT ENDPOINTS =====================
