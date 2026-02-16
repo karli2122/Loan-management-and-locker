@@ -20,6 +20,7 @@ import { LineChart, PieChart } from 'react-native-chart-kit';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useLanguage } from '../../src/context/LanguageContext';
+import { useTheme } from '../../src/context/ThemeContext';
 import API_URL from '../../src/constants/api';
 
 const screenWidth = Dimensions.get('window').width;
