@@ -2671,6 +2671,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  loanHistorySearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
+    gap: 8,
+  },
+  loanHistorySearchInput: {
+    flex: 1,
+    fontSize: 14,
+    paddingVertical: 0,
+  },
   loanHistoryContent: {
     marginTop: 12,
   },
