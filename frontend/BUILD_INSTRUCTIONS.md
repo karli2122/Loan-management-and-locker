@@ -123,6 +123,6 @@ Users can switch languages using the EST/ENG buttons in the app.
 ---
 
 ## Backend API
-The backend runs at: `https://admin-dashboard-v2-7.preview.emergentagent.com/api/`
+The backend runs at: `https://admin-dashboard-v2-8.preview.emergentagent.com/api/`
 
 Make sure to update `EXPO_PUBLIC_BACKEND_URL` in `.env` for production deployment.
