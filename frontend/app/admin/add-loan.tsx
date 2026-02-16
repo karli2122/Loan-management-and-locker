@@ -62,7 +62,8 @@ export default function AddLoan() {
   const [selectedPlan, setSelectedPlan] = useState<LoanPlan | null>(null);
   const [showPlanPicker, setShowPlanPicker] = useState(false);
   const [loanAmount, setLoanAmount] = useState('');
-  const [interestRate, setInterestRate] = useState('10');
+  const [interestRate, setInterestRate] = useState('2');
+  const [givenDate, setGivenDate] = useState(new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState('');
 
   useEffect(() => {
@@ -81,18 +82,18 @@ export default function AddLoan() {
     }
   }, [clientId, clients]);
 
-  // Real-time EMI calculator
+  // Real-time EMI calculator (using monthly interest rate)
   const emiPreview = React.useMemo(() => {
     const amount = parseFloat(loanAmount);
-    const rate = parseFloat(interestRate);
-    if (!dueDate || isNaN(amount) || amount <= 0 || isNaN(rate) || rate < 0) return null;
+    const rate = parseFloat(interestRate); // Already monthly rate
+    if (!dueDate || !givenDate || isNaN(amount) || amount <= 0 || isNaN(rate) || rate < 0) return null;
 
-    const now = new Date();
+    const start = new Date(givenDate);
     const due = new Date(dueDate);
-    let months = (due.getFullYear() - now.getFullYear()) * 12 + (due.getMonth() - now.getMonth());
+    let months = (due.getFullYear() - start.getFullYear()) * 12 + (due.getMonth() - start.getMonth());
     if (months < 1) return null;
 
-    const monthlyRate = (rate / 12) / 100;
+    const monthlyRate = rate / 100; // Convert percentage to decimal
     let monthlyEmi: number;
     let totalInterest: number;
 
@@ -111,7 +112,7 @@ export default function AddLoan() {
       totalInterest: Math.round(totalInterest * 100) / 100,
       months,
     };
-  }, [loanAmount, interestRate, dueDate]);
+  }, [loanAmount, interestRate, givenDate, dueDate]);
 
   const fetchClients = async () => {
     try {
@@ -523,19 +524,29 @@ export default function AddLoan() {
           </View>
 
           <Text style={styles.label}>
-            {language === 'et' ? 'Intressimäär (% aastas)' : 'Interest Rate (% per year)'}
+            {language === 'et' ? 'Intressimäär (% kuus)' : 'Interest Rate (% per month)'}
           </Text>
           <View style={styles.inputContainer}>
             <Ionicons name="trending-up" size={20} color="#64748B" />
             <TextInput
               style={styles.input}
-              placeholder="10"
+              placeholder="2"
               placeholderTextColor="#64748B"
               value={interestRate}
               onChangeText={setInterestRate}
               keyboardType="decimal-pad"
             />
           </View>
+
+          <Text style={styles.label}>
+            {language === 'et' ? 'Laenu alguskuupäev' : 'Loan Given Date'}
+          </Text>
+          <DatePicker
+            value={givenDate}
+            onChange={setGivenDate}
+            placeholder={language === 'et' ? 'Vali kuupäev' : 'Select date'}
+            testID="given-date-input"
+          />
 
           <Text style={styles.label}>
             {language === 'et' ? 'Tähtaeg' : 'Due Date'}
