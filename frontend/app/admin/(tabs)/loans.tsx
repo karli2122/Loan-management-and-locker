@@ -393,7 +393,7 @@ export default function LoansTab() {
           </View>
         </View>
         
-        <View style={styles.loanInfo}>
+        <View style={[styles.loanInfo, { borderTopColor: colors.border }]}>
           {/* Archived Date */}
           <View style={[styles.archivedDateBadge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Ionicons name="calendar-outline" size={12} color="#10B981" />
