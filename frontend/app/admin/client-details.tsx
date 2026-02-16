@@ -213,6 +213,34 @@ export default function ClientDetails() {
     return () => clearInterval(interval);
   }, [id]);
 
+  // Fetch loan history for this client
+  const fetchLoanHistory = async () => {
+    try {
+      setLoanHistoryLoading(true);
+      const token = await getAdminToken();
+      if (!token) return;
+      
+      const response = await fetch(
+        `${API_URL}/api/clients/${id}/loan-history?admin_token=${token}`
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        setLoanHistory(data.loan_history || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch loan history:', error);
+    } finally {
+      setLoanHistoryLoading(false);
+    }
+  };
+
+  // Fetch loan history when expanding the section
+  useEffect(() => {
+    if (showLoanHistory && loanHistory.length === 0) {
+      fetchLoanHistory();
+    }
+  }, [showLoanHistory]);
   const handleGenerateCode = async () => {
     // Credit check for non-superadmin users
     if (!isSuperAdmin && userCredits <= 0) {
