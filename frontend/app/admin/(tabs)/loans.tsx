@@ -303,8 +303,6 @@ export default function LoansTab() {
                 </View>
               )}
             </View>
-            
-            </View>
           </View>
         )}
       </TouchableOpacity>
