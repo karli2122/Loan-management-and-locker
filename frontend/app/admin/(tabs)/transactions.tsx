@@ -30,6 +30,7 @@ interface Transaction {
 export default function TransactionsTab() {
   const router = useRouter();
   const { language } = useLanguage();
+  const { colors } = useTheme();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
