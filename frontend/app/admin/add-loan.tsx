@@ -37,7 +37,7 @@ interface LoanPlan {
 
 export default function AddLoan() {
   const router = useRouter();
-  const { clientId } = useLocalSearchParams();
+  const { clientId, renew } = useLocalSearchParams();
   const { language } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [loadingClients, setLoadingClients] = useState(true);
