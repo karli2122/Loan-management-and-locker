@@ -61,7 +61,7 @@ export default function LoansTab() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string | undefined>(undefined);
-  const [tab, setTab] = useState<'given' | 'settled' | 'archived'>('given');
+  const [tab, setTab] = useState<'given' | 'archived'>('given');
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'today' | 'tomorrow' | 'next3days'>('all');
   const [archivingClient, setArchivingClient] = useState<string | null>(null);
 
