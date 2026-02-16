@@ -31,6 +31,21 @@ interface LoanDetails {
   days_overdue: number;
 }
 
+interface LoanHistoryItem {
+  id: string;
+  loan_amount: number;
+  interest_rate: number;
+  total_amount_due: number;
+  total_paid: number;
+  total_interest: number;
+  loan_start_date: string | null;
+  loan_due_date: string | null;
+  paid_date: string;
+  archived_at: string;
+  payment_count: number;
+  final_credit_score: number;
+}
+
 
 interface Client {
   id: string;
