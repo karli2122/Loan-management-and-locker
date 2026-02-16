@@ -1254,6 +1254,24 @@ export default function ClientDetails() {
 
           {showLoanHistory && (
             <View style={styles.loanHistoryContent}>
+              {loanHistory.length > 0 && (
+                <View style={[styles.loanHistorySearchContainer, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+                  <Ionicons name="search" size={16} color={colors.textMuted} />
+                  <TextInput
+                    style={[styles.loanHistorySearchInput, { color: colors.text }]}
+                    placeholder={language === 'et' ? 'Otsi summa, kuupäeva, intressi järgi...' : 'Search by amount, date, interest...'}
+                    placeholderTextColor={colors.textMuted}
+                    value={loanHistorySearch}
+                    onChangeText={setLoanHistorySearch}
+                    data-testid="loan-history-search-input"
+                  />
+                  {loanHistorySearch.length > 0 && (
+                    <TouchableOpacity onPress={() => setLoanHistorySearch('')} data-testid="loan-history-search-clear">
+                      <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
               {loanHistoryLoading ? (
                 <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 20 }} />
               ) : loanHistory.length === 0 ? (
@@ -1264,7 +1282,30 @@ export default function ClientDetails() {
                   </Text>
                 </View>
               ) : (
-                loanHistory.map((loan, index) => (
+                (() => {
+                  const query = loanHistorySearch.toLowerCase().trim();
+                  const filtered = query
+                    ? loanHistory.filter((loan) => {
+                        const amount = `€${loan.loan_amount?.toFixed(2) || '0'}`;
+                        const paid = `€${loan.total_paid?.toFixed(2) || '0'}`;
+                        const interest = `${loan.interest_rate?.toFixed(1) || '0'}%`;
+                        const interestEarned = `€${loan.total_interest?.toFixed(2) || '0'}`;
+                        const date = loan.archived_at ? new Date(loan.archived_at).toLocaleDateString('et-EE') : '';
+                        const searchable = `${amount} ${paid} ${interest} ${interestEarned} ${date}`.toLowerCase();
+                        return searchable.includes(query);
+                      })
+                    : loanHistory;
+                  if (filtered.length === 0) {
+                    return (
+                      <View style={styles.emptyLoanHistory}>
+                        <Ionicons name="search-outline" size={32} color={colors.textMuted} />
+                        <Text style={[styles.emptyLoanHistoryText, { color: colors.textMuted }]}>
+                          {language === 'et' ? 'Tulemusi ei leitud' : 'No results found'}
+                        </Text>
+                      </View>
+                    );
+                  }
+                  return filtered.map((loan, index) => (
                   <View
                     key={loan.id}
                     style={[
