@@ -470,12 +470,12 @@ export default function Reports() {
   const advancedMetrics = getAdvancedMetrics();
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: colors.surface }]}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{language === 'et' ? 'Aruanded ja analüütika' : 'Reports & Analytics'}</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{language === 'et' ? 'Aruanded ja analüütika' : 'Reports & Analytics'}</Text>
         <TouchableOpacity onPress={handleCalculateLateFees} style={styles.refreshButton}>
           <Ionicons name="calculator" size={20} color="#fff" />
         </TouchableOpacity>
@@ -483,30 +483,30 @@ export default function Reports() {
 
       <ScrollView
         style={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {/* Period Filter Section */}
         <View style={styles.filterSection}>
-          <Text style={styles.filterTitle}>{language === 'et' ? 'Periood' : 'Period'}</Text>
+          <Text style={[styles.filterTitle, { color: colors.text }]}>{language === 'et' ? 'Periood' : 'Period'}</Text>
           <View style={styles.filterRow}>
             <TouchableOpacity 
-              style={styles.filterButton}
+              style={[styles.filterButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
               onPress={() => setShowYearPicker(true)}
             >
-              <Ionicons name="calendar" size={18} color="#4F46E5" />
-              <Text style={styles.filterButtonText}>{selectedYear}</Text>
-              <Ionicons name="chevron-down" size={16} color="#64748B" />
+              <Ionicons name="calendar" size={18} color={colors.primary} />
+              <Text style={[styles.filterButtonText, { color: colors.text }]}>{selectedYear}</Text>
+              <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={styles.filterButton}
+              style={[styles.filterButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
               onPress={() => setShowMonthPicker(true)}
             >
-              <Ionicons name="calendar-outline" size={18} color="#4F46E5" />
-              <Text style={styles.filterButtonText}>
+              <Ionicons name="calendar-outline" size={18} color={colors.primary} />
+              <Text style={[styles.filterButtonText, { color: colors.text }]}>
                 {selectedMonth !== null ? months[selectedMonth] : (language === 'et' ? 'Kõik kuud' : 'All Months')}
               </Text>
-              <Ionicons name="chevron-down" size={16} color="#64748B" />
+              <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
           
@@ -531,20 +531,20 @@ export default function Reports() {
 
         {/* Profit Summary for Selected Period */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
             {language === 'et' ? 'Kasumi kokkuvõte' : 'Profit Summary'} - {selectedMonth !== null ? months[selectedMonth] : ''} {selectedYear}
           </Text>
-          <View style={styles.profitCard}>
+          <View style={[styles.profitCard, { backgroundColor: colors.surface }]}>
             <View style={styles.profitMainRow}>
               <View style={styles.profitMainItem}>
-                <Ionicons name="wallet" size={32} color="#10B981" />
-                <Text style={styles.profitMainValue}>€{profitSummary.totalRevenue.toFixed(2)}</Text>
-                <Text style={styles.profitMainLabel}>{language === 'et' ? 'Kogutulu' : 'Total Revenue'}</Text>
+                <Ionicons name="wallet" size={32} color={colors.success} />
+                <Text style={[styles.profitMainValue, { color: colors.text }]}>€{profitSummary.totalRevenue.toFixed(2)}</Text>
+                <Text style={[styles.profitMainLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Kogutulu' : 'Total Revenue'}</Text>
               </View>
               <View style={styles.profitMainItem}>
-                <Ionicons name="trending-up" size={32} color="#4F46E5" />
-                <Text style={[styles.profitMainValue, { color: '#4F46E5' }]}>€{profitSummary.profit.toFixed(2)}</Text>
-                <Text style={styles.profitMainLabel}>{language === 'et' ? 'Kasum (intress)' : 'Profit (Interest)'}</Text>
+                <Ionicons name="trending-up" size={32} color={colors.primary} />
+                <Text style={[styles.profitMainValue, { color: colors.primary }]}>€{profitSummary.profit.toFixed(2)}</Text>
+                <Text style={[styles.profitMainLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Kasum (intress)' : 'Profit (Interest)'}</Text>
               </View>
             </View>
             <View style={styles.profitDetailsRow}>
