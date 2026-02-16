@@ -336,26 +336,7 @@ export default function LoansTab() {
               )}
             </View>
             
-            {/* Archive Button - only show for settled loans */}
-            {tab === 'settled' && outstanding === 0 && (
-              <TouchableOpacity
-                style={[styles.archiveButton, archivingClient === item.id && styles.archiveButtonDisabled]}
-                onPress={() => handleArchiveLoan(item.id, item.name)}
-                disabled={archivingClient === item.id}
-              >
-                <Ionicons 
-                  name="archive" 
-                  size={16} 
-                  color="#fff" 
-                  style={{ marginRight: 6 }}
-                />
-                <Text style={styles.archiveButtonText}>
-                  {archivingClient === item.id 
-                    ? (language === 'et' ? 'Arhiveerin...' : 'Archiving...') 
-                    : (language === 'et' ? 'Arhiveeri' : 'Archive')}
-                </Text>
-              </TouchableOpacity>
-            )}
+            </View>
           </View>
         )}
       </TouchableOpacity>
