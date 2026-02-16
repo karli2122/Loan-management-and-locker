@@ -805,29 +805,29 @@ export default function ClientDetails() {
   if (!client) return null;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.surface }]} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>{t('clientDetails')}</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{t('clientDetails')}</Text>
         <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-          <Ionicons name="trash" size={20} color="#EF4444" />
+          <Ionicons name="trash" size={20} color={colors.error} />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Client Info Card */}
-        <View style={styles.infoCard}>
-          <View style={styles.avatarContainer}>
+        <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.avatarContainer, { backgroundColor: colors.primary }]}>
             <Text style={styles.avatarText}>{client.name.charAt(0).toUpperCase()}</Text>
           </View>
-          <Text style={styles.clientName}>{client.name}</Text>
+          <Text style={[styles.clientName, { color: colors.text }]}>{client.name}</Text>
         <View style={[styles.statusBadge, client.is_locked ? styles.lockedBadge : styles.unlockedBadge]}>
           <Ionicons
             name={client.is_locked ? 'lock-closed' : 'lock-open'}
             size={14}
-            color={client.is_locked ? '#EF4444' : '#10B981'}
+            color={client.is_locked ? colors.error : colors.success}
           />
           <Text style={[styles.statusText, client.is_locked ? styles.lockedText : styles.unlockedText]}>
             {client.is_locked ? t('locked') : t('unlocked')}
@@ -839,7 +839,7 @@ export default function ClientDetails() {
             <Ionicons
               name={client.admin_mode_active ? 'shield-checkmark' : 'shield'}
               size={14}
-              color={client.admin_mode_active ? '#3B82F6' : '#F59E0B'}
+              color={client.admin_mode_active ? '#3B82F6' : colors.warning}
             />
             <Text style={[styles.statusText, client.admin_mode_active ? styles.adminModeText : styles.adminModeOffText]}>
               {client.admin_mode_active 
@@ -851,22 +851,22 @@ export default function ClientDetails() {
         <View style={styles.regCodeRow}>
           {client.registration_code ? (
             <>
-              <Text style={styles.regCode}>{t('registrationCode')}: {client.registration_code}</Text>
+              <Text style={[styles.regCode, { color: colors.textMuted }]}>{t('registrationCode')}: {client.registration_code}</Text>
               <TouchableOpacity
                 style={styles.copyButton}
                 onPress={async () => {
                   await Share.share({ message: client.registration_code });
                 }}
               >
-                <Ionicons name="copy" size={18} color="#94A3B8" />
-                <Text style={styles.copyText}>{t('copy')}</Text>
+                <Ionicons name="copy" size={18} color={colors.textMuted} />
+                <Text style={[styles.copyText, { color: colors.textMuted }]}>{t('copy')}</Text>
               </TouchableOpacity>
             </>
           ) : (
-            <Text style={styles.regCodeHidden}>
+            <Text style={[styles.regCodeHidden, { color: colors.textMuted }]}>
               {language === 'et' ? 'Võtit pole veel genereeritud' : 'Key not generated yet'}
             </Text>
-          )}
+          )}}
         </View>
         {/* Generate Key Button - show for all cases */}
         <TouchableOpacity
