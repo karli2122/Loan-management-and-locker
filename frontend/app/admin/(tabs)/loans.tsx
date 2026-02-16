@@ -944,4 +944,63 @@ const styles = StyleSheet.create({
   paymentFilterTextActive: {
     color: '#fff',
   },
+  // Archive button styles
+  archiveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#10B981',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 12,
+  },
+  archiveButtonDisabled: {
+    backgroundColor: '#64748B',
+    opacity: 0.7,
+  },
+  archiveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Badge styles for archived count
+  badgeSmall: {
+    backgroundColor: '#10B981',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 6,
+    paddingHorizontal: 6,
+  },
+  badgeTextSmall: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  // Archived date badge
+  archivedDateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  archivedDateText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  // Empty subtext for archived tab
+  emptySubText: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 32,
+    lineHeight: 18,
+  },
 });
