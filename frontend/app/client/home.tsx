@@ -1385,4 +1385,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#F59E0B',
   },
+  allPaidCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 32,
+    marginBottom: 20,
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#10B98130',
+  },
+  allPaidTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#10B981',
+  },
+  allPaidSubtext: {
+    fontSize: 14,
+    color: '#94A3B8',
+  },
 });
