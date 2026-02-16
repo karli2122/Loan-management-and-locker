@@ -262,10 +262,17 @@ export default function ClientHome() {
                   
                   // Only start retry if the request was dispatched successfully
                   if (result !== 'error' && result !== 'error_module_not_available' && result !== 'error_no_activity') {
+                    // Give the system dialog time to appear before starting retry checks
+                    // User needs time to interact with the system admin permission dialog
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
                     // Run retry check in background - don't block
-                    checkAdminStatusWithRetry(10, 1000).then(granted => {
+                    // Increased to 20 attempts (20 seconds total) to give user more time
+                    checkAdminStatusWithRetry(20, 1000).then(granted => {
                       isRequestingAdmin.current = false;
-                      if (!granted) {
+                      if (granted) {
+                        console.log('Admin permission successfully granted!');
+                      } else {
                         console.log('Admin not granted after retry period');
                       }
                     }).catch(() => {
