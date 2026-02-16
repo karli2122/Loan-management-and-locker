@@ -37,8 +37,17 @@ interface LoanPlan {
 
 export default function AddLoan() {
   const router = useRouter();
-  const { clientId, renew } = useLocalSearchParams();
+  const params = useLocalSearchParams();
+  const clientId = params.clientId;
+  const renew = params.renew;
   const { language } = useLanguage();
+  
+  // Debug logging for params
+  useEffect(() => {
+    console.log('AddLoan params:', JSON.stringify(params));
+    console.log('clientId:', clientId, 'type:', typeof clientId);
+    console.log('renew:', renew, 'type:', typeof renew);
+  }, [params, clientId, renew]);
   const [loading, setLoading] = useState(false);
   const [loadingClients, setLoadingClients] = useState(true);
   const [loadingPlans, setLoadingPlans] = useState(true);
