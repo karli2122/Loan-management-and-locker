@@ -1,90 +1,49 @@
 # EMI Device Admin - Product Requirements Document
 
 ## Original Problem Statement
-EMI/Loan management mobile application with admin and client apps. Admin app manages clients, loan plans, device locking. Client app enforces device admin policies, prevents uninstall, and reports status.
+Dashboard analytics, client portal, and loan management features for an EMI device administration system. Estonian language support (et) with English fallback.
 
-## Architecture
-- **Backend**: FastAPI + MongoDB (port 8001 internally)
-- **Frontend**: React Native / Expo (mobile app)
-- **Native Module**: `emi-device-admin` Expo module (Kotlin) for Android Device Admin API
-- **Auth**: Token-based (24h expiry), stored in AsyncStorage
-- **API URL**: `EXPO_PUBLIC_BACKEND_URL` env var
+## Core Users
+- **Superadmin** (karli1987): Full access to all features
+- **Admin** (testadmin): Standard loan management
+- **Client**: Self-service loan portal
 
-## What's Implemented
+## Tech Stack
+- **Frontend**: React Native (Expo), react-native-chart-kit, TypeScript
+- **Backend**: FastAPI, MongoDB, Pydantic
+- **Auth**: Token-based admin auth, registration code client auth
 
-### Core Features
-1. Admin Dashboard with analytics, heartbeat monitoring, revenue charts
-2. Client CRUD with device management, geolocation, bulk operations
-3. Loan Plans CRUD, Loan Setup with date pickers, EMI calculator
-4. Payment recording with automatic credit score adjustments
-5. Dark/Light theme toggle with persistence
-6. Audit Log system (superadmin only)
-7. Credit Score tracking (0-1000 range)
-8. Client Self-Service Portal (phone + registration code login)
-9. Multi-Admin Dashboard Analytics (superadmin filter)
-10. Late Fee Auto-Calculation & Auto-Lock system
-11. Contract PDF generation & email sending
-12. Payment Reminders system
-13. Notification Center
-14. Support Chat
+## What's Been Implemented
 
-### Session 26: Search, Interest Card & Auto-Archive (Feb 16, 2026)
-**COMPLETED - All features implemented and tested (100% pass rate)**
+### Phase 1 - Core (Previous sessions)
+- Client management (CRUD)
+- Loan setup, payments, EMI calculation
+- Device lock/unlock
+- Client portal (register, home, portal-dashboard)
+- Multi-language (ET/EN), dark/light theme
+- Credit scoring, late fee tracking
 
-1. **Loan History Search** - IMPLEMENTED
-   - Search bar in collapsible "Laenu ajalugu" section on client detail pages
-   - Client-side filtering by loan amount, date, interest rate, total paid
-   - Clear button when search has text
-   - "No results found" empty state
+### Phase 2 - Dashboard & Archiving (Previous session)
+- Auto-loan archiving on final payment
+- "Settled" tab removal (redundant with auto-archive)
+- Loan History search bar on client detail page
+- Interest Earned dashboard card (total + current month)
 
-2. **Interest Earned Dashboard Card** - IMPLEMENTED
-   - New card on admin dashboard showing:
-     - Total interest earned from all archived loans
-     - Current month interest earned
-     - Total loans archived count
-     - Current month archived count
-   - Backend: Enhanced `/api/paid-loans/summary` endpoint with `current_month_interest` and `current_month_loans_archived`
-   - Fixed route ordering: summary route placed before `{paid_loan_id}` to avoid 404
+### Phase 3 - Charts, Tabs & Client App (Current session - Feb 16, 2026)
+- **Monthly Interest Trend Chart**: LineChart on admin dashboard showing 6-month interest income trend
+- **Backend Enhancement**: `/api/paid-loans/summary` now returns `monthly_interest_trend` array
+- **Client Details Tab System**: Added "Active Loan" and "Payment History" tabs to admin client details page
+- **Payment History Tab**: Fetches and displays payment history from `/api/loans/{client_id}/payments`
+- **Client App "All Paid" State**: Shows "Kõik makstud" card when no active loan (home.tsx + portal-dashboard.tsx)
+- **Removed from Client App**: Payment history, support chat, refresh status quick actions
+- **Removed from Portal Dashboard**: Payment History section
 
-3. **Auto-Archive on Full Payment** - IMPLEMENTED (Previous session, carried forward)
-   - `perform_archive()` shared function in `paid_loans.py`
-   - Called from `record_payment()` when `new_outstanding <= 0`
+## Key API Endpoints
+- `GET /api/paid-loans/summary` - Total + monthly interest, 6-month trend
+- `GET /api/loans/{client_id}/payments` - Payment history for a client
+- `POST /api/loans/{client_id}/payments` - Record payment (auto-archives on final)
+- `POST /api/admin/login` - Admin authentication
 
-4. **Removed "Tasutud" (Settled) Tab** - IMPLEMENTED (Previous session)
-   - Only "Antud" (Given) and "Arhiveeritud" (Archived) tabs remain
-
-5. **Registration Code Bug Fix** - FIXED
-   - `registration_code` default changed from `""` to `Optional[str] = None`
-   - Excluded from MongoDB insert when None (sparse unique index compat)
-
-**Testing Results:** 100% pass rate (7/7 backend tests, frontend verified)
-- Test report: `/app/test_reports/iteration_32.json`
-
-## Key Files
-```
-/app
-├── backend/
-│   ├── server.py
-│   ├── database.py
-│   ├── models/schemas.py
-│   └── routes/
-│       ├── paid_loans.py        # Summary endpoint, archive, loan history
-│       ├── loans.py             # Auto-archive on payment
-│       ├── clients.py           # Registration code fix
-│       └── ...
-└── frontend/
-    ├── app/admin/
-    │   ├── (tabs)/index.tsx     # Dashboard + Interest Earned card
-    │   ├── (tabs)/loans.tsx     # 2 tabs: Given + Archived
-    │   └── client-details.tsx   # Loan History with search
-    └── src/context/
-        └── ThemeContext.tsx
-```
-
-## Credentials
-- Superadmin: `username=karli1987`, `password=nasvakas123`
-- Admin: `username=testadmin`, `password=testpassword`
-
-## Current Backlog
+## Backlog
 - P3: Android Management API (AMAPI) Integration
 - P3: Push notifications (FCM)
