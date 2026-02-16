@@ -145,6 +145,7 @@ export default function LoansTab() {
 
   useEffect(() => {
     fetchClients();
+    fetchPaidLoans();
   }, []);
 
   useEffect(() => {
