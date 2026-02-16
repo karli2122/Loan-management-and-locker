@@ -203,6 +203,25 @@ export default function Dashboard() {
     }
   };
 
+  const fetchInterestSummary = async () => {
+    try {
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      if (!adminToken) return;
+      const response = await fetch(`${API_URL}/api/paid-loans/summary?admin_token=${adminToken}`);
+      if (response.ok) {
+        const data = await response.json();
+        setInterestSummary({
+          total_interest_earned: data.total_interest_earned ?? 0,
+          current_month_interest: data.current_month_interest ?? 0,
+          total_loans_archived: data.total_loans_archived ?? 0,
+          current_month_loans_archived: data.current_month_loans_archived ?? 0,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch interest summary:', error);
+    }
+  };
+
   const loadUserData = async () => {
     const storedUsername = await AsyncStorage.getItem('admin_username');
     const role = await AsyncStorage.getItem('admin_role');
