@@ -35,6 +35,21 @@ interface Client {
   late_fees_accumulated?: number;
 }
 
+interface PaidLoan {
+  id: string;
+  client_id: string;
+  client_name: string;
+  client_phone: string;
+  loan_amount: number;
+  total_paid: number;
+  total_interest: number;
+  loan_tenure_months: number;
+  paid_date: string;
+  archived_at: string;
+  payment_count: number;
+  final_credit_score: number;
+}
+
 export default function LoansTab() {
   const router = useRouter();
   const params = useLocalSearchParams<{ filter?: string }>();
