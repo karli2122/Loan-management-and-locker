@@ -29,6 +29,7 @@ from routes import (
     client_auth_router,
     audit_logs_router,
     credit_score_router,
+    paid_loans_router,
 )
 
 # Configure logging
