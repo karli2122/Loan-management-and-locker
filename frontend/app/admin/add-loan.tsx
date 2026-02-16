@@ -398,12 +398,24 @@ export default function AddLoan() {
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.title}>
-          {language === 'et' ? 'Lisa laen' : 'Add Loan'}
+          {isRenewal
+            ? (language === 'et' ? 'Uuenda laenu' : 'Renew Loan')
+            : (language === 'et' ? 'Lisa laen' : 'Add Loan')}
         </Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content}>
+        {isRenewal && (
+          <View style={styles.renewalBanner} data-testid="renewal-banner">
+            <Ionicons name="refresh-circle" size={20} color="#10B981" />
+            <Text style={styles.renewalBannerText}>
+              {language === 'et'
+                ? 'Eelmise laenu andmed on eeltäidetud. Muutke vajadusel.'
+                : 'Pre-filled from previous loan. Adjust as needed.'}
+            </Text>
+          </View>
+        )}
         {/* Client Selection Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
