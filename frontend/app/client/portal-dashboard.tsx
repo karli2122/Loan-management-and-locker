@@ -392,57 +392,6 @@ export default function ClientPortalDashboard() {
             </View>
           </View>
         )}
-
-        {/* Payment History */}
-        <TouchableOpacity 
-          style={styles.paymentsHeader}
-          onPress={() => setShowPayments(!showPayments)}
-          data-testid="payment-history-toggle"
-        >
-          <View style={styles.paymentsHeaderLeft}>
-            <Ionicons name="receipt" size={20} color="#4F46E5" />
-            <Text style={styles.cardTitle}>
-              {language === 'et' ? 'Makseajalugu' : 'Payment History'}
-            </Text>
-          </View>
-          <Ionicons 
-            name={showPayments ? 'chevron-up' : 'chevron-down'} 
-            size={20} 
-            color="#94A3B8" 
-          />
-        </TouchableOpacity>
-
-        {showPayments && (
-          <View style={styles.paymentsContainer}>
-            {payments.length === 0 ? (
-              <Text style={styles.noPayments}>
-                {language === 'et' ? 'Makseid ei ole' : 'No payments yet'}
-              </Text>
-            ) : (
-              payments.map((payment) => (
-                <View key={payment.id} style={styles.paymentItem}>
-                  <View style={styles.paymentItemLeft}>
-                    <Text style={styles.paymentAmount}>{formatCurrency(payment.amount)}</Text>
-                    <Text style={styles.paymentDate}>{formatDate(payment.payment_date)}</Text>
-                  </View>
-                  <View style={styles.paymentMethod}>
-                    <Ionicons 
-                      name={payment.payment_method === 'cash' ? 'cash' : 'card'} 
-                      size={16} 
-                      color="#64748B" 
-                    />
-                    <Text style={styles.paymentMethodText}>
-                      {payment.payment_method === 'cash' 
-                        ? (language === 'et' ? 'Sularaha' : 'Cash')
-                        : (language === 'et' ? 'Kaart' : 'Card')
-                      }
-                    </Text>
-                  </View>
-                </View>
-              ))
-            )}
-          </View>
-        )}
       </ScrollView>
     </SafeAreaView>
   );
