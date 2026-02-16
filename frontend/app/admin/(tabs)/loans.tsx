@@ -111,37 +111,6 @@ export default function LoansTab() {
     }
   };
 
-  const handleArchiveLoan = async (clientId: string, clientName: string) => {
-    setArchivingClient(clientId);
-    try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
-      if (!adminToken) return;
-      
-      const response = await fetch(`${API_URL}/api/loans/${clientId}/archive?admin_token=${adminToken}`, {
-        method: 'POST',
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to archive loan');
-      }
-      
-      // Refresh data
-      await fetchClients();
-      await fetchPaidLoans();
-      
-      // Show success message
-      alert(language === 'et' 
-        ? `Laen arhiveeritud: ${clientName}` 
-        : `Loan archived: ${clientName}`);
-    } catch (error: any) {
-      console.error('Error archiving loan:', error);
-      alert(error.message || 'Failed to archive loan');
-    } finally {
-      setArchivingClient(null);
-    }
-  };
-
   useEffect(() => {
     fetchClients();
     fetchPaidLoans();
