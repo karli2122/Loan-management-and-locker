@@ -176,13 +176,13 @@ class TestCreateAndVerifyArchivedLoan:
         self.created_client_id = client_data.get("id")
         print(f"Created test client: {self.created_client_id}")
         
-        # Step 2: Setup a loan for the client
+        # Step 2: Setup a loan for the client (minimum 2 months tenure)
         loan_response = requests.post(
             f"{BASE_URL}/api/loans/{self.created_client_id}/setup?admin_token={self.token}",
             json={
                 "loan_amount": 100.0,
                 "interest_rate": 5.0,
-                "tenure_months": 1
+                "tenure_months": 2
             }
         )
         assert loan_response.status_code == 200, f"Loan setup failed: {loan_response.text}"
