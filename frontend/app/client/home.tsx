@@ -501,12 +501,12 @@ export default function ClientHome() {
         // Check cached lock state immediately on startup for offline enforcement
         await checkCachedLockStateOnStartup();
         
-        // Load client data first
+        // Load client data first - this sets loading to false
         await loadClientData();
         
         // Check if this is a fresh registration - use longer delay to prevent flicker/crash
         const isFreshRegistration = await AsyncStorage.getItem('fresh_registration');
-        const delay = isFreshRegistration === 'true' ? 1500 : 500;
+        const delay = isFreshRegistration === 'true' ? 2500 : 1000;
         
         // Clear the fresh registration flag
         if (isFreshRegistration === 'true') {
@@ -514,27 +514,40 @@ export default function ClientHome() {
           console.log('Fresh registration detected - using extended delay for admin prompt');
         }
         
-        // Delay to let the UI settle before showing admin prompt
+        // Delay to let the UI fully render and settle before showing admin prompt
+        // This prevents the flash/crash when transitioning from register to home
         await new Promise(resolve => setTimeout(resolve, delay));
         
         // Only show admin prompt if component is still mounted
         if (!isMounted.current) return;
         
-        // Step 4: Check device protection (Device Admin prompt)
-        await checkAndSetupDeviceProtection();
+        // Step 4: Check device protection (Device Admin prompt) - wrapped in try-catch
+        try {
+          await checkAndSetupDeviceProtection();
+        } catch (adminError) {
+          console.log('Admin setup error (non-fatal):', adminError);
+        }
         
         // Step 5: Start foreground protection service (after admin check)
-        if (Platform.OS === 'android') {
-          await devicePolicy.startForegroundProtection();
-          console.log('Foreground protection service started');
+        if (Platform.OS === 'android' && isMounted.current) {
+          try {
+            await devicePolicy.startForegroundProtection();
+            console.log('Foreground protection service started');
+          } catch (fgError) {
+            console.log('Foreground protection error (non-fatal):', fgError);
+          }
         }
         
         // Small delay before accessibility prompt
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
         // Step 6: Check and prompt for accessibility service
         if (Platform.OS === 'android' && isMounted.current) {
-          await checkAndPromptAccessibility();
+          try {
+            await checkAndPromptAccessibility();
+          } catch (accessError) {
+            console.log('Accessibility check error (non-fatal):', accessError);
+          }
         }
       } catch (error) {
         console.error('Initialization error:', error);
