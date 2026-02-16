@@ -232,14 +232,14 @@ export default function AuditLogPage() {
         <View style={styles.logsList}>
           {logs.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="document-text-outline" size={48} color="#64748B" />
-              <Text style={styles.emptyText}>
+              <Ionicons name="document-text-outline" size={48} color={colors.textMuted} />
+              <Text style={[styles.emptyText, { color: colors.text }]}>
                 {language === 'et' ? 'Tegevusi ei leitud' : 'No logs found'}
               </Text>
             </View>
           ) : (
             logs.map((log) => (
-              <View key={log.id} style={styles.logItem} data-testid={`log-item-${log.id}`}>
+              <View key={log.id} style={[styles.logItem, { backgroundColor: colors.surface }]} data-testid={`log-item-${log.id}`}>
                 <View style={[styles.logIcon, { backgroundColor: `${getActionColor(log.action_type)}20` }]}>
                   <Ionicons
                     name={getActionIcon(log.action_type) as any}
@@ -249,19 +249,19 @@ export default function AuditLogPage() {
                 </View>
                 <View style={styles.logContent}>
                   <View style={styles.logHeader}>
-                    <Text style={styles.logAction}>{formatActionType(log.action_type)}</Text>
-                    <Text style={styles.logTime}>{formatDate(log.created_at)}</Text>
+                    <Text style={[styles.logAction, { color: colors.text }]}>{formatActionType(log.action_type)}</Text>
+                    <Text style={[styles.logTime, { color: colors.textMuted }]}>{formatDate(log.created_at)}</Text>
                   </View>
-                  <Text style={styles.logAdmin}>
-                    <Ionicons name="person" size={12} color="#64748B" /> {log.admin_username}
+                  <Text style={[styles.logAdmin, { color: colors.textMuted }]}>
+                    <Ionicons name="person" size={12} color={colors.textMuted} /> {log.admin_username}
                   </Text>
                   {log.target_name && (
-                    <Text style={styles.logTarget}>
-                      <Ionicons name="arrow-forward" size={12} color="#64748B" /> {log.target_name}
+                    <Text style={[styles.logTarget, { color: colors.textMuted }]}>
+                      <Ionicons name="arrow-forward" size={12} color={colors.textMuted} /> {log.target_name}
                     </Text>
                   )}
                   {log.details && (
-                    <Text style={styles.logDetails} numberOfLines={2}>{log.details}</Text>
+                    <Text style={[styles.logDetails, { color: colors.textSecondary }]} numberOfLines={2}>{log.details}</Text>
                   )}
                 </View>
               </View>
