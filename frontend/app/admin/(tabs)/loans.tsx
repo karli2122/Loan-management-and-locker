@@ -255,16 +255,16 @@ export default function LoansTab() {
 
     return (
       <TouchableOpacity
-        style={styles.clientCard}
+        style={[styles.clientCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
         onPress={() => router.push(`/admin/client-details?id=${item.id}`)}
       >
         <View style={styles.clientHeader}>
-          <View style={styles.clientAvatar}>
+          <View style={[styles.clientAvatar, { backgroundColor: colors.primary }]}>
             <Text style={styles.clientAvatarText}>{item.name.charAt(0).toUpperCase()}</Text>
           </View>
           <View style={styles.clientInfo}>
-            <Text style={styles.clientName}>{item.name}</Text>
-            <Text style={styles.clientPhone}>{item.phone}</Text>
+            <Text style={[styles.clientName, { color: colors.text }]}>{item.name}</Text>
+            <Text style={[styles.clientPhone, { color: colors.textMuted }]}>{item.phone}</Text>
           </View>
           <View style={[styles.statusBadge, item.is_locked ? styles.statusLocked : styles.statusUnlocked]}>
             <Ionicons
@@ -276,36 +276,36 @@ export default function LoansTab() {
         </View>
         
         {hasLoanData && (
-          <View style={styles.loanInfo}>
+          <View style={[styles.loanInfo, { borderTopColor: colors.border }]}>
             {/* Progress Bar */}
             <View style={styles.progressContainer}>
-              <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarBg, { backgroundColor: colors.surfaceAlt }]}>
                 <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
               </View>
-              <Text style={styles.progressText}>{progressPercent.toFixed(0)}%</Text>
+              <Text style={[styles.progressText, { color: colors.textSecondary }]}>{progressPercent.toFixed(0)}%</Text>
             </View>
             
             {/* Loan Details Grid */}
             <View style={styles.loanDetailsGrid}>
               <View style={styles.loanDetailItem}>
-                <Text style={styles.loanDetailLabel}>
+                <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
                   {language === 'et' ? 'Laen' : 'Loan'}
                 </Text>
-                <Text style={styles.loanDetailValue}>€{totalLoan.toFixed(0)}</Text>
+                <Text style={[styles.loanDetailValue, { color: colors.text }]}>€{totalLoan.toFixed(0)}</Text>
               </View>
               
               <View style={styles.loanDetailItem}>
-                <Text style={styles.loanDetailLabel}>
+                <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
                   {language === 'et' ? 'Makstud' : 'Paid'}
                 </Text>
-                <Text style={[styles.loanDetailValue, { color: '#10B981' }]}>€{paid.toFixed(0)}</Text>
+                <Text style={[styles.loanDetailValue, { color: colors.success }]}>€{paid.toFixed(0)}</Text>
               </View>
               
               <View style={styles.loanDetailItem}>
-                <Text style={styles.loanDetailLabel}>
+                <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
                   {language === 'et' ? 'Võlg' : 'Due'}
                 </Text>
-                <Text style={[styles.loanDetailValue, { color: outstanding > 0 ? '#F59E0B' : '#10B981' }]}>
+                <Text style={[styles.loanDetailValue, { color: outstanding > 0 ? colors.warning : colors.success }]}>
                   €{outstanding.toFixed(0)}
                 </Text>
               </View>
@@ -314,9 +314,9 @@ export default function LoansTab() {
             {/* Next Payment & Overdue Info */}
             <View style={styles.paymentInfoRow}>
               {item.next_payment_due && (
-                <View style={styles.nextPaymentBadge}>
-                  <Ionicons name="calendar" size={12} color="#4F46E5" />
-                  <Text style={styles.nextPaymentText}>
+                <View style={[styles.nextPaymentBadge, { backgroundColor: colors.surfaceAlt }]}>
+                  <Ionicons name="calendar" size={12} color={colors.primary} />
+                  <Text style={[styles.nextPaymentText, { color: colors.primary }]}>
                     {formatPaymentDate(item.next_payment_due)}
                   </Text>
                 </View>
@@ -324,8 +324,8 @@ export default function LoansTab() {
               
               {(item.days_overdue ?? 0) > 0 && (
                 <View style={styles.overdueBadge}>
-                  <Ionicons name="alert-circle" size={12} color="#EF4444" />
-                  <Text style={styles.overdueText}>
+                  <Ionicons name="alert-circle" size={12} color={colors.error} />
+                  <Text style={[styles.overdueText, { color: colors.error }]}>
                     {item.days_overdue} {language === 'et' ? 'päeva' : 'days'}
                   </Text>
                 </View>
