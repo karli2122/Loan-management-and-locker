@@ -266,6 +266,24 @@ async def get_paid_loans_summary(admin_token: str = Query(...)):
     }
 
 
+@router.get("/paid-loans/{client_id}/latest")
+async def get_latest_paid_loan(client_id: str, admin_token: str = Query(...)):
+    """Get the most recent archived loan for a client, used for loan renewal pre-fill."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    paid_loan = await db.paid_loans.find_one(
+        {"client_id": client_id, "admin_id": admin_id},
+        {"_id": 0},
+        sort=[("archived_at", -1)]
+    )
+    
+    if not paid_loan:
+        raise HTTPException(status_code=404, detail="No archived loans found for this client")
+    
+    return paid_loan
+
+
+
 @router.get("/paid-loans/{paid_loan_id}")
 async def get_paid_loan_details(paid_loan_id: str, admin_token: str = Query(...)):
     """Get detailed information about a specific archived loan."""
