@@ -303,7 +303,7 @@ export default function ClientPortalDashboard() {
           </View>
         )}
 
-        {/* Loan Details Card */}
+        {/* Device Status Card */}
         {loanSummary && (
           <View style={styles.detailsCard} data-testid="loan-details-card">
             <Text style={styles.cardTitle}>
