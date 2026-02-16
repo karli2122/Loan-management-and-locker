@@ -85,7 +85,9 @@ export default function AddLoan() {
 
   // Pre-fill from last archived loan when renew=true
   useEffect(() => {
-    if (renew === 'true' && clientId) {
+    // Handle renew param which may be string 'true' or array ['true']
+    const isRenewMode = renew === 'true' || (Array.isArray(renew) && renew[0] === 'true');
+    if (isRenewMode && clientId) {
       setIsRenewal(true);
       fetchLastLoanForRenewal();
     }
@@ -94,21 +96,33 @@ export default function AddLoan() {
   const fetchLastLoanForRenewal = async () => {
     try {
       const adminToken = await AsyncStorage.getItem('admin_token');
-      if (!adminToken) return;
+      if (!adminToken) {
+        console.log('No admin token found for renewal fetch');
+        return;
+      }
+      console.log('Fetching last loan for renewal, clientId:', clientId);
       const response = await fetch(
         `${API_URL}/api/paid-loans/${clientId}/latest?admin_token=${adminToken}`
       );
       if (response.ok) {
         const data = await response.json();
-        if (data.loan_amount) setLoanAmount(String(data.loan_amount));
-        if (data.interest_rate) setInterestRate(String(data.interest_rate));
-        if (data.loan_tenure_months) {
+        console.log('Renewal data received:', data);
+        // Use explicit checks for undefined/null instead of truthy checks (0 is valid)
+        if (data.loan_amount !== undefined && data.loan_amount !== null) {
+          setLoanAmount(String(data.loan_amount));
+        }
+        if (data.interest_rate !== undefined && data.interest_rate !== null) {
+          setInterestRate(String(data.interest_rate));
+        }
+        if (data.loan_tenure_months !== undefined && data.loan_tenure_months !== null && data.loan_tenure_months > 0) {
           // Calculate due date from today + same tenure
           const today = new Date();
           const due = new Date(today);
           due.setMonth(due.getMonth() + data.loan_tenure_months);
           setDueDate(due.toISOString().split('T')[0]);
         }
+      } else {
+        console.log('Renewal fetch failed with status:', response.status);
       }
     } catch (error) {
       console.error('Error fetching last loan for renewal:', error);
