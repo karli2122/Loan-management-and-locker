@@ -899,13 +899,36 @@ export default function ClientHome() {
             <TouchableOpacity 
               style={styles.enableProtectionButton}
               onPress={async () => {
+                // Prevent double-tap
+                if (isRequestingAdmin.current) {
+                  console.log('Admin request already in progress');
+                  return;
+                }
+                
                 console.log('Enable button pressed - requesting Device Admin');
-                const result = await devicePolicy.requestAdmin();
-                console.log('Device Admin request result:', result);
-                // Re-check admin status after request and report to backend
-                const granted = await checkAdminStatusWithRetry();
-                if (!granted) {
-                  console.log('Admin not granted after enable button press');
+                isRequestingAdmin.current = true;
+                
+                try {
+                  const result = await devicePolicy.requestAdmin();
+                  console.log('Device Admin request result:', result);
+                  
+                  // Only start retry if the request was dispatched successfully
+                  if (result !== 'error' && result !== 'error_module_not_available') {
+                    // Run check in background
+                    checkAdminStatusWithRetry(10, 1000).then(granted => {
+                      isRequestingAdmin.current = false;
+                      if (!granted) {
+                        console.log('Admin not granted after enable button press');
+                      }
+                    }).catch(() => {
+                      isRequestingAdmin.current = false;
+                    });
+                  } else {
+                    isRequestingAdmin.current = false;
+                  }
+                } catch (e) {
+                  console.log('Admin request error:', e);
+                  isRequestingAdmin.current = false;
                 }
               }}
             >
