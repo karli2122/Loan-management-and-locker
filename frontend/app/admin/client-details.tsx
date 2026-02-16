@@ -2388,6 +2388,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  addNewLoanBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#10B98120',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+  },
+  addNewLoanBtnText: {
+    color: '#10B981',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   modalScrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
