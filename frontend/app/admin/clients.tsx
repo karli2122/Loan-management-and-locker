@@ -50,6 +50,7 @@ interface SilentClient {
 export default function ClientsList() {
   const router = useRouter();
   const { t, language } = useLanguage();
+  const { colors } = useTheme();
   const [clients, setClients] = useState<Client[]>([]);
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [silentClients, setSilentClients] = useState<SilentClient[]>([]);
