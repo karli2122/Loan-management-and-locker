@@ -114,7 +114,7 @@ async def clear_warning(client_id: str):
 
 
 @router.post("/device/report-admin-status")
-async def report_admin_status(client_id: str = Query(...), admin_mode_active: bool = Query(...)):
+async def report_admin_status(client_id: str = Query(...), admin_active: bool = Query(...)):
     """Report device admin mode status."""
     client = await db.clients.find_one({"id": client_id})
     if not client:
@@ -123,9 +123,9 @@ async def report_admin_status(client_id: str = Query(...), admin_mode_active: bo
     await db.clients.update_one(
         {"id": client_id},
         {"$set": {
-            "admin_mode_active": admin_mode_active,
+            "admin_mode_active": admin_active,
             "last_heartbeat": datetime.utcnow()
         }}
     )
     
-    return {"message": "Admin status updated", "admin_mode_active": admin_mode_active}
+    return {"message": "Admin status updated", "admin_active": admin_active}
