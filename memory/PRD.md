@@ -867,6 +867,48 @@ All 3 phases successfully implemented:
 - Test report: `/app/test_reports/iteration_27.json`
 - Note: Edit Loan modal testing blocked by browser automation session persistence issue (not a bug)
 
+### Session 22: Multiple UI/UX Improvements (Feb 16, 2026)
+**COMPLETED - All Features Verified**
+
+1. **Add Loan Page Enhancements** ✅
+   - Changed interest rate from yearly to monthly (label: "% kuus", default: 2)
+   - Added "Loan Given Date" field with DatePicker (defaults to today)
+   - Both date fields now use the reusable DatePicker component
+   - Updated EMI calculation to use monthly rate directly
+   - File: `frontend/app/admin/add-loan.tsx`
+
+2. **Add Client Page Enhancements** ✅
+   - Added "Laenu antud kuupäev" (Loan Given Date) field with DatePicker
+   - Changed "Laenu tähtaeg" (Due Date) to use DatePicker component
+   - Removed old custom date picker modal
+   - File: `frontend/app/admin/add-client.tsx`
+
+3. **Dashboard Header Credit Balance** ✅
+   - Moved credit balance from large card to header (next to admin name)
+   - Display: Ticket icon + number (compact)
+   - Removed the large credit balance card from main content
+   - File: `frontend/app/admin/(tabs)/index.tsx`
+
+4. **Loans Tab Filter Buttons** ✅
+   - Increased filter button height (paddingVertical: 8 → 12)
+   - Better touch targets for mobile
+   - File: `frontend/app/admin/(tabs)/loans.tsx`
+
+5. **Client Details - Add New Loan Button** ✅
+   - Shows "Add New Loan" button when `outstanding_balance <= 0` (loan fully paid)
+   - Redirects to add-loan page with client_id parameter
+   - Hides Edit/Record Payment buttons when loan is paid
+   - File: `frontend/app/admin/client-details.tsx`
+
+6. **Backend Updates** ✅
+   - Added `given_date` field to LoanSetup schema
+   - Updated `/api/loans/{client_id}/setup` to use given_date as loan start date
+   - Interest rate now stored as monthly rate
+   - EMI calculation converts monthly rate to yearly for calculation
+   - Files: `backend/models/schemas.py`, `backend/routes/loans.py`
+
+**Testing Results:** 100% pass rate (test report: `/app/test_reports/iteration_28.json`)
+
 ## Current Backlog
 - P1: Fix theme persistence bug - theme doesn't persist visually across page navigations
 - P1: Apply theme support to remaining pages (client-details, audit-log, etc.)
