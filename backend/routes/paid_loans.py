@@ -12,35 +12,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Paid Loans"])
 
 
-@router.post("/loans/{client_id}/archive")
-async def archive_loan(client_id: str, admin_token: str = Query(...)):
+async def perform_archive(client_id: str, admin_id: str) -> dict:
     """
-    Archive a completed loan to the paid_loans collection.
+    Core archive logic: moves a fully-paid loan to paid_loans collection.
     
-    This moves the loan data to a separate collection for historical records
-    while clearing the active loan fields on the client.
+    Returns the archive result dict. Raises HTTPException on validation failure.
+    Called by both the manual archive endpoint and the auto-archive in record_payment.
     """
-    admin_id = await get_admin_id_from_token(admin_token)
-    
-    # Get the client
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    await enforce_client_scope(client, admin_id)
-    
-    # Check if loan is actually paid off
-    outstanding = client.get("outstanding_balance", 0)
-    if outstanding > 0:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Cannot archive loan with outstanding balance of €{outstanding:.2f}"
-        )
-    
     # Check if client has any loan data to archive
     loan_amount = client.get("loan_amount", 0) or client.get("total_amount_due", 0)
     if loan_amount <= 0:
-        raise HTTPException(status_code=400, detail="No loan data to archive")
+        return {"message": "No loan data to archive", "archived": False}
     
     # Get payment history for this client
     payments = await db.payments.find(
@@ -137,6 +123,7 @@ async def archive_loan(client_id: str, admin_token: str = Query(...)):
     
     return {
         "message": "Loan archived successfully",
+        "archived": True,
         "paid_loan_id": paid_loan_record["id"],
         "summary": {
             "client_name": client.get("name", "Unknown"),
@@ -146,6 +133,34 @@ async def archive_loan(client_id: str, admin_token: str = Query(...)):
             "payment_count": len(payments)
         }
     }
+
+
+@router.post("/loans/{client_id}/archive")
+async def archive_loan(client_id: str, admin_token: str = Query(...)):
+    """
+    Archive a completed loan to the paid_loans collection.
+    
+    This moves the loan data to a separate collection for historical records
+    while clearing the active loan fields on the client.
+    """
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Verify client exists and belongs to admin
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    await enforce_client_scope(client, admin_id)
+    
+    # Check if loan is actually paid off
+    outstanding = client.get("outstanding_balance", 0)
+    if outstanding > 0:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot archive loan with outstanding balance of €{outstanding:.2f}"
+        )
+    
+    return await perform_archive(client_id, admin_id)
 
 
 @router.get("/paid-loans")
