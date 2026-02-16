@@ -99,6 +99,25 @@ export default function FeaturesTab() {
           <Ionicons name="chevron-forward" size={20} color="#64748B" />
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.featureCard}
+          onPress={() => router.push('/admin/bank-analyzer')}
+          data-testid="bank-analyzer-link"
+        >
+          <View style={[styles.featureIcon, { backgroundColor: '#10B98120' }]}>
+            <Ionicons name="document-text" size={24} color="#10B981" />
+          </View>
+          <View style={styles.featureInfo}>
+            <Text style={styles.featureTitle}>
+              {language === 'et' ? 'Pangaväljavõtte analüüs' : 'Bank Statement Analyzer'}
+            </Text>
+            <Text style={styles.featureDescription}>
+              {language === 'et' ? 'AI-põhine tulu/kulu analüüs' : 'AI-powered income/expense analysis'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#64748B" />
+        </TouchableOpacity>
+
         <Text style={styles.sectionTitle}>
           {language === 'et' ? 'Laenuhaldus' : 'Loan Management'}
         </Text>
