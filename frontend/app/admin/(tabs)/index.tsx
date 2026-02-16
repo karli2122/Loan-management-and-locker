@@ -550,6 +550,46 @@ export default function Dashboard() {
           </View>
         </View>
 
+        {/* Interest Trend Chart */}
+        {interestTrend.labels.length > 0 && (
+          <View style={[styles.chartContainer, { backgroundColor: colors.surface, borderColor: colors.border }]} data-testid="interest-trend-chart">
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              {language === 'et' ? 'Igakuine intressitulu' : 'Monthly Interest Income'}
+            </Text>
+            <LineChart
+              data={{
+                labels: interestTrend.labels,
+                datasets: [{ data: interestTrend.data.some(v => v > 0) ? interestTrend.data : [0, 0, 0, 0, 0, 0] }],
+              }}
+              width={Dimensions.get('window').width - 56}
+              height={200}
+              yAxisLabel="€"
+              yAxisSuffix=""
+              chartConfig={{
+                backgroundColor: colors.surface,
+                backgroundGradientFrom: colors.surface,
+                backgroundGradientTo: colors.surface,
+                decimalPlaces: 0,
+                color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                labelColor: (opacity = 1) => isDark ? `rgba(148, 163, 184, ${opacity})` : `rgba(71, 85, 105, ${opacity})`,
+                style: { borderRadius: 12 },
+                propsForDots: {
+                  r: '5',
+                  strokeWidth: '2',
+                  stroke: '#10B981',
+                },
+                propsForBackgroundLines: {
+                  strokeDasharray: '',
+                  stroke: colors.border,
+                  strokeWidth: 0.5,
+                },
+              }}
+              bezier
+              style={{ borderRadius: 12, marginTop: 8 }}
+            />
+          </View>
+        )}
+
         {/* Heartbeat Monitoring Card */}
         <TouchableOpacity
           style={[styles.heartbeatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
