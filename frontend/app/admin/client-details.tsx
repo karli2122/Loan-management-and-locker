@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
+import { DatePicker } from '../../src/components/DatePicker';
 
 interface LoanDetails {
   loan_amount: number;
@@ -1550,16 +1551,14 @@ export default function ClientDetails() {
                 <Text style={styles.inputLabel}>
                   {language === 'et' ? 'Laenu alguskuupäev' : 'Loan Start Date'}
                 </Text>
-                <TextInput
-                  style={styles.modalInput}
+                <DatePicker
                   value={editLoanStartDate}
-                  onChangeText={(text) => {
-                    setEditLoanStartDate(text);
+                  onChange={(date) => {
+                    setEditLoanStartDate(date);
                     setLoanPreview(null);
                   }}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#64748B"
-                  data-testid="edit-loan-start-date-input"
+                  placeholder={language === 'et' ? 'Vali kuupäev' : 'Select date'}
+                  testID="edit-loan-start-date-input"
                 />
               </View>
 
@@ -1567,16 +1566,15 @@ export default function ClientDetails() {
                 <Text style={styles.inputLabel}>
                   {language === 'et' ? 'Laenu tähtaeg' : 'Due Date'}
                 </Text>
-                <TextInput
-                  style={styles.modalInput}
+                <DatePicker
                   value={editLoanDueDate}
-                  onChangeText={(text) => {
-                    setEditLoanDueDate(text);
+                  onChange={(date) => {
+                    setEditLoanDueDate(date);
                     setLoanPreview(null);
                   }}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#64748B"
-                  data-testid="edit-loan-due-date-input"
+                  placeholder={language === 'et' ? 'Vali kuupäev' : 'Select date'}
+                  minDate={new Date()}
+                  testID="edit-loan-due-date-input"
                 />
               </View>
 
