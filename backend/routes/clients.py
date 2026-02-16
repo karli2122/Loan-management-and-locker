@@ -37,7 +37,9 @@ async def create_client(client_data: ClientCreate, admin_token: str = Query(...)
         loan_tenure_months=client_data.loan_tenure_months
     )
     
-    await db.clients.insert_one(client.dict())
+    # Exclude registration_code when None so sparse unique index works
+    client_dict = {k: v for k, v in client.dict().items() if not (k == "registration_code" and v is None)}
+    await db.clients.insert_one(client_dict)
     return client
 
 
