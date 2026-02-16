@@ -30,6 +30,7 @@ from routes import (
     audit_logs_router,
     credit_score_router,
     paid_loans_router,
+    bank_statements_router,
 )
 
 # Configure logging
