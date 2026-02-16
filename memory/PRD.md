@@ -915,3 +915,52 @@ All 3 phases successfully implemented:
 - P3: Android Management API (AMAPI) Integration
 - P3: Push notifications (FCM)
 
+### Session 23: Loan Archiving Feature (Feb 16, 2026)
+**COMPLETED - Loan Archiving System Implemented and Tested**
+
+1. **Backend - Paid Loans Routes** ✅
+   - Created `/app/backend/routes/paid_loans.py` with:
+     - `POST /api/loans/{client_id}/archive` - Archive a completed loan
+       - Validates loan is fully paid (outstanding_balance = 0)
+       - Copies loan data with payment history to `paid_loans` collection
+       - Clears client loan fields after archiving
+       - Creates notification for admin
+     - `GET /api/paid-loans` - List archived loans with pagination
+     - `GET /api/paid-loans/{paid_loan_id}` - Get specific archived loan details
+     - `GET /api/paid-loans/summary` - Summary statistics (total archived, principal, interest)
+     - `DELETE /api/paid-loans/{paid_loan_id}` - Delete archived loan (superadmin only)
+   - Registered router in `routes/__init__.py` and `server.py`
+
+2. **Frontend - Loans Page Updates** ✅
+   - Added third tab "Arhiveeritud" (Archived) to display archived loans
+   - Added `PaidLoan` interface for archived loan data
+   - Added `fetchPaidLoans()` function to load archived loans
+   - Added `handleArchiveLoan()` function to archive settled loans
+   - Added `renderPaidLoan()` function to render archived loan cards
+   - Archive button appears on "Tasutud" (Settled) tab for loans with 0 balance
+   - Badge shows count of archived loans on the Archived tab
+   - File: `frontend/app/admin/(tabs)/loans.tsx`
+
+3. **Archived Loan Data Structure**
+   - `client_id`, `client_name`, `client_phone`
+   - `loan_amount`, `interest_rate`, `loan_tenure_months`
+   - `total_amount_due`, `total_paid`, `total_interest`
+   - `loan_start_date`, `loan_given_date`, `loan_due_date`, `paid_date`
+   - `payment_count`, `payments_history` (array of all payments)
+   - `final_credit_score` at time of completion
+   - `archived_at`, `archived_by`
+
+**Files Created/Modified:**
+- `backend/routes/paid_loans.py` (NEW) - Paid loans API endpoints
+- `backend/routes/__init__.py` - Added paid_loans_router export
+- `backend/server.py` - Registered paid_loans_router
+- `frontend/app/admin/(tabs)/loans.tsx` - Added Archived tab and archive functionality
+
+**Testing Results:** 100% pass rate (test report: `/app/test_reports/iteration_29.json`)
+- Backend: 7/7 tests passed (archive, list, validation tests)
+- Frontend: All tab navigation and archive button functionality verified
+
+**Pending Items:**
+- Theme persistence bug still not fixed (P1)
+- Full theme support for all pages (P2)
+
