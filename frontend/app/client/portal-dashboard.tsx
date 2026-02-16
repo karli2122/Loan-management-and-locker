@@ -340,6 +340,18 @@ export default function ClientPortalDashboard() {
             </View>
           </View>
         )}
+        </>
+        ) : (
+          <View style={styles.allPaidCard} data-testid="all-paid-card">
+            <Ionicons name="checkmark-circle" size={48} color="#10B981" />
+            <Text style={styles.allPaidTitle}>
+              {language === 'et' ? 'Kõik makstud' : 'All Paid'}
+            </Text>
+            <Text style={styles.allPaidSubtext}>
+              {language === 'et' ? 'Teil pole aktiivseid laene' : 'You have no active loans'}
+            </Text>
+          </View>
+        )}
 
         {/* Device Status Card */}
         {deviceStatus && (
