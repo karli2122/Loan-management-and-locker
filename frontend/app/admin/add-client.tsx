@@ -10,7 +10,6 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
-  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -18,13 +17,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
 import { getAuthInfo, handleAuthFailure } from '../../src/utils/adminAuth';
+import { DatePicker } from '../../src/components/DatePicker';
 
 
 export default function AddClient() {
   const router = useRouter();
   const { t, language } = useLanguage();
   const [loading, setLoading] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -32,40 +31,9 @@ export default function AddClient() {
     address: '',
     birth_number: '',
     emi_amount: '',
+    loan_given_date: new Date().toISOString().split('T')[0],
     emi_due_date: '',
   });
-
-  // Date picker state
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
-
-  const months = language === 'et' 
-    ? ['Jaanuar', 'Veebruar', 'Märts', 'Aprill', 'Mai', 'Juuni', 'Juuli', 'August', 'September', 'Oktoober', 'November', 'Detsember']
-    : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-  const getDaysInMonth = (year: number, month: number) => {
-    return new Date(year, month + 1, 0).getDate();
-  };
-
-  const handleDateSelect = () => {
-    const formattedDate = `${String(selectedDay).padStart(2, '0')}/${String(selectedMonth + 1).padStart(2, '0')}/${selectedYear}`;
-    setForm({ ...form, emi_due_date: formattedDate });
-    setShowDatePicker(false);
-  };
-
-  const openDatePicker = () => {
-    // Parse existing date if any
-    if (form.emi_due_date) {
-      const parts = form.emi_due_date.split('/');
-      if (parts.length === 3) {
-        setSelectedDay(parseInt(parts[0]) || new Date().getDate());
-        setSelectedMonth((parseInt(parts[1]) || 1) - 1);
-        setSelectedYear(parseInt(parts[2]) || new Date().getFullYear());
-      }
-    }
-    setShowDatePicker(true);
-  };
 
   const handleSubmit = async () => {
     if (!form.name.trim() || !form.phone.trim() || !form.email.trim()) {
