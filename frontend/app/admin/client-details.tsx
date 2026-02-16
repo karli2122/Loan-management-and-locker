@@ -553,6 +553,100 @@ export default function ClientDetails() {
     }
   };
 
+  // Edit Loan Modal Functions
+  const formatDateForInput = (date: Date | string | null | undefined): string => {
+    if (!date) return '';
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return d.toISOString().split('T')[0];
+  };
+
+  const openEditLoanModal = () => {
+    if (client) {
+      setEditLoanAmount(client.loan_amount?.toString() || client.total_amount_due?.toString() || '');
+      setEditInterestRate(client.interest_rate?.toString() || '2');
+      setEditLoanStartDate(formatDateForInput(client.loan_start_date));
+      setEditLoanDueDate(client.loan_due_date || formatDateForInput(client.next_payment_due) || '');
+      setLoanPreview(null);
+      setEditLoanModal(true);
+    }
+  };
+
+  const fetchLoanPreview = async () => {
+    if (!editLoanAmount || !editInterestRate || !editLoanStartDate || !editLoanDueDate) {
+      return;
+    }
+
+    setPreviewLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('admin_token');
+      const params = new URLSearchParams({
+        loan_amount: editLoanAmount,
+        interest_rate: editInterestRate,
+        loan_start_date: editLoanStartDate,
+        due_date: editLoanDueDate,
+        admin_token: token || ''
+      });
+      
+      const response = await fetch(`${API_URL}/api/loans/${id}/preview?${params.toString()}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to calculate preview');
+      }
+      
+      const data = await response.json();
+      setLoanPreview(data.preview);
+    } catch (error: any) {
+      console.error('Preview error:', error);
+      // Don't show alert, just clear preview
+      setLoanPreview(null);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleSaveLoan = async () => {
+    if (!editLoanAmount || !editInterestRate) {
+      Alert.alert(t('error'), language === 'et' ? 'Palun täida kõik väljad' : 'Please fill all required fields');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('admin_token');
+      const response = await fetch(`${API_URL}/api/loans/${id}/edit?admin_token=${token}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          loan_amount: parseFloat(editLoanAmount),
+          interest_rate: parseFloat(editInterestRate),
+          loan_start_date: editLoanStartDate || undefined,
+          due_date: editLoanDueDate || undefined
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to update loan');
+      }
+      
+      const data = await response.json();
+      
+      Alert.alert(
+        t('success'),
+        language === 'et' 
+          ? `Laen uuendatud!\n\nKuumakse: €${data.loan_details.monthly_emi.toFixed(2)}\nKokku: €${data.loan_details.total_amount_due.toFixed(2)}`
+          : `Loan updated!\n\nMonthly EMI: €${data.loan_details.monthly_emi.toFixed(2)}\nTotal: €${data.loan_details.total_amount_due.toFixed(2)}`
+      );
+      setEditLoanModal(false);
+      fetchClient();
+    } catch (error: any) {
+      Alert.alert(t('error'), error.message || 'Failed to update loan');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const openMap = () => {
     if (client?.latitude && client?.longitude) {
       const url = `https://www.google.com/maps/search/?api=1&query=${client.latitude},${client.longitude}`;
