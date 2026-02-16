@@ -1498,6 +1498,175 @@ export default function ClientDetails() {
           </View>
         </View>
       </Modal>
+
+      {/* Edit Loan Modal */}
+      <Modal visible={editLoanModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <ScrollView contentContainerStyle={styles.modalScrollContent}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>
+                {language === 'et' ? 'Muuda laenu tingimusi' : 'Edit Loan Terms'}
+              </Text>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  {language === 'et' ? 'Laenusumma (€)' : 'Loan Amount (€)'}
+                </Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={editLoanAmount}
+                  onChangeText={(text) => {
+                    setEditLoanAmount(text);
+                    setLoanPreview(null);
+                  }}
+                  placeholder="0.00"
+                  placeholderTextColor="#64748B"
+                  keyboardType="decimal-pad"
+                  data-testid="edit-loan-amount-input"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  {language === 'et' ? 'Intressimäär kuus (%)' : 'Monthly Interest Rate (%)'}
+                </Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={editInterestRate}
+                  onChangeText={(text) => {
+                    setEditInterestRate(text);
+                    setLoanPreview(null);
+                  }}
+                  placeholder="2.0"
+                  placeholderTextColor="#64748B"
+                  keyboardType="decimal-pad"
+                  data-testid="edit-loan-rate-input"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  {language === 'et' ? 'Laenu alguskuupäev' : 'Loan Start Date'}
+                </Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={editLoanStartDate}
+                  onChangeText={(text) => {
+                    setEditLoanStartDate(text);
+                    setLoanPreview(null);
+                  }}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#64748B"
+                  data-testid="edit-loan-start-date-input"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  {language === 'et' ? 'Laenu tähtaeg' : 'Due Date'}
+                </Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={editLoanDueDate}
+                  onChangeText={(text) => {
+                    setEditLoanDueDate(text);
+                    setLoanPreview(null);
+                  }}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#64748B"
+                  data-testid="edit-loan-due-date-input"
+                />
+              </View>
+
+              {/* Preview Button */}
+              <TouchableOpacity 
+                style={styles.previewButton}
+                onPress={fetchLoanPreview}
+                disabled={previewLoading || !editLoanAmount || !editInterestRate || !editLoanStartDate || !editLoanDueDate}
+                data-testid="preview-loan-btn"
+              >
+                {previewLoading ? (
+                  <ActivityIndicator color="#4F46E5" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="calculator-outline" size={18} color="#4F46E5" />
+                    <Text style={styles.previewButtonText}>
+                      {language === 'et' ? 'Arvuta eelvaade' : 'Calculate Preview'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              {/* Preview Results */}
+              {loanPreview && (
+                <View style={styles.loanPreviewCard}>
+                  <Text style={styles.loanPreviewTitle}>
+                    {language === 'et' ? 'Arvutatud tulemused' : 'Calculated Results'}
+                  </Text>
+                  <View style={styles.loanPreviewGrid}>
+                    <View style={styles.loanPreviewItem}>
+                      <Text style={styles.loanPreviewLabel}>
+                        {language === 'et' ? 'Kuumakse' : 'Monthly EMI'}
+                      </Text>
+                      <Text style={styles.loanPreviewValue}>
+                        €{loanPreview.monthly_emi.toFixed(2)}
+                      </Text>
+                    </View>
+                    <View style={styles.loanPreviewItem}>
+                      <Text style={styles.loanPreviewLabel}>
+                        {language === 'et' ? 'Kokku tagasimakse' : 'Total Amount'}
+                      </Text>
+                      <Text style={styles.loanPreviewValue}>
+                        €{loanPreview.total_amount_due.toFixed(2)}
+                      </Text>
+                    </View>
+                    <View style={styles.loanPreviewItem}>
+                      <Text style={styles.loanPreviewLabel}>
+                        {language === 'et' ? 'Intress kokku' : 'Total Interest'}
+                      </Text>
+                      <Text style={[styles.loanPreviewValue, { color: '#F59E0B' }]}>
+                        €{loanPreview.total_interest.toFixed(2)}
+                      </Text>
+                    </View>
+                    <View style={styles.loanPreviewItem}>
+                      <Text style={styles.loanPreviewLabel}>
+                        {language === 'et' ? 'Periood' : 'Tenure'}
+                      </Text>
+                      <Text style={styles.loanPreviewValue}>
+                        {loanPreview.tenure_months} {language === 'et' ? 'kuud' : 'months'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalCancelButton]}
+                  onPress={() => {
+                    setEditLoanModal(false);
+                    setLoanPreview(null);
+                  }}
+                >
+                  <Text style={styles.modalCancelText}>{t('cancel')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalConfirmButton]}
+                  onPress={handleSaveLoan}
+                  disabled={actionLoading}
+                  data-testid="save-loan-btn"
+                >
+                  {actionLoading ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.modalConfirmText}>{t('saveChanges')}</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
