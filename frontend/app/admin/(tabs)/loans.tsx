@@ -584,8 +584,8 @@ export default function LoansTab() {
               </Text>
               <Text style={[styles.emptySubText, { color: colors.textMuted }]}>
                 {language === 'et' 
-                  ? 'Kui klient on laenu tagasi maksnud, arhiveerige see "Tasutud" vahelehelt'
-                  : 'When a client has paid their loan, archive it from the "Settled" tab'}
+                  ? 'Laenud arhiveeritakse automaatselt, kui need on täielikult tasutud'
+                  : 'Loans are automatically archived when fully paid'}
               </Text>
             </View>
           }
