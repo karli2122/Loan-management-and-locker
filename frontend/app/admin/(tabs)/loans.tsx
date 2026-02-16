@@ -340,11 +340,122 @@ export default function LoansTab() {
                 </View>
               )}
             </View>
+            
+            {/* Archive Button - only show for settled loans */}
+            {tab === 'settled' && outstanding === 0 && (
+              <TouchableOpacity
+                style={[styles.archiveButton, archivingClient === item.id && styles.archiveButtonDisabled]}
+                onPress={() => handleArchiveLoan(item.id, item.name)}
+                disabled={archivingClient === item.id}
+              >
+                <Ionicons 
+                  name="archive" 
+                  size={16} 
+                  color="#fff" 
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={styles.archiveButtonText}>
+                  {archivingClient === item.id 
+                    ? (language === 'et' ? 'Arhiveerin...' : 'Archiving...') 
+                    : (language === 'et' ? 'Arhiveeri' : 'Archive')}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </TouchableOpacity>
     );
   };
+  
+  // Render function for archived (paid) loans
+  const renderPaidLoan = ({ item }: { item: PaidLoan }) => {
+    const formatDate = (dateStr: string) => {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString(language === 'et' ? 'et-EE' : 'en-US', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+    };
+    
+    return (
+      <View style={[styles.clientCard, { backgroundColor: colors.surface }]}>
+        <View style={styles.clientHeader}>
+          <View style={[styles.clientAvatar, { backgroundColor: '#10B981' }]}>
+            <Ionicons name="checkmark" size={18} color="#fff" />
+          </View>
+          <View style={styles.clientInfo}>
+            <Text style={[styles.clientName, { color: colors.text }]}>{item.client_name}</Text>
+            <Text style={[styles.clientPhone, { color: colors.textMuted }]}>{item.client_phone}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: '#10B981' }]}>
+            <Ionicons name="archive" size={14} color="#fff" />
+          </View>
+        </View>
+        
+        <View style={styles.loanInfo}>
+          {/* Archived Date */}
+          <View style={[styles.archivedDateBadge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Ionicons name="calendar-outline" size={12} color="#10B981" />
+            <Text style={[styles.archivedDateText, { color: colors.textMuted }]}>
+              {language === 'et' ? 'Arhiveeritud' : 'Archived'}: {formatDate(item.archived_at)}
+            </Text>
+          </View>
+          
+          {/* Loan Summary */}
+          <View style={styles.loanDetailsGrid}>
+            <View style={styles.loanDetailItem}>
+              <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
+                {language === 'et' ? 'Laen' : 'Loan'}
+              </Text>
+              <Text style={[styles.loanDetailValue, { color: colors.text }]}>€{item.loan_amount?.toFixed(0) || '0'}</Text>
+            </View>
+            
+            <View style={styles.loanDetailItem}>
+              <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
+                {language === 'et' ? 'Makstud' : 'Total Paid'}
+              </Text>
+              <Text style={[styles.loanDetailValue, { color: '#10B981' }]}>€{item.total_paid?.toFixed(0) || '0'}</Text>
+            </View>
+            
+            <View style={styles.loanDetailItem}>
+              <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
+                {language === 'et' ? 'Intress' : 'Interest'}
+              </Text>
+              <Text style={[styles.loanDetailValue, { color: '#F59E0B' }]}>€{item.total_interest?.toFixed(0) || '0'}</Text>
+            </View>
+          </View>
+          
+          {/* Payment Count Badge */}
+          <View style={styles.paymentInfoRow}>
+            <View style={[styles.nextPaymentBadge, { backgroundColor: 'rgba(79, 70, 229, 0.1)' }]}>
+              <Ionicons name="cash-outline" size={12} color="#4F46E5" />
+              <Text style={[styles.nextPaymentText, { color: '#4F46E5' }]}>
+                {item.payment_count} {language === 'et' ? 'makset' : 'payments'}
+              </Text>
+            </View>
+            
+            <View style={[styles.nextPaymentBadge, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+              <Ionicons name="star" size={12} color="#10B981" />
+              <Text style={[styles.nextPaymentText, { color: '#10B981' }]}>
+                {language === 'et' ? 'Krediidiskoor' : 'Score'}: {item.final_credit_score || 'N/A'}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  // Filter paid loans based on search
+  const filteredPaidLoans = useMemo(() => {
+    if (!searchQuery) return paidLoans;
+    return paidLoans.filter(
+      (loan) =>
+        loan.client_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        loan.client_phone?.includes(searchQuery)
+    );
+  }, [paidLoans, searchQuery]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
