@@ -153,7 +153,7 @@ export default function LoansTab() {
       const f = params.filter.toString().toLowerCase();
       setFilter(f);
       if (f === 'paid') {
-        setTab('settled');
+        setTab('archived');
       }
     } else {
       setFilter(undefined);
