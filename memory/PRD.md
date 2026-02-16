@@ -28,73 +28,57 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
 13. Notification Center
 14. Support Chat
 
-### Session 25: Loan Archiving & Auto-Archive (Feb 16, 2026)
+### Session 26: Search, Interest Card & Auto-Archive (Feb 16, 2026)
 **COMPLETED - All features implemented and tested (100% pass rate)**
 
-1. **Auto-Archive on Full Payment** - IMPLEMENTED
-   - When a payment clears outstanding balance to 0, loan is automatically archived
+1. **Loan History Search** - IMPLEMENTED
+   - Search bar in collapsible "Laenu ajalugu" section on client detail pages
+   - Client-side filtering by loan amount, date, interest rate, total paid
+   - Clear button when search has text
+   - "No results found" empty state
+
+2. **Interest Earned Dashboard Card** - IMPLEMENTED
+   - New card on admin dashboard showing:
+     - Total interest earned from all archived loans
+     - Current month interest earned
+     - Total loans archived count
+     - Current month archived count
+   - Backend: Enhanced `/api/paid-loans/summary` endpoint with `current_month_interest` and `current_month_loans_archived`
+   - Fixed route ordering: summary route placed before `{paid_loan_id}` to avoid 404
+
+3. **Auto-Archive on Full Payment** - IMPLEMENTED (Previous session, carried forward)
    - `perform_archive()` shared function in `paid_loans.py`
-   - Called from `record_payment()` in `loans.py` when `new_outstanding <= 0`
-   - Response includes `auto_archived` field with archive details
-   - Creates notification for admin
-   - Clears loan fields on client record
+   - Called from `record_payment()` when `new_outstanding <= 0`
 
-2. **Removed "Tasutud" (Settled) Tab** - IMPLEMENTED
-   - Loans page now has only 2 tabs: "Antud" (Given) and "Arhiveeritud" (Archived)
-   - Removed manual archive button (no longer needed)
-   - Updated empty state text for archived tab
-   - Cleaned up unused styles and state variables
+4. **Removed "Tasutud" (Settled) Tab** - IMPLEMENTED (Previous session)
+   - Only "Antud" (Given) and "Arhiveeritud" (Archived) tabs remain
 
-3. **Client Loan History** - VERIFIED
-   - Backend: `GET /api/clients/{client_id}/loan-history` returns archived loans
-   - Frontend: Collapsible "Laenu ajalugu" section on client details page
-   - Shows loan amount, interest rate, total paid, interest earned, payment count
+5. **Registration Code Bug Fix** - FIXED
+   - `registration_code` default changed from `""` to `Optional[str] = None`
+   - Excluded from MongoDB insert when None (sparse unique index compat)
 
-4. **Registration Code Bug Fix** - FIXED
-   - Changed `registration_code` default from `""` to `Optional[str] = None`
-   - Exclude `registration_code` field from MongoDB insert when None
-   - Sparse unique index now properly allows multiple clients without codes
-
-**Testing Results:** 100% pass rate (11/11 backend tests, frontend verified)
-- Test report: `/app/test_reports/iteration_31.json`
+**Testing Results:** 100% pass rate (7/7 backend tests, frontend verified)
+- Test report: `/app/test_reports/iteration_32.json`
 
 ## Key Files
 ```
 /app
 ├── backend/
-│   ├── server.py                    # App initialization, routers
-│   ├── config.py                    # Configuration
-│   ├── database.py                  # MongoDB connection
-│   ├── models/schemas.py            # Pydantic models
-│   ├── utils/                       # Auth, calculations, audit
+│   ├── server.py
+│   ├── database.py
+│   ├── models/schemas.py
 │   └── routes/
-│       ├── admin.py                 # Admin auth, profile, credits, settings
-│       ├── clients.py               # Client CRUD, bulk operations
-│       ├── device.py                # Device registration, status
-│       ├── loans.py                 # Loan plans, payments (auto-archive)
-│       ├── paid_loans.py            # Archive system, loan history
-│       ├── reports.py               # Analytics, heartbeat
-│       ├── notifications.py         # Notification management
-│       ├── support.py               # Support chat
-│       ├── reminders.py             # Payment reminders
-│       ├── contracts.py             # PDF contracts, email
-│       ├── audit_logs.py            # Audit log system
-│       ├── credit_score.py          # Credit score tracking
-│       └── client_auth.py           # Client self-service portal
+│       ├── paid_loans.py        # Summary endpoint, archive, loan history
+│       ├── loans.py             # Auto-archive on payment
+│       ├── clients.py           # Registration code fix
+│       └── ...
 └── frontend/
-    ├── app/
-    │   ├── admin/
-    │   │   ├── (tabs)/index.tsx     # Dashboard with analytics
-    │   │   ├── (tabs)/loans.tsx     # Loans: Given + Archived tabs
-    │   │   ├── (tabs)/transactions.tsx
-    │   │   ├── client-details.tsx   # Client details + Loan History
-    │   │   ├── settings.tsx         # Theme toggle, admin settings
-    │   │   └── ...
-    │   └── client/
-    │       └── ...
-    └── src/
-        └── context/
-            └── ThemeContext.tsx      # Dark/Light theme
+    ├── app/admin/
+    │   ├── (tabs)/index.tsx     # Dashboard + Interest Earned card
+    │   ├── (tabs)/loans.tsx     # 2 tabs: Given + Archived
+    │   └── client-details.tsx   # Loan History with search
+    └── src/context/
+        └── ThemeContext.tsx
 ```
 
 ## Credentials
@@ -104,4 +88,3 @@ EMI/Loan management mobile application with admin and client apps. Admin app man
 ## Current Backlog
 - P3: Android Management API (AMAPI) Integration
 - P3: Push notifications (FCM)
-- P3: Search functionality in Loan History section
