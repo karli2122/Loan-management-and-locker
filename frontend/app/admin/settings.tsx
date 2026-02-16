@@ -808,56 +808,56 @@ export default function AdminSettings() {
             onPress={() => setShowEditProfile(true)}
           >
             <Ionicons name="person" size={20} color={colors.primary} />
-            <Text style={styles.actionButtonText}>
+            <Text style={[styles.actionButtonText, { color: colors.text }]}>
               {language === 'et' ? 'Muuda profiili' : 'Edit Profile'}
             </Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionButton, { marginTop: 8 }]}
+            style={[styles.actionButton, { marginTop: 8, backgroundColor: colors.surface }]}
             onPress={() => setShowChangePassword(true)}
           >
-            <Ionicons name="key" size={20} color="#4F46E5" />
-            <Text style={styles.actionButtonText}>
+            <Ionicons name="key" size={20} color={colors.primary} />
+            <Text style={[styles.actionButtonText, { color: colors.text }]}>
               {language === 'et' ? 'Muuda parooli' : 'Change Password'}
             </Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
           {/* Audit Log - Superadmin Only */}
           {isSuperAdmin && (
             <TouchableOpacity
-              style={[styles.actionButton, { marginTop: 8 }]}
+              style={[styles.actionButton, { marginTop: 8, backgroundColor: colors.surface }]}
               onPress={() => router.push('/admin/audit-log')}
               data-testid="audit-log-btn"
             >
-              <Ionicons name="document-text" size={20} color="#10B981" />
-              <Text style={styles.actionButtonText}>
+              <Ionicons name="document-text" size={20} color={colors.success} />
+              <Text style={[styles.actionButtonText, { color: colors.text }]}>
                 {language === 'et' ? 'Tegevuste logi' : 'Audit Log'}
               </Text>
-              <Ionicons name="chevron-forward" size={20} color="#64748B" />
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
 
         {/* Language Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
             {language === 'et' ? 'Keel' : 'Language'}
           </Text>
           <View style={styles.langContainer}>
             <TouchableOpacity
-              style={[styles.langOption, language === 'et' && styles.langOptionActive]}
+              style={[styles.langOption, { backgroundColor: colors.surface }, language === 'et' && styles.langOptionActive]}
               onPress={() => setLanguage('et')}
             >
-              <Text style={[styles.langText, language === 'et' && styles.langTextActive]}>Eesti</Text>
+              <Text style={[styles.langText, { color: colors.textMuted }, language === 'et' && styles.langTextActive]}>Eesti</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.langOption, language === 'en' && styles.langOptionActive]}
+              style={[styles.langOption, { backgroundColor: colors.surface }, language === 'en' && styles.langOptionActive]}
               onPress={() => setLanguage('en')}
             >
-              <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>English</Text>
+              <Text style={[styles.langText, { color: colors.textMuted }, language === 'en' && styles.langTextActive]}>English</Text>
             </TouchableOpacity>
           </View>
         </View>
