@@ -1035,4 +1035,20 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 4,
   },
+  renewalBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#10B98115',
+    borderWidth: 1,
+    borderColor: '#10B98130',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+  },
+  renewalBannerText: {
+    fontSize: 13,
+    color: '#10B981',
+    flex: 1,
+  },
 });
