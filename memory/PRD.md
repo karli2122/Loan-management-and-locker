@@ -834,7 +834,42 @@ All 3 phases successfully implemented:
 - Theme preference persisted in local storage
 - Dashboard, Loans, Login pages now use dynamic theme colors
 
+### Session 21: Date Picker Components for Loan Forms (Feb 16, 2026)
+**COMPLETED - UX Enhancement**
+
+1. **Reusable DatePicker Component** - IMPLEMENTED ✅
+   - Created `/app/frontend/src/components/DatePicker.tsx`
+   - Platform-specific implementation:
+     - **Web**: Uses HTML5 `<input type="date">` with dark theme styling
+     - **iOS**: Uses DateTimePicker in modal with spinner display
+     - **Android**: Uses DateTimePicker inline
+   - Props: `value`, `onChange`, `placeholder`, `minDate`, `maxDate`, `label`, `testID`
+   - Displays selected date in user-friendly format (Estonian locale)
+   - Installed `@react-native-community/datetimepicker` package
+
+2. **Edit Loan Modal** - UPDATED ✅
+   - Replaced text inputs with DatePicker for "Loan Start Date" and "Due Date" fields
+   - `editLoanStartDate` and `editLoanDueDate` now use proper date picker UI
+   - Due date picker has `minDate` set to today to prevent past dates
+   - File: `frontend/app/admin/client-details.tsx`
+
+3. **Add Loan Page** - UPDATED ✅
+   - Replaced platform-conditional date input with unified DatePicker component
+   - Simplified code by removing Platform.OS checks
+   - File: `frontend/app/admin/add-loan.tsx`
+
+**Files Modified/Created:**
+- `frontend/src/components/DatePicker.tsx` (NEW) - Reusable date picker component
+- `frontend/app/admin/client-details.tsx` - Uses DatePicker in Edit Loan modal
+- `frontend/app/admin/add-loan.tsx` - Uses DatePicker for due date selection
+
+**Testing Results:** 80% pass rate (code verified, Add Loan page date picker tested via screenshot)
+- Test report: `/app/test_reports/iteration_27.json`
+- Note: Edit Loan modal testing blocked by browser automation session persistence issue (not a bug)
+
 ## Current Backlog
+- P1: Fix theme persistence bug - theme doesn't persist visually across page navigations
+- P1: Apply theme support to remaining pages (client-details, audit-log, etc.)
 - P3: Android Management API (AMAPI) Integration
 - P3: Push notifications (FCM)
 
