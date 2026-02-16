@@ -191,13 +191,13 @@ export default function ClientsList() {
     
     return (
       <TouchableOpacity
-        style={[styles.clientCard, styles.silentClientCard]}
+        style={[styles.clientCard, styles.silentClientCard, { backgroundColor: colors.surface, borderColor: colors.warning }]}
         onPress={() => router.push({ pathname: '/admin/client-details', params: { id: item.id } })}
         data-testid={`silent-client-${item.id}`}
       >
         <View style={styles.clientInfo}>
           <View style={styles.clientHeader}>
-            <Text style={styles.clientName}>{item.name || 'N/A'}</Text>
+            <Text style={[styles.clientName, { color: colors.text }]}>{item.name || 'N/A'}</Text>
             <View style={styles.silentBadge}>
               <Ionicons name="alert-circle" size={12} color="#F97316" />
               <Text style={styles.silentBadgeText}>
@@ -205,24 +205,24 @@ export default function ClientsList() {
               </Text>
             </View>
           </View>
-          <Text style={styles.clientPhone}>{item.phone || 'N/A'}</Text>
+          <Text style={[styles.clientPhone, { color: colors.textMuted }]}>{item.phone || 'N/A'}</Text>
           <View style={styles.silentMeta}>
-            <Ionicons name="time-outline" size={14} color="#94A3B8" />
-            <Text style={styles.lastSeenText}>
+            <Ionicons name="time-outline" size={14} color={colors.textMuted} />
+            <Text style={[styles.lastSeenText, { color: colors.textMuted }]}>
               {language === 'et' ? 'Viimati nähtud: ' : 'Last seen: '}
               {formatLastSeen(item.last_heartbeat)}
             </Text>
           </View>
           {item.tamper_attempts > 0 && (
             <View style={styles.tamperWarning}>
-              <Ionicons name="warning" size={14} color="#EF4444" />
-              <Text style={styles.tamperText}>
+              <Ionicons name="warning" size={14} color={colors.error} />
+              <Text style={[styles.tamperText, { color: colors.error }]}>
                 {language === 'et' ? `${item.tamper_attempts} rikkumiskatset` : `${item.tamper_attempts} tamper attempts`}
               </Text>
             </View>
           )}
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#64748B" />
+        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
       </TouchableOpacity>
     );
   };
