@@ -17,7 +17,7 @@ import os
 import uuid
 
 # Use the preview URL from frontend/.env
-BASE_URL = "https://dark-light-admin-1.preview.emergentagent.com"
+BASE_URL = "https://admin-dashboard-892.preview.emergentagent.com"
 
 # Test credentials from review request
 TEST_USERNAME = "karli1987"

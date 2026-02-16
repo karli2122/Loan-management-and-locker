@@ -13,7 +13,7 @@ import os
 from datetime import datetime, timedelta
 import uuid
 
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://dark-light-admin-1.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://admin-dashboard-892.preview.emergentagent.com').rstrip('/')
 
 
 class TestLoanSetupWithDueDate:
