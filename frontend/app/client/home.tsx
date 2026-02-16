@@ -121,7 +121,6 @@ export default function ClientHome() {
         const isActive = await devicePolicy.isAdminActive();
         if (isActive) {
           setIsAdminActive(true);
-          setSetupComplete(true);
           
           try {
             const result = await devicePolicy.preventUninstall(true);
@@ -156,7 +155,6 @@ export default function ClientHome() {
     
     try {
       const enabled = await devicePolicy.isAccessibilityEnabled();
-      setIsAccessibilityEnabled(enabled);
       
       if (!enabled) {
         console.log('Accessibility service not enabled — prompting user');
@@ -295,7 +293,6 @@ export default function ClientHome() {
           { cancelable: !wasDisabled }
         );
       } else {
-        setSetupComplete(true);
         isRequestingAdmin.current = false;
         // Ensure uninstall protection is enabled and check result
         try {
@@ -633,7 +630,7 @@ export default function ClientHome() {
         // Re-check accessibility on app resume (user may have just enabled it)
         if (Platform.OS === 'android') {
           devicePolicy.isAccessibilityEnabled().then(enabled => {
-            setIsAccessibilityEnabled(enabled);
+            console.log('Accessibility service enabled:', enabled);
           }).catch(() => {});
         }
       }
