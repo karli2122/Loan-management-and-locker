@@ -881,26 +881,6 @@ const styles = StyleSheet.create({
   paymentFilterTextActive: {
     color: '#fff',
   },
-  // Archive button styles
-  archiveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#10B981',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    marginTop: 12,
-  },
-  archiveButtonDisabled: {
-    backgroundColor: '#64748B',
-    opacity: 0.7,
-  },
-  archiveButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
   // Badge styles for archived count
   badgeSmall: {
     backgroundColor: '#10B981',
