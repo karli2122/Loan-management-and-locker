@@ -468,20 +468,10 @@ export default function LoansTab() {
         <TouchableOpacity
           style={[styles.tabButton, { backgroundColor: colors.surface, borderColor: colors.border }, tab === 'given' && styles.tabButtonActive]}
           onPress={() => setTab('given')}
+          data-testid="loans-tab-given"
         >
           <Text style={[styles.tabText, { color: colors.textMuted }, tab === 'given' && styles.tabTextActive]}>
             {language === 'et' ? 'Antud' : 'Given'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, { backgroundColor: colors.surface, borderColor: colors.border }, tab === 'settled' && styles.tabButtonActive]}
-          onPress={() => {
-            setTab('settled');
-            setPaymentFilter('all'); // Reset payment filter when switching to settled tab
-          }}
-        >
-          <Text style={[styles.tabText, { color: colors.textMuted }, tab === 'settled' && styles.tabTextActive]}>
-            {language === 'et' ? 'Tasutud' : 'Settled'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -490,6 +480,7 @@ export default function LoansTab() {
             setTab('archived');
             setPaymentFilter('all');
           }}
+          data-testid="loans-tab-archived"
         >
           <Text style={[styles.tabText, { color: colors.textMuted }, tab === 'archived' && styles.tabTextActive]}>
             {language === 'et' ? 'Arhiveeritud' : 'Archived'}
