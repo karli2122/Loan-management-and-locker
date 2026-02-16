@@ -11,7 +11,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "https://admin-dashboard-892.preview.emergentagent.com")
+BASE_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "https://admin-dashboard-v2-7.preview.emergentagent.com")
 
 # Test credentials
 SUPERADMIN_USERNAME = "karli1987"
