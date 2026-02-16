@@ -29,17 +29,22 @@ Dashboard analytics, client portal, and loan management features for an EMI devi
 - Loan History search bar on client detail page
 - Interest Earned dashboard card (total + current month)
 
-### Phase 3 - Charts, Tabs & Client App (Current session - Feb 16, 2026)
-- **Monthly Interest Trend Chart**: LineChart on admin dashboard showing 6-month interest income trend
-- **Backend Enhancement**: `/api/paid-loans/summary` now returns `monthly_interest_trend` array
-- **Client Details Tab System**: Added "Active Loan" and "Payment History" tabs to admin client details page
-- **Payment History Tab**: Fetches and displays payment history from `/api/loans/{client_id}/payments`
-- **Client App "All Paid" State**: Shows "Kõik makstud" card when no active loan (home.tsx + portal-dashboard.tsx)
-- **Removed from Client App**: Payment history, support chat, refresh status quick actions
-- **Removed from Portal Dashboard**: Payment History section
+### Phase 3 - Charts, Tabs & Client App (Feb 16, 2026)
+- Monthly Interest Trend Chart on admin dashboard (6-month LineChart)
+- Client Details Tab System: "Active Loan" and "Payment History" tabs
+- Client App "All Paid" state (Kõik makstud) when no active loan
+- Removed quick actions (payment history, support chat, refresh) from client app
+- Removed Payment History from client portal dashboard
+
+### Phase 4 - Loan Renewal (Feb 16, 2026)
+- **Backend**: `GET /api/paid-loans/{client_id}/latest` — fetches most recent archived loan
+- **Client Details**: "Renew Loan" button (green) for clients with no active loan but with loan history
+- **Add Loan Page**: Renewal mode with pre-filled form (amount, interest rate, tenure/due date) from last archived loan
+- **Renewal Banner**: Visual indicator on add-loan page when in renewal mode
 
 ## Key API Endpoints
 - `GET /api/paid-loans/summary` - Total + monthly interest, 6-month trend
+- `GET /api/paid-loans/{client_id}/latest` - Latest archived loan for renewal pre-fill
 - `GET /api/loans/{client_id}/payments` - Payment history for a client
 - `POST /api/loans/{client_id}/payments` - Record payment (auto-archives on final)
 - `POST /api/admin/login` - Admin authentication
