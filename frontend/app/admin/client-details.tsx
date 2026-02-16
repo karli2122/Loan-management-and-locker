@@ -1507,14 +1507,32 @@ export default function ClientDetails() {
             
             {/* Record Payment Button (if no loan_start_date, show option to go to add loan) */}
             {!client.loan_start_date && (
+              <>
+              {loanHistory.length > 0 ? (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.renewLoanButton]}
+                onPress={() => {
+                  // Navigate to add-loan with renew flag to pre-fill from last archived loan
+                  router.push(`/admin/add-loan?clientId=${client.id}&renew=true`);
+                }}
+                disabled={actionLoading}
+                data-testid="renew-loan-btn"
+              >
+                <Ionicons name="refresh-circle" size={20} color="#fff" />
+                <Text style={styles.actionButtonText}>{language === 'et' ? 'Uuenda laenu' : 'Renew Loan'}</Text>
+              </TouchableOpacity>
+              ) : (
               <TouchableOpacity
                 style={[styles.actionButton, styles.setupLoanButton]}
                 onPress={() => router.push(`/admin/add-loan?clientId=${client.id}`)}
                 disabled={actionLoading}
+                data-testid="setup-loan-btn"
               >
                 <Ionicons name="wallet" size={20} color="#fff" />
                 <Text style={styles.actionButtonText}>{language === 'et' ? 'Seadista laen' : 'Setup Loan'}</Text>
               </TouchableOpacity>
+              )}
+              </>
             )}
             
             <TouchableOpacity
