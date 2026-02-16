@@ -498,13 +498,23 @@ async def record_payment(
     )
     
     # Unlock if balance is cleared
+    auto_archived = None
     if new_outstanding <= 0:
         await db.clients.update_one(
             {"id": client_id},
             {"$set": {"is_locked": False}}
         )
+        # Auto-archive the loan when fully paid
+        try:
+            from routes.paid_loans import perform_archive
+            archive_result = await perform_archive(client_id, admin_id)
+            if archive_result.get("archived"):
+                auto_archived = archive_result
+                logger.info(f"Auto-archived loan for client {client_id}")
+        except Exception as e:
+            logger.error(f"Auto-archive failed for client {client_id}: {e}")
     
-    return {
+    response = {
         "message": "Payment recorded",
         "payment": {
             "id": payment.id,
@@ -522,6 +532,11 @@ async def record_payment(
             "new_score": new_credit_score
         }
     }
+    
+    if auto_archived:
+        response["auto_archived"] = auto_archived
+    
+    return response
 
 
 @router.get("/loans/{client_id}/payments")
