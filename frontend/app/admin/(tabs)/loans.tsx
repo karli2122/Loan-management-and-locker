@@ -163,6 +163,7 @@ export default function LoansTab() {
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchClients();
+    await fetchPaidLoans();
     setRefreshing(false);
   };
 
