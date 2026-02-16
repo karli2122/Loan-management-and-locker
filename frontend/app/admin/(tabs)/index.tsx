@@ -488,6 +488,53 @@ export default function Dashboard() {
           </View>
         </View>
 
+        {/* Interest Earned from Archived Loans */}
+        <View style={[styles.interestCard, { backgroundColor: colors.surface, borderColor: colors.border }]} data-testid="interest-earned-card">
+          <View style={styles.interestCardHeader}>
+            <Ionicons name="trending-up" size={20} color="#10B981" />
+            <Text style={[styles.interestCardTitle, { color: colors.text }]}>
+              {language === 'et' ? 'Intressitulu' : 'Interest Earned'}
+            </Text>
+          </View>
+          <View style={styles.interestCardBody}>
+            <View style={styles.interestMainStat}>
+              <Text style={[styles.interestMainValue, { color: '#10B981' }]} data-testid="total-interest-value">
+                €{interestSummary.total_interest_earned.toFixed(2)}
+              </Text>
+              <Text style={[styles.interestMainLabel, { color: colors.textMuted }]}>
+                {language === 'et' ? 'Kokku intressitulu' : 'Total Interest Earned'}
+              </Text>
+            </View>
+            <View style={[styles.interestDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.interestSubStats}>
+              <View style={styles.interestSubStat}>
+                <Text style={[styles.interestSubValue, { color: '#4F46E5' }]} data-testid="month-interest-value">
+                  €{interestSummary.current_month_interest.toFixed(2)}
+                </Text>
+                <Text style={[styles.interestSubLabel, { color: colors.textMuted }]}>
+                  {language === 'et' ? 'Jooksev kuu' : 'This Month'}
+                </Text>
+              </View>
+              <View style={styles.interestSubStat}>
+                <Text style={[styles.interestSubValue, { color: colors.text }]} data-testid="total-archived-count">
+                  {interestSummary.total_loans_archived}
+                </Text>
+                <Text style={[styles.interestSubLabel, { color: colors.textMuted }]}>
+                  {language === 'et' ? 'Arhiveeritud laene' : 'Loans Archived'}
+                </Text>
+              </View>
+              <View style={styles.interestSubStat}>
+                <Text style={[styles.interestSubValue, { color: '#F59E0B' }]} data-testid="month-archived-count">
+                  {interestSummary.current_month_loans_archived}
+                </Text>
+                <Text style={[styles.interestSubLabel, { color: colors.textMuted }]}>
+                  {language === 'et' ? 'Sel kuul' : 'This Month'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
         {/* Heartbeat Monitoring Card */}
         <TouchableOpacity
           style={[styles.heartbeatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
