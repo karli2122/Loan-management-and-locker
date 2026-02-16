@@ -377,8 +377,8 @@ export default function ClientsList() {
           activeOpacity={1}
           onPress={() => setShowFilterPicker(false)}
         >
-          <View style={styles.filterModalContent}>
-            <Text style={styles.filterModalTitle}>
+          <View style={[styles.filterModalContent, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.filterModalTitle, { color: colors.text }]}>
               {language === 'et' ? 'Filtreeri kliendid' : 'Filter Clients'}
             </Text>
             {(['all', 'locked', 'unlocked', 'silent'] as const).map((f) => (
@@ -386,6 +386,7 @@ export default function ClientsList() {
                 key={f}
                 style={[
                   styles.filterModalItem,
+                  { borderBottomColor: colors.border },
                   filter === f && styles.filterModalItemActive
                 ]}
                 onPress={() => {
@@ -396,6 +397,7 @@ export default function ClientsList() {
                 {f === 'silent' && <Ionicons name="alert-circle" size={18} color={filter === f ? '#fff' : '#F97316'} style={{marginRight: 8}} />}
                 <Text style={[
                   styles.filterModalItemText,
+                  { color: colors.text },
                   filter === f && styles.filterModalItemTextActive,
                   f === 'silent' && filter !== f && styles.silentFilterModalText
                 ]}>
