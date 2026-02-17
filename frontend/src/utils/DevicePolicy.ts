@@ -37,6 +37,21 @@ export interface CachedLockState {
 
 class DevicePolicyManager {
   /**
+   * Get device manufacturer, model, brand, Android SDK version
+   */
+  getDeviceInfo(): NativeDeviceInfo {
+    if (Platform.OS !== 'android' || !nativeModule) {
+      return { manufacturer: 'unknown', model: 'unknown', brand: 'unknown', sdkVersion: 0, androidVersion: '0' };
+    }
+    try {
+      return nativeModule.getDeviceInfo();
+    } catch (error) {
+      console.log('getDeviceInfo error:', error);
+      return { manufacturer: 'unknown', model: 'unknown', brand: 'unknown', sdkVersion: 0, androidVersion: '0' };
+    }
+  }
+
+  /**
    * Check if Device Admin is active
    */
   async isAdminActive(): Promise<boolean> {
