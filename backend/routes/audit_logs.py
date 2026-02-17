@@ -1,5 +1,5 @@
 """Audit logs routes - view and export audit logs."""
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from datetime import datetime, timedelta
 from typing import Optional
 import logging
@@ -53,7 +53,7 @@ async def get_audit_logs(
             start = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
             query["created_at"] = {"$gte": start}
         except ValueError:
-            pass
+            raise HTTPException(status_code=400, detail=f"Invalid start_date format: {start_date}")
     
     if end_date:
         try:
@@ -63,7 +63,7 @@ async def get_audit_logs(
             else:
                 query["created_at"] = {"$lte": end}
         except ValueError:
-            pass
+            raise HTTPException(status_code=400, detail=f"Invalid end_date format: {end_date}")
     
     # Get total count for pagination
     total_count = await db.audit_logs.count_documents(query)

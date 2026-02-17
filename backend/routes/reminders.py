@@ -156,7 +156,7 @@ async def send_bulk_push_reminders(admin_token: str = Query(...)):
     clients = await db.clients.find({
         "admin_id": admin_id,
         "outstanding_balance": {"$gt": 0},
-        "expo_push_token": {"$exists": True, "$ne": None, "$ne": ""}
+        "expo_push_token": {"$exists": True, "$nin": [None, ""]}
     }).to_list(1000)
     
     sent_count = 0
