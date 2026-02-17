@@ -562,7 +562,7 @@ export default function Dashboard() {
                 datasets: [{ data: interestTrend.data.some(v => v > 0) ? interestTrend.data : [0, 0, 0, 0, 0, 0] }],
               }}
               width={Dimensions.get('window').width - 56}
-              height={200}
+              height={160}
               yAxisLabel="€"
               yAxisSuffix=""
               chartConfig={{
@@ -585,7 +585,7 @@ export default function Dashboard() {
                 },
               }}
               bezier
-              style={{ borderRadius: 12, marginTop: 8 }}
+              style={{ borderRadius: 12, marginTop: 4 }}
             />
           </View>
         )}
