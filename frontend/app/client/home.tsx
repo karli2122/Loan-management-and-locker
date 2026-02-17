@@ -344,16 +344,26 @@ export default function ClientHome() {
     try {
       // Save lock state for offline enforcement and autostart
       await devicePolicy.setLockState(locked, message);
+      // Save to native SharedPreferences for BootReceiver auto-start
+      await devicePolicy.setNativeLockState(locked);
       wasLocked.current = locked;
 
-      // Manage kiosk mode based on lock state
+      // Manage kiosk mode, immersive mode, and overlay based on lock state
       if (Platform.OS === 'android') {
         if (locked) {
           const result = await devicePolicy.startKioskMode();
           console.log('Kiosk mode start result:', result);
+          // Enable immersive mode — hide status bar and nav bar completely
+          await devicePolicy.enableImmersiveMode();
+          // Start overlay blocker as foreground service
+          await devicePolicy.startOverlayBlocker();
         } else {
           const result = await devicePolicy.stopKioskMode();
           console.log('Kiosk mode stop result:', result);
+          // Disable immersive mode — restore system bars
+          await devicePolicy.disableImmersiveMode();
+          // Stop overlay blocker
+          await devicePolicy.stopOverlayBlocker();
         }
       }
     } catch (error) {
