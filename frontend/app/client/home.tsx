@@ -598,49 +598,26 @@ export default function ClientHome() {
         // Load client data first - this sets loading to false
         await loadClientData();
         
-        // Check if this is a fresh registration - use longer delay to prevent flicker/crash
+        // Check if this is a fresh registration
         const isFreshRegistration = await AsyncStorage.getItem('fresh_registration');
-        const delay = isFreshRegistration === 'true' ? 2500 : 1000;
-        
-        // Clear the fresh registration flag
         if (isFreshRegistration === 'true') {
           await AsyncStorage.removeItem('fresh_registration');
-          console.log('Fresh registration detected - using extended delay for admin prompt');
+          console.log('Fresh registration detected');
         }
         
-        // Delay to let the UI fully render and settle before showing admin prompt
-        // This prevents the flash/crash when transitioning from register to home
-        await new Promise(resolve => setTimeout(resolve, delay));
-        
-        // Only show admin prompt if component is still mounted
-        if (!isMounted.current) return;
-        
-        // Step 4: Check device protection (Device Admin prompt) - wrapped in try-catch
-        try {
-          await checkAndSetupDeviceProtection();
-        } catch (adminError) {
-          console.log('Admin setup error (non-fatal):', adminError);
-        }
-        
-        // Step 5: Start foreground protection service (after admin check)
+        // Only check admin state silently — no alerts, no system dialogs on init.
+        // The UI banner will prompt the user if admin is not active.
         if (Platform.OS === 'android' && isMounted.current) {
           try {
-            await devicePolicy.startForegroundProtection();
-            console.log('Foreground protection service started');
-          } catch (fgError) {
-            console.log('Foreground protection error (non-fatal):', fgError);
-          }
-        }
-        
-        // Small delay before accessibility prompt
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Step 6: Check and prompt for accessibility service
-        if (Platform.OS === 'android' && isMounted.current) {
-          try {
-            await checkAndPromptAccessibility();
-          } catch (accessError) {
-            console.log('Accessibility check error (non-fatal):', accessError);
+            const admin = await devicePolicy.isAdminActive();
+            setIsAdminActive(admin);
+            if (admin) {
+              console.log('Device admin is active');
+            } else {
+              console.log('Device admin not active - banner will prompt user');
+            }
+          } catch (e) {
+            console.log('Admin check error (non-fatal):', e);
           }
         }
 
@@ -648,6 +625,7 @@ export default function ClientHome() {
         initComplete.current = true;
       } catch (error) {
         console.error('Initialization error:', error);
+        initComplete.current = true;
         setLoading(false);
       }
     };
