@@ -345,25 +345,19 @@ export default function ClientHome() {
     try {
       // Save lock state for offline enforcement and autostart
       await devicePolicy.setLockState(locked, message);
-      // Save to native SharedPreferences for BootReceiver auto-start
+      // Save to native SharedPreferences for BootReceiver + Overlay watchdog
       await devicePolicy.setNativeLockState(locked);
       wasLocked.current = locked;
 
-      // Manage kiosk mode, immersive mode, and overlay based on lock state
+      // Manage immersive mode and overlay based on lock state
+      // NO startLockTask — it shows "unpin" instructions to the user
+      // Instead we rely on: overlay watchdog (1s relaunch) + AccessibilityService + immersive mode
       if (Platform.OS === 'android') {
         if (locked) {
-          const result = await devicePolicy.startKioskMode();
-          console.log('Kiosk mode start result:', result);
-          // Enable immersive mode — hide status bar and nav bar completely
           await devicePolicy.enableImmersiveMode();
-          // Start overlay blocker as foreground service
           await devicePolicy.startOverlayBlocker();
         } else {
-          const result = await devicePolicy.stopKioskMode();
-          console.log('Kiosk mode stop result:', result);
-          // Disable immersive mode — restore system bars
           await devicePolicy.disableImmersiveMode();
-          // Stop overlay blocker
           await devicePolicy.stopOverlayBlocker();
         }
       }
