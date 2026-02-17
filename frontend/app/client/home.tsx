@@ -22,6 +22,7 @@ import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
+import { getAutoStartInstructions, getOverlayInstructions, getAccessibilityInstructions } from '../../src/utils/deviceInstructions';
 import OfflineSyncManager from '../../src/services/OfflineSyncManager';
 import API_URL from '../../src/constants/api';
 
