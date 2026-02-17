@@ -277,3 +277,37 @@ export async function openPlayProtectSettings(): Promise<string> {
     return 'error';
   }
 }
+
+// ===================== LOCK STATE (NATIVE) =====================
+
+export async function setNativeLockState(locked: boolean): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.setNativeLockState(locked);
+  } catch (e) {
+    console.log('setNativeLockState error:', e);
+    return 'error';
+  }
+}
+
+// ===================== IMMERSIVE MODE =====================
+
+export async function enableImmersiveMode(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.enableImmersiveMode();
+  } catch (e) {
+    console.log('enableImmersiveMode error:', e);
+    return 'error';
+  }
+}
+
+export async function disableImmersiveMode(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.disableImmersiveMode();
+  } catch (e) {
+    console.log('disableImmersiveMode error:', e);
+    return 'error';
+  }
+}
