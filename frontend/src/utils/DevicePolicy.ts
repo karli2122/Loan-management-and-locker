@@ -469,6 +469,72 @@ class DevicePolicyManager {
       return false;
     }
   }
+
+  // ===================== BATTERY OPTIMIZATION =====================
+
+  async isIgnoringBatteryOptimizations(): Promise<boolean> {
+    if (Platform.OS !== 'android') return false;
+    try {
+      return (await nativeModule?.isIgnoringBatteryOptimizations?.()) || false;
+    } catch (error) {
+      console.log('Failed to check battery optimization:', error);
+      return false;
+    }
+  }
+
+  async requestBatteryOptimization(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.requestBatteryOptimization?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to request battery optimization:', error);
+      return 'error';
+    }
+  }
+
+  async openBatterySettings(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.openBatterySettings?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to open battery settings:', error);
+      return 'error';
+    }
+  }
+
+  // ===================== AUTO START =====================
+
+  async openAutoStartSettings(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.openAutoStartSettings?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to open auto-start settings:', error);
+      return 'error';
+    }
+  }
+
+  // ===================== NOTIFICATION / PLAY PROTECT =====================
+
+  async openNotificationSettings(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.openNotificationSettings?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to open notification settings:', error);
+      return 'error';
+    }
+  }
+
+  async openPlayProtectSettings(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.openPlayProtectSettings?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to open Play Protect settings:', error);
+      return 'error';
+    }
+  }
 }
 
 export const devicePolicy = new DevicePolicyManager();
