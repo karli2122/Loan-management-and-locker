@@ -763,7 +763,6 @@ export default function ClientHome() {
                 ...prev,
                 batteryOptimization: batteryOpt,
                 overlay: overlay,
-                batteryPowerUsage: batteryOpt,
                 accessibility: accessibility,
                 location: locationPerm,
                 notification: notifPerm,
