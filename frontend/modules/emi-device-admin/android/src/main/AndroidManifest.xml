@@ -1,16 +1,13 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-  <uses-permission android:name="android.permission.BIND_DEVICE_ADMIN" />
-  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-  <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
-  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  package="expo.modules.emideviceadmin">
+
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-  
+  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
   <application>
     <receiver
-      android:name="expo.modules.emideviceadmin.EMIDeviceAdminReceiver"
-      android:label="EMI Device Admin"
+      android:name=".EMIDeviceAdminReceiver"
       android:permission="android.permission.BIND_DEVICE_ADMIN"
       android:exported="true">
       <meta-data
@@ -18,11 +15,25 @@
         android:resource="@xml/device_admin" />
       <intent-filter>
         <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+        <action android:name="android.app.action.DEVICE_ADMIN_DISABLED" />
+        <action android:name="android.app.action.DEVICE_ADMIN_DISABLE_REQUESTED" />
+      </intent-filter>
+    </receiver>
+
+    <receiver
+      android:name=".EMIBootReceiver"
+      android:enabled="true"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+        <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+        <category android:name="android.intent.category.DEFAULT" />
       </intent-filter>
     </receiver>
 
     <service
-      android:name="expo.modules.emideviceadmin.EMIAccessibilityService"
+      android:name=".EMIAccessibilityService"
       android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
       android:exported="false">
       <intent-filter>
@@ -34,7 +45,8 @@
     </service>
 
     <service
-      android:name="expo.modules.emideviceadmin.EMIOverlayService"
+      android:name=".EMIOverlayService"
+      android:foregroundServiceType="specialUse"
       android:exported="false" />
   </application>
 </manifest>
