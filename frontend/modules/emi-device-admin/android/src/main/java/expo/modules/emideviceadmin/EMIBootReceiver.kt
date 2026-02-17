@@ -15,7 +15,7 @@ class EMIBootReceiver : BroadcastReceiver() {
     companion object {
         private const val TAG = "EMIBootReceiver"
         private const val PREFS_NAME = "emi_device_admin_prefs"
-        private const val KEY_REGISTERED = "is_registered"
+        private const val KEY_REGISTERED = "device_registered"
         private const val KEY_LOCKED = "is_locked"
         private const val KEY_SETUP_COMPLETE = "setup_complete"
     }
