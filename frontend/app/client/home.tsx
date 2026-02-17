@@ -1310,7 +1310,7 @@ const styles = StyleSheet.create({
   protectionSetupHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'space-between',
     marginBottom: 16,
   },
   protectionSetupTitle: {
@@ -1319,73 +1319,50 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#E2E8F0',
   },
-  protectionStep: {
+  permGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1E2D3D',
+    flexWrap: 'wrap',
     gap: 12,
+    justifyContent: 'space-between',
   },
-  stepIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#1E293B',
+  permCard: {
+    width: '47%',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    backgroundColor: '#111A24',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E2D3D',
+  },
+  permCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 8,
   },
-  stepIconDone: {
+  permOk: {
     backgroundColor: '#10B981',
-    borderColor: '#10B981',
   },
-  stepNumber: {
-    color: '#94A3B8',
-    fontSize: 13,
-    fontWeight: '700',
+  permBad: {
+    backgroundColor: '#EF4444',
   },
-  stepContent: {
-    flex: 1,
-  },
-  stepTitle: {
-    color: '#E2E8F0',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  stepDesc: {
-    color: '#64748B',
+  permLabel: {
+    color: '#CBD5E1',
     fontSize: 12,
-    marginTop: 2,
-  },
-  stepButton: {
-    backgroundColor: '#3B82F6',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  stepButtonText: {
-    color: '#FFF',
-    fontSize: 13,
     fontWeight: '600',
+    textAlign: 'center',
   },
-  stepDoneBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  stepDoneText: {
-    color: '#10B981',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  protectionSummary: {
+  permSummary: {
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#1E2D3D',
+    marginTop: 12,
   },
-  protectionSummaryText: {
+  permSummaryText: {
     color: '#64748B',
     fontSize: 13,
     fontWeight: '600',
