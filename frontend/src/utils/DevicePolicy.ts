@@ -346,6 +346,62 @@ class DevicePolicyManager {
       return 'error';
     }
   }
+
+  // ===================== KIOSK MODE (LOCK TASK) =====================
+
+  /**
+   * Start kiosk mode - pins the app to the screen.
+   * If device owner: seamless (no user confirmation).
+   * If device admin only: system shows a confirmation dialog.
+   */
+  async startKioskMode(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.startKioskMode?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to start kiosk mode:', error);
+      return 'error';
+    }
+  }
+
+  /**
+   * Stop kiosk mode - unpins the app.
+   */
+  async stopKioskMode(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.stopKioskMode?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to stop kiosk mode:', error);
+      return 'error';
+    }
+  }
+
+  /**
+   * Check if currently in kiosk (lock task) mode.
+   */
+  async isInKioskMode(): Promise<boolean> {
+    if (Platform.OS !== 'android') return false;
+    try {
+      return (await nativeModule?.isInKioskMode?.()) || false;
+    } catch (error) {
+      console.log('Failed to check kiosk mode:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if app is device owner (needed for seamless kiosk).
+   */
+  async isDeviceOwner(): Promise<boolean> {
+    if (Platform.OS !== 'android') return false;
+    try {
+      return (await nativeModule?.isDeviceOwner?.()) || false;
+    } catch (error) {
+      console.log('Failed to check device owner:', error);
+      return false;
+    }
+  }
 }
 
 export const devicePolicy = new DevicePolicyManager();
