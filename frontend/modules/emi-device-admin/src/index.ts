@@ -87,3 +87,33 @@ export async function isDeviceOwner(): Promise<boolean> {
     return false;
   }
 }
+
+export async function startKioskMode(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.startKioskMode();
+  } catch (e) {
+    console.log('startKioskMode error:', e);
+    return 'error';
+  }
+}
+
+export async function stopKioskMode(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.stopKioskMode();
+  } catch (e) {
+    console.log('stopKioskMode error:', e);
+    return 'error';
+  }
+}
+
+export async function isInKioskMode(): Promise<boolean> {
+  if (!isModuleAvailable()) return false;
+  try {
+    return await EMIDeviceAdminModule.isInKioskMode();
+  } catch (e) {
+    console.log('isInKioskMode error:', e);
+    return false;
+  }
+}
