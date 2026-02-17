@@ -708,9 +708,19 @@ export default function ClientHome() {
   }, [clientId, status?.is_locked]);
 
   // Initialize protection and check for reboot (tamper detection disabled to prevent crashes)
+  // Waits for main initialization to complete before accessing native modules
   useEffect(() => {
     const initializeProtection = async () => {
       if (!clientId || Platform.OS !== 'android') return;
+
+      // Wait until the main useEffect's initialize() is done to prevent
+      // concurrent native module calls that crash on fresh registration
+      let waitAttempts = 0;
+      while (!initComplete.current && waitAttempts < 30) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        waitAttempts++;
+      }
+      if (!isMounted.current) return;
 
       try {
         // Check if this is a fresh app start (potential reboot)
