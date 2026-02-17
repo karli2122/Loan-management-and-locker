@@ -523,16 +523,59 @@ class EMIDeviceAdminModule : Module() {
             }
         }
 
-        // Open the system accessibility settings screen
+        // Open the system accessibility settings — tries "Installed apps" sub-screen first
         AsyncFunction("openAccessibilitySettings") { promise: Promise ->
             try {
+                // Try to open the "Installed Services" / "Installed Apps" sub-page directly
+                val installedServicesIntents = listOf(
+                    // Samsung One UI: Accessibility > Installed apps
+                    Intent().apply {
+                        setClassName("com.android.settings", "com.android.settings.Settings\$AccessibilityInstalledServiceActivity")
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    },
+                    // Generic Android: Accessibility installed services
+                    Intent().apply {
+                        setClassName("com.android.settings", "com.android.settings.accessibility.AccessibilitySettingsForSetupWizardActivity")
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    },
+                )
+
+                for (intent in installedServicesIntents) {
+                    try {
+                        if (intent.resolveActivity(context.packageManager) != null) {
+                            context.startActivity(intent)
+                            Log.d(TAG, "openAccessibilitySettings: Opened installed services directly")
+                            promise.resolve("opened_installed")
+                            return@AsyncFunction
+                        }
+                    } catch (e: Exception) {
+                        Log.d(TAG, "openAccessibilitySettings: Sub-intent failed: ${e.message}")
+                    }
+                }
+
+                // Fallback: open top-level accessibility settings
                 val intent = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
-                Log.d(TAG, "openAccessibilitySettings: Opened")
+                Log.d(TAG, "openAccessibilitySettings: Opened top-level")
                 promise.resolve("opened")
             } catch (e: Exception) {
                 Log.e(TAG, "openAccessibilitySettings error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // Open app info page (for "Allow restricted settings" on Android 13+)
+        AsyncFunction("openAppInfo") { promise: Promise ->
+            try {
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                intent.data = Uri.parse("package:${context.packageName}")
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                Log.d(TAG, "openAppInfo: Opened app details")
+                promise.resolve("opened")
+            } catch (e: Exception) {
+                Log.e(TAG, "openAppInfo error: ${e.message}")
                 promise.resolve("error: ${e.message}")
             }
         }
