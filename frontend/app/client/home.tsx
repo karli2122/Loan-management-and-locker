@@ -1078,9 +1078,12 @@ export default function ClientHome() {
             </View>
 
             <View style={styles.permGrid}>
-              {/* Row 1 */}
+              {/* Row 1: Battery (auto) + Overlay (manual) */}
               <TouchableOpacity style={styles.permCard} onPress={async () => {
                 await devicePolicy.requestBatteryOptimization();
+                await new Promise(r => setTimeout(r, 800));
+                const granted = await devicePolicy.isIgnoringBatteryOptimizations();
+                if (granted) setPermissionStates(prev => ({ ...prev, batteryOptimization: true }));
               }}>
                 <View style={[styles.permCircle, permissionStates.batteryOptimization ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.batteryOptimization ? "checkmark" : "close"} size={28} color="#FFF" />
@@ -1097,17 +1100,7 @@ export default function ClientHome() {
                 <Text style={styles.permLabel}>{language === 'et' ? 'Ülekate' : 'Overlay'}</Text>
               </TouchableOpacity>
 
-              {/* Row 2 */}
-              <TouchableOpacity style={styles.permCard} onPress={async () => {
-                await devicePolicy.openBatterySettings();
-              }}>
-                <View style={[styles.permCircle, permissionStates.batteryPowerUsage ? styles.permOk : styles.permBad]}>
-                  <Ionicons name={permissionStates.batteryPowerUsage ? "checkmark" : "close"} size={28} color="#FFF" />
-                </View>
-                <Text style={styles.permLabel}>{language === 'et' ? 'Aku kasutus' : 'Battery Power Usage'}</Text>
-              </TouchableOpacity>
-
-              {/* Row 3 */}
+              {/* Row 2: Auto Start (manual) + Accessibility (manual) */}
               <TouchableOpacity style={styles.permCard} onPress={() => {
                 Alert.alert(
                   language === 'et' ? 'Luba autostart' : 'Enable Auto Start',
