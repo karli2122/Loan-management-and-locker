@@ -31,7 +31,10 @@ async def register_device(registration: DeviceRegistration):
             "device_model": registration.device_model,
             "is_registered": True,
             "registered_at": datetime.utcnow(),
-            "last_heartbeat": datetime.utcnow()
+            "last_heartbeat": datetime.utcnow(),
+            "uninstall_allowed": False,
+            "admin_mode_active": False,
+            "tamper_attempts": 0,
         }}
     )
     
