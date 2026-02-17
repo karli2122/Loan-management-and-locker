@@ -1079,7 +1079,7 @@ export default function ClientHome() {
             </View>
 
             <View style={styles.permGrid}>
-              {/* Row 1: Battery (auto) + Overlay (manual) */}
+              {/* Row 1: Battery (auto) + Overlay (device-specific instructions) */}
               <TouchableOpacity style={styles.permCard} onPress={async () => {
                 await devicePolicy.requestBatteryOptimization();
                 await new Promise(r => setTimeout(r, 800));
@@ -1092,8 +1092,15 @@ export default function ClientHome() {
                 <Text style={styles.permLabel}>{language === 'et' ? 'Aku optim.' : 'Battery Optimization'}</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.permCard} onPress={async () => {
-                await devicePolicy.requestOverlayPermission();
+              <TouchableOpacity style={styles.permCard} onPress={() => {
+                const dev = devicePolicy.getDeviceInfo();
+                const info = getOverlayInstructions(dev, language);
+                Alert.alert(info.title, info.steps, [
+                  {
+                    text: info.shortcut,
+                    onPress: async () => { await devicePolicy.requestOverlayPermission(); },
+                  },
+                ]);
               }}>
                 <View style={[styles.permCircle, permissionStates.overlay ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.overlay ? "checkmark" : "close"} size={28} color="#FFF" />
@@ -1101,28 +1108,20 @@ export default function ClientHome() {
                 <Text style={styles.permLabel}>{language === 'et' ? 'Ülekate' : 'Overlay'}</Text>
               </TouchableOpacity>
 
-              {/* Row 2: Auto Start (manual) + Accessibility (manual) */}
+              {/* Row 2: Auto Start (device-specific) + Accessibility (device-specific) */}
               <TouchableOpacity style={styles.permCard} onPress={() => {
-                Alert.alert(
-                  language === 'et' ? 'Luba autostart' : 'Enable Auto Start',
-                  language === 'et'
-                    ? 'Autostart peab olema lubatud, et rakendus käivituks automaatselt.\n\n1. Avage autostart seaded\n2. Leidke see rakendus\n3. Lülitage autostart SISSE\n4. Tulge tagasi rakendusse'
-                    : 'Auto Start must be enabled so the app starts automatically.\n\n1. Open auto start settings\n2. Find this app\n3. Turn ON auto start\n4. Return to this app',
-                  [
-                    {
-                      text: language === 'et' ? 'Ava seaded' : 'Open Settings',
-                      onPress: async () => {
-                        await devicePolicy.openAutoStartSettings();
-                      },
+                const dev = devicePolicy.getDeviceInfo();
+                const info = getAutoStartInstructions(dev, language);
+                Alert.alert(info.title, info.steps, [
+                  {
+                    text: info.shortcut,
+                    onPress: async () => {
+                      await devicePolicy.openAutoStartSettings();
+                      // Mark as done when user returns since we can't verify autostart
+                      setPermissionStates(prev => ({ ...prev, autoStart: true }));
                     },
-                    {
-                      text: language === 'et' ? 'Juba lubatud' : 'Already Enabled',
-                      onPress: () => {
-                        setPermissionStates(prev => ({ ...prev, autoStart: true }));
-                      },
-                    },
-                  ]
-                );
+                  },
+                ]);
               }}>
                 <View style={[styles.permCircle, permissionStates.autoStart ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.autoStart ? "checkmark" : "close"} size={28} color="#FFF" />
@@ -1136,31 +1135,28 @@ export default function ClientHome() {
                   setPermissionStates(prev => ({ ...prev, accessibility: true }));
                   return;
                 }
-                Alert.alert(
-                  language === 'et' ? 'Juurdepääsu luba' : 'Accessibility Permission',
-                  language === 'et'
-                    ? 'Esmalt peate lubama piiratud seaded:\n\n1. Puudutage "Ava rakenduse info"\n2. Puudutage kolme punkti menüüd (⋮) üleval paremal\n3. Valige "Luba piiratud seaded"\n4. Seejärel tulge tagasi ja puudutage "Ava juurdepääsu seaded"\n5. Leidke "Loan Client" ja lülitage SISSE'
-                    : 'First you need to allow restricted settings:\n\n1. Tap "Open App Info"\n2. Tap the three-dot menu (⋮) at top right\n3. Select "Allow restricted settings"\n4. Then come back and tap "Open Accessibility"\n5. Find "Loan Client" and turn it ON',
-                  [
-                    {
-                      text: language === 'et' ? 'Ava rakenduse info' : 'Open App Info',
-                      onPress: async () => {
-                        await devicePolicy.openAppInfo();
-                      },
-                    },
-                    {
-                      text: language === 'et' ? 'Ava juurdepääsu seaded' : 'Open Accessibility',
-                      onPress: async () => {
-                        await devicePolicy.openAccessibilitySettings();
-                      },
-                    },
-                  ]
-                );
+                const dev = devicePolicy.getDeviceInfo();
+                const info = getAccessibilityInstructions(dev, language);
+                const needsRestricted = dev.sdkVersion >= 33;
+                const buttons: any[] = [];
+                if (needsRestricted) {
+                  buttons.push({
+                    text: language === 'et' ? '1. Luba piiratud seaded' : '1. Allow Restricted Settings',
+                    onPress: async () => { await devicePolicy.openAppInfo(); },
+                  });
+                }
+                buttons.push({
+                  text: needsRestricted
+                    ? (language === 'et' ? '2. Ava juurdepääs' : '2. Open Accessibility')
+                    : info.shortcut,
+                  onPress: async () => { await devicePolicy.openAccessibilitySettings(); },
+                });
+                Alert.alert(info.title, info.steps, buttons);
               }}>
                 <View style={[styles.permCircle, permissionStates.accessibility ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.accessibility ? "checkmark" : "close"} size={28} color="#FFF" />
                 </View>
-                <Text style={styles.permLabel}>{language === 'et' ? 'Juurdepääs' : 'Accessibility Permission'}</Text>
+                <Text style={styles.permLabel}>{language === 'et' ? 'Juurdepääs' : 'Accessibility'}</Text>
               </TouchableOpacity>
 
               {/* Row 3: Location (auto) + Notification (auto) */}
@@ -1175,7 +1171,7 @@ export default function ClientHome() {
                 <View style={[styles.permCircle, permissionStates.location ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.location ? "checkmark" : "close"} size={28} color="#FFF" />
                 </View>
-                <Text style={styles.permLabel}>{language === 'et' ? 'Asukoht' : 'Location Permission'}</Text>
+                <Text style={styles.permLabel}>{language === 'et' ? 'Asukoht' : 'Location'}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.permCard} onPress={async () => {
@@ -1191,7 +1187,7 @@ export default function ClientHome() {
                 <View style={[styles.permCircle, permissionStates.notification ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.notification ? "checkmark" : "close"} size={28} color="#FFF" />
                 </View>
-                <Text style={styles.permLabel}>{language === 'et' ? 'Teavitused' : 'Notification Permission'}</Text>
+                <Text style={styles.permLabel}>{language === 'et' ? 'Teavitused' : 'Notifications'}</Text>
               </TouchableOpacity>
             </View>
 
