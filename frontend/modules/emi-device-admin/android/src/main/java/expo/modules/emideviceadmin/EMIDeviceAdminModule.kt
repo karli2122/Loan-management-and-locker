@@ -1,11 +1,13 @@
 package expo.modules.emideviceadmin
 
 import android.app.Activity
+import android.app.ActivityManager
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.os.Build
 import android.os.Environment
 import android.os.UserManager
 import android.util.Log
