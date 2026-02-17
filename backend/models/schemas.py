@@ -180,8 +180,8 @@ class ClientStatusResponse(BaseModel):
     is_locked: bool
     lock_message: str
     warning_message: str
-    emi_amount: float
-    emi_due_date: Optional[str]
+    loan_amount: float = 0.0
+    loan_due_date: Optional[str] = None
     uninstall_allowed: bool = False
 
 
