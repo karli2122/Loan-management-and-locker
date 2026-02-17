@@ -621,6 +621,7 @@ export default function ClientHome() {
                   await devicePolicy.startOverlayBlocker();
                   await devicePolicy.startKioskMode();
                   await devicePolicy.preventUninstall(true);
+                  await devicePolicy.setProtectionComplete(true);
                   await reportAdminStatus(clientId, true);
                   setProtectionComplete(true);
                   setShowProtectionSetup(false);
