@@ -92,7 +92,8 @@ class EMIDeviceAdminReceiver : DeviceAdminReceiver() {
         return if (uninstallAllowed) {
             "Device admin will be deactivated."
         } else {
-            "WARNING: Disabling device admin is a security violation. " +
+            "WARNING: Removing device admin is not allowed.\n\n" +
+            "If you continue, device admin will wipe all data on this device.\n\n" +
             "Contact your administrator."
         }
     }
