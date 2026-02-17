@@ -50,7 +50,6 @@ export default function ClientHome() {
   const [permissionStates, setPermissionStates] = useState({
     batteryOptimization: false,
     overlay: false,
-    batteryPowerUsage: false,
     autoStart: false,
     accessibility: false,
     location: false,
