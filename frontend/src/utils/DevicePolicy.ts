@@ -22,6 +22,14 @@ export interface DeviceInfo {
   packageName: string;
 }
 
+export interface NativeDeviceInfo {
+  manufacturer: string;
+  model: string;
+  brand: string;
+  sdkVersion: number;
+  androidVersion: string;
+}
+
 export interface CachedLockState {
   isLocked: boolean;
   lockMessage: string;
