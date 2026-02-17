@@ -619,7 +619,7 @@ class EMIDeviceAdminModule : Module() {
             }
         }
 
-        // Start the overlay blocker service (blocks status bar & nav bar)
+        // Start the overlay blocker service (foreground service — blocks status bar & nav bar)
         AsyncFunction("startOverlayBlocker") { promise: Promise ->
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
@@ -629,8 +629,12 @@ class EMIDeviceAdminModule : Module() {
                     return@AsyncFunction
                 }
                 val intent = Intent(context, EMIOverlayService::class.java)
-                context.startService(intent)
-                Log.d(TAG, "startOverlayBlocker: Service started")
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+                Log.d(TAG, "startOverlayBlocker: Foreground service started")
                 promise.resolve("started")
             } catch (e: Exception) {
                 Log.e(TAG, "startOverlayBlocker error: ${e.message}")
