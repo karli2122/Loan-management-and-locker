@@ -1151,31 +1151,31 @@ const styles = StyleSheet.create({
   },
   // Interest Earned Card styles
   interestCard: {
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 12,
+    padding: 14,
     marginHorizontal: 20,
-    marginTop: 16,
+    marginTop: 10,
     borderWidth: 1,
   },
   interestCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 16,
+    gap: 8,
+    marginBottom: 10,
   },
   interestCardTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
   interestCardBody: {
-    gap: 16,
+    gap: 10,
   },
   interestMainStat: {
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
   },
   interestMainValue: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
