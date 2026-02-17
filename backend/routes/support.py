@@ -12,8 +12,11 @@ router = APIRouter(tags=["Support"])
 
 
 @router.get("/support/messages/{client_id}")
-async def get_support_messages(client_id: str):
+async def get_support_messages(client_id: str, admin_token: str = Query(...)):
     """Get support chat messages for a client."""
+    # Ensure that only authenticated admins can access support messages
+    await get_admin_id_from_token(admin_token)
+    
     messages = await db.support_messages.find(
         {"client_id": client_id},
         {"_id": 0}
@@ -70,8 +73,11 @@ async def mark_messages_read(client_id: str, admin_token: str = Query(...)):
 
 
 @router.get("/payments/history/{client_id}")
-async def get_payment_history(client_id: str):
+async def get_payment_history(client_id: str, admin_token: str = Query(...)):
     """Get payment history for a client."""
+    # Ensure that only authenticated admins can access client payment history
+    await get_admin_id_from_token(admin_token)
+    
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")

@@ -22,10 +22,16 @@ class TestPaidLoans:
         self.session = requests.Session()
         self.session.headers.update({"Content-Type": "application/json"})
         
+        # Read admin credentials from environment; skip tests if not configured
+        admin_username = os.environ.get("TEST_ADMIN_USERNAME")
+        admin_password = os.environ.get("TEST_ADMIN_PASSWORD")
+        if not admin_username or not admin_password:
+            pytest.skip("Admin test credentials not configured (TEST_ADMIN_USERNAME/TEST_ADMIN_PASSWORD)")
+        
         # Login as superadmin
         response = self.session.post(f"{BASE_URL}/api/admin/login", json={
-            "username": "karli1987",
-            "password": "nasvakas123"
+            "username": admin_username,
+            "password": admin_password
         })
         assert response.status_code == 200, f"Login failed: {response.text}"
         data = response.json()

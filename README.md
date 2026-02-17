@@ -249,19 +249,26 @@ eas build --profile client-preview --platform android
 
 ---
 
-## 👤 Default Users
+## 👤 Initial Users & Access
 
 **Admin (Super Admin):**
-- Username: `karli1987`
-- Password: `nasvakas123`
-- Role: admin
-- Can create/manage users
+- Username: `<SUPERADMIN_USERNAME>`
+- Password: `<SUPERADMIN_PASSWORD>`
+- Role: `admin`
+- Can create/manage users and configure system settings
 
-**Test User:**
-- Username: `test`
-- Password: `test123`
-- Role: user
+**Regular/Test User (optional, for demos only):**
+- Username: `<TEST_USER_USERNAME>`
+- Password: `<TEST_USER_PASSWORD>`
+- Role: `user`
 - Cannot manage users
+
+> ⚠️ **Security note**
+>
+> - This project must **not** be deployed with hard-coded default credentials.
+> - Provision the initial superadmin user via a secure bootstrap process (for example, a one-time admin-creation command or API call that reads credentials from environment variables or a secrets manager).
+> - Store all credentials in a password manager or secret management system.
+> - If you create any demo/test accounts, ensure they are **never reused** across environments and are **rotated or removed** before going to production.
 
 ---
 

@@ -69,19 +69,19 @@ async def get_client_credit_score(
     # Calculate rating based on score
     if score >= 800:
         rating = "excellent"
-        rating_label = "Suurepärane" if True else "Excellent"
+        rating_label = "Suurepärane"
     elif score >= 650:
         rating = "good"
-        rating_label = "Hea" if True else "Good"
+        rating_label = "Hea"
     elif score >= 500:
         rating = "fair"
-        rating_label = "Rahuldav" if True else "Fair"
+        rating_label = "Rahuldav"
     elif score >= 350:
         rating = "poor"
-        rating_label = "Halb" if True else "Poor"
+        rating_label = "Halb"
     else:
         rating = "very_poor"
-        rating_label = "Väga halb" if True else "Very Poor"
+        rating_label = "Väga halb"
     
     # Get last update
     last_history = await db.credit_score_history.find_one(
