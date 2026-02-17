@@ -47,6 +47,10 @@ export default function ClientHome() {
   const [isAdminActive, setIsAdminActive] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [lastAdminPromptTime, setLastAdminPromptTime] = useState<number>(0);
+  const [accessibilityEnabled, setAccessibilityEnabled] = useState(false);
+  const [overlayEnabled, setOverlayEnabled] = useState(false);
+  const [screenPinned, setScreenPinned] = useState(false);
+  const [showProtectionSetup, setShowProtectionSetup] = useState(false);
   const isMounted = useRef(false);
   const appState = useRef(AppState.currentState);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
