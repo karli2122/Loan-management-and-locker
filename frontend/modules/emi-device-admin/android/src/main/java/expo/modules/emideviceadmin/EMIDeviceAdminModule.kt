@@ -165,14 +165,48 @@ class EMIDeviceAdminModule : Module() {
         }
 
         // Allow uninstall by removing Device Admin
+        // CRITICAL: Uses commit() (synchronous) so the preference is persisted
+        // BEFORE removeActiveAdmin triggers onDisableRequested in the receiver.
         AsyncFunction("allowUninstall") { promise: Promise ->
             try {
-                prefs.edit().putBoolean(KEY_UNINSTALL_ALLOWED, true).apply()
-                // Clear app settings restriction if device owner
+                // Step 1: Synchronously write the flag so onDisableRequested sees it
+                val committed = prefs.edit().putBoolean(KEY_UNINSTALL_ALLOWED, true).commit()
+                Log.d(TAG, "allowUninstall: FLAG committed=$committed")
+
+                // Step 2: If device owner, stop kiosk mode and clear restrictions first
                 if (dpm.isDeviceOwnerApp(context.packageName)) {
-                    dpm.clearUserRestriction(adminComponent, UserManager.DISALLOW_APPS_CONTROL)
-                    Log.d(TAG, "allowUninstall: App settings restriction cleared")
+                    try {
+                        // Stop lock task if running
+                        val currentActivity = activity
+                        if (currentActivity != null) {
+                            val am = currentActivity.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && am.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE) {
+                                currentActivity.stopLockTask()
+                                Log.d(TAG, "allowUninstall: Stopped lock task")
+                            }
+                        }
+                        // Clear lock task packages
+                        dpm.setLockTaskPackages(adminComponent, arrayOf())
+                        Log.d(TAG, "allowUninstall: Cleared lock task packages")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "allowUninstall: lock task cleanup error: ${e.message}")
+                    }
+                    try {
+                        dpm.clearUserRestriction(adminComponent, UserManager.DISALLOW_APPS_CONTROL)
+                        Log.d(TAG, "allowUninstall: App settings restriction cleared")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "allowUninstall: clear restriction error: ${e.message}")
+                    }
+                    // Device owner must call clearDeviceOwnerApp before removeActiveAdmin
+                    try {
+                        dpm.clearDeviceOwnerApp(context.packageName)
+                        Log.d(TAG, "allowUninstall: Device owner cleared")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "allowUninstall: clearDeviceOwner error: ${e.message}")
+                    }
                 }
+
+                // Step 3: Remove admin (this triggers onDisableRequested which now sees the flag)
                 if (dpm.isAdminActive(adminComponent)) {
                     dpm.removeActiveAdmin(adminComponent)
                     Log.d(TAG, "allowUninstall: Admin removed")
