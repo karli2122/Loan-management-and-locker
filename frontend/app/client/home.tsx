@@ -785,13 +785,6 @@ export default function ClientHome() {
     
     initializeProtection();
   }, [clientId]);
-        console.log('Protection setup error:', error);
-      }
-    };
-
-    initializeProtection();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reportReboot is stable; only re-run when clientId changes
-  }, [clientId]);
 
   const reportAdminStatus = async (id: string, adminActive: boolean) => {
     if (!id) return;
