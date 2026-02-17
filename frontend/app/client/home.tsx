@@ -1002,7 +1002,12 @@ export default function ClientHome() {
                   try {
                     await devicePolicy.requestAdmin();
                     await new Promise(r => setTimeout(r, 2000));
-                    await checkAdminStatusWithRetry(20, 1000);
+                    const granted = await checkAdminStatusWithRetry(20, 1000);
+                    if (granted) {
+                      // Admin granted — immediately start kiosk mode
+                      const kioskResult = await devicePolicy.startKioskMode();
+                      console.log('Kiosk mode after admin grant:', kioskResult);
+                    }
                   } catch (e) {} finally { isRequestingAdmin.current = false; }
                 }
               }}>
