@@ -680,9 +680,8 @@ export default function ClientHome() {
                 await new Promise(r => setTimeout(r, 2000));
                 const granted = await checkAdminStatusWithRetry(20, 1000);
                 if (granted && clientId) {
-                  // Start all protection services
-                  await devicePolicy.startOverlayBlocker();
-                  await devicePolicy.startKioskMode();
+                  // PROTECTED state: only prevent uninstall and mark complete
+                  // Overlay, kiosk, immersive are for LOCKED state only
                   await devicePolicy.preventUninstall(true);
                   await devicePolicy.setProtectionComplete(true);
                   await reportAdminStatus(clientId, true);
