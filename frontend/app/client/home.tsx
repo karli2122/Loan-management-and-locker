@@ -750,7 +750,6 @@ export default function ClientHome() {
                 ...prev,
                 batteryOptimization: batteryOpt,
                 overlay: overlay,
-                deviceAdmin: admin,
                 batteryPowerUsage: batteryOpt,
                 accessibility: accessibility,
                 location: locationPerm,
