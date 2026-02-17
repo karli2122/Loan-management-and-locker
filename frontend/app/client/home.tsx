@@ -47,6 +47,7 @@ export default function ClientHome() {
   const [isAdminActive, setIsAdminActive] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [lastAdminPromptTime, setLastAdminPromptTime] = useState<number>(0);
+  const autoRequestedRef = useRef(false);
   const [permissionStates, setPermissionStates] = useState({
     batteryOptimization: false,
     overlay: false,
