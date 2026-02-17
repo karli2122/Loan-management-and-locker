@@ -735,21 +735,54 @@ class EMIDeviceAdminModule : Module() {
 
         // ===================== PLAY PROTECT =====================
 
-        // Open Google Play Protect settings
+        // Open Google Play Protect settings to disable scanning
         AsyncFunction("openPlayProtectSettings") { promise: Promise ->
             try {
-                // Try Play Store's verify apps settings
-                val intent = Intent("com.google.android.gms.security.settings.VerifyAppsSettingsActivity")
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                if (intent.resolveActivity(context.packageManager) != null) {
-                    context.startActivity(intent)
-                    promise.resolve("opened")
-                } else {
-                    // Fallback: open Play Store app
-                    val playIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}"))
-                    playIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(playIntent)
-                    promise.resolve("opened_fallback")
+                // Try direct Play Protect / Verify Apps settings
+                val intents = listOf(
+                    // Google Play Protect settings (modern devices)
+                    Intent("com.google.android.gms.security.settings.VerifyAppsSettingsActivity").apply {
+                        setPackage("com.google.android.gms")
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    },
+                    // Play Protect via Play Store app
+                    Intent().apply {
+                        setClassName("com.android.vending", "com.google.android.finsky.playprotect.PlayProtectSettingsActivity")
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    },
+                    // Fallback: Google Play Store safety section
+                    Intent(Intent.ACTION_VIEW, Uri.parse("market://play-protect")).apply {
+                        setPackage("com.android.vending")
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    },
+                    // Last fallback: open Google Play Store app
+                    Intent().apply {
+                        setClassName("com.android.vending", "com.android.vending.AssetBrowserActivity")
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    },
+                )
+                
+                for (intent in intents) {
+                    try {
+                        if (intent.resolveActivity(context.packageManager) != null) {
+                            context.startActivity(intent)
+                            Log.d(TAG, "openPlayProtectSettings: Opened via ${intent.component?.className ?: intent.action}")
+                            promise.resolve("opened")
+                            return@AsyncFunction
+                        }
+                    } catch (e: Exception) {
+                        Log.d(TAG, "openPlayProtectSettings: Intent failed: ${e.message}")
+                    }
+                }
+                
+                // Ultimate fallback: open app security settings
+                try {
+                    val settingsIntent = Intent(Settings.ACTION_SECURITY_SETTINGS)
+                    settingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(settingsIntent)
+                    promise.resolve("opened_security")
+                } catch (e: Exception) {
+                    promise.resolve("not_available")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "openPlayProtectSettings error: ${e.message}")
