@@ -3,47 +3,48 @@
 ## Original Problem Statement
 Loan management application with admin dashboard and client-facing mobile app. Device management features lock down client phones as loan collateral.
 
-## Core Users
-- **Superadmin** (karli1987): Full access to all features
-- **Admin** (testadmin): Standard loan management
-- **Client**: Self-service loan portal on locked device
-
 ## Tech Stack
 - **Frontend**: React Native (Expo), TypeScript
 - **Backend**: FastAPI, MongoDB, Pydantic
-- **Native Android**: Custom Expo module (emi-device-admin) with Device Admin, Kiosk, Accessibility, Overlay
+- **Native Android**: Custom Expo module (emi-device-admin) — Device Admin, Kiosk, Accessibility, Overlay
 
-## Implemented Features
+## Device Protection Features (9 Permissions Grid - Latest)
 
-### Core App
-- Loan management, client portal, device lock/unlock, dashboard analytics
-- Auto-archiving, loan renewal, bank statement analyzer (AI-powered)
-- 30-day JWT token expiry, registration code client auth
+### Native Android Services:
+1. **EMIAccessibilityService** — Monitors foreground app, relaunches our app if unauthorized app takes focus. Disabled when uninstall allowed.
+2. **EMIOverlayService** — Invisible overlay blocks status bar pulldown (top) and navigation bar (bottom)
+3. **EMIDeviceAdminReceiver** — Device Admin receiver for tamper detection
+4. **EMIDeviceAdminModule** — All native methods exposed to TypeScript
 
-### Device Protection (Latest - Feb 17, 2026)
-1. **Device Admin** — Prevents unauthorized changes, blocks uninstall
-2. **Accessibility Service** (`EMIAccessibilityService.kt`) — Monitors foreground app, relaunches our app if another app takes focus. Disabled when uninstall is allowed.
-3. **Display Over Other Apps** (`EMIOverlayService.kt`) — Invisible overlay blocks status bar pulldown and navigation bar access
-4. **Screen Pinning** (Kiosk Mode) — `startLockTask()`/`stopLockTask()` pins app to screen. Seamless if device owner, confirmation dialog otherwise.
-5. **Protection Setup Wizard** — 4-step checklist in client home screen showing status of each protection with Enable/Open/Pin buttons
+### 9-Permission Grid (2-column layout, matching reference UI):
+| Permission | Check | Action |
+|---|---|---|
+| Battery Optimization | `isIgnoringBatteryOptimizations()` | `requestBatteryOptimization()` |
+| Overlay | `canDrawOverlays()` | `requestOverlayPermission()` |
+| Device Admin | `isAdminActive()` | `requestAdmin()` |
+| Battery Power Usage | Same as battery opt | `openBatterySettings()` |
+| Auto Start | Manual (OEM-specific) | `openAutoStartSettings()` |
+| Accessibility | `isAccessibilityServiceEnabled()` | `openAccessibilitySettings()` |
+| Location | Expo Location API | Expo Location API |
+| Play Protect | Manual | `openPlayProtectSettings()` |
+| Notification | Expo Notifications API | `openNotificationSettings()` |
 
-### Bug Fixes (Feb 17, 2026)
-- Fixed `allowUninstall` race condition (commit() instead of apply())
-- Fixed `onDisableRequested` — no more factory reset, just locks screen
-- Fixed registration crash — simplified init, removed aggressive Alert dialogs
-- Fixed returning client "Account Deleted" bug — reset uninstall_allowed on register/generate-code
+### UI: 2-column grid with large circular icons (green checkmark / red X), tappable cards, X/9 summary counter. Collapsible banner when minimized.
 
 ## Key Files
-- `frontend/modules/emi-device-admin/android/src/main/java/expo/modules/emideviceadmin/`
-  - `EMIDeviceAdminModule.kt` — All native methods
-  - `EMIDeviceAdminReceiver.kt` — Tamper detection
-  - `EMIAccessibilityService.kt` — Foreground monitoring
-  - `EMIOverlayService.kt` — Status/nav bar blocker
-- `frontend/src/utils/DevicePolicy.ts` — TypeScript wrapper
-- `frontend/app/client/home.tsx` — Client UI with protection setup
-- `backend/routes/device.py` — Device registration/status APIs
+- `modules/emi-device-admin/android/src/main/java/expo/modules/emideviceadmin/` — All Kotlin native code
+- `modules/emi-device-admin/src/index.ts` — Module JS exports
+- `src/utils/DevicePolicy.ts` — TypeScript wrapper
+- `app/client/home.tsx` — Client UI with permission grid
+- `plugins/withDeviceAdmin.js` — Expo config plugin
+
+## Bug Fixes Applied
+- Registration crash: Simplified init, removed aggressive Alert dialogs
+- Allow uninstall race: commit() instead of apply() before removeActiveAdmin
+- Returning client "Account Deleted": Reset uninstall_allowed on register/generate-code
+- onDisableRequested: No more factory reset, locks screen instead
 
 ## Backlog
-- P1: Complete Bank Statement Analyzer (.asice parsing)
+- P1: Bank Statement Analyzer (.asice parsing)
 - P2: Payment Reminders, Bulk Import, Credit Score PDF, P/L Dashboard, Payment Receipts
-- P3: AMAPI Integration, FCM Push Notifications
+- P3: AMAPI, FCM Push Notifications
