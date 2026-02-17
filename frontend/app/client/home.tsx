@@ -479,7 +479,6 @@ export default function ClientHome() {
       // Stop kiosk mode first so device is usable
       if (Platform.OS === 'android') {
         try {
-          await devicePolicy.stopKioskMode();
           await devicePolicy.stopOverlayBlocker();
           await devicePolicy.disableImmersiveMode();
           await devicePolicy.setProtectionComplete(false);
