@@ -615,5 +615,146 @@ class EMIDeviceAdminModule : Module() {
 
         // ===================== SCREEN PINNING =====================
         // startKioskMode/stopKioskMode/isInKioskMode already handle screen pinning above
+
+        // ===================== BATTERY OPTIMIZATION =====================
+
+        // Check if app is exempted from battery optimization
+        AsyncFunction("isIgnoringBatteryOptimizations") {
+            try {
+                val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+                val isIgnoring = pm.isIgnoringBatteryOptimizations(context.packageName)
+                Log.d(TAG, "isIgnoringBatteryOptimizations: $isIgnoring")
+                isIgnoring
+            } catch (e: Exception) {
+                Log.e(TAG, "isIgnoringBatteryOptimizations error: ${e.message}")
+                false
+            }
+        }
+
+        // Request battery optimization exemption
+        AsyncFunction("requestBatteryOptimization") { promise: Promise ->
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                    intent.data = Uri.parse("package:${context.packageName}")
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                    promise.resolve("opened")
+                } else {
+                    promise.resolve("not_needed")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "requestBatteryOptimization error: ${e.message}")
+                // Fallback: open general battery settings
+                try {
+                    val intent = Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                    promise.resolve("opened_fallback")
+                } catch (e2: Exception) {
+                    promise.resolve("error: ${e.message}")
+                }
+            }
+        }
+
+        // Open battery/power usage settings
+        AsyncFunction("openBatterySettings") { promise: Promise ->
+            try {
+                // Try app-specific battery settings first
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                intent.data = Uri.parse("package:${context.packageName}")
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                promise.resolve("opened")
+            } catch (e: Exception) {
+                Log.e(TAG, "openBatterySettings error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // ===================== AUTO START =====================
+
+        // Open auto-start settings (OEM-specific: Xiaomi, Oppo, Vivo, Huawei, etc.)
+        AsyncFunction("openAutoStartSettings") { promise: Promise ->
+            try {
+                val intents = listOf(
+                    // Xiaomi
+                    Intent().setComponent(ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")),
+                    // Oppo
+                    Intent().setComponent(ComponentName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity")),
+                    // Vivo
+                    Intent().setComponent(ComponentName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")),
+                    // Huawei
+                    Intent().setComponent(ComponentName("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity")),
+                    // Samsung
+                    Intent().setComponent(ComponentName("com.samsung.android.lool", "com.samsung.android.sm.battery.ui.BatteryActivity")),
+                    // General fallback: app info
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.parse("package:${context.packageName}")
+                    },
+                )
+                
+                for (intent in intents) {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    if (intent.resolveActivity(context.packageManager) != null) {
+                        context.startActivity(intent)
+                        Log.d(TAG, "openAutoStartSettings: Opened ${intent.component?.className ?: "fallback"}")
+                        promise.resolve("opened")
+                        return@AsyncFunction
+                    }
+                }
+                promise.resolve("not_available")
+            } catch (e: Exception) {
+                Log.e(TAG, "openAutoStartSettings error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // ===================== NOTIFICATION SETTINGS =====================
+
+        // Open app notification settings
+        AsyncFunction("openNotificationSettings") { promise: Promise ->
+            try {
+                val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    }
+                } else {
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.parse("package:${context.packageName}")
+                    }
+                }
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                promise.resolve("opened")
+            } catch (e: Exception) {
+                Log.e(TAG, "openNotificationSettings error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // ===================== PLAY PROTECT =====================
+
+        // Open Google Play Protect settings
+        AsyncFunction("openPlayProtectSettings") { promise: Promise ->
+            try {
+                // Try Play Store's verify apps settings
+                val intent = Intent("com.google.android.gms.security.settings.VerifyAppsSettingsActivity")
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                if (intent.resolveActivity(context.packageManager) != null) {
+                    context.startActivity(intent)
+                    promise.resolve("opened")
+                } else {
+                    // Fallback: open Play Store app
+                    val playIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}"))
+                    playIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(playIntent)
+                    promise.resolve("opened_fallback")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "openPlayProtectSettings error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
     }
 }
