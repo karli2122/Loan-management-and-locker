@@ -700,7 +700,6 @@ export default function ClientHome() {
             setPermissionStates({
               batteryOptimization: batteryOpt,
               overlay: overlay,
-              batteryPowerUsage: batteryOpt,
               autoStart: protComplete === 'true',
               accessibility: accessibility,
               location: locationPerm,
