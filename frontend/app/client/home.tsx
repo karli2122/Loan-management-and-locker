@@ -962,168 +962,159 @@ export default function ClientHome() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10B981" />
         }
       >
-        {/* Device Protection Setup */}
+        {/* Device Protection Setup — 2 column grid like screenshot */}
         {showProtectionSetup && Platform.OS === 'android' && (
           <View style={styles.protectionSetup} data-testid="protection-setup">
             <View style={styles.protectionSetupHeader}>
-              <Ionicons name="shield-checkmark" size={22} color="#3B82F6" />
               <Text style={styles.protectionSetupTitle}>
-                {language === 'et' ? 'Seadme kaitse seadistamine' : 'Device Protection Setup'}
+                {language === 'et' ? 'Seadme kaitse' : 'Device Protection'}
               </Text>
               <TouchableOpacity onPress={() => setShowProtectionSetup(false)}>
                 <Ionicons name="chevron-up" size={20} color="#94A3B8" />
               </TouchableOpacity>
             </View>
 
-            {/* Step 1: Device Admin */}
-            <View style={styles.protectionStep}>
-              <View style={[styles.stepIcon, isAdminActive && styles.stepIconDone]}>
-                {isAdminActive ? <Ionicons name="checkmark" size={16} color="#FFF" /> : <Text style={styles.stepNumber}>1</Text>}
-              </View>
-              <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>
-                  {language === 'et' ? 'Administraatori õigused' : 'Device Admin'}
-                </Text>
-                <Text style={styles.stepDesc}>
-                  {language === 'et' ? 'Kaitseb seadet volitamata muudatuste eest' : 'Protects device from unauthorized changes'}
-                </Text>
-              </View>
-              {isAdminActive ? (
-                <View style={styles.stepDoneBadge}><Text style={styles.stepDoneText}>OK</Text></View>
-              ) : (
-                <TouchableOpacity style={styles.stepButton} onPress={async () => {
+            <View style={styles.permGrid}>
+              {/* Row 1 */}
+              <TouchableOpacity style={styles.permCard} onPress={async () => {
+                await devicePolicy.requestBatteryOptimization();
+              }}>
+                <View style={[styles.permCircle, permissionStates.batteryOptimization ? styles.permOk : styles.permBad]}>
+                  <Ionicons name={permissionStates.batteryOptimization ? "checkmark" : "close"} size={28} color="#FFF" />
+                </View>
+                <Text style={styles.permLabel}>{language === 'et' ? 'Aku optim.' : 'Battery Optimization'}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.permCard} onPress={async () => {
+                await devicePolicy.requestOverlayPermission();
+              }}>
+                <View style={[styles.permCircle, permissionStates.overlay ? styles.permOk : styles.permBad]}>
+                  <Ionicons name={permissionStates.overlay ? "checkmark" : "close"} size={28} color="#FFF" />
+                </View>
+                <Text style={styles.permLabel}>{language === 'et' ? 'Ülekate' : 'Overlay'}</Text>
+              </TouchableOpacity>
+
+              {/* Row 2 */}
+              <TouchableOpacity style={styles.permCard} onPress={async () => {
+                if (!permissionStates.deviceAdmin) {
                   if (isRequestingAdmin.current) return;
                   isRequestingAdmin.current = true;
                   try {
                     await devicePolicy.requestAdmin();
                     await new Promise(r => setTimeout(r, 2000));
-                    const granted = await checkAdminStatusWithRetry(20, 1000);
-                    isRequestingAdmin.current = false;
-                    if (granted) console.log('Admin granted');
-                  } catch (e) { isRequestingAdmin.current = false; }
-                }}>
-                  <Text style={styles.stepButtonText}>{language === 'et' ? 'Luba' : 'Enable'}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+                    await checkAdminStatusWithRetry(20, 1000);
+                  } catch (e) {} finally { isRequestingAdmin.current = false; }
+                }
+              }}>
+                <View style={[styles.permCircle, permissionStates.deviceAdmin ? styles.permOk : styles.permBad]}>
+                  <Ionicons name={permissionStates.deviceAdmin ? "checkmark" : "close"} size={28} color="#FFF" />
+                </View>
+                <Text style={styles.permLabel}>{language === 'et' ? 'Seadme admin' : 'Device Admin'}</Text>
+              </TouchableOpacity>
 
-            {/* Step 2: Accessibility Service */}
-            <View style={styles.protectionStep}>
-              <View style={[styles.stepIcon, accessibilityEnabled && styles.stepIconDone]}>
-                {accessibilityEnabled ? <Ionicons name="checkmark" size={16} color="#FFF" /> : <Text style={styles.stepNumber}>2</Text>}
-              </View>
-              <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>
-                  {language === 'et' ? 'Juurdepääsuteenus' : 'Accessibility Service'}
-                </Text>
-                <Text style={styles.stepDesc}>
-                  {language === 'et' ? 'Hoiab rakenduse esiplaanil' : 'Keeps the app in foreground'}
-                </Text>
-              </View>
-              {accessibilityEnabled ? (
-                <View style={styles.stepDoneBadge}><Text style={styles.stepDoneText}>OK</Text></View>
-              ) : (
-                <TouchableOpacity style={styles.stepButton} onPress={async () => {
-                  await devicePolicy.openAccessibilitySettings();
-                }}>
-                  <Text style={styles.stepButtonText}>{language === 'et' ? 'Ava' : 'Open'}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+              <TouchableOpacity style={styles.permCard} onPress={async () => {
+                await devicePolicy.openBatterySettings();
+              }}>
+                <View style={[styles.permCircle, permissionStates.batteryPowerUsage ? styles.permOk : styles.permBad]}>
+                  <Ionicons name={permissionStates.batteryPowerUsage ? "checkmark" : "close"} size={28} color="#FFF" />
+                </View>
+                <Text style={styles.permLabel}>{language === 'et' ? 'Aku kasutus' : 'Battery Power Usage'}</Text>
+              </TouchableOpacity>
 
-            {/* Step 3: Display Over Other Apps */}
-            <View style={styles.protectionStep}>
-              <View style={[styles.stepIcon, overlayEnabled && styles.stepIconDone]}>
-                {overlayEnabled ? <Ionicons name="checkmark" size={16} color="#FFF" /> : <Text style={styles.stepNumber}>3</Text>}
-              </View>
-              <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>
-                  {language === 'et' ? 'Kuva teiste rakenduste kohal' : 'Display Over Other Apps'}
-                </Text>
-                <Text style={styles.stepDesc}>
-                  {language === 'et' ? 'Blokeerib olekuriba ligipääsu' : 'Blocks status bar access'}
-                </Text>
-              </View>
-              {overlayEnabled ? (
-                <View style={styles.stepDoneBadge}><Text style={styles.stepDoneText}>OK</Text></View>
-              ) : (
-                <TouchableOpacity style={styles.stepButton} onPress={async () => {
-                  await devicePolicy.requestOverlayPermission();
-                }}>
-                  <Text style={styles.stepButtonText}>{language === 'et' ? 'Luba' : 'Allow'}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+              {/* Row 3 */}
+              <TouchableOpacity style={styles.permCard} onPress={async () => {
+                await devicePolicy.openAutoStartSettings();
+              }}>
+                <View style={[styles.permCircle, permissionStates.autoStart ? styles.permOk : styles.permBad]}>
+                  <Ionicons name={permissionStates.autoStart ? "checkmark" : "close"} size={28} color="#FFF" />
+                </View>
+                <Text style={styles.permLabel}>{language === 'et' ? 'Autostart' : 'Auto Start'}</Text>
+              </TouchableOpacity>
 
-            {/* Step 4: Screen Pinning */}
-            <View style={styles.protectionStep}>
-              <View style={[styles.stepIcon, screenPinned && styles.stepIconDone]}>
-                {screenPinned ? <Ionicons name="checkmark" size={16} color="#FFF" /> : <Text style={styles.stepNumber}>4</Text>}
-              </View>
-              <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>
-                  {language === 'et' ? 'Ekraani kinnitamine' : 'Screen Pinning'}
-                </Text>
-                <Text style={styles.stepDesc}>
-                  {language === 'et' ? 'Lukustab rakenduse ekraanile' : 'Locks app to the screen'}
-                </Text>
-              </View>
-              {screenPinned ? (
-                <View style={styles.stepDoneBadge}><Text style={styles.stepDoneText}>OK</Text></View>
-              ) : (
-                <TouchableOpacity style={styles.stepButton} onPress={async () => {
-                  const result = await devicePolicy.startKioskMode();
-                  if (result === 'started' || result === 'already_locked') {
-                    setScreenPinned(true);
+              <TouchableOpacity style={styles.permCard} onPress={async () => {
+                await devicePolicy.openAccessibilitySettings();
+              }}>
+                <View style={[styles.permCircle, permissionStates.accessibility ? styles.permOk : styles.permBad]}>
+                  <Ionicons name={permissionStates.accessibility ? "checkmark" : "close"} size={28} color="#FFF" />
+                </View>
+                <Text style={styles.permLabel}>{language === 'et' ? 'Juurdepääs' : 'Accessibility Permission'}</Text>
+              </TouchableOpacity>
+
+              {/* Row 4 */}
+              <TouchableOpacity style={styles.permCard} onPress={async () => {
+                if (!permissionStates.location) {
+                  const { status } = await Location.requestForegroundPermissionsAsync();
+                  if (status === 'granted') {
+                    setPermissionStates(prev => ({ ...prev, location: true }));
                   }
-                }}>
-                  <Text style={styles.stepButtonText}>{language === 'et' ? 'Kinnita' : 'Pin'}</Text>
-                </TouchableOpacity>
-              )}
+                }
+              }}>
+                <View style={[styles.permCircle, permissionStates.location ? styles.permOk : styles.permBad]}>
+                  <Ionicons name={permissionStates.location ? "checkmark" : "close"} size={28} color="#FFF" />
+                </View>
+                <Text style={styles.permLabel}>{language === 'et' ? 'Asukoht' : 'Location Permission'}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.permCard} onPress={async () => {
+                await devicePolicy.openPlayProtectSettings();
+              }}>
+                <View style={[styles.permCircle, permissionStates.playProtect ? styles.permOk : styles.permBad]}>
+                  <Ionicons name={permissionStates.playProtect ? "checkmark" : "close"} size={28} color="#FFF" />
+                </View>
+                <Text style={styles.permLabel}>{language === 'et' ? 'Play Protect' : 'Play Protect'}</Text>
+              </TouchableOpacity>
+
+              {/* Row 5 */}
+              <TouchableOpacity style={styles.permCard} onPress={async () => {
+                if (!permissionStates.notification) {
+                  const { status } = await Notifications.requestPermissionsAsync();
+                  if (status === 'granted') {
+                    setPermissionStates(prev => ({ ...prev, notification: true }));
+                  } else {
+                    await devicePolicy.openNotificationSettings();
+                  }
+                }
+              }}>
+                <View style={[styles.permCircle, permissionStates.notification ? styles.permOk : styles.permBad]}>
+                  <Ionicons name={permissionStates.notification ? "checkmark" : "close"} size={28} color="#FFF" />
+                </View>
+                <Text style={styles.permLabel}>{language === 'et' ? 'Teavitused' : 'Notification Permission'}</Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Status summary */}
-            <View style={styles.protectionSummary}>
-              <Text style={styles.protectionSummaryText}>
-                {[isAdminActive, accessibilityEnabled, overlayEnabled, screenPinned].filter(Boolean).length}/4 {language === 'et' ? 'kaitse aktiivne' : 'protections active'}
+            {/* Summary bar */}
+            <View style={styles.permSummary}>
+              <Text style={styles.permSummaryText}>
+                {Object.values(permissionStates).filter(Boolean).length}/{Object.keys(permissionStates).length} {language === 'et' ? 'aktiivne' : 'active'}
               </Text>
             </View>
           </View>
         )}
 
-        {/* Show collapsed protection banner when setup is hidden but not all enabled */}
-        {!showProtectionSetup && Platform.OS === 'android' && (!isAdminActive || !accessibilityEnabled || !overlayEnabled) && (
-          <TouchableOpacity 
-            style={[styles.protectionBanner, styles.protectionBasic]}
+        {/* Collapsed banner when protection setup is hidden */}
+        {!showProtectionSetup && Platform.OS === 'android' && (
+          <TouchableOpacity
+            style={[styles.protectionBanner, Object.values(permissionStates).every(Boolean) ? styles.protectionFull : styles.protectionBasic]}
             onPress={() => setShowProtectionSetup(true)}
             data-testid="protection-banner-collapsed"
           >
-            <Ionicons name="shield" size={24} color="#F59E0B" />
+            <Ionicons
+              name={Object.values(permissionStates).every(Boolean) ? "shield-checkmark" : "shield"}
+              size={24}
+              color={Object.values(permissionStates).every(Boolean) ? "#10B981" : "#F59E0B"}
+            />
             <View style={styles.protectionBannerContent}>
               <Text style={styles.protectionBannerTitle}>
-                {language === 'et' ? 'Kaitse mittetäielik' : 'Protection Incomplete'}
+                {Object.values(permissionStates).every(Boolean)
+                  ? (language === 'et' ? 'Kaitse aktiivne' : 'Protection Active')
+                  : (language === 'et' ? 'Kaitse mittetäielik' : 'Protection Incomplete')}
               </Text>
               <Text style={styles.protectionBannerText}>
-                {[isAdminActive, accessibilityEnabled, overlayEnabled, screenPinned].filter(Boolean).length}/4 {language === 'et' ? 'aktiivne — puudutage seadistamiseks' : 'active — tap to setup'}
+                {Object.values(permissionStates).filter(Boolean).length}/{Object.keys(permissionStates).length} {language === 'et' ? 'aktiivne' : 'active'}
               </Text>
             </View>
             <Ionicons name="chevron-down" size={20} color="#94A3B8" />
           </TouchableOpacity>
-        )}
-
-        {/* All protections active banner */}
-        {!showProtectionSetup && Platform.OS === 'android' && isAdminActive && accessibilityEnabled && overlayEnabled && (
-          <View style={[styles.protectionBanner, styles.protectionFull]} data-testid="protection-banner-full">
-            <Ionicons name="shield-checkmark" size={24} color="#10B981" />
-            <View style={styles.protectionBannerContent}>
-              <Text style={styles.protectionBannerTitle}>
-                {language === 'et' ? 'Seadme kaitse aktiivne' : 'Device Protection Active'}
-              </Text>
-              <Text style={styles.protectionBannerText}>
-                {language === 'et' ? 'Kõik kaitsed on lubatud' : 'All protections enabled'}
-              </Text>
-            </View>
-          </View>
         )}
 
         {/* Warning Banner */}
