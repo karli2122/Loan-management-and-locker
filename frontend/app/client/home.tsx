@@ -643,6 +643,9 @@ export default function ClientHome() {
             console.log('Accessibility check error (non-fatal):', accessError);
           }
         }
+
+        // Mark init complete so the protection useEffect can proceed safely
+        initComplete.current = true;
       } catch (error) {
         console.error('Initialization error:', error);
         setLoading(false);
