@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as DocumentPicker from 'expo-document-picker';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
 
@@ -54,37 +55,85 @@ export default function BankAnalyzer() {
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleFilePick = () => {
-    if (Platform.OS === 'web') {
-      fileInputRef.current?.click();
+  const pickAndUploadFile = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        fileInputRef.current?.click();
+        return;
+      }
+      // Native: use expo-document-picker
+      const docResult = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'application/vnd.etsi.asic-e+zip', '*/*'],
+        copyToCacheDirectory: true,
+      });
+      if (docResult.canceled || !docResult.assets?.length) return;
+      const asset = docResult.assets[0];
+      const ext = (asset.name || '').toLowerCase().split('.').pop();
+      if (ext !== 'pdf' && ext !== 'asice') {
+        setError(language === 'et' ? 'Ainult .pdf ja .asice failid' : 'Only .pdf and .asice files supported');
+        return;
+      }
+      await uploadFile(asset.uri, asset.name, asset.mimeType || 'application/octet-stream');
+    } catch (err: any) {
+      setError(err.message || 'File picker failed');
     }
   };
 
-  const handleFileUpload = async (file: File) => {
+  const uploadFile = async (uri: string, name: string, mimeType: string) => {
     setUploading(true);
     setError('');
     setResult(null);
-
     try {
       const adminToken = await AsyncStorage.getItem('admin_token');
       if (!adminToken) {
         setError(language === 'et' ? 'Pole sisse logitud' : 'Not logged in');
         return;
       }
-
       const formData = new FormData();
-      formData.append('file', file);
-
+      if (Platform.OS === 'web') {
+        // Web: uri is actually a File object passed from handleWebFile
+        // This path is handled separately in handleWebFile
+        return;
+      } else {
+        formData.append('file', { uri, name, type: mimeType } as any);
+      }
       const response = await fetch(
         `${API_URL}/api/bank-statements/analyze?admin_token=${adminToken}`,
         { method: 'POST', body: formData }
       );
-
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.detail || `Upload failed (${response.status})`);
       }
+      const data = await response.json();
+      setResult(data);
+    } catch (err: any) {
+      setError(err.message || 'Analysis failed');
+    } finally {
+      setUploading(false);
+    }
+  };
 
+  const handleWebFile = async (file: File) => {
+    setUploading(true);
+    setError('');
+    setResult(null);
+    try {
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      if (!adminToken) {
+        setError(language === 'et' ? 'Pole sisse logitud' : 'Not logged in');
+        return;
+      }
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch(
+        `${API_URL}/api/bank-statements/analyze?admin_token=${adminToken}`,
+        { method: 'POST', body: formData }
+      );
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || `Upload failed (${response.status})`);
+      }
       const data = await response.json();
       setResult(data);
     } catch (err: any) {
@@ -117,7 +166,7 @@ export default function BankAnalyzer() {
         {!result && !uploading && (
           <TouchableOpacity
             style={styles.uploadArea}
-            onPress={handleFilePick}
+            onPress={pickAndUploadFile}
             data-testid="upload-area"
           >
             <Ionicons name="cloud-upload" size={48} color="#4F46E5" />
@@ -146,7 +195,7 @@ export default function BankAnalyzer() {
             style={{ display: 'none' }}
             onChange={(e: any) => {
               const file = e.target?.files?.[0];
-              if (file) handleFileUpload(file);
+              if (file) handleWebFile(file);
             }}
           />
         )}
@@ -171,7 +220,7 @@ export default function BankAnalyzer() {
           <View style={styles.errorContainer} data-testid="error-message">
             <Ionicons name="alert-circle" size={24} color="#EF4444" />
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={handleFilePick}>
+            <TouchableOpacity style={styles.retryButton} onPress={pickAndUploadFile}>
               <Text style={styles.retryText}>
                 {language === 'et' ? 'Proovi uuesti' : 'Try Again'}
               </Text>
@@ -182,7 +231,6 @@ export default function BankAnalyzer() {
         {/* Results */}
         {result && a && !a.error && (
           <View data-testid="analysis-results">
-            {/* Header Info */}
             <View style={styles.resultHeader}>
               <View style={styles.resultHeaderLeft}>
                 <Ionicons name="checkmark-circle" size={24} color="#10B981" />
@@ -195,7 +243,6 @@ export default function BankAnalyzer() {
               </TouchableOpacity>
             </View>
 
-            {/* Bank & Period */}
             <View style={styles.card}>
               <View style={styles.cardRow}>
                 <Text style={styles.cardLabel}>{language === 'et' ? 'Pank' : 'Bank'}</Text>
@@ -217,7 +264,6 @@ export default function BankAnalyzer() {
               </View>
             </View>
 
-            {/* Income / Expense Summary */}
             {s && (
               <View style={styles.summaryRow}>
                 <View style={[styles.summaryCard, styles.incomeCard]}>
@@ -257,7 +303,6 @@ export default function BankAnalyzer() {
               </View>
             )}
 
-            {/* Income Categories */}
             {a.income_categories && a.income_categories.filter(c => c.total > 0).length > 0 && (
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>{language === 'et' ? 'Tulu kategooriad' : 'Income Categories'}</Text>
@@ -276,7 +321,6 @@ export default function BankAnalyzer() {
               </View>
             )}
 
-            {/* Expense Categories */}
             {a.expense_categories && a.expense_categories.filter(c => c.total > 0).length > 0 && (
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>{language === 'et' ? 'Kulu kategooriad' : 'Expense Categories'}</Text>
@@ -295,7 +339,6 @@ export default function BankAnalyzer() {
               </View>
             )}
 
-            {/* Risk Indicators */}
             {a.risk_indicators && (
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>{language === 'et' ? 'Riskianalüüs' : 'Risk Analysis'}</Text>
@@ -358,8 +401,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
   content: { flex: 1, padding: 16 },
   contentContainer: { paddingBottom: 40 },
-
-  // Upload
   uploadArea: {
     backgroundColor: '#1E293B', borderRadius: 16, padding: 40,
     alignItems: 'center', borderWidth: 2, borderStyle: 'dashed',
@@ -370,26 +411,18 @@ const styles = StyleSheet.create({
   supportedBanks: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 16, justifyContent: 'center' },
   bankBadge: { backgroundColor: '#334155', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
   bankBadgeText: { fontSize: 11, color: '#94A3B8', fontWeight: '500' },
-
-  // Loading
   loadingContainer: { alignItems: 'center', paddingVertical: 60, gap: 12 },
   loadingTitle: { fontSize: 18, fontWeight: '600', color: '#fff' },
   loadingSubtext: { fontSize: 14, color: '#94A3B8' },
-
-  // Error
   errorContainer: { alignItems: 'center', gap: 8, paddingVertical: 40 },
   errorText: { fontSize: 14, color: '#EF4444', textAlign: 'center' },
   retryButton: { backgroundColor: '#4F46E5', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, marginTop: 8 },
   retryText: { color: '#fff', fontWeight: '600', fontSize: 14 },
-
-  // Result Header
   resultHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16,
   },
   resultHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   resultHeaderTitle: { fontSize: 16, fontWeight: '600', color: '#10B981' },
-
-  // Cards
   card: {
     backgroundColor: '#1E293B', borderRadius: 12, padding: 16,
     marginBottom: 12, borderWidth: 1, borderColor: '#334155',
@@ -398,16 +431,12 @@ const styles = StyleSheet.create({
   cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
   cardLabel: { fontSize: 14, color: '#94A3B8' },
   cardValue: { fontSize: 14, fontWeight: '600', color: '#fff' },
-
-  // Summary
   summaryRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   summaryCard: { flex: 1, borderRadius: 12, padding: 16, alignItems: 'center', gap: 4 },
   incomeCard: { backgroundColor: '#10B98115', borderWidth: 1, borderColor: '#10B98130' },
   expenseCard: { backgroundColor: '#EF444415', borderWidth: 1, borderColor: '#EF444430' },
   summaryLabel: { fontSize: 12, color: '#94A3B8' },
   summaryAmount: { fontSize: 20, fontWeight: 'bold' },
-
-  // Categories
   categoryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#334155' },
   categoryLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   categoryDot: { width: 8, height: 8, borderRadius: 4 },
@@ -415,8 +444,6 @@ const styles = StyleSheet.create({
   categoryRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   categoryAmount: { fontSize: 14, fontWeight: '600' },
   categoryCount: { fontSize: 11, color: '#64748B', minWidth: 24, textAlign: 'right' },
-
-  // Risk
   riskRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
   riskLabel: { fontSize: 14, color: '#CBD5E1' },
   riskNotes: { fontSize: 13, color: '#94A3B8', fontStyle: 'italic', marginTop: 8, lineHeight: 18 },
