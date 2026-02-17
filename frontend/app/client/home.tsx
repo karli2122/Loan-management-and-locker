@@ -53,6 +53,7 @@ export default function ClientHome() {
   const wasLocked = useRef(false);
   const isRequestingAdmin = useRef(false);
   const hasInitialized = useRef(false);
+  const initComplete = useRef(false);
   const resolveProjectId = useCallback(
     () => Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId,
     []
