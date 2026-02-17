@@ -360,6 +360,47 @@ class DevicePolicyManager {
   // ===================== KIOSK MODE (LOCK TASK) =====================
 
   /**
+   * Save lock state to native SharedPreferences for BootReceiver.
+   * Called when lock state changes so the boot receiver can restore lock on reboot.
+   */
+  async setNativeLockState(locked: boolean): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.setNativeLockState?.(locked)) || 'error';
+    } catch (error) {
+      console.log('Failed to set native lock state:', error);
+      return 'error';
+    }
+  }
+
+  /**
+   * Enable immersive mode — hides status bar and navigation bar completely.
+   * Used when device is locked to prevent any interaction with system bars.
+   */
+  async enableImmersiveMode(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.enableImmersiveMode?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to enable immersive mode:', error);
+      return 'error';
+    }
+  }
+
+  /**
+   * Disable immersive mode — restores status bar and navigation bar.
+   */
+  async disableImmersiveMode(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.disableImmersiveMode?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to disable immersive mode:', error);
+      return 'error';
+    }
+  }
+
+  /**
    * Start kiosk mode - pins the app to the screen.
    * If device owner: seamless (no user confirmation).
    * If device admin only: system shows a confirmation dialog.
