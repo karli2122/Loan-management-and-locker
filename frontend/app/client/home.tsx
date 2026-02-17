@@ -687,10 +687,9 @@ export default function ClientHome() {
     const initializeProtection = async () => {
       if (!clientId || Platform.OS !== 'android') return;
 
-      // Wait until the main useEffect's initialize() is done to prevent
-      // concurrent native module calls that crash on fresh registration
+      // Wait until the main useEffect's initialize() is done
       let waitAttempts = 0;
-      while (!initComplete.current && waitAttempts < 30) {
+      while (!initComplete.current && waitAttempts < 20) {
         await new Promise(resolve => setTimeout(resolve, 200));
         waitAttempts++;
       }
@@ -703,7 +702,6 @@ export default function ClientHome() {
         
         if (lastAppStart) {
           const timeDiff = now - parseInt(lastAppStart);
-          // If more than 1 minute since last start, likely a reboot
           if (timeDiff > 60000) {
             console.log('Potential reboot detected');
             await reportReboot(clientId);
@@ -712,26 +710,27 @@ export default function ClientHome() {
         
         await AsyncStorage.setItem('last_app_start', now.toString());
 
-        // NOTE: Tamper detection service disabled to prevent chat head overlay crashes
-        // The service was causing blinking overlay and app crash issues
-        // const result = await devicePolicy.startTamperDetection();
-        // console.log('Tamper detection:', result);
-        
-        // Enable uninstall protection if admin is active
-        const isAdmin = await devicePolicy.isAdminActive();
-        if (isAdmin) {
-          await devicePolicy.preventUninstall(true);
-          // Backup client data to external storage (survives Clear Data)
-          await devicePolicy.backupClientData(clientId);
-          console.log('Uninstall protection enabled');
-          // Report admin mode status to backend
-          await reportAdminStatus(clientId, true);
-        } else {
-          // Report admin mode not active
-          await reportAdminStatus(clientId, false);
+        // Enable uninstall protection if admin is active — silently, no alerts
+        try {
+          const isAdmin = await devicePolicy.isAdminActive();
+          if (isAdmin) {
+            await devicePolicy.preventUninstall(true);
+            await reportAdminStatus(clientId, true);
+            console.log('Uninstall protection enabled');
+          } else {
+            await reportAdminStatus(clientId, false);
+          }
+        } catch (adminErr) {
+          console.log('Protection check error (non-fatal):', adminErr);
         }
         
       } catch (error) {
+        console.log('Protection initialization error:', error);
+      }
+    };
+    
+    initializeProtection();
+  }, [clientId]);
         console.log('Protection setup error:', error);
       }
     };
