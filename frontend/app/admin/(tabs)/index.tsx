@@ -913,16 +913,16 @@ const styles = StyleSheet.create({
     color: '#F59E0B',
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#fff',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: 12,
   },
   statCard: {
     width: '48%',
@@ -1004,9 +1004,9 @@ const styles = StyleSheet.create({
   // Heartbeat card styles
   heartbeatCard: {
     backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 16,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
     borderWidth: 1,
     borderColor: '#334155',
   },
@@ -1014,7 +1014,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   heartbeatTitleRow: {
     flexDirection: 'row',
@@ -1045,7 +1045,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   heartbeatCount: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#fff',
   },
@@ -1070,9 +1070,9 @@ const styles = StyleSheet.create({
   // Chart styles
   chartContainer: {
     backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 16,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
     borderWidth: 1,
     borderColor: '#334155',
   },
