@@ -524,33 +524,40 @@ class EMIDeviceAdminModule : Module() {
             }
         }
 
-        // Open the system accessibility settings — tries "Installed apps" sub-screen first
+        // Open the system accessibility settings — tries direct service page, then installed apps
         AsyncFunction("openAccessibilitySettings") { promise: Promise ->
             try {
-                // Try to open the "Installed Services" / "Installed Apps" sub-page directly
-                val installedServicesIntents = listOf(
-                    // Samsung One UI: Accessibility > Installed apps
+                val myPackage = context.packageName
+
+                // Try opening the specific accessibility service detail page for our app
+                val serviceIntents = listOf(
+                    // Direct: Open our accessibility service's settings page (works on many devices)
+                    Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                        val serviceId = "$myPackage/expo.modules.emideviceadmin.EMIAccessibilityService"
+                        putExtra(":settings:fragment_args_key", serviceId)
+                        putExtra("android.provider.extra.FRAGMENT_ARG_KEY", serviceId)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    },
+                    // Samsung One UI installed services
                     Intent().apply {
                         setClassName("com.android.settings", "com.android.settings.Settings\$AccessibilityInstalledServiceActivity")
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     },
-                    // Generic Android: Accessibility installed services
+                    // Samsung One UI 6+ installed apps
                     Intent().apply {
-                        setClassName("com.android.settings", "com.android.settings.accessibility.AccessibilitySettingsForSetupWizardActivity")
+                        setClassName("com.android.settings", "com.samsung.android.settings.accessibility.installed.InstalledServiceActivity")
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     },
                 )
 
-                for (intent in installedServicesIntents) {
+                for (intent in serviceIntents) {
                     try {
-                        if (intent.resolveActivity(context.packageManager) != null) {
-                            context.startActivity(intent)
-                            Log.d(TAG, "openAccessibilitySettings: Opened installed services directly")
-                            promise.resolve("opened_installed")
-                            return@AsyncFunction
-                        }
+                        context.startActivity(intent)
+                        Log.d(TAG, "openAccessibilitySettings: Opened via ${intent.component?.className ?: "direct intent"}")
+                        promise.resolve("opened")
+                        return@AsyncFunction
                     } catch (e: Exception) {
-                        Log.d(TAG, "openAccessibilitySettings: Sub-intent failed: ${e.message}")
+                        Log.d(TAG, "openAccessibilitySettings: Intent failed: ${e.message}")
                     }
                 }
 
@@ -558,7 +565,7 @@ class EMIDeviceAdminModule : Module() {
                 val intent = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
-                Log.d(TAG, "openAccessibilitySettings: Opened top-level")
+                Log.d(TAG, "openAccessibilitySettings: Opened top-level fallback")
                 promise.resolve("opened")
             } catch (e: Exception) {
                 Log.e(TAG, "openAccessibilitySettings error: ${e.message}")
