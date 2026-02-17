@@ -369,6 +369,15 @@ export default function ClientHome() {
           loan_due_date: null,
         });
         wasLocked.current = true;
+        // Engage kiosk mode immediately on boot if locked
+        if (Platform.OS === 'android') {
+          try {
+            const result = await devicePolicy.startKioskMode();
+            console.log('[Startup] Kiosk mode result:', result);
+          } catch (e) {
+            console.log('[Startup] Kiosk mode error:', e);
+          }
+        }
       }
     } catch (error) {
       console.log('Failed to check cached lock state:', error);
