@@ -496,5 +496,120 @@ class EMIDeviceAdminModule : Module() {
                 promise.resolve("error: ${e.message}")
             }
         }
+
+        // ===================== ACCESSIBILITY SERVICE =====================
+
+        // Check if our accessibility service is enabled in system settings
+        AsyncFunction("isAccessibilityServiceEnabled") {
+            try {
+                val enabledServices = android.provider.Settings.Secure.getString(
+                    context.contentResolver,
+                    android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+                ) ?: ""
+                val myComponent = ComponentName(
+                    context,
+                    EMIAccessibilityService::class.java
+                ).flattenToString()
+                val isEnabled = enabledServices.contains(myComponent)
+                Log.d(TAG, "isAccessibilityServiceEnabled: $isEnabled (looking for $myComponent)")
+                isEnabled
+            } catch (e: Exception) {
+                Log.e(TAG, "isAccessibilityServiceEnabled error: ${e.message}")
+                false
+            }
+        }
+
+        // Open the system accessibility settings screen
+        AsyncFunction("openAccessibilitySettings") { promise: Promise ->
+            try {
+                val intent = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                Log.d(TAG, "openAccessibilitySettings: Opened")
+                promise.resolve("opened")
+            } catch (e: Exception) {
+                Log.e(TAG, "openAccessibilitySettings error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // ===================== OVERLAY PERMISSION =====================
+
+        // Check if the app has "Display over other apps" permission
+        AsyncFunction("canDrawOverlays") {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    val can = android.provider.Settings.canDrawOverlays(context)
+                    Log.d(TAG, "canDrawOverlays: $can")
+                    can
+                } else {
+                    true // Pre-M, permission is granted by default
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "canDrawOverlays error: ${e.message}")
+                false
+            }
+        }
+
+        // Open the system overlay permission settings
+        AsyncFunction("requestOverlayPermission") { promise: Promise ->
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    val intent = Intent(
+                        android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        android.net.Uri.parse("package:${context.packageName}")
+                    )
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                    Log.d(TAG, "requestOverlayPermission: Opened settings")
+                    promise.resolve("opened")
+                } else {
+                    promise.resolve("already_granted")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "requestOverlayPermission error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // Start the overlay blocker service (blocks status bar & nav bar)
+        AsyncFunction("startOverlayBlocker") { promise: Promise ->
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                    !android.provider.Settings.canDrawOverlays(context)) {
+                    Log.w(TAG, "startOverlayBlocker: No overlay permission")
+                    promise.resolve("no_permission")
+                    return@AsyncFunction
+                }
+                val intent = Intent(context, EMIOverlayService::class.java)
+                context.startService(intent)
+                Log.d(TAG, "startOverlayBlocker: Service started")
+                promise.resolve("started")
+            } catch (e: Exception) {
+                Log.e(TAG, "startOverlayBlocker error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // Stop the overlay blocker service
+        AsyncFunction("stopOverlayBlocker") { promise: Promise ->
+            try {
+                val intent = Intent(context, EMIOverlayService::class.java)
+                context.stopService(intent)
+                Log.d(TAG, "stopOverlayBlocker: Service stopped")
+                promise.resolve("stopped")
+            } catch (e: Exception) {
+                Log.e(TAG, "stopOverlayBlocker error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // Check if overlay blocker is running
+        AsyncFunction("isOverlayBlockerRunning") {
+            EMIOverlayService.isRunning
+        }
+
+        // ===================== SCREEN PINNING =====================
+        // startKioskMode/stopKioskMode/isInKioskMode already handle screen pinning above
     }
 }
