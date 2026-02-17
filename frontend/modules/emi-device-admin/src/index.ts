@@ -140,6 +140,16 @@ export async function openAccessibilitySettings(): Promise<string> {
   }
 }
 
+export async function openAppInfo(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.openAppInfo();
+  } catch (e) {
+    console.log('openAppInfo error:', e);
+    return 'error';
+  }
+}
+
 // ===================== OVERLAY PERMISSION =====================
 
 export async function canDrawOverlays(): Promise<boolean> {
