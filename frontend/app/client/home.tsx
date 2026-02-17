@@ -653,6 +653,7 @@ export default function ClientHome() {
 
     return () => {
       isMounted.current = false;
+      initComplete.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Run once on mount only; functions are stable refs
   }, []);
