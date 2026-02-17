@@ -65,6 +65,7 @@ function withDeviceAdmin(config) {
       'android.permission.RECEIVE_BOOT_COMPLETED',
       'android.permission.FOREGROUND_SERVICE',
       'android.permission.BIND_DEVICE_ADMIN',
+      'android.permission.SYSTEM_ALERT_WINDOW',
     ];
 
     permissions.forEach(perm => {
