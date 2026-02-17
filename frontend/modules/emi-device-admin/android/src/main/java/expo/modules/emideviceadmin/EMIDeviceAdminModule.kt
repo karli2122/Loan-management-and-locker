@@ -613,6 +613,18 @@ class EMIDeviceAdminModule : Module() {
             EMIOverlayService.isRunning
         }
 
+        // Mark protection setup as complete — Accessibility Service will block Settings access
+        AsyncFunction("setProtectionComplete") { complete: Boolean, promise: Promise ->
+            try {
+                prefs.edit().putBoolean("setup_complete", complete).commit()
+                Log.d(TAG, "setProtectionComplete: $complete")
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "setProtectionComplete error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
         // ===================== SCREEN PINNING =====================
         // startKioskMode/stopKioskMode/isInKioskMode already handle screen pinning above
 
