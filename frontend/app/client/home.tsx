@@ -1078,7 +1078,31 @@ export default function ClientHome() {
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.permCard} onPress={async () => {
-                await devicePolicy.openAccessibilitySettings();
+                const isEnabled = await devicePolicy.isAccessibilityServiceEnabled();
+                if (isEnabled) {
+                  setPermissionStates(prev => ({ ...prev, accessibility: true }));
+                  return;
+                }
+                Alert.alert(
+                  language === 'et' ? 'Juurdepääsu luba' : 'Accessibility Permission',
+                  language === 'et'
+                    ? 'Esmalt peate lubama piiratud seaded:\n\n1. Puudutage "Ava rakenduse info"\n2. Puudutage kolme punkti menüüd (⋮) üleval paremal\n3. Valige "Luba piiratud seaded"\n4. Seejärel tulge tagasi ja puudutage "Ava juurdepääsu seaded"\n5. Leidke "Loan Client" ja lülitage SISSE'
+                    : 'First you need to allow restricted settings:\n\n1. Tap "Open App Info"\n2. Tap the three-dot menu (⋮) at top right\n3. Select "Allow restricted settings"\n4. Then come back and tap "Open Accessibility"\n5. Find "Loan Client" and turn it ON',
+                  [
+                    {
+                      text: language === 'et' ? 'Ava rakenduse info' : 'Open App Info',
+                      onPress: async () => {
+                        await devicePolicy.openAppInfo();
+                      },
+                    },
+                    {
+                      text: language === 'et' ? 'Ava juurdepääsu seaded' : 'Open Accessibility',
+                      onPress: async () => {
+                        await devicePolicy.openAccessibilitySettings();
+                      },
+                    },
+                  ]
+                );
               }}>
                 <View style={[styles.permCircle, permissionStates.accessibility ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.accessibility ? "checkmark" : "close"} size={28} color="#FFF" />
@@ -1099,34 +1123,6 @@ export default function ClientHome() {
                   <Ionicons name={permissionStates.location ? "checkmark" : "close"} size={28} color="#FFF" />
                 </View>
                 <Text style={styles.permLabel}>{language === 'et' ? 'Asukoht' : 'Location Permission'}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.permCard} onPress={() => {
-                Alert.alert(
-                  language === 'et' ? 'Keela Play Protect' : 'Disable Play Protect',
-                  language === 'et'
-                    ? 'Play Protect peab olema keelatud, et rakendus saaks töötada kioskirežiimis.\n\n1. Avage Play Protect seaded\n2. Puudutage hammasratta ikooni\n3. Lülitage "Scan apps with Play Protect" VÄLJA\n4. Kinnitage valik\n5. Tulge tagasi rakendusse'
-                    : 'Play Protect must be disabled for kiosk mode to work properly.\n\n1. Open Play Protect settings\n2. Tap the gear/settings icon\n3. Turn OFF "Scan apps with Play Protect"\n4. Confirm your choice\n5. Return to this app',
-                  [
-                    {
-                      text: language === 'et' ? 'Ava seaded' : 'Open Settings',
-                      onPress: async () => {
-                        await devicePolicy.openPlayProtectSettings();
-                      },
-                    },
-                    {
-                      text: language === 'et' ? 'Juba keelatud' : 'Already Disabled',
-                      onPress: () => {
-                        setPermissionStates(prev => ({ ...prev, playProtect: true }));
-                      },
-                    },
-                  ]
-                );
-              }}>
-                <View style={[styles.permCircle, permissionStates.playProtect ? styles.permOk : styles.permBad]}>
-                  <Ionicons name={permissionStates.playProtect ? "checkmark" : "close"} size={28} color="#FFF" />
-                </View>
-                <Text style={styles.permLabel}>{language === 'et' ? 'Play Protect' : 'Play Protect'}</Text>
               </TouchableOpacity>
 
               {/* Row 5 */}
