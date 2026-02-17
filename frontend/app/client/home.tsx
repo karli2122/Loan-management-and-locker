@@ -488,7 +488,9 @@ export default function ClientHome() {
         try {
           await devicePolicy.stopKioskMode();
           await devicePolicy.stopOverlayBlocker();
+          await devicePolicy.disableImmersiveMode();
           await devicePolicy.setProtectionComplete(false);
+          await devicePolicy.setNativeLockState(false);
         } catch (e) {
           console.log('Protection cleanup error:', e);
         }
