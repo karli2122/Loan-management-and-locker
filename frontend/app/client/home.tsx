@@ -473,14 +473,16 @@ export default function ClientHome() {
       if (Platform.OS === 'android') {
         try {
           await devicePolicy.stopKioskMode();
-          console.log('Kiosk mode stopped for uninstall');
+          await devicePolicy.stopOverlayBlocker();
+          await devicePolicy.setProtectionComplete(false);
         } catch (e) {
-          console.log('Kiosk stop during uninstall error:', e);
+          console.log('Protection cleanup error:', e);
         }
       }
 
       // Allow app to be uninstalled (removes device admin)
       await devicePolicy.allowUninstall();
+      await AsyncStorage.removeItem('protection_complete');
       
       console.log('App uninstall protection disabled by admin');
       setIsAdminActive(false);
