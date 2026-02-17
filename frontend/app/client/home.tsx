@@ -937,73 +937,170 @@ export default function ClientHome() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10B981" />
         }
       >
-        {/* Protection Status Banner */}
-        <View style={[styles.protectionBanner, isAdminActive ? styles.protectionFull : styles.protectionBasic]}>
-          <Ionicons 
-            name={isAdminActive ? "shield-checkmark" : "shield"} 
-            size={24} 
-            color={isAdminActive ? "#10B981" : "#F59E0B"} 
-          />
-          <View style={styles.protectionBannerContent}>
-            <Text style={styles.protectionBannerTitle}>
-              {isAdminActive 
-                ? (language === 'et' ? 'Seadme kaitse' : 'Device Protection')
-                : (language === 'et' ? 'Kaitse pole aktiivne' : 'Protection Not Active')}
-            </Text>
-            <Text style={styles.protectionBannerText}>
-              {isAdminActive 
-                ? (language === 'et' ? 'Administraatori õigused aktiivsed' : 'Admin permissions active')
-                : (language === 'et' ? 'Palun lubage administraatori õigused' : 'Please enable admin permissions')}
-            </Text>
-          </View>
-          {!isAdminActive && (
-            <TouchableOpacity 
-              style={styles.enableProtectionButton}
-              onPress={async () => {
-                // Prevent double-tap
-                if (isRequestingAdmin.current) {
-                  console.log('Admin request already in progress');
-                  return;
-                }
-                
-                console.log('Enable button pressed - requesting Device Admin');
-                isRequestingAdmin.current = true;
-                
-                try {
-                  const result = await devicePolicy.requestAdmin();
-                  console.log('Device Admin request result:', result);
-                  
-                  // Only start retry if the request was dispatched successfully
-                  if (result !== 'error' && result !== 'error_module_not_available') {
-                    // Give the system dialog time to appear before starting retry checks
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    
-                    // Run check in background - increased to 20 attempts
-                    checkAdminStatusWithRetry(20, 1000).then(granted => {
-                      isRequestingAdmin.current = false;
-                      if (granted) {
-                        console.log('Admin permission successfully granted via Enable button!');
-                      } else {
-                        console.log('Admin not granted after enable button press');
-                      }
-                    }).catch(() => {
-                      isRequestingAdmin.current = false;
-                    });
-                  } else {
-                    isRequestingAdmin.current = false;
-                  }
-                } catch (e) {
-                  console.log('Admin request error:', e);
-                  isRequestingAdmin.current = false;
-                }
-              }}
-            >
-              <Text style={styles.enableProtectionText}>
-                {language === 'et' ? 'Luba' : 'Enable'}
+        {/* Device Protection Setup */}
+        {showProtectionSetup && Platform.OS === 'android' && (
+          <View style={styles.protectionSetup} data-testid="protection-setup">
+            <View style={styles.protectionSetupHeader}>
+              <Ionicons name="shield-checkmark" size={22} color="#3B82F6" />
+              <Text style={styles.protectionSetupTitle}>
+                {language === 'et' ? 'Seadme kaitse seadistamine' : 'Device Protection Setup'}
               </Text>
-            </TouchableOpacity>
-          )}
-        </View>
+              <TouchableOpacity onPress={() => setShowProtectionSetup(false)}>
+                <Ionicons name="chevron-up" size={20} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Step 1: Device Admin */}
+            <View style={styles.protectionStep}>
+              <View style={[styles.stepIcon, isAdminActive && styles.stepIconDone]}>
+                <Ionicons name={isAdminActive ? "checkmark" : "1"} size={16} color={isAdminActive ? "#FFF" : "#64748B"} />
+                {!isAdminActive && <Text style={styles.stepNumber}>1</Text>}
+              </View>
+              <View style={styles.stepContent}>
+                <Text style={styles.stepTitle}>
+                  {language === 'et' ? 'Administraatori õigused' : 'Device Admin'}
+                </Text>
+                <Text style={styles.stepDesc}>
+                  {language === 'et' ? 'Kaitseb seadet volitamata muudatuste eest' : 'Protects device from unauthorized changes'}
+                </Text>
+              </View>
+              {isAdminActive ? (
+                <View style={styles.stepDoneBadge}><Text style={styles.stepDoneText}>OK</Text></View>
+              ) : (
+                <TouchableOpacity style={styles.stepButton} onPress={async () => {
+                  if (isRequestingAdmin.current) return;
+                  isRequestingAdmin.current = true;
+                  try {
+                    await devicePolicy.requestAdmin();
+                    await new Promise(r => setTimeout(r, 2000));
+                    const granted = await checkAdminStatusWithRetry(20, 1000);
+                    isRequestingAdmin.current = false;
+                    if (granted) console.log('Admin granted');
+                  } catch (e) { isRequestingAdmin.current = false; }
+                }}>
+                  <Text style={styles.stepButtonText}>{language === 'et' ? 'Luba' : 'Enable'}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Step 2: Accessibility Service */}
+            <View style={styles.protectionStep}>
+              <View style={[styles.stepIcon, accessibilityEnabled && styles.stepIconDone]}>
+                {accessibilityEnabled ? <Ionicons name="checkmark" size={16} color="#FFF" /> : <Text style={styles.stepNumber}>2</Text>}
+              </View>
+              <View style={styles.stepContent}>
+                <Text style={styles.stepTitle}>
+                  {language === 'et' ? 'Juurdepääsuteenus' : 'Accessibility Service'}
+                </Text>
+                <Text style={styles.stepDesc}>
+                  {language === 'et' ? 'Hoiab rakenduse esiplaanil' : 'Keeps the app in foreground'}
+                </Text>
+              </View>
+              {accessibilityEnabled ? (
+                <View style={styles.stepDoneBadge}><Text style={styles.stepDoneText}>OK</Text></View>
+              ) : (
+                <TouchableOpacity style={styles.stepButton} onPress={async () => {
+                  await devicePolicy.openAccessibilitySettings();
+                }}>
+                  <Text style={styles.stepButtonText}>{language === 'et' ? 'Ava' : 'Open'}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Step 3: Display Over Other Apps */}
+            <View style={styles.protectionStep}>
+              <View style={[styles.stepIcon, overlayEnabled && styles.stepIconDone]}>
+                {overlayEnabled ? <Ionicons name="checkmark" size={16} color="#FFF" /> : <Text style={styles.stepNumber}>3</Text>}
+              </View>
+              <View style={styles.stepContent}>
+                <Text style={styles.stepTitle}>
+                  {language === 'et' ? 'Kuva teiste rakenduste kohal' : 'Display Over Other Apps'}
+                </Text>
+                <Text style={styles.stepDesc}>
+                  {language === 'et' ? 'Blokeerib olekuriba ligipääsu' : 'Blocks status bar access'}
+                </Text>
+              </View>
+              {overlayEnabled ? (
+                <View style={styles.stepDoneBadge}><Text style={styles.stepDoneText}>OK</Text></View>
+              ) : (
+                <TouchableOpacity style={styles.stepButton} onPress={async () => {
+                  await devicePolicy.requestOverlayPermission();
+                }}>
+                  <Text style={styles.stepButtonText}>{language === 'et' ? 'Luba' : 'Allow'}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Step 4: Screen Pinning */}
+            <View style={styles.protectionStep}>
+              <View style={[styles.stepIcon, screenPinned && styles.stepIconDone]}>
+                {screenPinned ? <Ionicons name="checkmark" size={16} color="#FFF" /> : <Text style={styles.stepNumber}>4</Text>}
+              </View>
+              <View style={styles.stepContent}>
+                <Text style={styles.stepTitle}>
+                  {language === 'et' ? 'Ekraani kinnitamine' : 'Screen Pinning'}
+                </Text>
+                <Text style={styles.stepDesc}>
+                  {language === 'et' ? 'Lukustab rakenduse ekraanile' : 'Locks app to the screen'}
+                </Text>
+              </View>
+              {screenPinned ? (
+                <View style={styles.stepDoneBadge}><Text style={styles.stepDoneText}>OK</Text></View>
+              ) : (
+                <TouchableOpacity style={styles.stepButton} onPress={async () => {
+                  const result = await devicePolicy.startKioskMode();
+                  if (result === 'started' || result === 'already_locked') {
+                    setScreenPinned(true);
+                  }
+                }}>
+                  <Text style={styles.stepButtonText}>{language === 'et' ? 'Kinnita' : 'Pin'}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Status summary */}
+            <View style={styles.protectionSummary}>
+              <Text style={styles.protectionSummaryText}>
+                {[isAdminActive, accessibilityEnabled, overlayEnabled, screenPinned].filter(Boolean).length}/4 {language === 'et' ? 'kaitse aktiivne' : 'protections active'}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Show collapsed protection banner when setup is hidden but not all enabled */}
+        {!showProtectionSetup && Platform.OS === 'android' && (!isAdminActive || !accessibilityEnabled || !overlayEnabled) && (
+          <TouchableOpacity 
+            style={[styles.protectionBanner, styles.protectionBasic]}
+            onPress={() => setShowProtectionSetup(true)}
+            data-testid="protection-banner-collapsed"
+          >
+            <Ionicons name="shield" size={24} color="#F59E0B" />
+            <View style={styles.protectionBannerContent}>
+              <Text style={styles.protectionBannerTitle}>
+                {language === 'et' ? 'Kaitse mittetäielik' : 'Protection Incomplete'}
+              </Text>
+              <Text style={styles.protectionBannerText}>
+                {[isAdminActive, accessibilityEnabled, overlayEnabled, screenPinned].filter(Boolean).length}/4 {language === 'et' ? 'aktiivne — puudutage seadistamiseks' : 'active — tap to setup'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-down" size={20} color="#94A3B8" />
+          </TouchableOpacity>
+        )}
+
+        {/* All protections active banner */}
+        {!showProtectionSetup && Platform.OS === 'android' && isAdminActive && accessibilityEnabled && overlayEnabled && (
+          <View style={[styles.protectionBanner, styles.protectionFull]} data-testid="protection-banner-full">
+            <Ionicons name="shield-checkmark" size={24} color="#10B981" />
+            <View style={styles.protectionBannerContent}>
+              <Text style={styles.protectionBannerTitle}>
+                {language === 'et' ? 'Seadme kaitse aktiivne' : 'Device Protection Active'}
+              </Text>
+              <Text style={styles.protectionBannerText}>
+                {language === 'et' ? 'Kõik kaitsed on lubatud' : 'All protections enabled'}
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Warning Banner */}
         {status?.warning_message && (
