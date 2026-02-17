@@ -56,9 +56,12 @@ class EMIAccessibilityService : AccessibilityService() {
         if (!prefs.getBoolean(KEY_PROTECTION_ENABLED, true)) return
 
         // Allow essential system packages (settings, permission dialogs, system UI)
-        val allowedPackages = setOf(
+        // DURING SETUP: allow Settings so user can enable permissions
+        // AFTER SETUP COMPLETE: block Settings to prevent disabling permissions
+        val setupComplete = prefs.getBoolean(KEY_SETUP_COMPLETE, false)
+
+        val allowedPackages = mutableSetOf(
             "com.android.systemui",
-            "com.android.settings",
             "com.android.packageinstaller",
             "com.google.android.packageinstaller",
             "com.google.android.permissioncontroller",
@@ -67,6 +70,13 @@ class EMIAccessibilityService : AccessibilityService() {
             "com.android.phone",
             "com.android.incallui",
         )
+
+        // Only allow Settings during setup (before protection is complete)
+        if (!setupComplete) {
+            allowedPackages.add("com.android.settings")
+            allowedPackages.add("com.google.android.gms") // Play Store/Protect
+            allowedPackages.add("com.android.vending") // Play Store
+        }
 
         if (packageName in allowedPackages) return
 
