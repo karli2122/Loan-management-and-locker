@@ -1039,23 +1039,6 @@ export default function ClientHome() {
 
               {/* Row 2 */}
               <TouchableOpacity style={styles.permCard} onPress={async () => {
-                if (!permissionStates.deviceAdmin) {
-                  if (isRequestingAdmin.current) return;
-                  isRequestingAdmin.current = true;
-                  try {
-                    await devicePolicy.requestAdmin();
-                    await new Promise(r => setTimeout(r, 2000));
-                    await checkAdminStatusWithRetry(20, 1000);
-                  } catch (e) {} finally { isRequestingAdmin.current = false; }
-                }
-              }}>
-                <View style={[styles.permCircle, permissionStates.deviceAdmin ? styles.permOk : styles.permBad]}>
-                  <Ionicons name={permissionStates.deviceAdmin ? "checkmark" : "close"} size={28} color="#FFF" />
-                </View>
-                <Text style={styles.permLabel}>{language === 'et' ? 'Seadme admin' : 'Device Admin'}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.permCard} onPress={async () => {
                 await devicePolicy.openBatterySettings();
               }}>
                 <View style={[styles.permCircle, permissionStates.batteryPowerUsage ? styles.permOk : styles.permBad]}>
