@@ -470,6 +470,16 @@ class DevicePolicyManager {
     }
   }
 
+  async setProtectionComplete(complete: boolean): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.setProtectionComplete?.(complete)) || 'error';
+    } catch (error) {
+      console.log('Failed to set protection complete:', error);
+      return 'error';
+    }
+  }
+
   // ===================== BATTERY OPTIMIZATION =====================
 
   async isIgnoringBatteryOptimizations(): Promise<boolean> {
