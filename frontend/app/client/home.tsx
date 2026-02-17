@@ -653,14 +653,10 @@ export default function ClientHome() {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         fetchStatus(clientId);
         updateLocation(clientId);
-        // Re-check protection on app resume
-        checkAndSetupDeviceProtection().catch((err) =>
-          console.error('Device protection check error on resume:', err)
-        );
-        // Re-check accessibility on app resume (user may have just enabled it)
+        // Silently refresh admin status on resume — no alerts, no dialogs
         if (Platform.OS === 'android') {
-          devicePolicy.isAccessibilityEnabled().then(enabled => {
-            console.log('Accessibility service enabled:', enabled);
+          devicePolicy.isAdminActive().then(active => {
+            setIsAdminActive(active);
           }).catch(() => {});
         }
       }
