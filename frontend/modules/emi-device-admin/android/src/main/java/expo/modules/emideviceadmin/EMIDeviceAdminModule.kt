@@ -806,9 +806,11 @@ class EMIDeviceAdminModule : Module() {
         // ===================== AUTO START =====================
 
         // Open auto-start / background usage settings (OEM-specific)
+        // Samsung: uses direct battery optimization request dialog
         AsyncFunction("openAutoStartSettings") { promise: Promise ->
             try {
-                val intents = listOf(
+                // First try OEM-specific auto-start pages (Xiaomi, Oppo, Vivo, Huawei)
+                val oemIntents = listOf(
                     // Xiaomi
                     Intent().setComponent(ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")),
                     // Oppo
@@ -817,33 +819,48 @@ class EMIDeviceAdminModule : Module() {
                     Intent().setComponent(ComponentName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")),
                     // Huawei
                     Intent().setComponent(ComponentName("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity")),
-                    // Samsung Device Care > Battery
-                    Intent().setComponent(ComponentName("com.samsung.android.lool", "com.samsung.android.sm.battery.ui.BatteryActivity")),
-                    // Samsung newer One UI
-                    Intent().setComponent(ComponentName("com.samsung.android.sm", "com.samsung.android.sm.battery.ui.BatteryActivity")),
-                    // Samsung background usage limits
-                    Intent().setComponent(ComponentName("com.samsung.android.lool", "com.samsung.android.sm.battery.ui.usage.AppSleepSettingActivity")),
-                    // Generic: Battery optimization (excludes app from Doze)
-                    Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
-                    // Last fallback: app-specific battery settings
-                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                        data = Uri.parse("package:${context.packageName}")
-                    },
                 )
                 
-                for (intent in intents) {
+                for (intent in oemIntents) {
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     try {
                         if (intent.resolveActivity(context.packageManager) != null) {
                             context.startActivity(intent)
-                            Log.d(TAG, "openAutoStartSettings: Opened ${intent.component?.className ?: intent.action}")
+                            Log.d(TAG, "openAutoStartSettings: Opened OEM page ${intent.component?.className}")
                             promise.resolve("opened")
                             return@AsyncFunction
                         }
                     } catch (e: Exception) {
-                        Log.d(TAG, "openAutoStartSettings: Intent failed: ${e.message}")
+                        Log.d(TAG, "openAutoStartSettings: OEM intent failed: ${e.message}")
                     }
                 }
+
+                // For Samsung and other devices: request battery optimization exemption directly
+                // This shows a clear system dialog "Allow app to run in background?"
+                try {
+                    val exemptIntent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                    exemptIntent.data = Uri.parse("package:${context.packageName}")
+                    exemptIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(exemptIntent)
+                    Log.d(TAG, "openAutoStartSettings: Opened battery optimization exemption dialog")
+                    promise.resolve("opened")
+                    return@AsyncFunction
+                } catch (e: Exception) {
+                    Log.d(TAG, "openAutoStartSettings: Battery exemption failed: ${e.message}")
+                }
+
+                // Last fallback: general battery optimization list
+                try {
+                    val fallbackIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                    fallbackIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(fallbackIntent)
+                    Log.d(TAG, "openAutoStartSettings: Opened battery optimization list")
+                    promise.resolve("opened")
+                    return@AsyncFunction
+                } catch (e: Exception) {
+                    Log.d(TAG, "openAutoStartSettings: Fallback failed: ${e.message}")
+                }
+
                 promise.resolve("not_available")
             } catch (e: Exception) {
                 Log.e(TAG, "openAutoStartSettings error: ${e.message}")
