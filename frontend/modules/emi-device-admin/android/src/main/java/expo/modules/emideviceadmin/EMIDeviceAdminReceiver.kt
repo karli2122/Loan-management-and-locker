@@ -65,44 +65,35 @@ class EMIDeviceAdminReceiver : DeviceAdminReceiver() {
 
     override fun onDisableRequested(context: Context, intent: Intent): CharSequence {
         Log.d(TAG, "Device Admin disable requested - this is a security event")
-        // Check if uninstall has been explicitly allowed by the admin
+        // Read the uninstall-allowed flag. Because allowUninstall() uses commit()
+        // (synchronous), the value is guaranteed to be on disk when we reach here
+        // during the legitimate admin-initiated uninstall flow.
         val prefs = getPrefs(context)
         val uninstallAllowed = prefs.getBoolean(KEY_UNINSTALL_ALLOWED, false)
-        
+
+        Log.d(TAG, "onDisableRequested: uninstallAllowed=$uninstallAllowed")
+
         if (!uninstallAllowed) {
-            // FACTORY RESET: Wipe the device data immediately.
-            // Admin is still active at this point so wipeData() succeeds.
-            // This prevents the user from ever completing the disable flow.
+            // Unauthorized attempt: lock screen and record tamper
             try {
                 val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
                 val adminComponent = android.content.ComponentName(context, EMIDeviceAdminReceiver::class.java)
                 if (dpm.isAdminActive(adminComponent)) {
-                    Log.w(TAG, "UNAUTHORIZED DISABLE ATTEMPT - WIPING DEVICE")
-                    prefs.edit().putBoolean("tamper_detected", true).apply()
-                    dpm.wipeData(0)
+                    Log.w(TAG, "UNAUTHORIZED DISABLE ATTEMPT - locking device")
+                    dpm.lockNow()
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to wipe device on disable request: ${e.message}")
-                // Fallback: lock screen and launch app
-                try {
-                    val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
-                    val adminComponent = android.content.ComponentName(context, EMIDeviceAdminReceiver::class.java)
-                    if (dpm.isAdminActive(adminComponent)) {
-                        dpm.lockNow()
-                    }
-                } catch (e2: Exception) {
-                    Log.e(TAG, "Fallback lock also failed: ${e2.message}")
-                }
-                prefs.edit().putBoolean("tamper_detected", true).apply()
-                launchAppForTamperPrompt(context)
+                Log.e(TAG, "Lock on disable request failed: ${e.message}")
             }
+            prefs.edit().putBoolean("tamper_detected", true).commit()
+            launchAppForTamperPrompt(context)
         }
-        
+
         return if (uninstallAllowed) {
             "Device admin will be deactivated."
         } else {
-            "WARNING: Disabling device admin will WIPE ALL DATA on this device. " +
-            "This action is irreversible."
+            "WARNING: Disabling device admin is a security violation. " +
+            "Contact your administrator."
         }
     }
 }
