@@ -664,9 +664,15 @@ export default function ClientHome() {
         }
         
         // Only check admin state silently — no alerts, no system dialogs on init.
-        // The UI banner will prompt the user if admin is not active.
         if (Platform.OS === 'android' && isMounted.current) {
           try {
+            // Check if protection was already completed previously
+            const protComplete = await AsyncStorage.getItem('protection_complete');
+            if (protComplete === 'true') {
+              setProtectionComplete(true);
+              setShowProtectionSetup(false);
+            }
+
             const [admin, accessibility, overlay, batteryOpt, locationPerm, notifPerm] = await Promise.all([
               devicePolicy.isAdminActive(),
               devicePolicy.isAccessibilityEnabled(),
@@ -679,16 +685,15 @@ export default function ClientHome() {
             setPermissionStates({
               batteryOptimization: batteryOpt,
               overlay: overlay,
-              deviceAdmin: admin,
               batteryPowerUsage: batteryOpt,
-              autoStart: false, // Cannot check programmatically, user must verify
+              autoStart: protComplete === 'true',
               accessibility: accessibility,
               location: locationPerm,
-              playProtect: false, // Cannot check programmatically, user must verify
+              playProtect: protComplete === 'true',
               notification: notifPerm,
             });
-            // Start overlay blocker if permission is granted
-            if (overlay) {
+            // Start services if protection is active
+            if (overlay && admin) {
               devicePolicy.startOverlayBlocker().catch(() => {});
             }
           } catch (e) {
