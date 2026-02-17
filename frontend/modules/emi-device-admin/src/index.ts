@@ -117,3 +117,77 @@ export async function isInKioskMode(): Promise<boolean> {
     return false;
   }
 }
+
+// ===================== ACCESSIBILITY SERVICE =====================
+
+export async function isAccessibilityServiceEnabled(): Promise<boolean> {
+  if (!isModuleAvailable()) return false;
+  try {
+    return await EMIDeviceAdminModule.isAccessibilityServiceEnabled();
+  } catch (e) {
+    console.log('isAccessibilityServiceEnabled error:', e);
+    return false;
+  }
+}
+
+export async function openAccessibilitySettings(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.openAccessibilitySettings();
+  } catch (e) {
+    console.log('openAccessibilitySettings error:', e);
+    return 'error';
+  }
+}
+
+// ===================== OVERLAY PERMISSION =====================
+
+export async function canDrawOverlays(): Promise<boolean> {
+  if (!isModuleAvailable()) return false;
+  try {
+    return await EMIDeviceAdminModule.canDrawOverlays();
+  } catch (e) {
+    console.log('canDrawOverlays error:', e);
+    return false;
+  }
+}
+
+export async function requestOverlayPermission(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.requestOverlayPermission();
+  } catch (e) {
+    console.log('requestOverlayPermission error:', e);
+    return 'error';
+  }
+}
+
+export async function startOverlayBlocker(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.startOverlayBlocker();
+  } catch (e) {
+    console.log('startOverlayBlocker error:', e);
+    return 'error';
+  }
+}
+
+export async function stopOverlayBlocker(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.stopOverlayBlocker();
+  } catch (e) {
+    console.log('stopOverlayBlocker error:', e);
+    return 'error';
+  }
+}
+
+export async function isOverlayBlockerRunning(): Promise<boolean> {
+  if (!isModuleAvailable()) return false;
+  try {
+    return await EMIDeviceAdminModule.isOverlayBlockerRunning();
+  } catch (e) {
+    console.log('isOverlayBlockerRunning error:', e);
+    return false;
+  }
+}
