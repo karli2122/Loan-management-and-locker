@@ -953,8 +953,7 @@ export default function ClientHome() {
             {/* Step 1: Device Admin */}
             <View style={styles.protectionStep}>
               <View style={[styles.stepIcon, isAdminActive && styles.stepIconDone]}>
-                <Ionicons name={isAdminActive ? "checkmark" : "1"} size={16} color={isAdminActive ? "#FFF" : "#64748B"} />
-                {!isAdminActive && <Text style={styles.stepNumber}>1</Text>}
+                {isAdminActive ? <Ionicons name="checkmark" size={16} color="#FFF" /> : <Text style={styles.stepNumber}>1</Text>}
               </View>
               <View style={styles.stepContent}>
                 <Text style={styles.stepTitle}>
