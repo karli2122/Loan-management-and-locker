@@ -1078,7 +1078,7 @@ export default function ClientHome() {
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.permCard} onPress={async () => {
-                const isEnabled = await devicePolicy.isAccessibilityServiceEnabled();
+                const isEnabled = await devicePolicy.isAccessibilityEnabled();
                 if (isEnabled) {
                   setPermissionStates(prev => ({ ...prev, accessibility: true }));
                   return;
