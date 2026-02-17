@@ -195,7 +195,8 @@ async def generate_registration_code(client_id: str, admin_token: str = Query(..
         {"$set": {
             "registration_code": new_code,
             "is_registered": False,
-            "registered_at": None
+            "registered_at": None,
+            "uninstall_allowed": False,
         }}
     )
     
