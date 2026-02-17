@@ -14,7 +14,7 @@
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease"
       },
-      "node": "20.19.6"
+      "node": "20.20.0"
     },
     "admin-preview": {
       "distribution": "internal",
@@ -27,7 +27,7 @@
         "gradleCommand": ":app:assembleRelease"
       },
       "channel": "preview",
-      "node": "20.19.6"
+      "node": "20.20.0"
     },
     "admin-production": {
       "distribution": "store",
@@ -40,7 +40,7 @@
         "gradleCommand": ":app:assembleRelease"
       },
       "channel": "production",
-      "node": "20.19.6"
+      "node": "20.20.0"
     },
     "client-development": {
       "developmentClient": true,
@@ -53,7 +53,7 @@
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease"
       },
-      "node": "20.19.6"
+      "node": "20.20.0"
     },
     "client-preview": {
       "distribution": "internal",
@@ -67,7 +67,7 @@
         "gradleCommand": ":app:assembleRelease"
       },
       "channel": "preview",
-      "node": "20.19.6"
+      "node": "20.20.0"
     },
     "client-production": {
       "distribution": "store",
@@ -81,7 +81,7 @@
         "gradleCommand": ":app:assembleRelease"
       },
       "channel": "production",
-      "node": "20.19.6"
+      "node": "20.20.0"
     }
   },
   "submit": {
