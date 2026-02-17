@@ -347,6 +347,16 @@ class DevicePolicyManager {
     }
   }
 
+  async openAppInfo(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.openAppInfo?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to open app info:', error);
+      return 'error';
+    }
+  }
+
   // ===================== KIOSK MODE (LOCK TASK) =====================
 
   /**
