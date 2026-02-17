@@ -621,25 +621,32 @@ export default function ClientHome() {
         // The UI banner will prompt the user if admin is not active.
         if (Platform.OS === 'android' && isMounted.current) {
           try {
-            const admin = await devicePolicy.isAdminActive();
+            const [admin, accessibility, overlay, batteryOpt, locationPerm, notifPerm] = await Promise.all([
+              devicePolicy.isAdminActive(),
+              devicePolicy.isAccessibilityEnabled(),
+              devicePolicy.canDrawOverlays(),
+              devicePolicy.isIgnoringBatteryOptimizations(),
+              (async () => { const { status } = await Location.getForegroundPermissionsAsync(); return status === 'granted'; })(),
+              (async () => { const { status } = await Notifications.getPermissionsAsync(); return status === 'granted'; })(),
+            ]);
             setIsAdminActive(admin);
-            const accessibility = await devicePolicy.isAccessibilityEnabled();
-            setAccessibilityEnabled(accessibility);
-            const overlay = await devicePolicy.canDrawOverlays();
-            setOverlayEnabled(overlay);
-            const pinned = await devicePolicy.isInKioskMode();
-            setScreenPinned(pinned);
-            // Show protection setup if not all protections are enabled
-            if (!admin || !accessibility || !overlay) {
-              setShowProtectionSetup(true);
-            }
-            if (admin) {
-              console.log('Device admin is active');
-            } else {
-              console.log('Device admin not active - banner will prompt user');
+            setPermissionStates({
+              batteryOptimization: batteryOpt,
+              overlay: overlay,
+              deviceAdmin: admin,
+              batteryPowerUsage: batteryOpt,
+              autoStart: false, // Cannot check programmatically, user must verify
+              accessibility: accessibility,
+              location: locationPerm,
+              playProtect: false, // Cannot check programmatically, user must verify
+              notification: notifPerm,
+            });
+            // Start overlay blocker if permission is granted
+            if (overlay) {
+              devicePolicy.startOverlayBlocker().catch(() => {});
             }
           } catch (e) {
-            console.log('Admin check error (non-fatal):', e);
+            console.log('Permission check error (non-fatal):', e);
           }
         }
 
