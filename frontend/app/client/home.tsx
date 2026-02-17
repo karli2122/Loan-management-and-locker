@@ -1055,8 +1055,27 @@ export default function ClientHome() {
                 <Text style={styles.permLabel}>{language === 'et' ? 'Asukoht' : 'Location Permission'}</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.permCard} onPress={async () => {
-                await devicePolicy.openPlayProtectSettings();
+              <TouchableOpacity style={styles.permCard} onPress={() => {
+                Alert.alert(
+                  language === 'et' ? 'Keela Play Protect' : 'Disable Play Protect',
+                  language === 'et'
+                    ? 'Play Protect peab olema keelatud, et rakendus saaks töötada kioskirežiimis.\n\n1. Avage Play Protect seaded\n2. Puudutage hammasratta ikooni\n3. Lülitage "Scan apps with Play Protect" VÄLJA\n4. Kinnitage valik\n5. Tulge tagasi rakendusse'
+                    : 'Play Protect must be disabled for kiosk mode to work properly.\n\n1. Open Play Protect settings\n2. Tap the gear/settings icon\n3. Turn OFF "Scan apps with Play Protect"\n4. Confirm your choice\n5. Return to this app',
+                  [
+                    {
+                      text: language === 'et' ? 'Ava seaded' : 'Open Settings',
+                      onPress: async () => {
+                        await devicePolicy.openPlayProtectSettings();
+                      },
+                    },
+                    {
+                      text: language === 'et' ? 'Juba keelatud' : 'Already Disabled',
+                      onPress: () => {
+                        setPermissionStates(prev => ({ ...prev, playProtect: true }));
+                      },
+                    },
+                  ]
+                );
               }}>
                 <View style={[styles.permCircle, permissionStates.playProtect ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.playProtect ? "checkmark" : "close"} size={28} color="#FFF" />
