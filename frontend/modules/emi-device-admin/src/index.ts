@@ -18,6 +18,26 @@ export function isModuleAvailable(): boolean {
   return Platform.OS === 'android' && EMIDeviceAdminModule !== null;
 }
 
+export interface DeviceInfo {
+  manufacturer: string;
+  model: string;
+  brand: string;
+  sdkVersion: number;
+  androidVersion: string;
+}
+
+export function getDeviceInfo(): DeviceInfo {
+  if (!isModuleAvailable()) {
+    return { manufacturer: 'unknown', model: 'unknown', brand: 'unknown', sdkVersion: 0, androidVersion: '0' };
+  }
+  try {
+    return EMIDeviceAdminModule.getDeviceInfo();
+  } catch (e) {
+    console.log('getDeviceInfo error:', e);
+    return { manufacturer: 'unknown', model: 'unknown', brand: 'unknown', sdkVersion: 0, androidVersion: '0' };
+  }
+}
+
 export async function isDeviceAdminActive(): Promise<boolean> {
   if (!isModuleAvailable()) return false;
   try {
