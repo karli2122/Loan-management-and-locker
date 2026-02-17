@@ -1162,7 +1162,7 @@ export default function ClientHome() {
                 <Text style={styles.permLabel}>{language === 'et' ? 'Juurdepääs' : 'Accessibility Permission'}</Text>
               </TouchableOpacity>
 
-              {/* Row 4 */}
+              {/* Row 3: Location (auto) + Notification (auto) */}
               <TouchableOpacity style={styles.permCard} onPress={async () => {
                 if (!permissionStates.location) {
                   const { status } = await Location.requestForegroundPermissionsAsync();
@@ -1177,7 +1177,6 @@ export default function ClientHome() {
                 <Text style={styles.permLabel}>{language === 'et' ? 'Asukoht' : 'Location Permission'}</Text>
               </TouchableOpacity>
 
-              {/* Row 5 */}
               <TouchableOpacity style={styles.permCard} onPress={async () => {
                 if (!permissionStates.notification) {
                   const { status } = await Notifications.requestPermissionsAsync();
