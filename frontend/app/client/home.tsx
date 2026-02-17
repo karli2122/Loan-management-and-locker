@@ -753,10 +753,8 @@ export default function ClientHome() {
               location: locationPerm,
               notification: notifPerm,
             });
-            // Start services if protection is active
-            if (overlay && admin) {
-              devicePolicy.startOverlayBlocker().catch(() => {});
-            }
+            // PROTECTED state: AccessibilityService handles protection passively
+            // Overlay/kiosk/immersive only start in LOCKED state via updateLockState
           } catch (e) {
             console.log('Permission check error (non-fatal):', e);
           }
