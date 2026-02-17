@@ -191,3 +191,69 @@ export async function isOverlayBlockerRunning(): Promise<boolean> {
     return false;
   }
 }
+
+// ===================== BATTERY OPTIMIZATION =====================
+
+export async function isIgnoringBatteryOptimizations(): Promise<boolean> {
+  if (!isModuleAvailable()) return false;
+  try {
+    return await EMIDeviceAdminModule.isIgnoringBatteryOptimizations();
+  } catch (e) {
+    console.log('isIgnoringBatteryOptimizations error:', e);
+    return false;
+  }
+}
+
+export async function requestBatteryOptimization(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.requestBatteryOptimization();
+  } catch (e) {
+    console.log('requestBatteryOptimization error:', e);
+    return 'error';
+  }
+}
+
+export async function openBatterySettings(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.openBatterySettings();
+  } catch (e) {
+    console.log('openBatterySettings error:', e);
+    return 'error';
+  }
+}
+
+// ===================== AUTO START =====================
+
+export async function openAutoStartSettings(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.openAutoStartSettings();
+  } catch (e) {
+    console.log('openAutoStartSettings error:', e);
+    return 'error';
+  }
+}
+
+// ===================== NOTIFICATION / PLAY PROTECT =====================
+
+export async function openNotificationSettings(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.openNotificationSettings();
+  } catch (e) {
+    console.log('openNotificationSettings error:', e);
+    return 'error';
+  }
+}
+
+export async function openPlayProtectSettings(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.openPlayProtectSettings();
+  } catch (e) {
+    console.log('openPlayProtectSettings error:', e);
+    return 'error';
+  }
+}
