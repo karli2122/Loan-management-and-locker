@@ -456,10 +456,21 @@ export default function ClientHome() {
 
   const handleUninstallSignal = async () => {
     try {
-      // Allow app to be uninstalled
+      // Stop kiosk mode first so device is usable
+      if (Platform.OS === 'android') {
+        try {
+          await devicePolicy.stopKioskMode();
+          console.log('Kiosk mode stopped for uninstall');
+        } catch (e) {
+          console.log('Kiosk stop during uninstall error:', e);
+        }
+      }
+
+      // Allow app to be uninstalled (removes device admin)
       await devicePolicy.allowUninstall();
       
       console.log('App uninstall protection disabled by admin');
+      setIsAdminActive(false);
       
       // Show alert to user
       Alert.alert(
