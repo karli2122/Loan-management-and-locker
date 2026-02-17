@@ -686,7 +686,7 @@ class EMIDeviceAdminModule : Module() {
 
         // ===================== AUTO START =====================
 
-        // Open auto-start settings (OEM-specific: Xiaomi, Oppo, Vivo, Huawei, etc.)
+        // Open auto-start / background usage settings (OEM-specific)
         AsyncFunction("openAutoStartSettings") { promise: Promise ->
             try {
                 val intents = listOf(
@@ -698,9 +698,15 @@ class EMIDeviceAdminModule : Module() {
                     Intent().setComponent(ComponentName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")),
                     // Huawei
                     Intent().setComponent(ComponentName("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity")),
-                    // Samsung
+                    // Samsung Device Care > Battery
                     Intent().setComponent(ComponentName("com.samsung.android.lool", "com.samsung.android.sm.battery.ui.BatteryActivity")),
-                    // General fallback: app info
+                    // Samsung newer One UI
+                    Intent().setComponent(ComponentName("com.samsung.android.sm", "com.samsung.android.sm.battery.ui.BatteryActivity")),
+                    // Samsung background usage limits
+                    Intent().setComponent(ComponentName("com.samsung.android.lool", "com.samsung.android.sm.battery.ui.usage.AppSleepSettingActivity")),
+                    // Generic: Battery optimization (excludes app from Doze)
+                    Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+                    // Last fallback: app-specific battery settings
                     Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                         data = Uri.parse("package:${context.packageName}")
                     },
@@ -708,11 +714,15 @@ class EMIDeviceAdminModule : Module() {
                 
                 for (intent in intents) {
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    if (intent.resolveActivity(context.packageManager) != null) {
-                        context.startActivity(intent)
-                        Log.d(TAG, "openAutoStartSettings: Opened ${intent.component?.className ?: "fallback"}")
-                        promise.resolve("opened")
-                        return@AsyncFunction
+                    try {
+                        if (intent.resolveActivity(context.packageManager) != null) {
+                            context.startActivity(intent)
+                            Log.d(TAG, "openAutoStartSettings: Opened ${intent.component?.className ?: intent.action}")
+                            promise.resolve("opened")
+                            return@AsyncFunction
+                        }
+                    } catch (e: Exception) {
+                        Log.d(TAG, "openAutoStartSettings: Intent failed: ${e.message}")
                     }
                 }
                 promise.resolve("not_available")
