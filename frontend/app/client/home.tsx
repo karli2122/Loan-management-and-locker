@@ -333,6 +333,17 @@ export default function ClientHome() {
       // Save lock state for offline enforcement and autostart
       await devicePolicy.setLockState(locked, message);
       wasLocked.current = locked;
+
+      // Manage kiosk mode based on lock state
+      if (Platform.OS === 'android') {
+        if (locked) {
+          const result = await devicePolicy.startKioskMode();
+          console.log('Kiosk mode start result:', result);
+        } else {
+          const result = await devicePolicy.stopKioskMode();
+          console.log('Kiosk mode stop result:', result);
+        }
+      }
     } catch (error) {
       console.error('Lock state error:', error);
     }
