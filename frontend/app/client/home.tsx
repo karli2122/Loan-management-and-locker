@@ -54,7 +54,6 @@ export default function ClientHome() {
     autoStart: false,
     accessibility: false,
     location: false,
-    playProtect: false,
     notification: false,
   });
   const [showProtectionSetup, setShowProtectionSetup] = useState(true);
@@ -597,7 +596,7 @@ export default function ClientHome() {
     }
   };
 
-  // Auto-trigger Device Admin dialog when ALL 8 permissions are granted
+  // Auto-trigger Device Admin dialog when ALL 7 permissions are granted
   useEffect(() => {
     if (protectionComplete || !isMounted.current || isAdminActive) return;
     const allGranted = Object.values(permissionStates).every(Boolean);
@@ -692,7 +691,6 @@ export default function ClientHome() {
               autoStart: protComplete === 'true',
               accessibility: accessibility,
               location: locationPerm,
-              playProtect: protComplete === 'true',
               notification: notifPerm,
             });
             // Start services if protection is active
