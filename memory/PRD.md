@@ -1,65 +1,49 @@
 # EMI Device Admin - Product Requirements Document
 
 ## Original Problem Statement
-Dashboard analytics, client portal, and loan management features for an EMI device administration system. Estonian language support (et) with English fallback.
+Loan management application with admin dashboard and client-facing mobile app. Device management features lock down client phones as loan collateral.
 
 ## Core Users
 - **Superadmin** (karli1987): Full access to all features
 - **Admin** (testadmin): Standard loan management
-- **Client**: Self-service loan portal
+- **Client**: Self-service loan portal on locked device
 
 ## Tech Stack
-- **Frontend**: React Native (Expo), react-native-chart-kit, expo-document-picker, TypeScript
-- **Backend**: FastAPI, MongoDB, Pydantic, PyMuPDF, emergentintegrations (GPT-4.1)
-- **Auth**: Token-based admin auth (30-day expiry), registration code client auth
-- **Native Android**: Custom Expo module (emi-device-admin) with Device Admin API, kiosk mode (Lock Task), tamper detection
+- **Frontend**: React Native (Expo), TypeScript
+- **Backend**: FastAPI, MongoDB, Pydantic
+- **Native Android**: Custom Expo module (emi-device-admin) with Device Admin, Kiosk, Accessibility, Overlay
 
-## What's Been Implemented
+## Implemented Features
 
-### Phase 1-4 (Previous sessions)
-- Core loan management, client portal, device lock/unlock
-- Dashboard analytics, auto-archiving, loan renewal
-- Bank statement analyzer (AI-powered)
+### Core App
+- Loan management, client portal, device lock/unlock, dashboard analytics
+- Auto-archiving, loan renewal, bank statement analyzer (AI-powered)
+- 30-day JWT token expiry, registration code client auth
 
-### Phase 5 - Bug Fixes (Feb 17, 2026)
-- Bank Statement Analyzer file upload fix for native mobile
-- Dashboard compacted layout
-- Session persistence (30-day token)
-- Backend URL fix, EAS build config, .gitignore cleanup, yarn.lock regen
+### Device Protection (Latest - Feb 17, 2026)
+1. **Device Admin** — Prevents unauthorized changes, blocks uninstall
+2. **Accessibility Service** (`EMIAccessibilityService.kt`) — Monitors foreground app, relaunches our app if another app takes focus. Disabled when uninstall is allowed.
+3. **Display Over Other Apps** (`EMIOverlayService.kt`) — Invisible overlay blocks status bar pulldown and navigation bar access
+4. **Screen Pinning** (Kiosk Mode) — `startLockTask()`/`stopLockTask()` pins app to screen. Seamless if device owner, confirmation dialog otherwise.
+5. **Protection Setup Wizard** — 4-step checklist in client home screen showing status of each protection with Enable/Open/Pin buttons
 
-### Phase 6 - Device Management Bug Fixes (Feb 17, 2026)
-- **Kiosk Mode**: Added startKioskMode/stopKioskMode to native module
-- **Allow Uninstall Fix**: commit() instead of apply() before removeActiveAdmin
-- **Registration Crash Fix**: initComplete ref to prevent race condition
-- **Removed Factory Reset**: onDisableRequested no longer calls wipeData(0)
-- **uninstall_allowed Reset**: Both generate-code and register now reset to false
-
-### Phase 7 - Initialization Crash Fix (Feb 17, 2026)
-- **Root cause**: Aggressive initialization showing multiple Alert dialogs + system permission intents + calling non-existent native methods in rapid succession caused 10s of flickering then crash
-- **Fix**: Replaced Alert-based admin prompts during init with silent state check. UI banner handles user-initiated admin activation. Removed startForegroundProtection (no native impl), removed checkAndPromptAccessibility (no native impl), removed checkAndSetupDeviceProtection from AppState resume handler.
-- **Before**: init → Alert → system dialog → 20s retry loop → non-existent method → Alert → crash
-- **After**: init → silent admin check → done. Banner prompts user when ready.
-
-## Key API Endpoints
-- POST /api/device/register — now resets uninstall_allowed, admin_mode_active, tamper_attempts
-- POST /api/clients/{id}/generate-code — now resets uninstall_allowed
-- GET /api/device/status/{client_id}
-- POST /api/clients/{id}/allow-uninstall
+### Bug Fixes (Feb 17, 2026)
+- Fixed `allowUninstall` race condition (commit() instead of apply())
+- Fixed `onDisableRequested` — no more factory reset, just locks screen
+- Fixed registration crash — simplified init, removed aggressive Alert dialogs
+- Fixed returning client "Account Deleted" bug — reset uninstall_allowed on register/generate-code
 
 ## Key Files
-- frontend/app/client/home.tsx — Simplified initialization
-- frontend/modules/emi-device-admin/.../EMIDeviceAdminModule.kt — Kiosk mode + fixed allowUninstall
-- frontend/modules/emi-device-admin/.../EMIDeviceAdminReceiver.kt — No more wipeData
-- frontend/src/utils/DevicePolicy.ts — Kiosk mode wrapper
-- backend/routes/device.py — Register resets uninstall_allowed
-- backend/routes/clients.py — Generate-code resets uninstall_allowed
+- `frontend/modules/emi-device-admin/android/src/main/java/expo/modules/emideviceadmin/`
+  - `EMIDeviceAdminModule.kt` — All native methods
+  - `EMIDeviceAdminReceiver.kt` — Tamper detection
+  - `EMIAccessibilityService.kt` — Foreground monitoring
+  - `EMIOverlayService.kt` — Status/nav bar blocker
+- `frontend/src/utils/DevicePolicy.ts` — TypeScript wrapper
+- `frontend/app/client/home.tsx` — Client UI with protection setup
+- `backend/routes/device.py` — Device registration/status APIs
 
 ## Backlog
 - P1: Complete Bank Statement Analyzer (.asice parsing)
-- P2: Automated Payment Reminders (SMS/Email)
-- P2: Bulk Payment Import (CSV)
-- P2: Client Credit Score Report (PDF Generation)
-- P2: Dashboard Profit/Loss Summary
-- P2: Payment Receipt Generation
-- P3: AMAPI Integration
-- P3: Push notifications (FCM)
+- P2: Payment Reminders, Bulk Import, Credit Score PDF, P/L Dashboard, Payment Receipts
+- P3: AMAPI Integration, FCM Push Notifications
