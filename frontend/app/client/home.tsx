@@ -609,7 +609,7 @@ export default function ClientHome() {
     }
   };
 
-  // Auto-trigger Device Admin dialog when ALL 7 permissions are granted
+  // Auto-trigger Device Admin dialog when ALL 6 permissions are granted
   useEffect(() => {
     if (protectionComplete || !isMounted.current || isAdminActive) return;
     const allGranted = Object.values(permissionStates).every(Boolean);
