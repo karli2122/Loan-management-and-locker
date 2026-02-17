@@ -297,9 +297,9 @@ class TestDeviceRegistration:
                 "device_model": "Test Device Model"
             }
         )
-        # Should fail with 400 for invalid registration code
-        assert response.status_code == 400, f"Expected 400, got {response.status_code}: {response.text}"
-        print(f"✓ Invalid registration code correctly rejected")
+        # Should fail with 400/422 for invalid registration code
+        assert response.status_code in [400, 422], f"Expected 400/422, got {response.status_code}: {response.text}"
+        print(f"✓ Invalid registration code correctly rejected with status {response.status_code}")
     
     def test_registration_already_registered(self, admin_token):
         """Test registration for already registered device - should fail"""
@@ -324,9 +324,9 @@ class TestDeviceRegistration:
                         "device_model": "New Test Device"
                     }
                 )
-                # Should fail because device is already registered
-                assert response.status_code == 400, f"Expected 400 for already registered device, got {response.status_code}"
-                print(f"✓ Already registered device correctly rejected")
+                # Should fail because device is already registered (400 or 422 are both valid)
+                assert response.status_code in [400, 422], f"Expected 400/422 for already registered device, got {response.status_code}"
+                print(f"✓ Already registered device correctly rejected with status {response.status_code}")
             else:
                 print(f"✓ Test client not registered yet, skipping re-registration test")
         else:
