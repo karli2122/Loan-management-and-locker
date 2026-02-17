@@ -50,7 +50,6 @@ export default function ClientHome() {
   const [permissionStates, setPermissionStates] = useState({
     batteryOptimization: false,
     overlay: false,
-    deviceAdmin: false,
     batteryPowerUsage: false,
     autoStart: false,
     accessibility: false,
@@ -59,6 +58,8 @@ export default function ClientHome() {
     notification: false,
   });
   const [showProtectionSetup, setShowProtectionSetup] = useState(true);
+  const [protectionComplete, setProtectionComplete] = useState(false);
+  const [showAdminDialog, setShowAdminDialog] = useState(false);
   const isMounted = useRef(false);
   const appState = useRef(AppState.currentState);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
