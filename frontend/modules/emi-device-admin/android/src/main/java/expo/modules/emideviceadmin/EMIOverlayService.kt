@@ -1,5 +1,6 @@
 package expo.modules.emideviceadmin
 
+import android.app.ActivityManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -20,10 +21,10 @@ import android.view.WindowManager
 
 /**
  * Foreground overlay service that:
- * - Places invisible touch-intercepting views over status bar and nav bar
- * - Runs as a foreground service so Android won't kill it
- * - Refreshes overlay every second to ensure persistence
- * - Survives process restarts via foreground notification
+ * - Blocks status bar pull-down and navigation bar
+ * - Runs as foreground service (won't be killed by Android)
+ * - When device is LOCKED: watchdog relaunches app every second if not in foreground
+ * - Refreshes overlay every second for persistence
  */
 class EMIOverlayService : Service() {
     companion object {
@@ -31,6 +32,8 @@ class EMIOverlayService : Service() {
         private const val CHANNEL_ID = "emi_overlay_channel"
         private const val NOTIFICATION_ID = 1001
         private const val REFRESH_INTERVAL_MS = 1000L
+        private const val PREFS_NAME = "emi_device_admin_prefs"
+        private const val KEY_LOCKED = "is_locked"
         var isRunning = false
     }
 
@@ -52,7 +55,6 @@ class EMIOverlayService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Restart if killed
         return START_STICKY
     }
 
@@ -91,17 +93,58 @@ class EMIOverlayService : Service() {
         refreshRunnable = object : Runnable {
             override fun run() {
                 ensureBlockersActive()
+                watchdogRelaunchIfLocked()
                 handler.postDelayed(this, REFRESH_INTERVAL_MS)
             }
         }
         handler.postDelayed(refreshRunnable!!, REFRESH_INTERVAL_MS)
     }
 
+    /**
+     * Watchdog: if device is locked (SharedPreferences), force-relaunch app every second.
+     * This ensures the lock screen always stays on top even if user navigates away.
+     */
+    private fun watchdogRelaunchIfLocked() {
+        try {
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val isLocked = prefs.getBoolean(KEY_LOCKED, false)
+            if (!isLocked) return
+
+            // Check if our app is currently in the foreground
+            val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val myPackage = packageName
+            var isInForeground = false
+
+            @Suppress("DEPRECATION")
+            val tasks = am.getRunningTasks(1)
+            if (tasks.isNotEmpty()) {
+                val topActivity = tasks[0].topActivity
+                if (topActivity?.packageName == myPackage) {
+                    isInForeground = true
+                }
+            }
+
+            if (!isInForeground) {
+                Log.d(TAG, "Watchdog: App not in foreground while locked — relaunching")
+                val launchIntent = packageManager.getLaunchIntentForPackage(myPackage)
+                if (launchIntent != null) {
+                    launchIntent.addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    )
+                    startActivity(launchIntent)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Watchdog error: ${e.message}")
+        }
+    }
+
     private fun ensureBlockersActive() {
         try {
-            // Check if top blocker is still attached
             if (topBlocker == null || !topBlocker!!.isAttachedToWindow) {
-                Log.d(TAG, "Top blocker detached, re-creating")
+                Log.d(TAG, "Blockers detached, re-creating")
                 removeBlockers()
                 createBlockers()
             }
@@ -113,7 +156,6 @@ class EMIOverlayService : Service() {
     private fun createBlockers() {
         val wm = windowManager ?: return
 
-        // Top blocker — covers status bar area to prevent pull-down
         topBlocker = View(this).apply {
             setBackgroundColor(Color.TRANSPARENT)
             setOnTouchListener { _, event ->
@@ -140,12 +182,10 @@ class EMIOverlayService : Service() {
 
         try {
             wm.addView(topBlocker, topParams)
-            Log.d(TAG, "Top blocker added, height=${topParams.height}")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to add top blocker: ${e.message}")
         }
 
-        // Bottom blocker — covers navigation bar area
         bottomBlocker = View(this).apply {
             setBackgroundColor(Color.TRANSPARENT)
             setOnTouchListener { _, event ->
@@ -172,7 +212,6 @@ class EMIOverlayService : Service() {
 
         try {
             wm.addView(bottomBlocker, bottomParams)
-            Log.d(TAG, "Bottom blocker added, height=${bottomParams.height}")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to add bottom blocker: ${e.message}")
         }
