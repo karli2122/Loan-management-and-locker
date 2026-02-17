@@ -686,15 +686,25 @@ export default function ClientHome() {
         if (Platform.OS === 'android') {
           (async () => {
             try {
-              const admin = await devicePolicy.isAdminActive();
+              const [admin, accessibility, overlay, batteryOpt, locationPerm, notifPerm] = await Promise.all([
+                devicePolicy.isAdminActive(),
+                devicePolicy.isAccessibilityEnabled(),
+                devicePolicy.canDrawOverlays(),
+                devicePolicy.isIgnoringBatteryOptimizations(),
+                (async () => { const { status } = await Location.getForegroundPermissionsAsync(); return status === 'granted'; })(),
+                (async () => { const { status } = await Notifications.getPermissionsAsync(); return status === 'granted'; })(),
+              ]);
               setIsAdminActive(admin);
-              const accessibility = await devicePolicy.isAccessibilityEnabled();
-              setAccessibilityEnabled(accessibility);
-              const overlay = await devicePolicy.canDrawOverlays();
-              setOverlayEnabled(overlay);
-              const pinned = await devicePolicy.isInKioskMode();
-              setScreenPinned(pinned);
-              // Start overlay blocker if permission was just granted
+              setPermissionStates(prev => ({
+                ...prev,
+                batteryOptimization: batteryOpt,
+                overlay: overlay,
+                deviceAdmin: admin,
+                batteryPowerUsage: batteryOpt,
+                accessibility: accessibility,
+                location: locationPerm,
+                notification: notifPerm,
+              }));
               if (overlay) {
                 await devicePolicy.startOverlayBlocker();
               }
