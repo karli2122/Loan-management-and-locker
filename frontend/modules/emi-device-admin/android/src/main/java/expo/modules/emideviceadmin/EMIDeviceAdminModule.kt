@@ -672,6 +672,77 @@ class EMIDeviceAdminModule : Module() {
             }
         }
 
+        // Save lock state to native SharedPreferences (for BootReceiver auto-start)
+        AsyncFunction("setNativeLockState") { locked: Boolean, promise: Promise ->
+            try {
+                prefs.edit().putBoolean("is_locked", locked).commit()
+                Log.d(TAG, "setNativeLockState: locked=$locked")
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "setNativeLockState error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // Enable immersive mode — hides status bar and navigation bar completely
+        AsyncFunction("enableImmersiveMode") { promise: Promise ->
+            try {
+                val currentActivity = activity
+                if (currentActivity == null) {
+                    promise.resolve("no_activity")
+                    return@AsyncFunction
+                }
+                currentActivity.runOnUiThread {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        currentActivity.window.insetsController?.let { controller ->
+                            controller.hide(android.view.WindowInsets.Type.statusBars() or android.view.WindowInsets.Type.navigationBars())
+                            controller.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                        }
+                    } else {
+                        @Suppress("DEPRECATION")
+                        currentActivity.window.decorView.systemUiVisibility =
+                            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                            View.SYSTEM_UI_FLAG_FULLSCREEN or
+                            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                            View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    }
+                }
+                Log.d(TAG, "enableImmersiveMode: System bars hidden")
+                promise.resolve("enabled")
+            } catch (e: Exception) {
+                Log.e(TAG, "enableImmersiveMode error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // Disable immersive mode — restores status bar and navigation bar
+        AsyncFunction("disableImmersiveMode") { promise: Promise ->
+            try {
+                val currentActivity = activity
+                if (currentActivity == null) {
+                    promise.resolve("no_activity")
+                    return@AsyncFunction
+                }
+                currentActivity.runOnUiThread {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        currentActivity.window.insetsController?.let { controller ->
+                            controller.show(android.view.WindowInsets.Type.statusBars() or android.view.WindowInsets.Type.navigationBars())
+                        }
+                    } else {
+                        @Suppress("DEPRECATION")
+                        currentActivity.window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+                    }
+                }
+                Log.d(TAG, "disableImmersiveMode: System bars restored")
+                promise.resolve("disabled")
+            } catch (e: Exception) {
+                Log.e(TAG, "disableImmersiveMode error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
         // ===================== SCREEN PINNING =====================
         // startKioskMode/stopKioskMode/isInKioskMode already handle screen pinning above
 
