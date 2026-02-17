@@ -615,6 +615,16 @@ export default function ClientHome() {
           try {
             const admin = await devicePolicy.isAdminActive();
             setIsAdminActive(admin);
+            const accessibility = await devicePolicy.isAccessibilityEnabled();
+            setAccessibilityEnabled(accessibility);
+            const overlay = await devicePolicy.canDrawOverlays();
+            setOverlayEnabled(overlay);
+            const pinned = await devicePolicy.isInKioskMode();
+            setScreenPinned(pinned);
+            // Show protection setup if not all protections are enabled
+            if (!admin || !accessibility || !overlay) {
+              setShowProtectionSetup(true);
+            }
             if (admin) {
               console.log('Device admin is active');
             } else {
