@@ -192,6 +192,16 @@ export async function isOverlayBlockerRunning(): Promise<boolean> {
   }
 }
 
+export async function setProtectionComplete(complete: boolean): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.setProtectionComplete(complete);
+  } catch (e) {
+    console.log('setProtectionComplete error:', e);
+    return 'error';
+  }
+}
+
 // ===================== BATTERY OPTIMIZATION =====================
 
 export async function isIgnoringBatteryOptimizations(): Promise<boolean> {
