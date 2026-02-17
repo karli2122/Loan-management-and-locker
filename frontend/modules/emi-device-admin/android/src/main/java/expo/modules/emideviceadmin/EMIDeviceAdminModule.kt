@@ -48,6 +48,17 @@ class EMIDeviceAdminModule : Module() {
     override fun definition() = ModuleDefinition {
         Name("EMIDeviceAdmin")
 
+        // Get device manufacturer, model, and Android version
+        Function("getDeviceInfo") {
+            mapOf(
+                "manufacturer" to Build.MANUFACTURER.lowercase(),
+                "model" to Build.MODEL,
+                "brand" to Build.BRAND.lowercase(),
+                "sdkVersion" to Build.VERSION.SDK_INT,
+                "androidVersion" to Build.VERSION.RELEASE
+            )
+        }
+
         // Check if Device Admin is active (matches JS: isDeviceAdminActive)
         AsyncFunction("isDeviceAdminActive") {
             try {
