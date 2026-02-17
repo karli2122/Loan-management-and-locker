@@ -15,6 +15,7 @@ import android.os.PowerManager
 import android.os.UserManager
 import android.provider.Settings
 import android.util.Log
+import android.view.View
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.Promise
