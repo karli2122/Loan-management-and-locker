@@ -22,44 +22,44 @@ Dashboard analytics, client portal, and loan management features for an EMI devi
 - Bank statement analyzer (AI-powered)
 
 ### Phase 5 - Bug Fixes (Feb 17, 2026)
-- **Bank Statement Analyzer file upload**: Fixed for native mobile
-- **Dashboard compacted**: Reduced chart heights, tighter padding
-- **Session persistence**: Extended token expiry to 30 days
-- **Backend URL fixed**: Updated all fallback URLs
-- **EAS build config**: Added EXPO_PUBLIC_BACKEND_URL to all build profiles
-- **.gitignore cleanup**: Removed duplicate env blocks
-- **yarn.lock**: Regenerated clean lockfile
+- Bank Statement Analyzer file upload fix for native mobile
+- Dashboard compacted layout
+- Session persistence (30-day token)
+- Backend URL fix, EAS build config, .gitignore cleanup, yarn.lock regen
 
 ### Phase 6 - Device Management Bug Fixes (Feb 17, 2026)
-- **Kiosk Mode (Lock Task)**: Added `startKioskMode()`/`stopKioskMode()` to native module. When device is locked, the app pins itself using Android Lock Task API. Device Owner mode gives seamless kiosk (no user confirmation). Device Admin mode shows system pinning dialog.
-- **Allow Uninstall Race Condition Fix**: Changed `allowUninstall()` to use `commit()` (synchronous) instead of `apply()` (async) before calling `removeActiveAdmin()`. This ensures `onDisableRequested` in the receiver reads the correct flag and does NOT trigger a factory reset.
-- **Registration Crash Fix**: Added `initComplete` ref to prevent the protection useEffect from racing with the main initialization. The protection effect now waits up to 6 seconds for init to complete before proceeding.
-- **Removed Factory Reset on Unauthorized Disable**: `onDisableRequested` no longer calls `wipeData(0)`. Instead, it locks the screen and launches the app for a tamper re-enable prompt. This is safer while still deterring tampering.
-- **Backend APIs verified**: All 17 device management backend tests passed (100%).
+- **Kiosk Mode**: Added startKioskMode/stopKioskMode to native module
+- **Allow Uninstall Fix**: commit() instead of apply() before removeActiveAdmin
+- **Registration Crash Fix**: initComplete ref to prevent race condition
+- **Removed Factory Reset**: onDisableRequested no longer calls wipeData(0)
+- **uninstall_allowed Reset**: Both generate-code and register now reset to false
+
+### Phase 7 - Initialization Crash Fix (Feb 17, 2026)
+- **Root cause**: Aggressive initialization showing multiple Alert dialogs + system permission intents + calling non-existent native methods in rapid succession caused 10s of flickering then crash
+- **Fix**: Replaced Alert-based admin prompts during init with silent state check. UI banner handles user-initiated admin activation. Removed startForegroundProtection (no native impl), removed checkAndPromptAccessibility (no native impl), removed checkAndSetupDeviceProtection from AppState resume handler.
+- **Before**: init → Alert → system dialog → 20s retry loop → non-existent method → Alert → crash
+- **After**: init → silent admin check → done. Banner prompts user when ready.
 
 ## Key API Endpoints
-- `POST /api/bank-statements/analyze` - Upload & analyze bank statement
-- `GET /api/bank-statements/history` - Past analyses
-- `GET /api/paid-loans/summary` - Interest summary + 6-month trend
-- `GET /api/paid-loans/{client_id}/latest` - Latest archived loan for renewal
-- `POST /api/admin/login` - Admin auth (30-day token)
-- `POST /api/device/register` - Client device registration
-- `GET /api/device/status/{client_id}` - Device lock/uninstall status
-- `POST /api/clients/{client_id}/allow-uninstall` - Admin allows uninstall
+- POST /api/device/register — now resets uninstall_allowed, admin_mode_active, tamper_attempts
+- POST /api/clients/{id}/generate-code — now resets uninstall_allowed
+- GET /api/device/status/{client_id}
+- POST /api/clients/{id}/allow-uninstall
 
-## Key Files for Device Management
-- `frontend/modules/emi-device-admin/android/src/main/java/expo/modules/emideviceadmin/EMIDeviceAdminModule.kt` - Native Kotlin module with kiosk, admin, uninstall logic
-- `frontend/modules/emi-device-admin/android/src/main/java/expo/modules/emideviceadmin/EMIDeviceAdminReceiver.kt` - Device Admin receiver (tamper detection)
-- `frontend/src/utils/DevicePolicy.ts` - TypeScript wrapper for native module
-- `frontend/modules/emi-device-admin/src/index.ts` - Module exports
-- `frontend/app/client/home.tsx` - Client home with kiosk mode integration
+## Key Files
+- frontend/app/client/home.tsx — Simplified initialization
+- frontend/modules/emi-device-admin/.../EMIDeviceAdminModule.kt — Kiosk mode + fixed allowUninstall
+- frontend/modules/emi-device-admin/.../EMIDeviceAdminReceiver.kt — No more wipeData
+- frontend/src/utils/DevicePolicy.ts — Kiosk mode wrapper
+- backend/routes/device.py — Register resets uninstall_allowed
+- backend/routes/clients.py — Generate-code resets uninstall_allowed
 
 ## Backlog
-- P1: Complete Bank Statement Analyzer (.asice parsing, enriched LLM analysis)
+- P1: Complete Bank Statement Analyzer (.asice parsing)
 - P2: Automated Payment Reminders (SMS/Email)
 - P2: Bulk Payment Import (CSV)
 - P2: Client Credit Score Report (PDF Generation)
 - P2: Dashboard Profit/Loss Summary
 - P2: Payment Receipt Generation
-- P3: Android Management API (AMAPI) Integration
+- P3: AMAPI Integration
 - P3: Push notifications (FCM)
