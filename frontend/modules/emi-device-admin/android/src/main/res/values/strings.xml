@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="emi_accessibility_description">EMI Device Protection monitors your device to ensure the payment app stays active. This service prevents unauthorized app switching on managed devices.</string>
+</resources>
