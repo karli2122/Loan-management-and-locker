@@ -647,7 +647,7 @@ export default function Dashboard() {
                 datasets: [{ data: revenueChart.data.some(v => v > 0) ? revenueChart.data : [0, 0, 0, 0, 0, 0] }],
               }}
               width={Dimensions.get('window').width - 56}
-              height={200}
+              height={160}
               yAxisLabel="€"
               yAxisSuffix=""
               chartConfig={{
