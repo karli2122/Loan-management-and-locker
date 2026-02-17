@@ -402,6 +402,73 @@ class DevicePolicyManager {
       return false;
     }
   }
+
+  // ===================== OVERLAY PERMISSION =====================
+
+  /**
+   * Check if the app has "Display over other apps" permission.
+   */
+  async canDrawOverlays(): Promise<boolean> {
+    if (Platform.OS !== 'android') return false;
+    try {
+      return (await nativeModule?.canDrawOverlays?.()) || false;
+    } catch (error) {
+      console.log('Failed to check overlay permission:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Open system settings to request overlay permission.
+   */
+  async requestOverlayPermission(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.requestOverlayPermission?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to request overlay permission:', error);
+      return 'error';
+    }
+  }
+
+  /**
+   * Start the overlay blocker service (blocks status bar & nav bar).
+   */
+  async startOverlayBlocker(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.startOverlayBlocker?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to start overlay blocker:', error);
+      return 'error';
+    }
+  }
+
+  /**
+   * Stop the overlay blocker service.
+   */
+  async stopOverlayBlocker(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.stopOverlayBlocker?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to stop overlay blocker:', error);
+      return 'error';
+    }
+  }
+
+  /**
+   * Check if overlay blocker service is running.
+   */
+  async isOverlayBlockerRunning(): Promise<boolean> {
+    if (Platform.OS !== 'android') return false;
+    try {
+      return (await nativeModule?.isOverlayBlockerRunning?.()) || false;
+    } catch (error) {
+      console.log('Failed to check overlay blocker:', error);
+      return false;
+    }
+  }
 }
 
 export const devicePolicy = new DevicePolicyManager();
