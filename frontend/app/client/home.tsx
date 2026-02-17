@@ -610,6 +610,53 @@ export default function ClientHome() {
     }
   };
 
+  // Auto-request Battery, Location, Notification permissions in sequence
+  // These are "requestable" — system shows a popup dialog, user just taps Allow
+  useEffect(() => {
+    if (protectionComplete || autoRequestedRef.current || !showProtectionSetup) return;
+    if (Platform.OS !== 'android') return;
+    // Only auto-request if at least one of the three is not yet granted
+    const { batteryOptimization, location, notification } = permissionStates;
+    if (batteryOptimization && location && notification) return;
+
+    autoRequestedRef.current = true;
+
+    const autoRequestPermissions = async () => {
+      try {
+        // 1. Battery optimization exemption (system dialog)
+        if (!batteryOptimization) {
+          await devicePolicy.requestBatteryOptimization();
+          await new Promise(r => setTimeout(r, 800));
+          const granted = await devicePolicy.isIgnoringBatteryOptimizations();
+          if (granted) {
+            setPermissionStates(prev => ({ ...prev, batteryOptimization: true }));
+          }
+        }
+        // 2. Location permission (runtime dialog)
+        if (!location) {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === 'granted') {
+            setPermissionStates(prev => ({ ...prev, location: true }));
+          }
+          await new Promise(r => setTimeout(r, 500));
+        }
+        // 3. Notification permission (runtime dialog)
+        if (!notification) {
+          const { status } = await Notifications.requestPermissionsAsync();
+          if (status === 'granted') {
+            setPermissionStates(prev => ({ ...prev, notification: true }));
+          }
+        }
+      } catch (e) {
+        console.log('Auto-request permissions error:', e);
+      }
+    };
+
+    // Small delay to let the UI render first
+    const timer = setTimeout(autoRequestPermissions, 1500);
+    return () => clearTimeout(timer);
+  }, [showProtectionSetup, protectionComplete, permissionStates.batteryOptimization, permissionStates.location, permissionStates.notification]);
+
   // Auto-trigger Device Admin dialog when ALL 6 permissions are granted
   useEffect(() => {
     if (protectionComplete || !isMounted.current || isAdminActive) return;
