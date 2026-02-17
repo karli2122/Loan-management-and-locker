@@ -21,7 +21,7 @@ import requests
 import uuid
 
 # Use the preview URL from review request
-BASE_URL = "https://loan-history-feature.preview.emergentagent.com"
+BASE_URL = "https://device-admin-patch.preview.emergentagent.com"
 
 # Test credentials from review request
 TEST_USERNAME = "karli1987"
