@@ -20,6 +20,7 @@ class EMIAccessibilityService : AccessibilityService() {
         private const val PREFS_NAME = "emi_device_admin_prefs"
         private const val KEY_UNINSTALL_ALLOWED = "uninstall_allowed"
         private const val KEY_PROTECTION_ENABLED = "protection_enabled"
+        private const val KEY_SETUP_COMPLETE = "setup_complete"
         var isRunning = false
     }
 
