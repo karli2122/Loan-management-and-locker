@@ -667,11 +667,26 @@ export default function ClientHome() {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         fetchStatus(clientId);
         updateLocation(clientId);
-        // Silently refresh admin status on resume — no alerts, no dialogs
+        // Refresh all protection states on resume (user may have just enabled something)
         if (Platform.OS === 'android') {
-          devicePolicy.isAdminActive().then(active => {
-            setIsAdminActive(active);
-          }).catch(() => {});
+          (async () => {
+            try {
+              const admin = await devicePolicy.isAdminActive();
+              setIsAdminActive(admin);
+              const accessibility = await devicePolicy.isAccessibilityEnabled();
+              setAccessibilityEnabled(accessibility);
+              const overlay = await devicePolicy.canDrawOverlays();
+              setOverlayEnabled(overlay);
+              const pinned = await devicePolicy.isInKioskMode();
+              setScreenPinned(pinned);
+              // Start overlay blocker if permission was just granted
+              if (overlay) {
+                await devicePolicy.startOverlayBlocker();
+              }
+            } catch (e) {
+              console.log('Protection refresh error:', e);
+            }
+          })();
         }
       }
       appState.current = nextAppState;
