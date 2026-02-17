@@ -293,6 +293,93 @@ class EMIDeviceAdminModule : Module() {
             }
         }
 
+        // ===================== KIOSK MODE (LOCK TASK) =====================
+
+        // Start kiosk mode - pins the app so user cannot leave.
+        // If Device Owner: seamless kiosk via setLockTaskPackages + startLockTask
+        // If not Device Owner: uses startLockTask which shows a system confirmation dialog
+        AsyncFunction("startKioskMode") { promise: Promise ->
+            try {
+                val currentActivity = activity
+                if (currentActivity == null) {
+                    Log.e(TAG, "startKioskMode: No activity")
+                    promise.resolve("no_activity")
+                    return@AsyncFunction
+                }
+
+                // If device owner, whitelist our package for lock task (no user confirmation)
+                if (dpm.isDeviceOwnerApp(context.packageName)) {
+                    dpm.setLockTaskPackages(adminComponent, arrayOf(context.packageName))
+                    Log.d(TAG, "startKioskMode: Lock task packages set (device owner)")
+                }
+
+                // Check if already in lock task mode
+                val am = currentActivity.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    if (am.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE) {
+                        Log.d(TAG, "startKioskMode: Already in lock task mode")
+                        promise.resolve("already_locked")
+                        return@AsyncFunction
+                    }
+                }
+
+                currentActivity.startLockTask()
+                Log.d(TAG, "startKioskMode: Lock task started")
+                promise.resolve("started")
+            } catch (e: Exception) {
+                Log.e(TAG, "startKioskMode error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // Stop kiosk mode - unpins the app.
+        AsyncFunction("stopKioskMode") { promise: Promise ->
+            try {
+                val currentActivity = activity
+                if (currentActivity == null) {
+                    Log.e(TAG, "stopKioskMode: No activity")
+                    promise.resolve("no_activity")
+                    return@AsyncFunction
+                }
+
+                val am = currentActivity.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    if (am.lockTaskModeState == ActivityManager.LOCK_TASK_MODE_NONE) {
+                        Log.d(TAG, "stopKioskMode: Not in lock task mode")
+                        promise.resolve("not_locked")
+                        return@AsyncFunction
+                    }
+                }
+
+                currentActivity.stopLockTask()
+                Log.d(TAG, "stopKioskMode: Lock task stopped")
+                promise.resolve("stopped")
+            } catch (e: Exception) {
+                Log.e(TAG, "stopKioskMode error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // Check if currently in kiosk (lock task) mode
+        AsyncFunction("isInKioskMode") {
+            try {
+                val currentActivity = activity
+                if (currentActivity == null) {
+                    false
+                } else {
+                    val am = currentActivity.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        am.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
+                    } else {
+                        false
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "isInKioskMode error: ${e.message}")
+                false
+            }
+        }
+
         // Store registration state in SharedPreferences (for BootReceiver)
         AsyncFunction("setRegistered") { isRegistered: Boolean, promise: Promise ->
             try {
