@@ -1051,8 +1051,27 @@ export default function ClientHome() {
               </TouchableOpacity>
 
               {/* Row 3 */}
-              <TouchableOpacity style={styles.permCard} onPress={async () => {
-                await devicePolicy.openAutoStartSettings();
+              <TouchableOpacity style={styles.permCard} onPress={() => {
+                Alert.alert(
+                  language === 'et' ? 'Luba autostart' : 'Enable Auto Start',
+                  language === 'et'
+                    ? 'Autostart peab olema lubatud, et rakendus käivituks automaatselt.\n\n1. Avage autostart seaded\n2. Leidke see rakendus\n3. Lülitage autostart SISSE\n4. Tulge tagasi rakendusse'
+                    : 'Auto Start must be enabled so the app starts automatically.\n\n1. Open auto start settings\n2. Find this app\n3. Turn ON auto start\n4. Return to this app',
+                  [
+                    {
+                      text: language === 'et' ? 'Ava seaded' : 'Open Settings',
+                      onPress: async () => {
+                        await devicePolicy.openAutoStartSettings();
+                      },
+                    },
+                    {
+                      text: language === 'et' ? 'Juba lubatud' : 'Already Enabled',
+                      onPress: () => {
+                        setPermissionStates(prev => ({ ...prev, autoStart: true }));
+                      },
+                    },
+                  ]
+                );
               }}>
                 <View style={[styles.permCircle, permissionStates.autoStart ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.autoStart ? "checkmark" : "close"} size={28} color="#FFF" />
