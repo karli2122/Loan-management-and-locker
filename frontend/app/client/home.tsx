@@ -773,6 +773,19 @@ export default function ClientHome() {
   }, []);
 
   // Separate effect for polling and app state - depends on clientId
+    // Block back button when locked — uses ref for instant, crash-proof check
+    // This must be a separate, always-active effect so rapid presses can't crash the app
+    useEffect(() => {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        // Use wasLocked ref (instant) instead of status state (async, can lag)
+        if (wasLocked.current) {
+          return true; // Swallow back press entirely when locked
+        }
+        return false;
+      });
+      return () => backHandler.remove();
+    }, []);
+
   useEffect(() => {
     if (!clientId) return;
 
@@ -809,7 +822,7 @@ export default function ClientHome() {
               }));
               // Only start overlay blocker if device is actually LOCKED
               // PROTECTED state should NOT use overlay blocker (it blocks normal phone use)
-              if (overlay && status?.is_locked) {
+              if (overlay && wasLocked.current) {
                 await devicePolicy.startOverlayBlocker();
               }
             } catch (e) {
@@ -821,23 +834,14 @@ export default function ClientHome() {
       appState.current = nextAppState;
     });
 
-    // Block back button when locked
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (status?.is_locked) {
-        return true; // Prevent going back when locked
-      }
-      return false;
-    });
-
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
       subscription.remove();
-      backHandler.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Functions use clientId from closure; adding them would cause infinite loops
-  }, [clientId, status?.is_locked]);
+  }, [clientId]);
 
   // Initialize protection and check for reboot (tamper detection disabled to prevent crashes)
   // Waits for main initialization to complete before accessing native modules
