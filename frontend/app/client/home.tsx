@@ -577,26 +577,31 @@ export default function ClientHome() {
       // If no client_id in AsyncStorage, try restoring from external backup
       // (handles Clear Data/Cache scenario)
       if (!id) {
-        const restoredId = await devicePolicy.restoreClientData();
-        if (restoredId) {
-          console.log('Restored client_id from external backup:', restoredId);
-          await AsyncStorage.setItem('client_id', restoredId);
-          await devicePolicy.setRegistered(true);
-          id = restoredId;
-          // Report tamper attempt (Clear Data detected)
-          try {
-            await fetch(`${API_URL}/api/clients/${id}/report-tamper?tamper_type=clear_data`, {
-              method: 'POST',
-            });
-          } catch (e) {
-            console.log('Failed to report clear data tamper:', e);
+        try {
+          const restoredId = await devicePolicy.restoreClientData();
+          if (restoredId) {
+            console.log('Restored client_id from external backup:', restoredId);
+            await AsyncStorage.setItem('client_id', restoredId);
+            await devicePolicy.setRegistered(true);
+            id = restoredId;
+            // Report tamper attempt (Clear Data detected)
+            try {
+              await fetch(`${API_URL}/api/clients/${id}/report-tamper?tamper_type=clear_data`, {
+                method: 'POST',
+              });
+            } catch (e) {
+              console.log('Failed to report clear data tamper:', e);
+            }
           }
+        } catch (restoreErr) {
+          console.log('External backup restore failed (non-fatal):', restoreErr);
         }
       }
       
       if (!id) {
         console.log('No client ID found, redirecting to register');
         if (isMounted.current) {
+          setLoading(false);
           router.replace('/client/register');
         }
         return;
@@ -608,18 +613,28 @@ export default function ClientHome() {
       // Wait for state to update before making API calls
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      // SEQUENTIAL permission requests to avoid race condition
-      // Step 1: Fetch status (no permission needed)
-      await fetchStatus(id);
+      // Fetch status first — this is critical and must not crash
+      try {
+        await fetchStatus(id);
+      } catch (fetchErr) {
+        console.log('fetchStatus error (non-fatal):', fetchErr);
+        setLoading(false);
+      }
       
-      // Step 2: Request location permission (wait for user response)
-      await updateLocation(id);
+      // Request location and push token in background — don't let failures crash
+      try {
+        await updateLocation(id);
+      } catch (locErr) {
+        console.log('Location update error (non-fatal):', locErr);
+      }
       
-      // Small delay between permission dialogs
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Step 3: Request notification permission (wait for user response)
-      await registerPushToken(id);
+      try {
+        await registerPushToken(id);
+      } catch (pushErr) {
+        console.log('Push token error (non-fatal):', pushErr);
+      }
     } catch (error) {
       console.error('loadClientData error:', error);
       setLoading(false);
