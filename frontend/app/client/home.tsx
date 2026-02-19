@@ -610,6 +610,13 @@ export default function ClientHome() {
       console.log('Client ID loaded:', id);
       setClientId(id);
       
+      // Save client info to native SharedPreferences for background lock checking
+      try {
+        await devicePolicy.setClientInfo(id, API_URL);
+      } catch (e) {
+        console.log('setClientInfo error (non-fatal):', e);
+      }
+      
       // Wait for state to update before making API calls
       await new Promise(resolve => setTimeout(resolve, 100));
       
