@@ -653,6 +653,7 @@ export default function ClientHome() {
   useEffect(() => {
     if (protectionComplete || autoRequestedRef.current || !showProtectionSetup) return;
     if (Platform.OS !== 'android') return;
+    if (!clientId) return; // Don't auto-request until client is loaded
     // Only auto-request if at least one of the three is not yet granted
     const { batteryOptimization, location, notification } = permissionStates;
     if (batteryOptimization && location && notification) return;
@@ -660,29 +661,43 @@ export default function ClientHome() {
     autoRequestedRef.current = true;
 
     const autoRequestPermissions = async () => {
+      if (!isMounted.current) return;
       try {
         // 1. Battery optimization exemption (system dialog)
-        if (!batteryOptimization) {
-          await devicePolicy.requestBatteryOptimization();
-          await new Promise(r => setTimeout(r, 800));
-          const granted = await devicePolicy.isIgnoringBatteryOptimizations();
-          if (granted) {
-            setPermissionStates(prev => ({ ...prev, batteryOptimization: true }));
+        if (!batteryOptimization && isMounted.current) {
+          try {
+            await devicePolicy.requestBatteryOptimization();
+            await new Promise(r => setTimeout(r, 1000));
+            if (!isMounted.current) return;
+            const granted = await devicePolicy.isIgnoringBatteryOptimizations();
+            if (granted) {
+              setPermissionStates(prev => ({ ...prev, batteryOptimization: true }));
+            }
+          } catch (e) {
+            console.log('Battery optimization request failed:', e);
           }
         }
         // 2. Location permission (runtime dialog)
-        if (!location) {
-          const { status } = await Location.requestForegroundPermissionsAsync();
-          if (status === 'granted') {
-            setPermissionStates(prev => ({ ...prev, location: true }));
+        if (!location && isMounted.current) {
+          try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status === 'granted') {
+              setPermissionStates(prev => ({ ...prev, location: true }));
+            }
+            await new Promise(r => setTimeout(r, 500));
+          } catch (e) {
+            console.log('Location permission request failed:', e);
           }
-          await new Promise(r => setTimeout(r, 500));
         }
         // 3. Notification permission (runtime dialog)
-        if (!notification) {
-          const { status } = await Notifications.requestPermissionsAsync();
-          if (status === 'granted') {
-            setPermissionStates(prev => ({ ...prev, notification: true }));
+        if (!notification && isMounted.current) {
+          try {
+            const { status } = await Notifications.requestPermissionsAsync();
+            if (status === 'granted') {
+              setPermissionStates(prev => ({ ...prev, notification: true }));
+            }
+          } catch (e) {
+            console.log('Notification permission request failed:', e);
           }
         }
       } catch (e) {
@@ -690,10 +705,10 @@ export default function ClientHome() {
       }
     };
 
-    // Small delay to let the UI render first
-    const timer = setTimeout(autoRequestPermissions, 1500);
+    // Longer delay for fresh registration — let the UI fully stabilize
+    const timer = setTimeout(autoRequestPermissions, 3000);
     return () => clearTimeout(timer);
-  }, [showProtectionSetup, protectionComplete, permissionStates.batteryOptimization, permissionStates.location, permissionStates.notification]);
+  }, [showProtectionSetup, protectionComplete, clientId, permissionStates.batteryOptimization, permissionStates.location, permissionStates.notification]);
 
   // Auto-trigger Device Admin dialog when ALL 6 permissions are granted
   useEffect(() => {
