@@ -36,8 +36,9 @@ class EMIBootReceiver : BroadcastReceiver() {
 
         Log.d(TAG, "Boot state: registered=$isRegistered, locked=$isLocked, setupComplete=$setupComplete")
 
-        // Launch app if registered (always) or locked (enforce lock screen)
-        if (isRegistered || isLocked) {
+        // Only force-launch app on boot if device is LOCKED
+        // PROTECTED state: app starts normally via Android launcher, no force needed
+        if (isLocked) {
             try {
                 val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
                 if (launchIntent != null) {
@@ -49,15 +50,16 @@ class EMIBootReceiver : BroadcastReceiver() {
                     launchIntent.putExtra("boot_start", true)
                     launchIntent.putExtra("is_locked", isLocked)
                     context.startActivity(launchIntent)
-                    Log.d(TAG, "App launched on boot")
+                    Log.d(TAG, "App launched on boot (device is LOCKED)")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to launch app on boot: ${e.message}")
             }
         }
 
-        // Start overlay service if locked or setup complete (needs overlay permission)
-        if (isLocked || setupComplete) {
+        // Only start overlay service if LOCKED (not for PROTECTED state)
+        // PROTECTED state should not block status bar or navigation
+        if (isLocked) {
             try {
                 val overlayIntent = Intent(context, EMIOverlayService::class.java)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
