@@ -438,6 +438,26 @@ export default function ClientHome() {
       
       setStatus(statusToSet);
       
+      // Show system notification when a NEW warning arrives
+      if (statusToSet.warning_message && statusToSet.warning_message !== lastWarningRef.current) {
+        lastWarningRef.current = statusToSet.warning_message;
+        try {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: language === 'et' ? 'Hoiatus administraatorilt' : 'Warning from Administrator',
+              body: statusToSet.warning_message,
+              sound: true,
+              priority: Notifications.AndroidNotificationPriority.HIGH,
+            },
+            trigger: null, // Show immediately
+          });
+        } catch (notifErr) {
+          console.log('Warning notification error:', notifErr);
+        }
+      } else if (!statusToSet.warning_message) {
+        lastWarningRef.current = '';
+      }
+      
       // Check if admin has allowed uninstall
       if (statusToSet.uninstall_allowed && Platform.OS === 'android') {
         handleUninstallSignal();
