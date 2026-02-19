@@ -807,7 +807,9 @@ export default function ClientHome() {
                 location: locationPerm,
                 notification: notifPerm,
               }));
-              if (overlay) {
+              // Only start overlay blocker if device is actually LOCKED
+              // PROTECTED state should NOT use overlay blocker (it blocks normal phone use)
+              if (overlay && status?.is_locked) {
                 await devicePolicy.startOverlayBlocker();
               }
             } catch (e) {
