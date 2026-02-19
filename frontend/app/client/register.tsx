@@ -146,10 +146,15 @@ export default function ClientRegister() {
           {
             text: t('ok'),
             onPress: () => {
-              // Small delay to ensure alert is fully dismissed before navigation
+              // Longer delay to ensure all async storage writes complete before navigation
               setTimeout(() => {
-                router.replace('/client/home');
-              }, 100);
+                try {
+                  router.replace('/client/home');
+                } catch (navErr) {
+                  console.log('Navigation error, retrying:', navErr);
+                  setTimeout(() => router.replace('/client/home'), 500);
+                }
+              }, 300);
             },
           },
         ]
