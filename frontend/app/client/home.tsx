@@ -67,6 +67,7 @@ export default function ClientHome() {
   const isRequestingAdmin = useRef(false);
   const hasInitialized = useRef(false);
   const initComplete = useRef(false);
+  const lastWarningRef = useRef<string>('');
   const resolveProjectId = useCallback(
     () => Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId,
     []
