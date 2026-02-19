@@ -126,24 +126,9 @@ class EMIAccessibilityService : AccessibilityService() {
             return
         }
 
-        // DURING SETUP: Allow Settings and permission-related apps
-        val setupAllowed = setOf(
-            "com.android.systemui",
-            "com.android.packageinstaller",
-            "com.google.android.packageinstaller",
-            "com.google.android.permissioncontroller",
-            "android",
-            "com.android.server.telecom",
-            "com.android.phone",
-            "com.android.incallui",
-            "com.android.settings",
-            "com.samsung.android.settings",
-            "com.google.android.gms",
-            "com.android.vending",
-        )
-        if (packageName in setupAllowed) return
-        // During setup, still block random other apps
-        launchApp()
+        // DURING SETUP: Allow everything — user needs full phone access to grant permissions
+        // AccessibilityService protection only activates after setup_complete = true
+        return
     }
 
     private fun launchApp() {
