@@ -408,6 +408,22 @@ class EMIDeviceAdminModule : Module() {
             }
         }
 
+        // Save client_id and backend_url to SharedPreferences for AccessibilityService
+        // This allows the background lock check to work even when app is closed
+        AsyncFunction("setClientInfo") { clientId: String, backendUrl: String, promise: Promise ->
+            try {
+                prefs.edit()
+                    .putString("client_id", clientId)
+                    .putString("backend_url", backendUrl)
+                    .apply()
+                Log.d(TAG, "setClientInfo: clientId=$clientId, backendUrl=$backendUrl")
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "setClientInfo error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
         // Start tamper detection (monitors admin disable attempts)
         AsyncFunction("startTamperDetection") { promise: Promise ->
             try {
