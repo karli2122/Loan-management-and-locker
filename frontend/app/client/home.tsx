@@ -860,14 +860,27 @@ export default function ClientHome() {
                 (async () => { const { status } = await Notifications.getPermissionsAsync(); return status === 'granted'; })(),
               ]);
               setIsAdminActive(admin);
-              setPermissionStates(prev => ({
-                ...prev,
+              const newPermStates = {
+                ...permissionStates,
                 batteryOptimization: batteryOpt,
                 overlay: overlay,
                 accessibility: accessibility,
                 location: locationPerm,
                 notification: notifPerm,
-              }));
+              };
+              setPermissionStates(newPermStates);
+              
+              // Cache permission states for persistence
+              await AsyncStorage.setItem('permission_states', JSON.stringify(newPermStates));
+              
+              // Auto-hide permission tab if all permissions + admin are active
+              const allGranted = Object.values(newPermStates).every(Boolean);
+              if (allGranted && admin) {
+                setProtectionComplete(true);
+                setShowProtectionSetup(false);
+                await AsyncStorage.setItem('protection_complete', 'true');
+              }
+              
               // Only start overlay blocker if device is actually LOCKED
               // PROTECTED state should NOT use overlay blocker (it blocks normal phone use)
               if (overlay && wasLocked.current) {
