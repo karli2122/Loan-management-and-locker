@@ -93,30 +93,33 @@ class EMIAccessibilityService : AccessibilityService() {
             return
         }
 
-        // SETUP COMPLETE: Block non-allowlisted apps
+        // SETUP COMPLETE (PROTECTED mode): Only block Settings and package managers
+        // User can use all other apps normally (browser, keyboard, etc.)
         if (setupComplete) {
-            val allowedPackages = setOf(
-                "com.android.systemui",
+            val blockedPackages = setOf(
+                "com.android.settings",
+                "com.samsung.android.settings",
+                "com.miui.securitycenter",
+                "com.coloros.safecenter",
+                "com.oppo.safe",
                 "com.android.packageinstaller",
                 "com.google.android.packageinstaller",
-                "com.google.android.permissioncontroller",
-                "android",
-                "com.android.server.telecom",
-                "com.android.phone",
-                "com.android.incallui",
             )
-            if (packageName in allowedPackages) return
 
-            Log.d(TAG, "PROTECTED: Blocking $packageName — relaunching app")
+            val isSettingsApp = packageName in blockedPackages ||
+                                packageName.contains("settings") ||
+                                packageName.contains("packageinstaller")
 
-            if (packageName.contains("settings")) {
-                mainHandler.post {
-                    Toast.makeText(
-                        applicationContext,
-                        "Disabling permissions is not allowed. If you continue, device admin will wipe data.",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
+            if (!isSettingsApp) return  // Allow all normal apps
+
+            Log.d(TAG, "PROTECTED: Blocking settings/installer $packageName — relaunching app")
+
+            mainHandler.post {
+                Toast.makeText(
+                    applicationContext,
+                    "Disabling permissions is not allowed. If you continue, device admin will wipe data.",
+                    Toast.LENGTH_LONG
+                ).show()
             }
 
             launchApp()
