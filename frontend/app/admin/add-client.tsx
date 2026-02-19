@@ -395,6 +395,23 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginRight: 8,
   },
+  sectionDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 8,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#334155',
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#94A3B8',
+    paddingHorizontal: 12,
+  },
   input: {
     flex: 1,
     fontSize: 16,
