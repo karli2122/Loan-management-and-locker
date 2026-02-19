@@ -57,7 +57,7 @@ export default function ClientHome() {
     location: false,
     notification: false,
   });
-  const [showProtectionSetup, setShowProtectionSetup] = useState(true);
+  const [showProtectionSetup, setShowProtectionSetup] = useState(false);
   const [protectionComplete, setProtectionComplete] = useState(false);
   const [showAdminDialog, setShowAdminDialog] = useState(false);
   const isMounted = useRef(false);
