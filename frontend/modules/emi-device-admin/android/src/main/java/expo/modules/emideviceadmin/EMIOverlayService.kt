@@ -63,11 +63,14 @@ class EMIOverlayService : Service() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Device Protection",
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_MIN  // Minimal: no sound, no status bar icon
             ).apply {
                 description = "Keeps device protection active"
                 setShowBadge(false)
                 lockscreenVisibility = Notification.VISIBILITY_SECRET
+                enableLights(false)
+                enableVibration(false)
+                setSound(null, null)
             }
             val nm = getSystemService(NotificationManager::class.java)
             nm?.createNotificationChannel(channel)
@@ -82,10 +85,11 @@ class EMIOverlayService : Service() {
             Notification.Builder(this)
         }
         return builder
-            .setContentTitle("Device Protection Active")
-            .setContentText("Device is secured")
+            .setContentTitle("")
+            .setContentText("")
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setOngoing(true)
+            .setPriority(Notification.PRIORITY_MIN)
             .build()
     }
 
