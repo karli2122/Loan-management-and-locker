@@ -760,18 +760,45 @@ export default function ClientHome() {
               (async () => { const { status } = await Notifications.getPermissionsAsync(); return status === 'granted'; })(),
             ]);
             setIsAdminActive(admin);
-            setPermissionStates({
+            
+            const newPermStates = {
               batteryOptimization: batteryOpt,
               overlay: overlay,
               autoStart: protComplete === 'true',
               accessibility: accessibility,
               location: locationPerm,
               notification: notifPerm,
-            });
+            };
+            setPermissionStates(newPermStates);
+            
+            // Save permission states to cache for persistence
+            await AsyncStorage.setItem('permission_states', JSON.stringify(newPermStates));
+            
+            // Determine if permission setup should show:
+            // Hide if protection is complete OR if all permissions + admin are active
+            const allGranted = Object.values(newPermStates).every(Boolean);
+            if (protComplete === 'true' || (allGranted && admin)) {
+              setShowProtectionSetup(false);
+              setProtectionComplete(true);
+            } else {
+              // Show permission setup — some permissions still need granting
+              setShowProtectionSetup(true);
+            }
+            
             // PROTECTED state: AccessibilityService handles protection passively
             // Overlay/kiosk/immersive only start in LOCKED state via updateLockState
           } catch (e) {
             console.log('Permission check error (non-fatal):', e);
+            // Fallback: try to restore from cache
+            try {
+              const cached = await AsyncStorage.getItem('permission_states');
+              if (cached) {
+                const cachedStates = JSON.parse(cached);
+                setPermissionStates(cachedStates);
+              }
+            } catch (cacheErr) {
+              console.log('Cache restore error:', cacheErr);
+            }
           }
         }
 
