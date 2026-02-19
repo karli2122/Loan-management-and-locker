@@ -775,7 +775,18 @@ export default function ClientHome() {
         const isFreshRegistration = await AsyncStorage.getItem('fresh_registration');
         if (isFreshRegistration === 'true') {
           await AsyncStorage.removeItem('fresh_registration');
-          console.log('Fresh registration detected');
+          console.log('Fresh registration detected — delaying permission setup');
+          // For fresh registration, don't auto-request permissions immediately
+          // Let the user see the home screen first
+          initComplete.current = true;
+          setLoading(false);
+          // Delay showing protection setup for fresh registrations
+          setTimeout(() => {
+            if (isMounted.current) {
+              setShowProtectionSetup(true);
+            }
+          }, 2000);
+          return; // Skip the permission check on fresh registration init
         }
         
         // Only check admin state silently — no alerts, no system dialogs on init.
