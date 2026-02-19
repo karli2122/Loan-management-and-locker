@@ -33,6 +33,10 @@ export default function AddClient() {
     emi_amount: '',
     loan_given_date: new Date().toISOString().split('T')[0],
     emi_due_date: '',
+    loan_amount: '',
+    down_payment: '',
+    interest_rate: '',
+    loan_tenure_months: '',
   });
 
   const handleSubmit = async () => {
