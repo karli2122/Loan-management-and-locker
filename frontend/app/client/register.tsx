@@ -136,6 +136,10 @@ export default function ClientRegister() {
       // Mark device as registered for autostart on boot
       await devicePolicy.setRegistered(true);
       
+      // Save client info for background lock checking (AccessibilityService)
+      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+      await devicePolicy.setClientInfo(clientId, backendUrl);
+      
       // Show registration successful message
       Alert.alert(
         t('success'),
