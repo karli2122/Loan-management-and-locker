@@ -1259,7 +1259,7 @@ export default function ClientHome() {
         )}
 
         {/* Collapsed banner when protection setup is hidden */}
-        {!showProtectionSetup && Platform.OS === 'android' && (
+        {!showProtectionSetup && !protectionComplete && Platform.OS === 'android' && (
           <TouchableOpacity
             style={[styles.protectionBanner, Object.values(permissionStates).every(Boolean) ? styles.protectionFull : styles.protectionBasic]}
             onPress={() => setShowProtectionSetup(true)}
