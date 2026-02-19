@@ -61,7 +61,7 @@ async def get_device_status(client_id: str):
         is_locked=client.get("is_locked", False),
         lock_message=client.get("lock_message", ""),
         warning_message=client.get("warning_message", ""),
-        loan_amount=client.get("loan_amount", client.get("emi_amount", 0)),
+        loan_amount=client.get("outstanding_balance", client.get("loan_amount", client.get("emi_amount", 0))),
         loan_due_date=client.get("emi_due_date") or (client["next_payment_due"].strftime("%Y-%m-%d") if client.get("next_payment_due") else None),
         uninstall_allowed=client.get("uninstall_allowed", False)
     )
