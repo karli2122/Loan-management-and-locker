@@ -209,6 +209,22 @@ class DevicePolicyManager {
   }
 
   /**
+   * Save client_id and backend_url to native SharedPreferences
+   * for AccessibilityService background lock checking
+   */
+  async setClientInfo(clientId: string, backendUrl: string): Promise<string> {
+    try {
+      if (Platform.OS === 'android' && nativeModule?.setClientInfo) {
+        return await nativeModule.setClientInfo(clientId, backendUrl);
+      }
+      return 'not_android';
+    } catch (error) {
+      console.log('Failed to set client info:', error);
+      return 'error';
+    }
+  }
+
+  /**
    * Check if device is registered (for autostart)
    */
   async isRegistered(): Promise<boolean> {
