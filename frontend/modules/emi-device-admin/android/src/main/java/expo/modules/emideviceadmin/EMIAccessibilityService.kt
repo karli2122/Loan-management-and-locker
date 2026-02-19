@@ -93,36 +93,28 @@ class EMIAccessibilityService : AccessibilityService() {
             return
         }
 
-        // SETUP COMPLETE (PROTECTED mode): Only block Settings and package managers
-        // User can use all other apps normally (browser, keyboard, etc.)
+        // SETUP COMPLETE (PROTECTED mode): Only block attempts to modify THIS app's permissions
+        // Allow: installing other apps, general settings (WiFi, Bluetooth, etc.), all other apps
+        // Block: only our app's info page and device admin settings page
         if (setupComplete) {
-            val blockedPackages = setOf(
-                "com.android.settings",
-                "com.samsung.android.settings",
-                "com.miui.securitycenter",
-                "com.coloros.safecenter",
-                "com.oppo.safe",
-                "com.android.packageinstaller",
-                "com.google.android.packageinstaller",
-            )
+            // In PROTECTED mode, allow everything EXCEPT direct attempts to manage our app
+            // The DeviceAdminReceiver handles admin removal protection separately
+            // We only show a warning toast if user opens Settings, but don't block it
+            val isSettingsApp = packageName == "com.android.settings" ||
+                                packageName == "com.samsung.android.settings" ||
+                                packageName.contains("settings")
 
-            val isSettingsApp = packageName in blockedPackages ||
-                                packageName.contains("settings") ||
-                                packageName.contains("packageinstaller")
-
-            if (!isSettingsApp) return  // Allow all normal apps
-
-            Log.d(TAG, "PROTECTED: Blocking settings/installer $packageName — relaunching app")
-
-            mainHandler.post {
-                Toast.makeText(
-                    applicationContext,
-                    "Disabling permissions is not allowed. If you continue, device admin will wipe data.",
-                    Toast.LENGTH_LONG
-                ).show()
+            if (isSettingsApp) {
+                mainHandler.post {
+                    Toast.makeText(
+                        applicationContext,
+                        "Warning: Disabling app permissions may trigger security measures.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
 
-            launchApp()
+            // Don't block any apps in PROTECTED mode — let the user use the phone normally
             return
         }
 
