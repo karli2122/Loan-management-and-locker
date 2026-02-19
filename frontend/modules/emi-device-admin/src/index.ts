@@ -331,3 +331,17 @@ export async function disableImmersiveMode(): Promise<string> {
     return 'error';
   }
 }
+
+// ===================== CLIENT INFO (for background lock checking) =====================
+
+export async function setClientInfo(clientId: string, backendUrl: string): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.setClientInfo(clientId, backendUrl);
+  } catch (e) {
+    console.log('setClientInfo error:', e);
+    return 'error';
+  }
+}
+
+// ===================== REGISTRATION =====================
