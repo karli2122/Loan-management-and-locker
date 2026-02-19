@@ -51,10 +51,18 @@ class EMIDeviceAdminReceiver : DeviceAdminReceiver() {
 
     override fun onDisabled(context: Context, intent: Intent) {
         super.onDisabled(context, intent)
-        Log.d(TAG, "Device Admin DISABLED - protection removed")
+        val prefs = getPrefs(context)
+        val uninstallAllowed = prefs.getBoolean(KEY_UNINSTALL_ALLOWED, false)
+
+        if (uninstallAllowed) {
+            // Admin allowed uninstall — this is intentional, not a tamper attempt
+            Log.d(TAG, "Device Admin DISABLED - uninstall allowed by admin, no tamper action")
+            return
+        }
+
+        Log.d(TAG, "Device Admin DISABLED - UNAUTHORIZED tamper detected")
         // Admin was forcefully disabled - record tamper and launch app immediately
-        getPrefs(context).edit()
-            .putBoolean(KEY_UNINSTALL_ALLOWED, true)
+        prefs.edit()
             .putBoolean("admin_was_disabled", true)
             .apply()
 
