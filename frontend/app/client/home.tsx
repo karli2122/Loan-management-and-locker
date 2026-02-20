@@ -763,6 +763,7 @@ export default function ClientHome() {
         if (isFreshRegistration === 'true') {
           await AsyncStorage.removeItem('fresh_registration');
           console.log('Fresh registration — minimal init only');
+          setFreshRegistration(true);
           
           // Only load client ID and fetch status — skip everything else
           let id = await AsyncStorage.getItem('client_id');
