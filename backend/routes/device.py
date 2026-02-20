@@ -55,14 +55,39 @@ async def get_device_status(client_id: str):
         {"$set": {"last_heartbeat": datetime.utcnow()}}
     )
     
+    # Calculate total amount due with interest
+    loan_amount = client.get("loan_amount", 0)
+    interest_rate = client.get("interest_rate", 0)
+    total_amount_due = client.get("total_amount_due", 0)
+    outstanding_balance = client.get("outstanding_balance", 0)
+    
+    # If total_amount_due was calculated by setup_loan, use it. Otherwise estimate.
+    if total_amount_due and total_amount_due > loan_amount:
+        amount_due = total_amount_due
+    elif loan_amount > 0 and interest_rate > 0:
+        # Simple interest estimate: principal + one month interest
+        amount_due = loan_amount + (loan_amount * interest_rate / 100)
+    else:
+        amount_due = outstanding_balance or loan_amount
+    
+    # Parse due date properly
+    raw_due = client.get("next_payment_due") or client.get("emi_due_date") or client.get("loan_due_date")
+    if raw_due:
+        if isinstance(raw_due, datetime):
+            due_date_str = raw_due.strftime("%Y-%m-%d")
+        else:
+            due_date_str = str(raw_due)[:10]
+    else:
+        due_date_str = None
+    
     return ClientStatusResponse(
         id=client["id"],
         name=client["name"],
         is_locked=client.get("is_locked", False),
         lock_message=client.get("lock_message", ""),
         warning_message=client.get("warning_message", ""),
-        loan_amount=client.get("outstanding_balance", client.get("loan_amount", client.get("emi_amount", 0))),
-        loan_due_date=client.get("emi_due_date") or (client["next_payment_due"].strftime("%Y-%m-%d") if client.get("next_payment_due") else None),
+        loan_amount=round(amount_due, 2),
+        loan_due_date=due_date_str,
         uninstall_allowed=client.get("uninstall_allowed", False)
     )
 
