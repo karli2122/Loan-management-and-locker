@@ -126,22 +126,15 @@ export default function ClientRegister() {
       // Mark as fresh registration so home.tsx can delay admin prompt
       await AsyncStorage.setItem('fresh_registration', 'true');
       
-      // Backup client_id to external storage (survives Clear Data)
-      try { await devicePolicy.backupClientData(clientId); } catch (e) { /* non-fatal */ }
-      
       // Store client data
       const clientData = data?.client;
       if (clientData) {
         await AsyncStorage.setItem('client_data', JSON.stringify(clientData));
       }
       
-      // Mark device as registered for autostart on boot
-      try { await devicePolicy.setRegistered(true); } catch (e) { /* non-fatal */ }
-      
-      // Save client info for background lock checking (AccessibilityService)
-      try {
-        await devicePolicy.setClientInfo(clientId, API_URL);
-      } catch (e) { /* non-fatal */ }
+      // NOTE: Do NOT call any native module methods here (backupClientData, setRegistered, setClientInfo).
+      // These trigger background native processes (AccessibilityService polling, BootReceiver)
+      // that crash the app. Native setup is deferred to home.tsx on the first normal startup.
       
       // Show success state — user must reopen app to continue
       setRegistrationSuccess(true);
