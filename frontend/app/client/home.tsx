@@ -756,29 +756,53 @@ export default function ClientHome() {
     // Wrap initialization in try-catch to prevent crashes
     const initialize = async () => {
       try {
-        // Check cached lock state immediately on startup for offline enforcement
-        await checkCachedLockStateOnStartup();
-        
-        // Load client data first - this sets loading to false
-        await loadClientData();
-        
-        // Check if this is a fresh registration
+        // Check if this is a fresh registration BEFORE doing anything heavy
         const isFreshRegistration = await AsyncStorage.getItem('fresh_registration');
+        
         if (isFreshRegistration === 'true') {
           await AsyncStorage.removeItem('fresh_registration');
-          console.log('Fresh registration detected — delaying permission setup');
-          // For fresh registration, don't auto-request permissions immediately
-          // Let the user see the home screen first
+          console.log('Fresh registration — minimal init only');
+          
+          // Only load client ID and fetch status — skip everything else
+          let id = await AsyncStorage.getItem('client_id');
+          if (!id) {
+            setLoading(false);
+            router.replace('/client/register');
+            return;
+          }
+          
+          setClientId(id);
+          
+          // Save client info for background lock checking
+          try {
+            await devicePolicy.setClientInfo(id, API_URL);
+          } catch (e) { /* non-fatal */ }
+          
+          // Fetch status only — no location, no push token, no permission checks
+          try {
+            await fetchStatus(id);
+          } catch (e) {
+            console.log('Fresh registration fetchStatus error:', e);
+          }
+          
           initComplete.current = true;
           setLoading(false);
-          // Delay showing protection setup for fresh registrations
+          
+          // Show permission setup after 3 seconds to let UI stabilize
           setTimeout(() => {
             if (isMounted.current) {
               setShowProtectionSetup(true);
             }
-          }, 2000);
-          return; // Skip the permission check on fresh registration init
+          }, 3000);
+          return;
         }
+        
+        // Normal init (not fresh registration)
+        // Check cached lock state immediately on startup for offline enforcement
+        await checkCachedLockStateOnStartup();
+        
+        // Load client data — this includes fetchStatus, location, push token
+        await loadClientData();
         
         // Only check admin state silently — no alerts, no system dialogs on init.
         if (Platform.OS === 'android' && isMounted.current) {
