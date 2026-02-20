@@ -1241,10 +1241,13 @@ export default function ClientHome() {
                   {
                     text: info.shortcut,
                     onPress: async () => {
-                      try {
-                        await devicePolicy.openAutoStartSettings();
-                      } catch (e) {
-                        console.log('openAutoStartSettings error:', e);
+                      // Only open settings if shortcut is NOT "Mark as done"
+                      if (!info.shortcut.includes('Mark as done') && !info.shortcut.includes('Märgi')) {
+                        try {
+                          await devicePolicy.openAutoStartSettings();
+                        } catch (e) {
+                          console.log('openAutoStartSettings error:', e);
+                        }
                       }
                       // Always mark as done — we can't verify autostart programmatically
                       setPermissionStates(prev => ({ ...prev, autoStart: true }));
