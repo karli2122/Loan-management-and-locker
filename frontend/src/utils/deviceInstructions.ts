@@ -19,11 +19,11 @@ export function getAutoStartInstructions(dev: NativeDeviceInfo, lang: string): P
 
   if (m.includes('samsung')) {
     return {
-      title: isEt ? 'Aku optimeerimine' : 'Battery Optimization',
+      title: isEt ? 'Taustapiirangutest vabastamine' : 'Remove Background Restrictions',
       steps: isEt
-        ? `${model} (Android ${ver})\n\nSeaded > Aku ja seadme hooldus > Aku > Taustakasutusliialdused\n\nLeidke "Loan Client" ja valige "Piiranguteta"`
-        : `${model} (Android ${ver})\n\nSettings > Battery and device care > Battery > Background usage limits\n\nFind "Loan Client" and set to "Unrestricted"`,
-      shortcut: isEt ? 'Ava aku seaded' : 'Open Battery Settings',
+        ? `${model} (Android ${ver})\n\nAvaneb rakenduse teave leht.\n\n1. Puudutage "Aku"\n2. Valige "Piiranguteta"\n\nSee tagab, et rakendus töötab taustal.`
+        : `${model} (Android ${ver})\n\nApp info page will open.\n\n1. Tap "Battery"\n2. Select "Unrestricted"\n\nThis ensures the app runs in the background.`,
+      shortcut: isEt ? 'Ava rakenduse seaded' : 'Open App Settings',
     };
   }
   if (m.includes('xiaomi') || m.includes('redmi') || m.includes('poco')) {
