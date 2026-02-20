@@ -956,7 +956,7 @@ export default function ClientHome() {
   // Waits for main initialization to complete before accessing native modules
   useEffect(() => {
     const initializeProtection = async () => {
-      if (!clientId || Platform.OS !== 'android') return;
+      if (!clientId || Platform.OS !== 'android' || freshRegistration) return;
 
       // Wait until the main useEffect's initialize() is done
       let waitAttempts = 0;
