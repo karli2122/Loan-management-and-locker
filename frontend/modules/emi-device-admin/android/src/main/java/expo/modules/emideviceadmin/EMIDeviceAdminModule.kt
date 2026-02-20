@@ -840,10 +840,28 @@ class EMIDeviceAdminModule : Module() {
         // ===================== AUTO START =====================
 
         // Open auto-start / background usage settings (OEM-specific)
-        // Samsung: uses direct battery optimization request dialog
+        // Samsung: opens app-specific battery settings page where user can set "Unrestricted"
         AsyncFunction("openAutoStartSettings") { promise: Promise ->
             try {
-                // First try OEM-specific auto-start pages (Xiaomi, Oppo, Vivo, Huawei)
+                val manufacturer = Build.MANUFACTURER.lowercase()
+
+                // Samsung: Open app-specific battery settings
+                if (manufacturer.contains("samsung")) {
+                    try {
+                        // Try opening the app's specific battery optimization page
+                        val samsungIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                        samsungIntent.data = Uri.parse("package:${context.packageName}")
+                        samsungIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(samsungIntent)
+                        Log.d(TAG, "openAutoStartSettings: Opened Samsung app info page")
+                        promise.resolve("opened")
+                        return@AsyncFunction
+                    } catch (e: Exception) {
+                        Log.d(TAG, "openAutoStartSettings: Samsung app info failed: ${e.message}")
+                    }
+                }
+
+                // OEM-specific auto-start pages (Xiaomi, Oppo, Vivo, Huawei)
                 val oemIntents = listOf(
                     // Xiaomi
                     Intent().setComponent(ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")),
