@@ -625,22 +625,15 @@ export default function ClientHome() {
         console.log('fetchStatus error (non-fatal):', fetchErr);
       }
       
-      // Request location and push token in background — don't let failures crash
-      try {
-        await updateLocation(id);
-      } catch (locErr) {
-        console.log('Location update error (non-fatal):', locErr);
-      }
+      // Show UI NOW — don't block on location/push token
+      if (isMounted.current) setLoading(false);
       
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      try {
-        await registerPushToken(id);
-      } catch (pushErr) {
-        console.log('Push token error (non-fatal):', pushErr);
-      }
+      // Fire-and-forget background tasks — don't await
+      updateLocation(id).catch(e => console.log('Location update error (non-fatal):', e));
+      registerPushToken(id).catch(e => console.log('Push token error (non-fatal):', e));
     } catch (error) {
       console.error('loadClientData error:', error);
+      if (isMounted.current) setLoading(false);
     }
   };
 
