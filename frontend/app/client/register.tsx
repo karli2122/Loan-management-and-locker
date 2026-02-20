@@ -26,6 +26,7 @@ export default function ClientRegister() {
   const [registrationCode, setRegistrationCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingRegistration, setCheckingRegistration] = useState(true);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const baseUrl = API_URL || API_BASE_URL;
 
   useEffect(() => {
