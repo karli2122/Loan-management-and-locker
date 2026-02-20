@@ -764,13 +764,9 @@ export default function ClientHome() {
           setClientId(id);
           setLoading(false);
           
-          // Run deferred native setup that was skipped during registration
-          // These are non-blocking and won't crash since the UI is already shown
-          (async () => {
-            try { await devicePolicy.backupClientData(id); } catch (e) {}
-            try { await devicePolicy.setRegistered(true); } catch (e) {}
-            try { await devicePolicy.setClientInfo(id, API_URL); } catch (e) {}
-          })();
+          // Do NOT run any native module calls here — they crash the app.
+          // Native setup (setClientInfo, setRegistered, backupClientData) 
+          // will happen on the NEXT app open via loadClientData() and protection setup flow.
           
           return;
         }
