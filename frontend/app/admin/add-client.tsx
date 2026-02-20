@@ -272,13 +272,6 @@ export default function AddClient() {
                 </>
               )}
             </TouchableOpacity>
-
-            <View style={styles.infoBox}>
-              <Ionicons name="information-circle" size={20} color="#3B82F6" />
-              <Text style={styles.infoText}>
-                {t('registrationCodeInfo')}
-              </Text>
-            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
