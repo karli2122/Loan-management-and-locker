@@ -912,6 +912,7 @@ export default function ClientHome() {
               ]);
               const autoStartCached = (await AsyncStorage.getItem('autostart_enabled')) === 'true';
               const accessibilityCached = (await AsyncStorage.getItem('accessibility_enabled')) === 'true';
+              setIsAdminActive(admin);
               const newPermStates = {
                 batteryOptimization: batteryOpt,
                 overlay: overlay,
