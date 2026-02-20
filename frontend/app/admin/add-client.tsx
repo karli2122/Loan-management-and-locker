@@ -56,8 +56,6 @@ export default function AddClient() {
         birth_number: form.birth_number,
         emi_amount: parseFloat(form.emi_amount) || 0,
         emi_due_date: form.emi_due_date || undefined,
-        loan_amount: parseFloat(form.loan_amount) || 0,
-        down_payment: parseFloat(form.down_payment) || 0,
         interest_rate: parseFloat(form.interest_rate) || 0,
         loan_tenure_months: parseInt(form.loan_tenure_months) || 0,
       };
