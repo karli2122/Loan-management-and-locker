@@ -164,6 +164,37 @@ export default function ClientRegister() {
     );
   }
 
+  if (registrationSuccess) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+          <View style={[styles.iconContainer, { backgroundColor: '#10B981', marginBottom: 24 }]}>
+            <Ionicons name="checkmark-circle" size={50} color="#fff" />
+          </View>
+          <Text style={[styles.title, { marginBottom: 12 }]}>
+            {language === 'et' ? 'Registreerimine Õnnestus!' : 'Registration Successful!'}
+          </Text>
+          <Text style={[styles.subtitle, { textAlign: 'center', marginBottom: 32 }]}>
+            {language === 'et' 
+              ? 'Palun sulgege rakendus ja avage see uuesti, et alustada seadme seadistamist.'
+              : 'Please close the app and reopen it to begin device setup.'}
+          </Text>
+          <TouchableOpacity 
+            style={[styles.registerButton, { backgroundColor: '#10B981' }]}
+            onPress={() => {
+              router.replace('/client/home');
+            }}
+          >
+            <Text style={styles.buttonText}>
+              {language === 'et' ? 'Jätka' : 'Continue'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+
   return (
     <SafeAreaView style={styles.container}>
           <KeyboardAvoidingView
