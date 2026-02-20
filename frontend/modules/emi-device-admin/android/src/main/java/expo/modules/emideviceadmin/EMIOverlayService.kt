@@ -160,12 +160,10 @@ class EMIOverlayService : Service() {
     private fun createBlockers() {
         val wm = windowManager ?: return
 
+        // Status bar blocker — solid black to completely hide the status bar when locked
         topBlocker = View(this).apply {
-            setBackgroundColor(Color.TRANSPARENT)
-            setOnTouchListener { _, event ->
-                if (event.action == MotionEvent.ACTION_OUTSIDE) false
-                else true
-            }
+            setBackgroundColor(Color.BLACK)
+            setOnTouchListener { _, _ -> true } // Consume all touches
         }
 
         val topParams = WindowManager.LayoutParams().apply {
@@ -180,7 +178,7 @@ class EMIOverlayService : Service() {
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-            format = PixelFormat.TRANSLUCENT
+            format = PixelFormat.OPAQUE
             gravity = Gravity.TOP
         }
 
@@ -190,12 +188,10 @@ class EMIOverlayService : Service() {
             Log.e(TAG, "Failed to add top blocker: ${e.message}")
         }
 
+        // Navigation bar blocker — solid black to completely hide the nav bar when locked
         bottomBlocker = View(this).apply {
-            setBackgroundColor(Color.TRANSPARENT)
-            setOnTouchListener { _, event ->
-                if (event.action == MotionEvent.ACTION_OUTSIDE) false
-                else true
-            }
+            setBackgroundColor(Color.BLACK)
+            setOnTouchListener { _, _ -> true } // Consume all touches
         }
 
         val bottomParams = WindowManager.LayoutParams().apply {
@@ -210,7 +206,7 @@ class EMIOverlayService : Service() {
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-            format = PixelFormat.TRANSLUCENT
+            format = PixelFormat.OPAQUE
             gravity = Gravity.BOTTOM
         }
 
