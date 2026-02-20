@@ -883,17 +883,18 @@ export default function ClientHome() {
 
   useEffect(() => {
     if (!clientId) return;
+    if (freshRegistration) return; // Don't poll or check state during fresh registration
 
     // Poll status every 30 seconds
     intervalRef.current = setInterval(() => {
-      fetchStatus(clientId);
+      fetchStatus(clientId).catch(() => {});
     }, 30000);
 
     // Handle app state changes
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        fetchStatus(clientId);
-        updateLocation(clientId);
+        fetchStatus(clientId).catch(() => {});
+        updateLocation(clientId).catch(() => {});
         // Refresh all protection states on resume (user may have just enabled something)
         if (Platform.OS === 'android') {
           (async () => {
@@ -907,10 +908,11 @@ export default function ClientHome() {
                 (async () => { const { status } = await Notifications.getPermissionsAsync(); return status === 'granted'; })(),
               ]);
               setIsAdminActive(admin);
+              const autoStartCached = (await AsyncStorage.getItem('autostart_enabled')) === 'true';
               const newPermStates = {
-                ...permissionStates,
                 batteryOptimization: batteryOpt,
                 overlay: overlay,
+                autoStart: autoStartCached,
                 accessibility: accessibility,
                 location: locationPerm,
                 notification: notifPerm,
@@ -929,7 +931,6 @@ export default function ClientHome() {
               }
               
               // Only start overlay blocker if device is actually LOCKED
-              // PROTECTED state should NOT use overlay blocker (it blocks normal phone use)
               if (overlay && wasLocked.current) {
                 await devicePolicy.startOverlayBlocker();
               }
@@ -948,8 +949,8 @@ export default function ClientHome() {
       }
       subscription.remove();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Functions use clientId from closure; adding them would cause infinite loops
-  }, [clientId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId, freshRegistration]);
 
   // Initialize protection and check for reboot (tamper detection disabled to prevent crashes)
   // Waits for main initialization to complete before accessing native modules
