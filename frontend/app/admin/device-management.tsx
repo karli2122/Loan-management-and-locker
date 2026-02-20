@@ -159,33 +159,6 @@ export default function DeviceManagement() {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/admin/device-setup')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#F59E0B' }]}>
-              <Ionicons name="qr-code" size={24} color="#fff" />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>
-                {language === 'et' ? 'Seadme seadistus' : 'Device Setup'}
-              </Text>
-              <Text style={styles.actionDescription}>
-                {language === 'et' ? 'QR-kood automaatseks seadistuseks' : 'QR code for automatic setup'}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.infoBox}>
-          <Ionicons name="information-circle" size={24} color="#4F46E5" />
-          <Text style={styles.infoText}>
-            {language === 'et' 
-              ? 'Seadmed lukustatakse automaatselt, kui klient ei tee õigeaegselt makseid. Võite seadmeid käsitsi lukustada või vabastada kliendivaates.'
-              : 'Devices are automatically locked when clients miss payments. You can manually lock or unlock devices from the client view.'}
-          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
