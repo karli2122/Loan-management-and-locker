@@ -28,7 +28,7 @@ resend.api_key = os.environ.get("RESEND_API_KEY", "")
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
 
 
-def generate_loan_contract_pdf(lender: dict, client: dict, loan_amount: float, due_date: str) -> bytes:
+def generate_loan_contract_pdf(lender: dict, client: dict, loan_amount: float, due_date: str, total_repayment: float = 0, interest_rate: float = 0) -> bytes:
     """Generate a loan contract PDF based on the Estonian template."""
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -145,8 +145,11 @@ def generate_loan_contract_pdf(lender: dict, client: dict, loan_amount: float, d
     # Section 2: Interest and loan repayment
     story.append(Paragraph("2. Intress ja laenu tagastamine", heading_style))
     story.append(Paragraph("2.1. Laen on antud tähtajaliselt.", normal_style))
+    
+    repay_amount = total_repayment if total_repayment > 0 else loan_amount
+    interest_text = f" (laenusumma {loan_amount:.2f} eurot + intress {interest_rate:.1f}% kuus = {repay_amount:.2f} eurot)" if interest_rate > 0 else ""
     story.append(Paragraph(
-        f"2.2. Laenusaaja kohustub Laenu tagasi maksma alljärgnevalt: <b>{loan_amount:.2f} eurot</b> maksetähtpäevaks <b>{due_date}</b>.",
+        f"2.2. Laenusaaja kohustub Laenu tagasi maksma alljärgnevalt: <b>{repay_amount:.2f} eurot</b>{interest_text} maksetähtpäevaks <b>{due_date}</b>.",
         normal_style
     ))
     story.append(Paragraph(
