@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -18,7 +19,6 @@ import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL, { API_BASE_URL, buildApiUrl } from '../../src/constants/api';
-import { BackHandler } from 'react-native';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
 
 export default function ClientRegister() {
