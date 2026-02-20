@@ -2,9 +2,16 @@ import React from 'react';
 import { Slot } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { View } from 'react-native';
+import { View, LogBox } from 'react-native';
 import { LanguageProvider } from '../src/context/LanguageContext';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
+
+// Suppress non-critical warnings that can cause crashes in production
+LogBox.ignoreLogs([
+  'Non-serializable values were found in the navigation state',
+  'Setting a timer for a long period',
+  'Possible Unhandled Promise Rejection',
+]);
 
 function ThemedLayout() {
   const { colors, isDark } = useTheme();
