@@ -30,11 +30,10 @@ export default function AddClient() {
     email: '',
     address: '',
     birth_number: '',
-    emi_amount: '',
+    loan_amount: '',
     loan_given_date: new Date().toISOString().split('T')[0],
     emi_due_date: '',
     interest_rate: '',
-    loan_tenure_months: '',
   });
 
   const handleSubmit = async () => {
@@ -54,10 +53,10 @@ export default function AddClient() {
         email: form.email,
         address: form.address,
         birth_number: form.birth_number,
-        emi_amount: parseFloat(form.emi_amount) || 0,
+        loan_amount: parseFloat(form.loan_amount) || 0,
         emi_due_date: form.emi_due_date || undefined,
         interest_rate: parseFloat(form.interest_rate) || 0,
-        loan_tenure_months: parseInt(form.loan_tenure_months) || 0,
+        loan_start_date: form.loan_given_date || undefined,
       };
       
       console.log('Creating client with data:', requestBody);
