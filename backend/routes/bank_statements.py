@@ -170,21 +170,33 @@ async def analyze_bank_statement(
     if len(file_bytes) == 0:
         raise HTTPException(status_code=400, detail="Empty file")
 
-    # Extract PDF if .asice
+    # Extract PDF/document if .asice
     try:
         if ext == "asice":
-            pdf_bytes = extract_pdf_from_asice(file_bytes)
+            content, content_type = extract_pdf_from_asice(file_bytes)
+            if content_type == 'pdf':
+                pdf_bytes = content
+            elif content_type in ('xml', 'csv', 'unknown'):
+                # For non-PDF files, use the raw text directly
+                try:
+                    statement_text = content.decode('utf-8')
+                except UnicodeDecodeError:
+                    statement_text = content.decode('latin-1')
+                pdf_bytes = None
+            else:
+                pdf_bytes = content
         else:
             pdf_bytes = file_bytes
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    # Extract text from PDF
-    try:
-        statement_text = extract_text_from_pdf(pdf_bytes)
-    except Exception as e:
-        logger.error(f"PDF text extraction failed: {e}")
-        raise HTTPException(status_code=400, detail="Could not extract text from PDF. The file may be image-based or corrupted.")
+    # Extract text from PDF (if we have PDF bytes)
+    if pdf_bytes is not None:
+        try:
+            statement_text = extract_text_from_pdf(pdf_bytes)
+        except Exception as e:
+            logger.error(f"PDF text extraction failed: {e}")
+            raise HTTPException(status_code=400, detail="Could not extract text from PDF. The file may be image-based or corrupted.")
 
     if not statement_text.strip():
         raise HTTPException(status_code=400, detail="No text could be extracted from the PDF. It may be a scanned/image-based document.")
