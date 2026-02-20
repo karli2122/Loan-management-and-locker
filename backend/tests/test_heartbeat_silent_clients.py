@@ -13,7 +13,7 @@ import time
 import uuid
 from datetime import datetime
 
-BASE_URL = "https://device-admin-patch.preview.emergentagent.com"
+BASE_URL = "https://kiosk-stability-test.preview.emergentagent.com"
 
 # Test credentials
 TEST_USERNAME = "karli1987"

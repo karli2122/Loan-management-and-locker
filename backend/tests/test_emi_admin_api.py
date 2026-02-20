@@ -17,7 +17,7 @@ import os
 import uuid
 
 # Use the preview URL from frontend/.env
-BASE_URL = "https://device-admin-patch.preview.emergentagent.com"
+BASE_URL = "https://kiosk-stability-test.preview.emergentagent.com"
 
 # Test credentials from review request
 TEST_USERNAME = "karli1987"

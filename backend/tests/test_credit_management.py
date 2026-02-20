@@ -16,7 +16,7 @@ import time
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://device-admin-patch.preview.emergentagent.com"
+    BASE_URL = "https://kiosk-stability-test.preview.emergentagent.com"
 
 # Test credentials
 SUPERADMIN_USERNAME = "karli1987"
