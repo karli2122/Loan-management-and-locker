@@ -125,7 +125,7 @@ export default function ClientRegister() {
       await AsyncStorage.setItem('fresh_registration', 'true');
       
       // Backup client_id to external storage (survives Clear Data)
-      await devicePolicy.backupClientData(clientId);
+      try { await devicePolicy.backupClientData(clientId); } catch (e) { /* non-fatal */ }
       
       // Store client data
       const clientData = data?.client;
@@ -134,35 +134,16 @@ export default function ClientRegister() {
       }
       
       // Mark device as registered for autostart on boot
-      await devicePolicy.setRegistered(true);
+      try { await devicePolicy.setRegistered(true); } catch (e) { /* non-fatal */ }
       
       // Save client info for background lock checking (AccessibilityService)
-      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
-      await devicePolicy.setClientInfo(clientId, backendUrl);
+      try {
+        const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+        await devicePolicy.setClientInfo(clientId, backendUrl);
+      } catch (e) { /* non-fatal */ }
       
-      // Show registration successful message
-      Alert.alert(
-        t('success'),
-        language === 'et' 
-          ? 'Registreerimine õnnestus!'
-          : 'Registration successful!',
-        [
-          {
-            text: t('ok'),
-            onPress: () => {
-              // Longer delay to ensure all async storage writes complete before navigation
-              setTimeout(() => {
-                try {
-                  router.replace('/client/home');
-                } catch (navErr) {
-                  console.log('Navigation error, retrying:', navErr);
-                  setTimeout(() => router.replace('/client/home'), 500);
-                }
-              }, 300);
-            },
-          },
-        ]
-      );
+      // Show success state — user must reopen app to continue
+      setRegistrationSuccess(true);
     } catch (error: any) {
       console.error('Registration error:', error);
       Alert.alert(t('error'), error.message || 'Registration failed');
