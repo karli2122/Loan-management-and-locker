@@ -96,10 +96,15 @@ class EMIAccessibilityService : AccessibilityService() {
             if (responseCode == 200) {
                 val response = connection.inputStream.bufferedReader().readText()
                 
-                // Simple JSON parsing for is_locked field
+                // Parse is_locked field
                 val isLockedMatch = Regex("\"is_locked\"\\s*:\\s*(true|false)").find(response)
                 val serverLocked = isLockedMatch?.groupValues?.get(1) == "true"
                 val currentlyLocked = prefs.getBoolean(KEY_LOCKED, false)
+
+                // Parse uninstall_allowed field
+                val uninstallMatch = Regex("\"uninstall_allowed\"\\s*:\\s*(true|false)").find(response)
+                val uninstallAllowed = uninstallMatch?.groupValues?.get(1) == "true"
+                prefs.edit().putBoolean("uninstall_allowed", uninstallAllowed).apply()
 
                 if (serverLocked && !currentlyLocked) {
                     Log.d(TAG, "Server says LOCKED — updating local state and launching app")
@@ -126,6 +131,11 @@ class EMIAccessibilityService : AccessibilityService() {
                     prefs.edit().putBoolean(KEY_LOCKED, false).apply()
                     // Launch app so it can update its UI
                     mainHandler.post { launchApp() }
+                }
+
+                // If uninstall allowed, stop blocking and launch app so it can clear protection
+                if (uninstallAllowed) {
+                    Log.d(TAG, "Uninstall allowed — will not block settings access")
                 }
             }
             connection.disconnect()
