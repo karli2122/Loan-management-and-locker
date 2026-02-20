@@ -603,6 +603,18 @@ class EMIDeviceAdminModule : Module() {
         // Open app info page (for "Allow restricted settings" on Android 13+)
         AsyncFunction("openAppInfo") { promise: Promise ->
             try {
+                // On Android 13+, first try to open restricted settings directly
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    try {
+                        val restrictedIntent = Intent("android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION")
+                        restrictedIntent.data = Uri.parse("package:${context.packageName}")
+                        restrictedIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        // This may not work on all devices, fall through to app details
+                    } catch (e: Exception) {
+                        Log.d(TAG, "Restricted settings intent not available: ${e.message}")
+                    }
+                }
+                // Open app details settings (user can find "Allow restricted settings" in three-dot menu)
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                 intent.data = Uri.parse("package:${context.packageName}")
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -611,6 +623,20 @@ class EMIDeviceAdminModule : Module() {
                 promise.resolve("opened")
             } catch (e: Exception) {
                 Log.e(TAG, "openAppInfo error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // Direct accessibility settings opener (bypasses the restricted settings flow)
+        AsyncFunction("openAccessibilitySettingsDirect") { promise: Promise ->
+            try {
+                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                Log.d(TAG, "openAccessibilitySettingsDirect: Opened accessibility settings")
+                promise.resolve("opened")
+            } catch (e: Exception) {
+                Log.e(TAG, "openAccessibilitySettingsDirect error: ${e.message}")
                 promise.resolve("error: ${e.message}")
             }
         }
