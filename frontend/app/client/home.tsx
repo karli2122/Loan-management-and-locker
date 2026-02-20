@@ -1223,17 +1223,18 @@ export default function ClientHome() {
                     style: 'cancel',
                   },
                   {
-                    text: info.shortcut,
+                    text: language === 'et' ? 'Ava seaded' : 'Open Settings',
                     onPress: async () => {
-                      // Only open settings if shortcut is NOT "Mark as done"
-                      if (!info.shortcut.includes('Mark as done') && !info.shortcut.includes('Märgi')) {
-                        try {
-                          await devicePolicy.openAutoStartSettings();
-                        } catch (e) {
-                          console.log('openAutoStartSettings error:', e);
-                        }
+                      try {
+                        await devicePolicy.openAutoStartSettings();
+                      } catch (e) {
+                        console.log('openAutoStartSettings error:', e);
                       }
-                      // Always mark as done — we can't verify autostart programmatically
+                    },
+                  },
+                  {
+                    text: language === 'et' ? 'Juba tehtud' : 'Already Done',
+                    onPress: async () => {
                       setPermissionStates(prev => ({ ...prev, autoStart: true }));
                       await AsyncStorage.setItem('autostart_enabled', 'true');
                     },
