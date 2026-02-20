@@ -207,17 +207,52 @@ async def get_financial_report(
     # Group payments by month
     monthly_data = {}
     for payment in payments:
-        month_key = payment["payment_date"].strftime("%Y-%m")
+        month_key = payment["payment_date"].strftime("%B %Y")  # "February 2026"
         if month_key not in monthly_data:
-            monthly_data[month_key] = 0
-        monthly_data[month_key] += payment.get("amount", 0)
+            monthly_data[month_key] = {"revenue": 0, "count": 0}
+        monthly_data[month_key]["revenue"] += payment.get("amount", 0)
+        monthly_data[month_key]["count"] += 1
+    
+    # Build monthly trend array
+    monthly_trend = []
+    for month_name, data in sorted(monthly_data.items(), key=lambda x: x[0]):
+        monthly_trend.append({
+            "month": month_name,
+            "revenue": round(data["revenue"], 2),
+            "payments_count": data["count"],
+        })
+    
+    # Calculate total interest earned (based on current outstanding balances * monthly rates)
+    total_interest_earned = sum(
+        (c.get("outstanding_balance", 0) * c.get("interest_rate", 0) / 100)
+        for c in clients if c.get("outstanding_balance", 0) > 0 and c.get("interest_rate", 0) > 0
+    )
+    
+    # Monthly interest for past 6 months
+    now = datetime.utcnow()
+    monthly_interest_list = []
+    for i in range(5, -1, -1):
+        month_date = now - timedelta(days=30 * i)
+        month_name = month_date.strftime("%B %Y")
+        monthly_interest_list.append({
+            "month": month_name,
+            "interest_earned": round(total_interest_earned, 2)
+        })
     
     return {
         "total_payments": round(total_payments, 2),
         "total_late_fees": round(total_late_fees, 2),
         "total_processing_fees": round(total_processing_fees, 2),
         "payment_count": len(payments),
-        "monthly_breakdown": monthly_data
+        "monthly_breakdown": {k: round(v["revenue"], 2) for k, v in monthly_data.items()},
+        "monthly_trend": monthly_trend,
+        "monthly_interest": monthly_interest_list,
+        "totals": {
+            "total_revenue": round(total_payments + total_late_fees + total_processing_fees, 2),
+            "interest_earned": round(total_interest_earned * 6, 2),
+            "total_disbursed": round(sum(c.get("loan_amount", 0) for c in clients), 2),
+            "total_outstanding": round(sum(c.get("outstanding_balance", 0) for c in clients), 2),
+        }
     }
 
 
