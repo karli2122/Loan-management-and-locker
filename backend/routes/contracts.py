@@ -84,8 +84,20 @@ def generate_loan_contract_pdf(lender: dict, client: dict, loan_amount: float, d
     story.append(Spacer(1, 10))
     
     # Agreement date and location
-    today = datetime.now().strftime("%d.%m.%Y")
-    story.append(Paragraph(f"Käesoleva laenulepingu (edaspidi: Leping) on sõlminud {today}", normal_style))
+    loan_start = client.get("loan_start_date")
+    if loan_start:
+        if isinstance(loan_start, datetime):
+            contract_date = loan_start.strftime("%d.%m.%Y")
+        else:
+            # Parse string date
+            try:
+                from dateutil.parser import parse as parse_date
+                contract_date = parse_date(str(loan_start)).strftime("%d.%m.%Y")
+            except Exception:
+                contract_date = str(loan_start)[:10]
+    else:
+        contract_date = datetime.now().strftime("%d.%m.%Y")
+    story.append(Paragraph(f"Käesoleva laenulepingu (edaspidi: Leping) on sõlminud {contract_date}", normal_style))
     story.append(Paragraph("Tallinn, Eesti", normal_style))
     story.append(Spacer(1, 15))
     
