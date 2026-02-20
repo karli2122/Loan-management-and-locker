@@ -59,6 +59,7 @@ export default function ClientHome() {
   });
   const [showProtectionSetup, setShowProtectionSetup] = useState(false);
   const [protectionComplete, setProtectionComplete] = useState(false);
+  const [freshRegistration, setFreshRegistration] = useState(false);
   const [showAdminDialog, setShowAdminDialog] = useState(false);
   const isMounted = useRef(false);
   const appState = useRef(AppState.currentState);
