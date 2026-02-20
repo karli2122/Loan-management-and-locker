@@ -1001,7 +1001,7 @@ export default function ClientHome() {
     };
     
     initializeProtection();
-  }, [clientId]);
+  }, [clientId, freshRegistration]);
 
   const reportAdminStatus = async (id: string, adminActive: boolean) => {
     if (!id) return;
