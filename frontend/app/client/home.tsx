@@ -812,13 +812,16 @@ export default function ClientHome() {
               batteryOptimization: batteryOpt,
               overlay: overlay,
               autoStart: protComplete === 'true' || (await AsyncStorage.getItem('autostart_enabled')) === 'true',
-              accessibility: accessibility,
+              accessibility: accessibility || (await AsyncStorage.getItem('accessibility_enabled')) === 'true',
               location: locationPerm,
               notification: notifPerm,
             };
             setPermissionStates(newPermStates);
             
-            // Save permission states to cache for persistence
+            // Save individual permission states to cache
+            if (accessibility) await AsyncStorage.setItem('accessibility_enabled', 'true');
+            
+            // Save all permission states to cache for persistence
             await AsyncStorage.setItem('permission_states', JSON.stringify(newPermStates));
             
             // Determine if permission setup should show:
