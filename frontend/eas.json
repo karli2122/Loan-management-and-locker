@@ -8,7 +8,7 @@
       "distribution": "internal",
       "env": {
         "APP_MODE": "admin",
-        "EXPO_PUBLIC_BACKEND_URL": "https://loan-admin-lock.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://loan-kiosk-app.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
@@ -20,7 +20,7 @@
       "distribution": "internal",
       "env": {
         "APP_MODE": "admin",
-        "EXPO_PUBLIC_BACKEND_URL": "https://loan-admin-lock.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://loan-kiosk-app.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
@@ -33,7 +33,7 @@
       "distribution": "store",
       "env": {
         "APP_MODE": "admin",
-        "EXPO_PUBLIC_BACKEND_URL": "https://loan-admin-lock.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://loan-kiosk-app.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
@@ -47,7 +47,7 @@
       "distribution": "internal",
       "env": {
         "APP_MODE": "client",
-        "EXPO_PUBLIC_BACKEND_URL": "https://loan-admin-lock.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://loan-kiosk-app.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
@@ -60,7 +60,7 @@
       "credentialsSource": "remote",
       "env": {
         "APP_MODE": "client",
-        "EXPO_PUBLIC_BACKEND_URL": "https://loan-admin-lock.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://loan-kiosk-app.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
@@ -74,7 +74,7 @@
       "credentialsSource": "remote",
       "env": {
         "APP_MODE": "client",
-        "EXPO_PUBLIC_BACKEND_URL": "https://loan-admin-lock.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://loan-kiosk-app.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
