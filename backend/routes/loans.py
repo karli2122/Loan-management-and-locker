@@ -81,7 +81,7 @@ async def update_loan_plan(plan_id: str, plan_data: LoanPlanCreate, admin_token:
     if not plan:
         raise HTTPException(status_code=404, detail="Loan plan not found")
     
-    update_data = plan_data.dict()
+    update_data = plan_data.dict(exclude_none=True)
     await db.loan_plans.update_one({"id": plan_id}, {"$set": update_data})
     
     updated = await db.loan_plans.find_one({"id": plan_id}, {"_id": 0})
