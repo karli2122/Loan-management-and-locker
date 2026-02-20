@@ -39,6 +39,10 @@ async def create_client(client_data: ClientCreate, admin_token: str = Query(...)
     
     # Exclude registration_code when None so sparse unique index works
     client_dict = {k: v for k, v in client.dict().items() if not (k == "registration_code" and v is None)}
+    # Set outstanding_balance to loan_amount on creation
+    if client_data.loan_amount and client_data.loan_amount > 0:
+        client_dict["outstanding_balance"] = client_data.loan_amount
+        client_dict["total_amount_due"] = client_data.loan_amount
     await db.clients.insert_one(client_dict)
     return client
 
