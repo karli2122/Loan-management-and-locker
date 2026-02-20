@@ -233,38 +233,12 @@ export default function AddClient() {
               <View style={styles.dividerLine} />
             </View>
 
-            <Text style={styles.label}>{language === 'et' ? 'Laenusumma' : 'Loan Amount'}</Text>
-            <View style={styles.inputContainer}>
-              <Text style={styles.currencySymbol}>€</Text>
-              <TextInput
-                style={styles.input}
-                placeholder={language === 'et' ? 'Sisesta laenusumma' : 'Enter loan amount'}
-                placeholderTextColor="#64748B"
-                value={form.loan_amount}
-                onChangeText={(text) => setForm({ ...form, loan_amount: text })}
-                keyboardType="numeric"
-              />
-            </View>
-
-            <Text style={styles.label}>{language === 'et' ? 'Sissemakse' : 'Down Payment'}</Text>
-            <View style={styles.inputContainer}>
-              <Text style={styles.currencySymbol}>€</Text>
-              <TextInput
-                style={styles.input}
-                placeholder={language === 'et' ? 'Sisesta sissemakse' : 'Enter down payment'}
-                placeholderTextColor="#64748B"
-                value={form.down_payment}
-                onChangeText={(text) => setForm({ ...form, down_payment: text })}
-                keyboardType="numeric"
-              />
-            </View>
-
-            <Text style={styles.label}>{language === 'et' ? 'Intressimäär (%)' : 'Interest Rate (%)'}</Text>
+            <Text style={styles.label}>{language === 'et' ? 'Igakuine intressimäär (%)' : 'Interest Rate Monthly (%)'}</Text>
             <View style={styles.inputContainer}>
               <Ionicons name="trending-up" size={20} color="#64748B" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'Sisesta intressimäär' : 'Enter interest rate'}
+                placeholder={language === 'et' ? 'Sisesta intressimäär' : 'Enter monthly interest rate'}
                 placeholderTextColor="#64748B"
                 value={form.interest_rate}
                 onChangeText={(text) => setForm({ ...form, interest_rate: text })}
