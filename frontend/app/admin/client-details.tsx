@@ -11,6 +11,7 @@ import {
   Modal,
   Linking,
   Share,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -122,6 +123,7 @@ export default function ClientDetails() {
   const [userCredits, setUserCredits] = useState<number>(5);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   // Loan History state
   const [loanHistory, setLoanHistory] = useState<LoanHistoryItem[]>([]);
   const [loanHistoryLoading, setLoanHistoryLoading] = useState(false);
@@ -895,7 +897,26 @@ export default function ClientDetails() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true);
+              try {
+                await fetchClient();
+                await fetchCredits();
+              } finally {
+                setRefreshing(false);
+              }
+            }}
+            tintColor="#4F46E5"
+            colors={['#4F46E5']}
+          />
+        }
+      >
         {/* Client Info Card */}
         <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
           <View style={[styles.avatarContainer, { backgroundColor: colors.primary }]}>
