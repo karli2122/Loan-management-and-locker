@@ -879,6 +879,19 @@ export default function Reports() {
                 </View>
               ))}
             </View>
+
+            {/* Monthly Interest Earned */}
+            <Text style={[styles.trendTitle, { marginTop: 20 }]}>
+              {language === 'et' ? 'Igakuine intressitulu (viimased 6 kuud)' : 'Monthly Interest Earned (Last 6 Months)'}
+            </Text>
+            <View style={styles.trendSummary}>
+              {(financialReport.monthly_interest || []).map((month: any, index: number) => (
+                <View key={index} style={styles.trendSummaryItem}>
+                  <Text style={styles.trendSummaryMonth}>{month.month}</Text>
+                  <Text style={[styles.trendSummaryValue, { color: '#10B981' }]}>€{(month.interest_earned || 0).toFixed(0)}</Text>
+                </View>
+              ))}
+            </View>
           </View>
         )}
       </ScrollView>
