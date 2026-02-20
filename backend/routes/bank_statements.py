@@ -112,9 +112,18 @@ Analyze the provided bank statement text and return a JSON response with the fol
     "gambling_detected": false,
     "loan_payments_detected": false,
     "notes": "brief risk assessment"
+  },
+  "credit_recommendation": {
+    "monthly_credit_amount": 0.00,
+    "yearly_credit_amount": 0.00,
+    "debt_to_income_ratio": 0.00,
+    "disposable_income": 0.00,
+    "risk_level": "low/medium/high",
+    "reasoning": "Brief explanation of how the credit amount was calculated based on income, expenses, existing obligations, and risk factors. Consider that a safe monthly repayment should not exceed 30-40% of disposable income (income minus essential expenses)."
   }
 }
 Return ONLY valid JSON, no markdown or explanation. If a field cannot be determined, use null.
+For the credit_recommendation: Calculate the maximum safe monthly loan repayment amount as 30-40% of the client's monthly disposable income (total_income minus essential recurring expenses like rent, utilities, existing loan payments). The yearly amount is monthly * 12. Consider existing debt obligations and risk factors. If income is irregular or unstable, recommend a lower amount.
 Categorize ALL transactions. Supported banks: Swedbank, SEB, LHV, Coop Pank, Revolut, Paysera, Mytu, Bunq, N26, Wise."""
     ).with_model("openai", "gpt-4.1")
 
