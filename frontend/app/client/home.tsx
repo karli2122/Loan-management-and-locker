@@ -764,8 +764,14 @@ export default function ClientHome() {
           setClientId(id);
           setLoading(false);
           
-          // Don't call fetchStatus or any native methods here — just show the UI
-          // Status will be fetched when user manually refreshes or on next normal app start
+          // Run deferred native setup that was skipped during registration
+          // These are non-blocking and won't crash since the UI is already shown
+          (async () => {
+            try { await devicePolicy.backupClientData(id); } catch (e) {}
+            try { await devicePolicy.setRegistered(true); } catch (e) {}
+            try { await devicePolicy.setClientInfo(id, API_URL); } catch (e) {}
+          })();
+          
           return;
         }
         
