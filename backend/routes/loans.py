@@ -302,7 +302,7 @@ async def edit_loan(client_id: str, loan_data: LoanEdit, admin_token: str = Quer
     if principal <= 0:
         raise HTTPException(status_code=400, detail="Loan amount must be greater than down payment")
     
-    emi_data = calculate_reducing_balance_emi(principal, interest_rate, tenure_months)
+    emi_data = calculate_reducing_balance_emi(principal, interest_rate * 12, tenure_months)  # monthly rate * 12 = annual
     
     # Calculate next payment due date (from start date + 1 month)
     next_due = loan_start + relativedelta(months=1)
@@ -396,7 +396,7 @@ async def preview_loan_calculation(
         raise HTTPException(status_code=400, detail="Loan amount must be greater than down payment")
     
     # Calculate EMI
-    emi_data = calculate_reducing_balance_emi(principal, interest_rate, tenure_months)
+    emi_data = calculate_reducing_balance_emi(principal, interest_rate * 12, tenure_months)  # monthly rate * 12 = annual
     
     return {
         "preview": {
