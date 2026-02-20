@@ -7,11 +7,10 @@ export default function ClientLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: '#0F172A' },
-        animation: 'slide_from_right',
       }}
     >
-      <Stack.Screen name="register" />
-      <Stack.Screen name="home" />
+      <Stack.Screen name="register" options={{ animation: 'none' }} />
+      <Stack.Screen name="home" options={{ animation: 'none' }} />
       <Stack.Screen name="payment-history" />
       <Stack.Screen name="support-chat" />
     </Stack>
