@@ -47,6 +47,10 @@ async def create_client(client_data: ClientCreate, admin_token: str = Query(...)
             client_dict["loan_start_date"] = client_data.loan_start_date
         else:
             client_dict["loan_start_date"] = datetime.utcnow().strftime("%Y-%m-%d")
+    # Also map emi_due_date to loan_due_date and next_payment_due for the Active Loan display
+    if client_data.emi_due_date:
+        client_dict["loan_due_date"] = client_data.emi_due_date
+        client_dict["next_payment_due"] = client_data.emi_due_date
     await db.clients.insert_one(client_dict)
     return client
 
