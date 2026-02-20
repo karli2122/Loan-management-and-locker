@@ -1065,9 +1065,14 @@ export default function ClientHome() {
   const onRefresh = useCallback(async () => {
     if (!clientId) return;
     setRefreshing(true);
-    await fetchStatus(clientId);
-    await updateLocation(clientId);
-    setRefreshing(false);
+    try {
+      await fetchStatus(clientId);
+      await updateLocation(clientId).catch(() => {});
+    } catch (e) {
+      console.log('Refresh error:', e);
+    } finally {
+      setRefreshing(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchStatus/updateLocation are stable; only depend on clientId
   }, [clientId]);
 
