@@ -1191,11 +1191,43 @@ export default function ClientHome() {
 
             <View style={styles.permGrid}>
               {/* Row 1: Battery (auto) + Overlay (device-specific instructions) */}
-              <TouchableOpacity style={styles.permCard} onPress={async () => {
-                await devicePolicy.requestBatteryOptimization();
-                await new Promise(r => setTimeout(r, 800));
-                const granted = await devicePolicy.isIgnoringBatteryOptimizations();
-                if (granted) setPermissionStates(prev => ({ ...prev, batteryOptimization: true }));
+              <TouchableOpacity style={styles.permCard} onPress={() => {
+                const dev = devicePolicy.getDeviceInfo();
+                const manufacturer = (dev?.manufacturer || '').toLowerCase();
+                const model = dev?.model || 'Device';
+                const ver = dev?.androidVersion || '';
+                
+                let instructions = '';
+                if (manufacturer.includes('samsung')) {
+                  instructions = language === 'et'
+                    ? `${model} (Android ${ver})\n\nAvaneb rakenduse teave leht.\n\n1. Puudutage "Aku"\n2. Valige "Piiranguteta"\n\nSee tagab, et rakendus töötab taustal.`
+                    : `${model} (Android ${ver})\n\nApp info page will open.\n\n1. Tap "Battery"\n2. Select "Unrestricted"\n\nThis ensures the app runs in the background.`;
+                } else {
+                  instructions = language === 'et'
+                    ? `${model} (Android ${ver})\n\nSüsteemi dialoog avaneb.\nLubage rakendusel töötada piiranguteta taustal.`
+                    : `${model} (Android ${ver})\n\nA system dialog will appear.\nAllow the app to run unrestricted in the background.`;
+                }
+
+                Alert.alert(
+                  language === 'et' ? 'Aku optimeerimine' : 'Battery Optimization',
+                  instructions,
+                  [
+                    { text: language === 'et' ? 'Tühista' : 'Cancel', style: 'cancel' },
+                    {
+                      text: language === 'et' ? 'Ava seaded' : 'Open Settings',
+                      onPress: async () => {
+                        try {
+                          await devicePolicy.requestBatteryOptimization();
+                          await new Promise(r => setTimeout(r, 1000));
+                          const granted = await devicePolicy.isIgnoringBatteryOptimizations();
+                          if (granted) setPermissionStates(prev => ({ ...prev, batteryOptimization: true }));
+                        } catch (e) {
+                          console.log('Battery optimization error:', e);
+                        }
+                      },
+                    },
+                  ]
+                );
               }}>
                 <View style={[styles.permCircle, permissionStates.batteryOptimization ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.batteryOptimization ? "checkmark" : "close"} size={28} color="#FFF" />
