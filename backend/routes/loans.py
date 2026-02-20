@@ -482,7 +482,13 @@ async def record_payment(
     # Move to next payment date
     next_due = client.get("next_payment_due")
     if next_due:
-        next_due = next_due + relativedelta(months=1)
+        if isinstance(next_due, str):
+            try:
+                next_due = datetime.strptime(next_due, "%Y-%m-%d") + relativedelta(months=1)
+            except ValueError:
+                next_due = datetime.utcnow() + relativedelta(months=1)
+        else:
+            next_due = next_due + relativedelta(months=1)
     
     await db.clients.update_one(
         {"id": client_id},
