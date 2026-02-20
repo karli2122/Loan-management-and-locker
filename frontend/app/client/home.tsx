@@ -786,13 +786,17 @@ export default function ClientHome() {
         await checkCachedLockStateOnStartup();
         
         // Load client data — this includes fetchStatus, location, push token
+        // NOTE: loadClientData sets loading=false internally, but we need permissions first
         await loadClientData();
         
-        // Only check admin state silently — no alerts, no system dialogs on init.
+        // Fetch all permission states BEFORE rendering (loading is already false from loadClientData)
         if (Platform.OS === 'android' && isMounted.current) {
           try {
             // Check if protection was already completed previously
             const protComplete = await AsyncStorage.getItem('protection_complete');
+            const autoStartCached = (await AsyncStorage.getItem('autostart_enabled')) === 'true';
+            const accessibilityCached = (await AsyncStorage.getItem('accessibility_enabled')) === 'true';
+            
             if (protComplete === 'true') {
               setProtectionComplete(true);
               setShowProtectionSetup(false);
@@ -811,40 +815,34 @@ export default function ClientHome() {
             const newPermStates = {
               batteryOptimization: batteryOpt,
               overlay: overlay,
-              autoStart: protComplete === 'true' || (await AsyncStorage.getItem('autostart_enabled')) === 'true',
-              accessibility: accessibility || (await AsyncStorage.getItem('accessibility_enabled')) === 'true',
+              autoStart: autoStartCached || protComplete === 'true',
+              accessibility: accessibility || accessibilityCached,
               location: locationPerm,
               notification: notifPerm,
             };
             setPermissionStates(newPermStates);
             
-            // Save individual permission states to cache
+            // Save to cache
             if (accessibility) await AsyncStorage.setItem('accessibility_enabled', 'true');
-            
-            // Save all permission states to cache for persistence
             await AsyncStorage.setItem('permission_states', JSON.stringify(newPermStates));
             
-            // Determine if permission setup should show:
-            // Hide if protection is complete OR if all permissions + admin are active
+            // Determine if permission setup should show
             const allGranted = Object.values(newPermStates).every(Boolean);
             if (protComplete === 'true' || (allGranted && admin)) {
               setShowProtectionSetup(false);
               setProtectionComplete(true);
             } else {
-              // Show permission setup — some permissions still need granting
               setShowProtectionSetup(true);
             }
-            
-            // PROTECTED state: AccessibilityService handles protection passively
-            // Overlay/kiosk/immersive only start in LOCKED state via updateLockState
           } catch (e) {
             console.log('Permission check error (non-fatal):', e);
-            // Fallback: try to restore from cache
             try {
               const cached = await AsyncStorage.getItem('permission_states');
               if (cached) {
                 const cachedStates = JSON.parse(cached);
                 setPermissionStates(cachedStates);
+                const allCached = Object.values(cachedStates).every(Boolean);
+                if (!allCached) setShowProtectionSetup(true);
               }
             } catch (cacheErr) {
               console.log('Cache restore error:', cacheErr);
