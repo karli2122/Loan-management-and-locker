@@ -19,11 +19,11 @@ export function getAutoStartInstructions(dev: NativeDeviceInfo, lang: string): P
 
   if (m.includes('samsung')) {
     return {
-      title: isEt ? 'Taustapiirangutest vabastamine' : 'Remove Background Restrictions',
+      title: isEt ? 'Autostart' : 'Auto Start',
       steps: isEt
-        ? `${model} (Android ${ver})\n\nAvaneb rakenduse teave leht.\n\n1. Puudutage "Aku"\n2. Valige "Piiranguteta"\n\nSee tagab, et rakendus töötab taustal.`
-        : `${model} (Android ${ver})\n\nApp info page will open.\n\n1. Tap "Battery"\n2. Select "Unrestricted"\n\nThis ensures the app runs in the background.`,
-      shortcut: isEt ? 'Ava rakenduse seaded' : 'Open App Settings',
+        ? `${model} (Android ${ver})\n\nSamsung haldab autostart'i automaatselt.\n\nVeenduge, et "Aku optimeerimine" luba on lubatud (eraldi luba), siis on autostart juba aktiivne.`
+        : `${model} (Android ${ver})\n\nSamsung manages auto-start automatically.\n\nMake sure the "Battery Optimization" permission is enabled (separate card), then auto-start is already active.`,
+      shortcut: isEt ? 'Märgi tehtuks' : 'Mark as done',
     };
   }
   if (m.includes('xiaomi') || m.includes('redmi') || m.includes('poco')) {
