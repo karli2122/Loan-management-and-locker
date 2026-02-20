@@ -771,8 +771,8 @@ export default function ClientHome() {
           setClientId(id);
           setLoading(false);
           
-          // Fire-and-forget status fetch — no await, no crash possible
-          fetchStatus(id).catch(() => {});
+          // Don't call fetchStatus or any native methods here — just show the UI
+          // Status will be fetched when user manually refreshes or on next normal app start
           return;
         }
         
