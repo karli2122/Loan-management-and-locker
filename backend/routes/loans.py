@@ -573,11 +573,12 @@ async def get_payment_schedule(client_id: str, admin_token: str = Query(...)):
         return {"schedule": [], "message": "Loan not set up"}
     
     principal = client["loan_amount"] - client.get("down_payment", 0)
-    annual_rate = client.get("interest_rate", 10)
+    monthly_rate_stored = client.get("interest_rate", 10)  # Stored as monthly rate
+    annual_rate = monthly_rate_stored * 12
     months = client["loan_tenure_months"]
     
     emi_data = calculate_reducing_balance_emi(principal, annual_rate, months)
-    monthly_rate = (annual_rate / 12) / 100
+    monthly_rate = monthly_rate_stored / 100
     monthly_emi = emi_data["monthly_emi"]
     
     schedule = []
