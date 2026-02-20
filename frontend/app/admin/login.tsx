@@ -31,23 +31,28 @@ export default function AdminLogin() {
   const [staySignedIn, setStaySignedIn] = useState(true);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
     const hydrateSession = async () => {
-      const stay = await AsyncStorage.getItem('admin_stay_signed_in');
-      if (stay === 'true') {
-        const token = await AsyncStorage.getItem('admin_token');
-        if (token) {
-          try {
-            const res = await fetch(`${API_URL}/api/admin/verify/${token}`);
-            if (res.ok) {
-              router.replace('/admin/(tabs)');
-              return;
-            }
-          } catch (_) {}
-          // Token invalid or expired — clear stored auth
-          await AsyncStorage.multiRemove(['admin_token', 'admin_stay_signed_in']);
+      try {
+        const stay = await AsyncStorage.getItem('admin_stay_signed_in');
+        if (stay === 'true') {
+          const token = await AsyncStorage.getItem('admin_token');
+          if (token) {
+            try {
+              const res = await fetch(`${API_URL}/api/admin/verify/${token}`);
+              if (res.ok) {
+                router.replace('/admin/(tabs)');
+                return;
+              }
+            } catch (_) {}
+            await AsyncStorage.multiRemove(['admin_token', 'admin_stay_signed_in']);
+          }
         }
+      } finally {
+        setCheckingAuth(false);
+      }
       }
     };
     hydrateSession();

@@ -1401,7 +1401,7 @@ export default function ClientDetails() {
                       </View>
                       <View style={styles.loanHistoryDetailRow}>
                         <Text style={[styles.loanHistoryLabel, { color: colors.textMuted }]}>
-                          {language === 'et' ? 'Intress' : 'Interest Rate'}
+                          {language === 'et' ? 'Intress (kuus)' : 'Interest (Monthly)'}
                         </Text>
                         <Text style={[styles.loanHistoryValue, { color: colors.text }]}>
                           {loan.interest_rate?.toFixed(1) || '0'}%
