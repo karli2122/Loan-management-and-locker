@@ -9,83 +9,74 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - **Native Android**: Custom Expo module (emi-device-admin) — Device Admin, Kiosk, Accessibility, Overlay, Boot Receiver
 
 ## Lock Screen System (When Admin Locks Device)
-
-### What happens when admin presses "Lock Device":
-1. **Kiosk mode** (`startLockTask`) — pins app to screen, user can't navigate away
-2. **Immersive mode** (`enableImmersiveMode`) — hides status bar and navigation bar completely
-3. **Overlay foreground service** (`EMIOverlayService`) — invisible overlay blocks status bar/nav bar touch events, refreshes every 1 second, runs as Android foreground service with notification (won't be killed)
-4. **Lock state saved to SharedPreferences** (`setNativeLockState`) — survives app restarts
-5. **Boot receiver** (`EMIBootReceiver`) — auto-starts app + overlay service on device reboot
-6. **Accessibility service** blocks any app switch while locked
-
-### Unlock flow:
-- Admin unlocks -> stops kiosk mode, disables immersive mode, stops overlay, clears native lock state
+1. **Kiosk mode** — pins app to screen
+2. **Immersive mode** — hides status bar and navigation bar
+3. **Overlay foreground service** — blocks touch events, runs as foreground service
+4. **Lock state saved to SharedPreferences** — survives app restarts
+5. **Boot receiver** — auto-starts app + overlay on reboot
+6. **Accessibility service** — blocks app switch while locked
 
 ## Device Protection Features (6 Permissions Grid)
-
-### Native Android Services:
-1. **EMIAccessibilityService** — Monitors foreground app. After setup_complete: blocks Settings + shows toast warning. When uninstall_allowed=true: no blocking.
-2. **EMIOverlayService** — Foreground service with 1-second refresh. Blocks status bar + nav bar.
-3. **EMIDeviceAdminReceiver** — Device Admin receiver. On disable attempt when not allowed: locks device + warns.
-4. **EMIBootReceiver** — Listens for BOOT_COMPLETED. Relaunches app + overlay if registered or locked.
-5. **EMIDeviceAdminModule** — All native methods exposed to TypeScript.
-
-### 6-Permission Grid:
 | Permission | Action |
 |---|---|
 | Battery Optimization | `requestBatteryOptimization()` |
 | Overlay | `requestOverlayPermission()` |
-| Auto Start | Dialog confirmation + `openAutoStartSettings()` |
-| Accessibility | `openAppInfo()` (restricted settings) + `openAccessibilitySettings()` |
+| Auto Start | Dialog + `openAutoStartSettings()` |
+| Accessibility | `openAppInfo()` + `openAccessibilitySettings()` |
 | Location | Expo Location API |
 | Notification | `openNotificationSettings()` |
 
-### Protection Flow:
-1. Register -> show 6-permission grid
-2. Enable all 6 -> auto-prompt Device Admin
-3. Accept -> activate overlay, kiosk, uninstall prevention, set setup_complete flags
-4. AccessibilityService blocks Settings with toast warning
-5. Admin can allow uninstall -> clears all protection
-
 ## Key Files
-- `modules/emi-device-admin/android/src/main/java/expo/modules/emideviceadmin/` — Kotlin native code
-- `app/client/home.tsx` — Client UI with lock screen + permission grid (most critical file)
+- `app/client/home.tsx` — Client UI with lock screen + permission grid
 - `app/client/register.tsx` — Client registration flow
-- `backend/routes/device.py` — Device registration, status
+- `app/admin/add-client.tsx` — Admin form for creating new clients
+- `app/admin/client-details.tsx` — Client detail page (loan, device, actions)
 - `backend/routes/clients.py` — Client CRUD, lock/unlock
+- `backend/models/schemas.py` — Pydantic schemas
 
 ## Key API Endpoints
-- `POST /api/device/register` — Register device
-- `GET /api/device/status/{client_id}` — Returns loan_amount, loan_due_date, uninstall_allowed
+- `POST /api/clients` — Create client (now sets loan_start_date + outstanding_balance)
+- `GET /api/clients/{id}` — Get client details
+- `GET /api/device/status/{client_id}` — Device status
 - `POST /api/clients/{id}/lock` — Lock device
 - `POST /api/clients/{id}/unlock` — Unlock device
 - `POST /api/clients/{id}/allow-uninstall` — Allow uninstall
 
 ## Build Pipeline
 - Node: 20.20.0, Yarn: 1.22.22
-- `yarn install --frozen-lockfile` passes
-- eas.json backend URL: loan-admin-lock.preview.emergentagent.com
+- eas.json backend URL: loan-kiosk-app.preview.emergentagent.com
 
-## Completed (Feb 2026)
+## Completed (Feb 20, 2026)
+
+### Admin App Changes:
+- **Add Client form**: Moved "Loan Amount" under "Loan Details" section, removed "Loan Tenure" field
+- **Add Client form**: Now sends `loan_amount` and `loan_start_date` to backend
+- **Backend**: `ClientCreate` schema updated with `loan_start_date`, backend auto-sets `outstanding_balance` and `loan_start_date` when loan_amount > 0
+- **Client Details**: Active loan now shows immediately after adding client (was broken because `loan_start_date` was never set during creation)
+- **Client Details**: Added pull-to-refresh (RefreshControl)
+- **Client Details**: Removed redundant "EMI Details" section (info already in Active Loan tab)
+- **Client Details**: Lock Device & Allow Uninstall buttons now only visible when admin_mode_active is ON
+- **API URLs updated**: All EAS build profiles and api.ts fallback now point to current backend (`loan-kiosk-app.preview.emergentagent.com`)
+
+### Client App Changes (from earlier this session):
+- Registration crash fix: `setClientInfo` uses `API_URL` from constants, "Continue" replaced with "Close App" button
+- UI race condition fix: `setLoading(false)` moved to after all permission checks complete
+- Refresh loop, battery optimization instructions, and autostart/accessibility cache fixes verified in code
+
+### Earlier Completed Work:
 - Lock screen system: kiosk + immersive + foreground overlay + boot receiver
 - Device Protection V2: 6-permission grid
 - Accessibility restricted settings workaround
-- AutoStart improved OEM intent resolution
-- Warning toast when trying to access Settings while locked
-- All backend API tests passing (100%)
-- Admin "Add Client" Form fixed with correct loan fields
-- Backend loan creation logic fixed (outstanding_balance)
-- Lock screen hardening (back button, opaque overlay, immersive)
-- "Uninstall Allowed" flow fixed
+- Samsung AutoStart intent fix
 - Client app notification system
-- Samsung AutoStart intent fixed
+- "Uninstall Allowed" flow fix
 
-### Bug Fixes Applied (Feb 20, 2026):
-- **Registration crash fix**: Fixed `setClientInfo` in register.tsx to use `API_URL` from constants instead of potentially incorrect `process.env.EXPO_PUBLIC_BACKEND_URL`. Replaced "Continue" navigation button with "Close App" button using `BackHandler.exitApp()` to completely eliminate post-registration navigation crash.
-- **UI race condition fix**: Removed premature `setLoading(false)` from `fetchStatus()` and `loadClientData()`. Loading state is now only set to false AFTER all permission checks complete in `initialize()`, preventing UI flicker with incorrect permission states.
-- **Refresh loop fix**: `onRefresh` handler already has try/finally block (implemented by previous agent, needs user verification).
-- **Battery optimization instructions**: Permission card now shows device-specific instructions modal (implemented by previous agent, needs user verification).
-- **Autostart/Accessibility cache**: Permission states are saved to and restored from AsyncStorage on init (implemented by previous agent, needs user verification).
+## Pending Verification (by user via APK testing)
+- Client app registration crash fix
+- Client app refresh loop fix
+- Client app UI race condition fix
+- Battery optimization instructions modal
+- Autostart/Accessibility cache persistence
 
 ## Backlog
 - P1: Bank Statement Analyzer (.asice parsing + LLM summary)
@@ -93,4 +84,4 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - P3: AMAPI, FCM Push Notifications
 
 ## Refactoring Needed
-- `app/client/home.tsx` needs to be broken down into smaller components (usePermissions, useDeviceState, PermissionGrid, LockScreenOverlay)
+- `app/client/home.tsx` needs breakdown into smaller components (usePermissions, useDeviceState, PermissionGrid, LockScreenOverlay)
