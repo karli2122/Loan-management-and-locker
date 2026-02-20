@@ -764,10 +764,8 @@ export default function ClientHome() {
         
         if (isFreshRegistration === 'true') {
           await AsyncStorage.removeItem('fresh_registration');
-          console.log('Fresh registration — minimal init only');
           setFreshRegistration(true);
           
-          // Only load client ID and fetch status — skip everything else
           let id = await AsyncStorage.getItem('client_id');
           if (!id) {
             setLoading(false);
@@ -776,28 +774,10 @@ export default function ClientHome() {
           }
           
           setClientId(id);
-          
-          // Save client info for background lock checking
-          try {
-            await devicePolicy.setClientInfo(id, API_URL);
-          } catch (e) { /* non-fatal */ }
-          
-          // Fetch status only — no location, no push token, no permission checks
-          try {
-            await fetchStatus(id);
-          } catch (e) {
-            console.log('Fresh registration fetchStatus error:', e);
-          }
-          
-          initComplete.current = true;
           setLoading(false);
           
-          // Show permission setup after 3 seconds to let UI stabilize
-          setTimeout(() => {
-            if (isMounted.current) {
-              setShowProtectionSetup(true);
-            }
-          }, 3000);
+          // Fire-and-forget status fetch — no await, no crash possible
+          fetchStatus(id).catch(() => {});
           return;
         }
         
