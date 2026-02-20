@@ -1,12 +1,13 @@
 # EMI Device Admin - Product Requirements Document
 
 ## Original Problem Statement
-Loan management application with admin dashboard and client-facing mobile app. Device management features lock down client phones as loan collateral.
+Loan management application with admin dashboard and client-facing mobile app. Device management features lock down client phones as loan collateral. Two-state device protection: PROTECTED (prevents uninstall) and LOCKED (inescapable lock screen).
 
 ## Tech Stack
 - **Frontend**: React Native (Expo 54), TypeScript
 - **Backend**: FastAPI, MongoDB, Pydantic
 - **Native Android**: Custom Expo module (emi-device-admin)
+- **AI**: OpenAI GPT-4.1 via Emergent LLM Key (bank statement analysis)
 
 ## Key Files
 - `app/client/home.tsx` — Client UI with lock screen + permission grid
@@ -14,52 +15,63 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - `app/admin/add-client.tsx` — Admin form for creating clients
 - `app/admin/client-details.tsx` — Client detail page
 - `app/admin/loan-plans.tsx` — Loan plan management
+- `app/admin/bank-analyzer.tsx` — Bank statement analyzer UI with credit recommendation
 - `app/admin/login.tsx` — Admin login with auth persistence
-- `app/admin/(tabs)/index.tsx` — Dashboard (action buttons removed)
 - `app/admin/reports.tsx` — Financial reports with monthly interest
 - `backend/routes/clients.py` — Client CRUD
-- `backend/routes/loans.py` — Loan operations (interest rate fix: monthly*12=annual)
+- `backend/routes/loans.py` — Loan operations
 - `backend/routes/reports.py` — Reports + monthly interest earned
-- `backend/routes/contracts.py` — PDF contract generation with loan_start_date
-- `backend/routes/bank_statements.py` — .asice parsing (PDF+XML+CSV support)
-- `modules/emi-device-admin/.../EMIAccessibilityService.kt` — Background polling + uninstall_allowed
+- `backend/routes/contracts.py` — PDF contract generation
+- `backend/routes/bank_statements.py` — .asice/.pdf parsing + AI analysis with credit recommendation
+- `backend/routes/device.py` — Device registration and status
+- `modules/emi-device-admin/.../EMIAccessibilityService.kt` — Background polling
 
 ## Key API Endpoints
-- `POST /api/clients` — Create client (sets loan_start_date, outstanding_balance, next_payment_due)
-- `GET /api/reports/financial` — Returns monthly_trend, monthly_interest, totals
-- `PUT /api/loan-plans/{id}` — Update plan (now supports is_active toggle)
-- `GET /api/contracts/{id}/preview` — PDF with loan_start_date
+- `POST /api/clients` — Create client
+- `POST /api/device/register` — Register device with code
+- `GET /api/device/status/{id}` — Device status with loan amount (includes interest)
+- `POST /api/loans/{id}/setup` — Setup loan with EMI calculation
+- `POST /api/loans/{id}/payments` — Record payment
+- `POST /api/bank-statements/analyze` — Upload and analyze bank statement (returns credit_recommendation)
+- `GET /api/bank-statements/history` — Past analyses
+- `GET /api/contracts/{id}/preview` — PDF contract preview
+- `GET /api/reports/financial` — Financial reports
 
 ## Completed (Feb 20, 2026)
 
+### Bank Statement Analyzer Enhancement
+- Added `credit_recommendation` field to AI analysis prompt
+- Fields: monthly_credit_amount, yearly_credit_amount, debt_to_income_ratio, disposable_income, risk_level, reasoning
+- Frontend UI displays credit recommendation with monthly/yearly amounts, risk level badge, and reasoning
+- Calculates safe credit based on 30-40% of disposable income
+
 ### Client App Fixes:
-- **Registration crash fix (v3)**: Removed ALL native module calls from register.tsx. Native setup (backupClientData, setRegistered, setClientInfo) deferred to home.tsx fresh registration path as fire-and-forget.
-- **Loading stuck fix**: `setLoading(false)` now fires immediately after `fetchStatus` in `loadClientData()`. Location + push token are fire-and-forget (don't block loading).
-- **Contract date**: Uses `loan_start_date` instead of today's date.
+- Registration crash fix (v3): Removed ALL native module calls from register.tsx
+- Loading stuck fix: setLoading(false) fires immediately after fetchStatus
+- Contract date: Uses loan_start_date
 
 ### Admin App Fixes:
-- Add Client form: Loan Amount moved under Loan Details, Loan Tenure removed, sends loan_amount + loan_start_date + emi_due_date properly
-- Client Details: Pull-to-refresh, removed EMI Details section, Lock/Uninstall buttons gated on admin_mode_active
-- Client List: Shows outstanding balance + last heartbeat
-- Dashboard: Action buttons removed (available in Features tab)
-- Login: Auth persistence with loading screen before checking session
-- Reports: Monthly interest earned for past 6 months
-- Device Management: Removed "Device Setup" button and info dialog
-- Info dialog "A unique registration code..." removed from add-client
+- Add Client form, Client Details, Client List, Dashboard, Login persistence
+- Reports: Monthly interest earned
 - Interest rate label: "Interest (Monthly)" in loan history
 
 ### Backend Fixes:
-- ClientCreate schema: Added loan_start_date, removed loan_tenure_months
-- create_client: Sets loan_start_date, outstanding_balance, next_payment_due, loan_due_date
-- LoanPlanCreate: Added is_active field for toggle support
-- Loan calculations: Fixed interest rate handling (monthly * 12 = annual for EMI calc)
-- Reports: monthly_trend array + monthly_interest array + totals object
-- Bank statements: .asice parsing handles XML, CSV (not just PDF)
-- Contracts: Uses loan_start_date for contract date
+- ClientCreate schema, loan calculations, reports, bank statements, contracts
+- All 35 API endpoint tests passing (100%)
 
 ### Native Android Fixes:
-- AccessibilityService: Now reads and stores `uninstall_allowed` from server during periodic polling
-- Uninstall allowed state persists even when app is closed from recents
+- AccessibilityService: Reads uninstall_allowed from server
+- New openAccessibilitySettingsDirect method for Android 13+
+
+### Build & Deployment:
+- Fixed yarn.lock / package-lock.json conflict for EAS builds
+- Submitted client-preview and admin-preview builds
+
+## Pending User Verification
+- P0: Client app registration crash fix — needs testing on device
+- P0: Client app loading loop fix — needs testing on device
+- P1: Accessibility service on Android 13+ — needs testing
+- P1: Loan amount calculations across all views — needs verification
 
 ## Backlog
 - P1: Refactor home.tsx into smaller components
