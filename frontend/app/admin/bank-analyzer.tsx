@@ -533,4 +533,23 @@ const styles = StyleSheet.create({
   riskRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
   riskLabel: { fontSize: 14, color: '#CBD5E1' },
   riskNotes: { fontSize: 13, color: '#94A3B8', fontStyle: 'italic', marginTop: 8, lineHeight: 18 },
+  creditCard: {
+    backgroundColor: '#1E293B', borderRadius: 12, padding: 16,
+    marginBottom: 12, borderWidth: 1, borderColor: '#8B5CF630',
+  },
+  creditHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  creditTitle: { fontSize: 14, fontWeight: '600', color: '#8B5CF6', textTransform: 'uppercase', letterSpacing: 0.5 },
+  creditAmountRow: { flexDirection: 'row', gap: 12, marginBottom: 14 },
+  creditAmountCard: {
+    flex: 1, backgroundColor: '#8B5CF612', borderRadius: 10, padding: 14,
+    alignItems: 'center', borderWidth: 1, borderColor: '#8B5CF625',
+  },
+  creditAmountLabel: { fontSize: 12, color: '#94A3B8', marginBottom: 4 },
+  creditAmountValue: { fontSize: 22, fontWeight: 'bold', color: '#8B5CF6' },
+  creditReasoning: { fontSize: 13, color: '#94A3B8', lineHeight: 18, marginTop: 10, fontStyle: 'italic' },
+  riskBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6 },
+  riskLow: { backgroundColor: '#10B98120' },
+  riskMedium: { backgroundColor: '#F59E0B20' },
+  riskHigh: { backgroundColor: '#EF444420' },
+  riskBadgeText: { fontSize: 12, fontWeight: '600' },
 });
