@@ -699,7 +699,7 @@ export default function ClientHome() {
     // Longer delay for fresh registration — let the UI fully stabilize
     const timer = setTimeout(autoRequestPermissions, 3000);
     return () => clearTimeout(timer);
-  }, [showProtectionSetup, protectionComplete, clientId, permissionStates.batteryOptimization, permissionStates.location, permissionStates.notification]);
+  }, [showProtectionSetup, protectionComplete, clientId, permissionStates.location, permissionStates.notification]);
 
   // Auto-trigger Device Admin dialog when ALL 6 permissions are granted
   useEffect(() => {
