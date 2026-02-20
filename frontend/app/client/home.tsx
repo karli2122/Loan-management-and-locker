@@ -491,8 +491,6 @@ export default function ClientHome() {
         wasLocked.current = true;
         console.log('[Error] Enforcing cached lock state');
       }
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -626,7 +624,6 @@ export default function ClientHome() {
         await fetchStatus(id);
       } catch (fetchErr) {
         console.log('fetchStatus error (non-fatal):', fetchErr);
-        setLoading(false);
       }
       
       // Request location and push token in background — don't let failures crash
@@ -645,7 +642,6 @@ export default function ClientHome() {
       }
     } catch (error) {
       console.error('loadClientData error:', error);
-      setLoading(false);
     }
   };
 
