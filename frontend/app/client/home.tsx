@@ -812,7 +812,7 @@ export default function ClientHome() {
             const newPermStates = {
               batteryOptimization: batteryOpt,
               overlay: overlay,
-              autoStart: protComplete === 'true',
+              autoStart: protComplete === 'true' || (await AsyncStorage.getItem('autostart_enabled')) === 'true',
               accessibility: accessibility,
               location: locationPerm,
               notification: notifPerm,
