@@ -300,6 +300,18 @@ async def get_dashboard_analytics(
         month_key = payment["payment_date"].strftime("%Y-%m")
         monthly_revenue[month_key] = monthly_revenue.get(month_key, 0) + payment.get("amount", 0)
     
+    # Monthly interest earned (last 6 months) — estimated from current outstanding balances
+    monthly_interest = {}
+    current_monthly_interest = sum(
+        (c.get("outstanding_balance", 0) * c.get("interest_rate", 0) / 100)
+        for c in clients if c.get("outstanding_balance", 0) > 0 and c.get("interest_rate", 0) > 0
+    )
+    now = datetime.utcnow()
+    for i in range(5, -1, -1):
+        month_date = now - timedelta(days=30 * i)
+        month_key = month_date.strftime("%Y-%m")
+        monthly_interest[month_key] = round(current_monthly_interest, 2)
+    
     # Activity log
     activity_log = []
     for client in sorted(clients, key=lambda x: x.get("registered_at") or datetime.min, reverse=True)[:10]:
@@ -330,5 +342,6 @@ async def get_dashboard_analytics(
             "tamper_attempts_7d": recent_tamper_attempts
         },
         "monthly_revenue": monthly_revenue,
+        "monthly_interest": monthly_interest,
         "activity_log": activity_log
     }
