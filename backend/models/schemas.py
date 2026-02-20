@@ -227,6 +227,7 @@ class LoanPlanCreate(BaseModel):
     processing_fee_percent: float = 0.0
     late_fee_percent: float = 2.0
     description: str = ""
+    is_active: Optional[bool] = None
 
 
 class LoanSetup(BaseModel):
