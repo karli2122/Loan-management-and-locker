@@ -663,21 +663,12 @@ export default function ClientHome() {
     const autoRequestPermissions = async () => {
       if (!isMounted.current) return;
       try {
-        // 1. Battery optimization exemption (system dialog)
-        if (!batteryOptimization && isMounted.current) {
-          try {
-            await devicePolicy.requestBatteryOptimization();
-            await new Promise(r => setTimeout(r, 1000));
-            if (!isMounted.current) return;
-            const granted = await devicePolicy.isIgnoringBatteryOptimizations();
-            if (granted) {
-              setPermissionStates(prev => ({ ...prev, batteryOptimization: true }));
-            }
-          } catch (e) {
-            console.log('Battery optimization request failed:', e);
-          }
-        }
-        // 2. Location permission (runtime dialog)
+        // Only auto-request permissions that show IN-APP dialogs
+        // Battery optimization opens an external system intent which can
+        // conflict with overlay apps (like Messenger chat heads) and crash
+        // The user can manually request it via the permission card
+
+        // 1. Location permission (in-app runtime dialog)
         if (!location && isMounted.current) {
           try {
             const { status } = await Location.requestForegroundPermissionsAsync();
@@ -689,7 +680,7 @@ export default function ClientHome() {
             console.log('Location permission request failed:', e);
           }
         }
-        // 3. Notification permission (runtime dialog)
+        // 2. Notification permission (in-app runtime dialog)
         if (!notification && isMounted.current) {
           try {
             const { status } = await Notifications.requestPermissionsAsync();
