@@ -1220,11 +1220,20 @@ export default function ClientHome() {
                 const info = getAutoStartInstructions(dev, language);
                 Alert.alert(info.title, info.steps, [
                   {
+                    text: language === 'et' ? 'Tühista' : 'Cancel',
+                    style: 'cancel',
+                  },
+                  {
                     text: info.shortcut,
                     onPress: async () => {
-                      await devicePolicy.openAutoStartSettings();
-                      // Mark as done when user returns since we can't verify autostart
+                      try {
+                        await devicePolicy.openAutoStartSettings();
+                      } catch (e) {
+                        console.log('openAutoStartSettings error:', e);
+                      }
+                      // Always mark as done — we can't verify autostart programmatically
                       setPermissionStates(prev => ({ ...prev, autoStart: true }));
+                      await AsyncStorage.setItem('autostart_enabled', 'true');
                     },
                   },
                 ]);
