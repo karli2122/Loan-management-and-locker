@@ -1022,22 +1022,6 @@ export default function ClientDetails() {
           </View>
         </View>
 
-        {/* EMI Info */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('emiDetails')}</Text>
-          <View style={styles.emiCard}>
-            <View style={styles.emiItem}>
-              <Text style={styles.emiLabel}>{t('amount')}</Text>
-              <Text style={styles.emiValue}>€{(client.monthly_emi || client.emi_amount || 0).toLocaleString()}</Text>
-            </View>
-            <View style={styles.emiDivider} />
-            <View style={styles.emiItem}>
-              <Text style={styles.emiLabel}>{t('dueDate')}</Text>
-              <Text style={styles.emiValue}>{client.next_payment_due || client.emi_due_date || t('notSet')}</Text>
-            </View>
-          </View>
-        </View>
-
         {/* Device Info */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -1557,6 +1541,17 @@ export default function ClientDetails() {
             )}
             
             <TouchableOpacity
+              style={[styles.actionButton, styles.warningButton]}
+              onPress={() => setWarningModal(true)}
+              disabled={actionLoading}
+            >
+              <Ionicons name="warning" size={20} color="#fff" />
+              <Text style={styles.actionButtonText}>{t('sendWarning')}</Text>
+            </TouchableOpacity>
+
+            {client.admin_mode_active && (
+            <>
+            <TouchableOpacity
               style={[styles.actionButton, client.is_locked ? styles.unlockButton : styles.lockButton]}
               onPress={client.is_locked ? handleUnlock : () => setLockModal(true)}
               disabled={actionLoading}
@@ -1568,15 +1563,6 @@ export default function ClientDetails() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionButton, styles.warningButton]}
-              onPress={() => setWarningModal(true)}
-              disabled={actionLoading}
-            >
-              <Ionicons name="warning" size={20} color="#fff" />
-              <Text style={styles.actionButtonText}>{t('sendWarning')}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
               style={[styles.actionButton, styles.allowUninstallButton]}
               onPress={handleAllowUninstall}
               disabled={actionLoading}
@@ -1584,6 +1570,8 @@ export default function ClientDetails() {
               <Ionicons name="shield-checkmark" size={20} color="#fff" />
               <Text style={styles.actionButtonText}>Allow Uninstall</Text>
             </TouchableOpacity>
+            </>
+            )}
           </View>
         )}
       </ScrollView>
