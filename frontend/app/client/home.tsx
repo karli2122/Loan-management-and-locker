@@ -410,7 +410,6 @@ export default function ClientHome() {
     // Add null check
     if (!id || id.trim() === '') {
       console.log('fetchStatus: No valid client ID');
-      setLoading(false);
       return;
     }
     try {
