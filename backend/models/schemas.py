@@ -154,7 +154,7 @@ class ClientCreate(BaseModel):
     loan_amount: float = 0.0
     down_payment: float = 0.0
     interest_rate: float = 10.0
-    loan_tenure_months: int = 12
+    loan_start_date: Optional[str] = None
 
 
 class ClientUpdate(BaseModel):

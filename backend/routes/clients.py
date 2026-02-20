@@ -34,7 +34,6 @@ async def create_client(client_data: ClientCreate, admin_token: str = Query(...)
         loan_amount=client_data.loan_amount,
         down_payment=client_data.down_payment,
         interest_rate=client_data.interest_rate,
-        loan_tenure_months=client_data.loan_tenure_months
     )
     
     # Exclude registration_code when None so sparse unique index works
@@ -43,6 +42,11 @@ async def create_client(client_data: ClientCreate, admin_token: str = Query(...)
     if client_data.loan_amount and client_data.loan_amount > 0:
         client_dict["outstanding_balance"] = client_data.loan_amount
         client_dict["total_amount_due"] = client_data.loan_amount
+        # Set loan_start_date so Active Loan section shows in client details
+        if client_data.loan_start_date:
+            client_dict["loan_start_date"] = client_data.loan_start_date
+        else:
+            client_dict["loan_start_date"] = datetime.utcnow().strftime("%Y-%m-%d")
     await db.clients.insert_one(client_dict)
     return client
 
