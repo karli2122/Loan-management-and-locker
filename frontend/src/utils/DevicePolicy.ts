@@ -396,6 +396,16 @@ class DevicePolicyManager {
     }
   }
 
+  async openAccessibilitySettingsDirect(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.openAccessibilitySettingsDirect?.()) || 'error';
+    } catch (error) {
+      console.log('Failed to open accessibility settings direct:', error);
+      return 'error';
+    }
+  }
+
   // ===================== KIOSK MODE (LOCK TASK) =====================
 
   /**
