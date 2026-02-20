@@ -781,10 +781,12 @@ export default function ClientHome() {
         await checkCachedLockStateOnStartup();
         
         // Load client data — this includes fetchStatus, location, push token
-        // NOTE: loadClientData sets loading=false internally, but we need permissions first
         await loadClientData();
         
-        // Fetch all permission states BEFORE rendering (loading is already false from loadClientData)
+        // Show UI immediately — don't block on permission checks
+        if (isMounted.current) setLoading(false);
+        
+        // Fetch all permission states AFTER showing UI (updates reactively)
         if (Platform.OS === 'android' && isMounted.current) {
           try {
             // Check if protection was already completed previously
@@ -847,13 +849,10 @@ export default function ClientHome() {
 
         // Mark init complete so the protection useEffect can proceed safely
         initComplete.current = true;
-        
-        // All data + permissions loaded — safe to render now
-        if (isMounted.current) setLoading(false);
       } catch (error) {
         console.error('Initialization error:', error);
         initComplete.current = true;
-        setLoading(false);
+        if (isMounted.current) setLoading(false);
       }
     };
     
