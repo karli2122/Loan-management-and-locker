@@ -1189,20 +1189,27 @@ export default function ClientDetails() {
             
             <View style={styles.loanStatsGrid}>
               <View style={styles.loanStatItem}>
-                <Text style={styles.loanStatLabel}>{language === 'et' ? 'Laen kokku' : 'Total Loan'}</Text>
-                <Text style={styles.loanStatValue}>€{(client.total_amount_due || 0).toFixed(2)}</Text>
+                <Text style={styles.loanStatLabel}>{language === 'et' ? 'Laen antud' : 'Amount Given'}</Text>
+                <Text style={styles.loanStatValue}>€{(client.loan_amount || 0).toFixed(2)}</Text>
+              </View>
+              <View style={styles.loanStatItem}>
+                <Text style={styles.loanStatLabel}>{language === 'et' ? 'Tagasimakse intressiga' : 'Amount Due (with Interest)'}</Text>
+                <Text style={[styles.loanStatValue, { color: '#EF4444' }]}>€{(() => {
+                  const loanAmt = client.loan_amount || 0;
+                  const rate = client.interest_rate || 0;
+                  const totalDue = client.total_amount_due || 0;
+                  if (totalDue > loanAmt) return totalDue.toFixed(2);
+                  if (loanAmt > 0 && rate > 0) return (loanAmt + loanAmt * rate / 100).toFixed(2);
+                  return loanAmt.toFixed(2);
+                })()}</Text>
               </View>
               <View style={styles.loanStatItem}>
                 <Text style={styles.loanStatLabel}>{language === 'et' ? 'Makstud' : 'Paid'}</Text>
                 <Text style={[styles.loanStatValue, { color: '#10B981' }]}>€{(client.total_paid || 0).toFixed(2)}</Text>
               </View>
               <View style={styles.loanStatItem}>
-                <Text style={styles.loanStatLabel}>{language === 'et' ? 'Jääk' : 'Outstanding'}</Text>
-                <Text style={[styles.loanStatValue, { color: '#EF4444' }]}>€{(client.outstanding_balance || 0).toFixed(2)}</Text>
-              </View>
-              <View style={styles.loanStatItem}>
-                <Text style={styles.loanStatLabel}>{language === 'et' ? 'Kuumakse' : 'Monthly Payment'}</Text>
-                <Text style={styles.loanStatValue}>€{(client.monthly_emi || 0).toFixed(2)}</Text>
+                <Text style={styles.loanStatLabel}>{language === 'et' ? 'Tähtaeg' : 'Due Date'}</Text>
+                <Text style={styles.loanStatValue}>{client.next_payment_due || client.loan_due_date || (language === 'et' ? 'Määramata' : 'Not set')}</Text>
               </View>
             </View>
             
