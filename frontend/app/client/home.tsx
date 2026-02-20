@@ -910,19 +910,20 @@ export default function ClientHome() {
                 (async () => { const { status } = await Location.getForegroundPermissionsAsync(); return status === 'granted'; })(),
                 (async () => { const { status } = await Notifications.getPermissionsAsync(); return status === 'granted'; })(),
               ]);
-              setIsAdminActive(admin);
               const autoStartCached = (await AsyncStorage.getItem('autostart_enabled')) === 'true';
+              const accessibilityCached = (await AsyncStorage.getItem('accessibility_enabled')) === 'true';
               const newPermStates = {
                 batteryOptimization: batteryOpt,
                 overlay: overlay,
                 autoStart: autoStartCached,
-                accessibility: accessibility,
+                accessibility: accessibility || accessibilityCached,
                 location: locationPerm,
                 notification: notifPerm,
               };
               setPermissionStates(newPermStates);
               
-              // Cache permission states for persistence
+              // Save states to cache
+              if (accessibility) await AsyncStorage.setItem('accessibility_enabled', 'true');
               await AsyncStorage.setItem('permission_states', JSON.stringify(newPermStates));
               
               // Auto-hide permission tab if all permissions + admin are active
