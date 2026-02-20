@@ -256,13 +256,20 @@ export default function ClientsList() {
           </View>
           <Text style={[styles.clientPhone, { color: colors.textMuted }]}>{item.phone || 'N/A'}</Text>
           <View style={styles.clientMeta}>
-            {(item.outstanding_balance || 0) > 0 ? (
+            {(item.outstanding_balance || item.loan_amount || 0) > 0 ? (
               <Text style={[styles.emiAmount, { color: '#EF4444' }]}>
-                {language === 'et' ? 'Jääk' : 'Outstanding'}: €{(item.outstanding_balance || 0).toLocaleString()}
+                {language === 'et' ? 'Tagasimakse' : 'Due'}: €{(() => {
+                  const loanAmt = item.loan_amount || 0;
+                  const rate = (item as any).interest_rate || 0;
+                  const totalDue = (item as any).total_amount_due || 0;
+                  if (totalDue > loanAmt) return totalDue.toLocaleString();
+                  if (loanAmt > 0 && rate > 0) return Math.round(loanAmt + loanAmt * rate / 100).toLocaleString();
+                  return (item.outstanding_balance || loanAmt).toLocaleString();
+                })()}
               </Text>
             ) : (
               <Text style={[styles.emiAmount, { color: colors.textSecondary }]}>
-                {language === 'et' ? 'Laen' : 'Loan'}: €{(item.loan_amount || item.emi_amount || 0).toLocaleString()}
+                {language === 'et' ? 'Laen' : 'Loan'}: €0
               </Text>
             )}
             {item.is_registered ? (
