@@ -18,6 +18,7 @@ import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL, { API_BASE_URL, buildApiUrl } from '../../src/constants/api';
+import { BackHandler } from 'react-native';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
 
 export default function ClientRegister() {
@@ -139,8 +140,7 @@ export default function ClientRegister() {
       
       // Save client info for background lock checking (AccessibilityService)
       try {
-        const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
-        await devicePolicy.setClientInfo(clientId, backendUrl);
+        await devicePolicy.setClientInfo(clientId, API_URL);
       } catch (e) { /* non-fatal */ }
       
       // Show success state — user must reopen app to continue
@@ -171,7 +171,7 @@ export default function ClientRegister() {
           <View style={[styles.iconContainer, { backgroundColor: '#10B981', marginBottom: 24 }]}>
             <Ionicons name="checkmark-circle" size={50} color="#fff" />
           </View>
-          <Text style={[styles.title, { marginBottom: 12 }]}>
+          <Text style={[styles.title, { marginBottom: 12, textAlign: 'center' }]}>
             {language === 'et' ? 'Registreerimine Õnnestus!' : 'Registration Successful!'}
           </Text>
           <Text style={[styles.subtitle, { textAlign: 'center', marginBottom: 32 }]}>
@@ -180,13 +180,14 @@ export default function ClientRegister() {
               : 'Please close the app and reopen it to begin device setup.'}
           </Text>
           <TouchableOpacity 
-            style={[styles.registerButton, { backgroundColor: '#10B981' }]}
+            style={[styles.button, { backgroundColor: '#10B981' }]}
             onPress={() => {
-              router.replace('/client/home');
+              BackHandler.exitApp();
             }}
           >
+            <Ionicons name="close-circle" size={20} color="#fff" />
             <Text style={styles.buttonText}>
-              {language === 'et' ? 'Jätka' : 'Continue'}
+              {language === 'et' ? 'Sulge rakendus' : 'Close App'}
             </Text>
           </TouchableOpacity>
         </View>
