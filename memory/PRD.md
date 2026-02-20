@@ -6,82 +6,62 @@ Loan management application with admin dashboard and client-facing mobile app. D
 ## Tech Stack
 - **Frontend**: React Native (Expo 54), TypeScript
 - **Backend**: FastAPI, MongoDB, Pydantic
-- **Native Android**: Custom Expo module (emi-device-admin) — Device Admin, Kiosk, Accessibility, Overlay, Boot Receiver
-
-## Lock Screen System (When Admin Locks Device)
-1. **Kiosk mode** — pins app to screen
-2. **Immersive mode** — hides status bar and navigation bar
-3. **Overlay foreground service** — blocks touch events, runs as foreground service
-4. **Lock state saved to SharedPreferences** — survives app restarts
-5. **Boot receiver** — auto-starts app + overlay on reboot
-6. **Accessibility service** — blocks app switch while locked
-
-## Device Protection Features (6 Permissions Grid)
-| Permission | Action |
-|---|---|
-| Battery Optimization | `requestBatteryOptimization()` |
-| Overlay | `requestOverlayPermission()` |
-| Auto Start | Dialog + `openAutoStartSettings()` |
-| Accessibility | `openAppInfo()` + `openAccessibilitySettings()` |
-| Location | Expo Location API |
-| Notification | `openNotificationSettings()` |
+- **Native Android**: Custom Expo module (emi-device-admin)
 
 ## Key Files
 - `app/client/home.tsx` — Client UI with lock screen + permission grid
 - `app/client/register.tsx` — Client registration flow
-- `app/admin/add-client.tsx` — Admin form for creating new clients
-- `app/admin/client-details.tsx` — Client detail page (loan, device, actions)
-- `backend/routes/clients.py` — Client CRUD, lock/unlock
-- `backend/models/schemas.py` — Pydantic schemas
+- `app/admin/add-client.tsx` — Admin form for creating clients
+- `app/admin/client-details.tsx` — Client detail page
+- `app/admin/loan-plans.tsx` — Loan plan management
+- `app/admin/login.tsx` — Admin login with auth persistence
+- `app/admin/(tabs)/index.tsx` — Dashboard (action buttons removed)
+- `app/admin/reports.tsx` — Financial reports with monthly interest
+- `backend/routes/clients.py` — Client CRUD
+- `backend/routes/loans.py` — Loan operations (interest rate fix: monthly*12=annual)
+- `backend/routes/reports.py` — Reports + monthly interest earned
+- `backend/routes/contracts.py` — PDF contract generation with loan_start_date
+- `backend/routes/bank_statements.py` — .asice parsing (PDF+XML+CSV support)
+- `modules/emi-device-admin/.../EMIAccessibilityService.kt` — Background polling + uninstall_allowed
 
 ## Key API Endpoints
-- `POST /api/clients` — Create client (now sets loan_start_date + outstanding_balance)
-- `GET /api/clients/{id}` — Get client details
-- `GET /api/device/status/{client_id}` — Device status
-- `POST /api/clients/{id}/lock` — Lock device
-- `POST /api/clients/{id}/unlock` — Unlock device
-- `POST /api/clients/{id}/allow-uninstall` — Allow uninstall
-
-## Build Pipeline
-- Node: 20.20.0, Yarn: 1.22.22
-- eas.json backend URL: loan-kiosk-app.preview.emergentagent.com
+- `POST /api/clients` — Create client (sets loan_start_date, outstanding_balance, next_payment_due)
+- `GET /api/reports/financial` — Returns monthly_trend, monthly_interest, totals
+- `PUT /api/loan-plans/{id}` — Update plan (now supports is_active toggle)
+- `GET /api/contracts/{id}/preview` — PDF with loan_start_date
 
 ## Completed (Feb 20, 2026)
 
-### Admin App Changes:
-- **Add Client form**: Moved "Loan Amount" under "Loan Details" section, removed "Loan Tenure" field
-- **Add Client form**: Now sends `loan_amount` and `loan_start_date` to backend
-- **Backend**: `ClientCreate` schema updated with `loan_start_date`, backend auto-sets `outstanding_balance` and `loan_start_date` when loan_amount > 0
-- **Client Details**: Active loan now shows immediately after adding client (was broken because `loan_start_date` was never set during creation)
-- **Client Details**: Added pull-to-refresh (RefreshControl)
-- **Client Details**: Removed redundant "EMI Details" section (info already in Active Loan tab)
-- **Client Details**: Lock Device & Allow Uninstall buttons now only visible when admin_mode_active is ON
-- **API URLs updated**: All EAS build profiles and api.ts fallback now point to current backend (`loan-kiosk-app.preview.emergentagent.com`)
+### Client App Fixes:
+- **Registration crash fix (v3)**: Removed ALL native module calls from register.tsx. Native setup (backupClientData, setRegistered, setClientInfo) deferred to home.tsx fresh registration path as fire-and-forget.
+- **Loading stuck fix**: `setLoading(false)` now fires immediately after `fetchStatus` in `loadClientData()`. Location + push token are fire-and-forget (don't block loading).
+- **Contract date**: Uses `loan_start_date` instead of today's date.
 
-### Client App Changes (from earlier this session):
-- Registration crash fix: `setClientInfo` uses `API_URL` from constants, "Continue" replaced with "Close App" button
-- UI race condition fix: `setLoading(false)` moved to after all permission checks complete
-- Refresh loop, battery optimization instructions, and autostart/accessibility cache fixes verified in code
+### Admin App Fixes:
+- Add Client form: Loan Amount moved under Loan Details, Loan Tenure removed, sends loan_amount + loan_start_date + emi_due_date properly
+- Client Details: Pull-to-refresh, removed EMI Details section, Lock/Uninstall buttons gated on admin_mode_active
+- Client List: Shows outstanding balance + last heartbeat
+- Dashboard: Action buttons removed (available in Features tab)
+- Login: Auth persistence with loading screen before checking session
+- Reports: Monthly interest earned for past 6 months
+- Device Management: Removed "Device Setup" button and info dialog
+- Info dialog "A unique registration code..." removed from add-client
+- Interest rate label: "Interest (Monthly)" in loan history
 
-### Earlier Completed Work:
-- Lock screen system: kiosk + immersive + foreground overlay + boot receiver
-- Device Protection V2: 6-permission grid
-- Accessibility restricted settings workaround
-- Samsung AutoStart intent fix
-- Client app notification system
-- "Uninstall Allowed" flow fix
+### Backend Fixes:
+- ClientCreate schema: Added loan_start_date, removed loan_tenure_months
+- create_client: Sets loan_start_date, outstanding_balance, next_payment_due, loan_due_date
+- LoanPlanCreate: Added is_active field for toggle support
+- Loan calculations: Fixed interest rate handling (monthly * 12 = annual for EMI calc)
+- Reports: monthly_trend array + monthly_interest array + totals object
+- Bank statements: .asice parsing handles XML, CSV (not just PDF)
+- Contracts: Uses loan_start_date for contract date
 
-## Pending Verification (by user via APK testing)
-- Client app registration crash fix
-- Client app refresh loop fix
-- Client app UI race condition fix
-- Battery optimization instructions modal
-- Autostart/Accessibility cache persistence
+### Native Android Fixes:
+- AccessibilityService: Now reads and stores `uninstall_allowed` from server during periodic polling
+- Uninstall allowed state persists even when app is closed from recents
 
 ## Backlog
-- P1: Bank Statement Analyzer (.asice parsing + LLM summary)
+- P1: Refactor home.tsx into smaller components
 - P2: Payment Reminders, Bulk Import, Credit Score PDF, P/L Dashboard
 - P3: AMAPI, FCM Push Notifications
-
-## Refactoring Needed
-- `app/client/home.tsx` needs breakdown into smaller components (usePermissions, useDeviceState, PermissionGrid, LockScreenOverlay)
