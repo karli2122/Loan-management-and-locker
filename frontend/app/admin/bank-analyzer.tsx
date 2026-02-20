@@ -391,6 +391,84 @@ export default function BankAnalyzer() {
                 )}
               </View>
             )}
+
+            {a.credit_recommendation && (
+              <View style={styles.creditCard} data-testid="credit-recommendation">
+                <View style={styles.creditHeader}>
+                  <Ionicons name="cash" size={22} color="#8B5CF6" />
+                  <Text style={styles.creditTitle}>
+                    {language === 'et' ? 'Krediidisoovitus' : 'Credit Recommendation'}
+                  </Text>
+                </View>
+
+                <View style={styles.creditAmountRow}>
+                  <View style={styles.creditAmountCard}>
+                    <Text style={styles.creditAmountLabel}>
+                      {language === 'et' ? 'Kuus' : 'Monthly'}
+                    </Text>
+                    <Text style={styles.creditAmountValue}>
+                      {fmt(a.credit_recommendation.monthly_credit_amount)}
+                    </Text>
+                  </View>
+                  <View style={styles.creditAmountCard}>
+                    <Text style={styles.creditAmountLabel}>
+                      {language === 'et' ? 'Aastas' : 'Yearly'}
+                    </Text>
+                    <Text style={styles.creditAmountValue}>
+                      {fmt(a.credit_recommendation.yearly_credit_amount)}
+                    </Text>
+                  </View>
+                </View>
+
+                {a.credit_recommendation.disposable_income != null && (
+                  <View style={styles.cardRow}>
+                    <Text style={styles.cardLabel}>
+                      {language === 'et' ? 'Vaba sissetulek' : 'Disposable Income'}
+                    </Text>
+                    <Text style={styles.cardValue}>{fmt(a.credit_recommendation.disposable_income)}</Text>
+                  </View>
+                )}
+                {a.credit_recommendation.debt_to_income_ratio != null && (
+                  <View style={styles.cardRow}>
+                    <Text style={styles.cardLabel}>
+                      {language === 'et' ? 'Võla/tulu suhe' : 'Debt-to-Income Ratio'}
+                    </Text>
+                    <Text style={styles.cardValue}>
+                      {(a.credit_recommendation.debt_to_income_ratio * 100).toFixed(1)}%
+                    </Text>
+                  </View>
+                )}
+                {a.credit_recommendation.risk_level && (
+                  <View style={styles.cardRow}>
+                    <Text style={styles.cardLabel}>
+                      {language === 'et' ? 'Riskitase' : 'Risk Level'}
+                    </Text>
+                    <View style={[
+                      styles.riskBadge,
+                      a.credit_recommendation.risk_level === 'low' && styles.riskLow,
+                      a.credit_recommendation.risk_level === 'medium' && styles.riskMedium,
+                      a.credit_recommendation.risk_level === 'high' && styles.riskHigh,
+                    ]}>
+                      <Text style={[
+                        styles.riskBadgeText,
+                        a.credit_recommendation.risk_level === 'low' && { color: '#10B981' },
+                        a.credit_recommendation.risk_level === 'medium' && { color: '#F59E0B' },
+                        a.credit_recommendation.risk_level === 'high' && { color: '#EF4444' },
+                      ]}>
+                        {a.credit_recommendation.risk_level === 'low'
+                          ? (language === 'et' ? 'Madal' : 'Low')
+                          : a.credit_recommendation.risk_level === 'medium'
+                          ? (language === 'et' ? 'Keskmine' : 'Medium')
+                          : (language === 'et' ? 'Kõrge' : 'High')}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+                {a.credit_recommendation.reasoning && (
+                  <Text style={styles.creditReasoning}>{a.credit_recommendation.reasoning}</Text>
+                )}
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
