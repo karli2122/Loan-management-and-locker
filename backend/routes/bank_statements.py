@@ -26,14 +26,30 @@ SUPPORTED_BANKS = [
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
 
 
-def extract_pdf_from_asice(file_bytes: bytes) -> bytes:
-    """Extract PDF content from an ASiC-E (.asice) container (ZIP-based)."""
+def extract_pdf_from_asice(file_bytes: bytes) -> tuple:
+    """Extract document content from an ASiC-E (.asice) container (ZIP-based).
+    Returns (content_bytes, content_type) where content_type is 'pdf' or 'xml' or 'csv'."""
     try:
         with zipfile.ZipFile(BytesIO(file_bytes), 'r') as zf:
+            # Priority: PDF > XML > CSV > any non-signature file
+            pdf_files = [n for n in zf.namelist() if n.lower().endswith('.pdf')]
+            if pdf_files:
+                return zf.read(pdf_files[0]), 'pdf'
+            
+            xml_files = [n for n in zf.namelist() if n.lower().endswith('.xml') and 'signatures' not in n.lower() and 'manifest' not in n.lower() and 'META-INF' not in n]
+            if xml_files:
+                return zf.read(xml_files[0]), 'xml'
+            
+            csv_files = [n for n in zf.namelist() if n.lower().endswith('.csv')]
+            if csv_files:
+                return zf.read(csv_files[0]), 'csv'
+            
+            # Fallback: return first non-META-INF file
             for name in zf.namelist():
-                if name.lower().endswith('.pdf'):
-                    return zf.read(name)
-            raise ValueError("No PDF found inside .asice container")
+                if 'META-INF' not in name and not name.endswith('/'):
+                    return zf.read(name), 'unknown'
+            
+            raise ValueError("No document found inside .asice container")
     except zipfile.BadZipFile:
         raise ValueError("Invalid .asice file - not a valid container")
 
