@@ -42,6 +42,14 @@ interface AnalysisResult {
       loan_payments_detected?: boolean;
       notes?: string;
     };
+    credit_recommendation?: {
+      monthly_credit_amount?: number;
+      yearly_credit_amount?: number;
+      debt_to_income_ratio?: number;
+      disposable_income?: number;
+      risk_level?: string;
+      reasoning?: string;
+    };
     error?: string;
     raw_response?: string;
   };
