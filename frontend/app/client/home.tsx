@@ -649,12 +649,14 @@ export default function ClientHome() {
     }
   };
 
-  // Auto-request Battery, Location, Notification permissions in sequence
+  // Auto-request Location and Notification permissions in sequence
   // These are "requestable" — system shows a popup dialog, user just taps Allow
+  // DISABLED for fresh registration — user taps permission cards manually to avoid crashes
   useEffect(() => {
     if (protectionComplete || autoRequestedRef.current || !showProtectionSetup) return;
+    if (freshRegistration) return; // Don't auto-request on fresh registration
     if (Platform.OS !== 'android') return;
-    if (!clientId) return; // Don't auto-request until client is loaded
+    if (!clientId) return;
     // Only auto-request if at least one of the three is not yet granted
     const { batteryOptimization, location, notification } = permissionStates;
     if (batteryOptimization && location && notification) return;
