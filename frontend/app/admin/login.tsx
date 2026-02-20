@@ -53,7 +53,6 @@ export default function AdminLogin() {
       } finally {
         setCheckingAuth(false);
       }
-      }
     };
     hydrateSession();
   }, []);
