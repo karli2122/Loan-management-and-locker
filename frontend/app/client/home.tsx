@@ -848,6 +848,9 @@ export default function ClientHome() {
 
         // Mark init complete so the protection useEffect can proceed safely
         initComplete.current = true;
+        
+        // All data + permissions loaded — safe to render now
+        if (isMounted.current) setLoading(false);
       } catch (error) {
         console.error('Initialization error:', error);
         initComplete.current = true;
