@@ -35,6 +35,8 @@ interface Client {
   last_heartbeat?: string | null;
   admin_mode_active?: boolean;
   tamper_attempts?: number;
+  outstanding_balance?: number;
+  loan_amount?: number;
 }
 
 interface SilentClient {
@@ -254,7 +256,15 @@ export default function ClientsList() {
           </View>
           <Text style={[styles.clientPhone, { color: colors.textMuted }]}>{item.phone || 'N/A'}</Text>
           <View style={styles.clientMeta}>
-            <Text style={[styles.emiAmount, { color: colors.textSecondary }]}>{t('emi')}: €{(item.emi_amount || 0).toLocaleString()}</Text>
+            {(item.outstanding_balance || 0) > 0 ? (
+              <Text style={[styles.emiAmount, { color: '#EF4444' }]}>
+                {language === 'et' ? 'Jääk' : 'Outstanding'}: €{(item.outstanding_balance || 0).toLocaleString()}
+              </Text>
+            ) : (
+              <Text style={[styles.emiAmount, { color: colors.textSecondary }]}>
+                {language === 'et' ? 'Laen' : 'Loan'}: €{(item.loan_amount || item.emi_amount || 0).toLocaleString()}
+              </Text>
+            )}
             {item.is_registered ? (
               <View style={styles.registeredBadge}>
                 <Ionicons name="checkmark-circle" size={14} color="#10B981" />
@@ -267,7 +277,18 @@ export default function ClientsList() {
               </View>
             )}
           </View>
-          {item.registration_code ? (
+          {item.last_heartbeat ? (
+            <Text style={[styles.regCode, { color: colors.textMuted }]}>
+              {language === 'et' ? 'Viimane ühendus' : 'Last seen'}: {(() => {
+                const mins = Math.floor((Date.now() - new Date(item.last_heartbeat).getTime()) / 60000);
+                if (mins < 1) return language === 'et' ? 'just nüüd' : 'just now';
+                if (mins < 60) return `${mins}m ${language === 'et' ? 'tagasi' : 'ago'}`;
+                const hours = Math.floor(mins / 60);
+                if (hours < 24) return `${hours}h ${language === 'et' ? 'tagasi' : 'ago'}`;
+                return `${Math.floor(hours / 24)}d ${language === 'et' ? 'tagasi' : 'ago'}`;
+              })()}
+            </Text>
+          ) : item.registration_code ? (
             <Text style={[styles.regCode, { color: colors.textMuted }]}>{t('code')}: {item.registration_code}</Text>
           ) : (
             <Text style={[styles.regCodeNotGenerated, { color: colors.textMuted }]}>
