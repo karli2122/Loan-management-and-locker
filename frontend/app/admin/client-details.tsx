@@ -556,6 +556,7 @@ export default function ClientDetails() {
       setEditClientName(client.name || '');
       setEditClientPhone(client.phone || '');
       setEditClientEmail(client.email || '');
+      setEditClientAddress(client.address || '');
       setEditClientModal(true);
     }
   };
