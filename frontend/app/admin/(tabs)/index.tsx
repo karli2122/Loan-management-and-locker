@@ -198,7 +198,6 @@ export default function Dashboard() {
         // Generate last 6 months labels
         const months: string[] = [];
         const values: number[] = [];
-        const now = new Date();
         for (let i = 5; i >= 0; i--) {
           const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
           const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
