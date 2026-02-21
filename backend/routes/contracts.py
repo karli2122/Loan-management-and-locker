@@ -370,12 +370,26 @@ async def send_contract_email(client_id: str, admin_token: str = Query(...), tes
             end = start + relativedelta(months=client["loan_tenure_months"])
             due_date = end.strftime("%d.%m.%Y")
     
+    # Calculate total repayment amount (loan + interest)
+    loan_amt = client.get("loan_amount", 0)
+    interest_rate_val = client.get("interest_rate", 0)
+    total_amount_due_val = client.get("total_amount_due", 0)
+
+    if total_amount_due_val and total_amount_due_val > loan_amt:
+        total_repayment = total_amount_due_val
+    elif loan_amt > 0 and interest_rate_val > 0:
+        total_repayment = loan_amt + (loan_amt * interest_rate_val / 100)
+    else:
+        total_repayment = loan_amt
+
     # Generate PDF
     pdf_bytes = generate_loan_contract_pdf(
         lender=admin,
         client=client,
-        loan_amount=client.get("total_amount_due", client.get("loan_amount", 0)),
-        due_date=due_date
+        loan_amount=loan_amt,
+        due_date=due_date,
+        total_repayment=round(total_repayment, 2),
+        interest_rate=interest_rate_val
     )
     
     filename = f"laenuleping_{client.get('name', 'client').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
@@ -472,12 +486,26 @@ async def download_contract(client_id: str, admin_token: str = Query(...)):
             end = start + relativedelta(months=client["loan_tenure_months"])
             due_date = end.strftime("%d.%m.%Y")
     
+    # Calculate total repayment amount (loan + interest)
+    loan_amt = client.get("loan_amount", 0)
+    interest_rate_val = client.get("interest_rate", 0)
+    total_amount_due_val = client.get("total_amount_due", 0)
+
+    if total_amount_due_val and total_amount_due_val > loan_amt:
+        total_repayment = total_amount_due_val
+    elif loan_amt > 0 and interest_rate_val > 0:
+        total_repayment = loan_amt + (loan_amt * interest_rate_val / 100)
+    else:
+        total_repayment = loan_amt
+
     # Generate PDF
     pdf_bytes = generate_loan_contract_pdf(
         lender=admin,
         client=client,
-        loan_amount=client.get("total_amount_due", client.get("loan_amount", 0)),
-        due_date=due_date
+        loan_amount=loan_amt,
+        due_date=due_date,
+        total_repayment=round(total_repayment, 2),
+        interest_rate=interest_rate_val
     )
     
     filename = f"laenuleping_{client.get('name', 'client').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
