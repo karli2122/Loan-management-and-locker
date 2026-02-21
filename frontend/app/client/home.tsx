@@ -638,6 +638,7 @@ export default function ClientHome() {
   // DISABLED for fresh registration — user taps permission cards manually to avoid crashes
   useEffect(() => {
     if (protectionComplete || autoRequestedRef.current || !showProtectionSetup) return;
+    if (!allowAutoPermissionRequests) return;
     if (freshRegistration) return; // Don't auto-request on fresh registration
     if (Platform.OS !== 'android') return;
     if (!clientId) return;
