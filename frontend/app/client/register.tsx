@@ -156,49 +156,6 @@ export default function ClientRegister() {
     );
   }
 
-  if (registrationSuccess) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
-          <View style={[styles.iconContainer, { backgroundColor: '#10B981', marginBottom: 24 }]}>
-            <Ionicons name="checkmark-circle" size={50} color="#fff" />
-          </View>
-          <Text style={[styles.title, { marginBottom: 12, textAlign: 'center' }]}>
-            {language === 'et' ? 'Registreerimine Õnnestus!' : 'Registration Successful!'}
-          </Text>
-          <Text style={[styles.subtitle, { textAlign: 'center', marginBottom: 32 }]}>
-            {language === 'et' 
-              ? 'Palun sulgege rakendus ja avage see uuesti, et alustada seadme seadistamist. Kui nupp ei tööta, avage hiljutised rakendused ja pühkige see ära.'
-              : 'Please close the app and reopen it to begin device setup. If the button does not work, open recent apps and swipe it away.'}
-          </Text>
-          <TouchableOpacity 
-            style={[styles.button, { backgroundColor: '#10B981' }]}
-            onPress={() => {
-              try {
-                BackHandler.exitApp();
-              } catch (e) {
-                console.log('exitApp error:', e);
-              }
-              setTimeout(() => {
-                try {
-                  BackHandler.exitApp();
-                } catch (e) {
-                  console.log('exitApp retry error:', e);
-                }
-              }, 300);
-            }}
-            data-testid="close-app-button"
-          >
-            <Ionicons name="close-circle" size={20} color="#fff" />
-            <Text style={styles.buttonText}>
-              {language === 'et' ? 'Sulge rakendus' : 'Close App'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
 
   return (
     <SafeAreaView style={styles.container}>
