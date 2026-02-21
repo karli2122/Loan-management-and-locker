@@ -180,39 +180,89 @@ async def get_financial_report(
     payment_query = {}
     client_ids = [c["id"] for c in clients]
     payment_query["client_id"] = {"$in": client_ids}
-    
+
+    start = None
+    end = None
     if start_date:
         try:
             start = datetime.fromisoformat(start_date)
-            payment_query["payment_date"] = {"$gte": start}
         except ValueError:
-            pass
-    
+            start = None
+
     if end_date:
         try:
             end = datetime.fromisoformat(end_date)
-            if "payment_date" in payment_query:
-                payment_query["payment_date"]["$lte"] = end
-            else:
-                payment_query["payment_date"] = {"$lte": end}
         except ValueError:
-            pass
-    
-    payments = await db.payments.find(payment_query, {"_id": 0}).to_list(10000)
-    
-    total_payments = sum(p.get("amount", 0) for p in payments)
+            end = None
+
+    payments_all = await db.payments.find(payment_query, {"_id": 0}).to_list(10000)
+
+    def in_range(payment):
+        payment_date = payment.get("payment_date")
+        if not payment_date:
+            return False
+        if start and payment_date < start:
+            return False
+        if end and payment_date > end:
+            return False
+        return True
+
+    payments = [p for p in payments_all if in_range(p)]
+
     total_late_fees = sum(c.get("late_fees_accumulated", 0) for c in clients)
     total_processing_fees = sum(c.get("processing_fee", 0) for c in clients)
-    
+
+    # Interest allocation setup
+    interest_remaining = {}
+    for client in clients:
+        loan_amount = client.get("loan_amount", 0)
+        total_due = client.get("total_amount_due", 0)
+        interest_total = max(total_due - loan_amount, 0)
+        if interest_total == 0 and loan_amount > 0 and client.get("interest_rate", 0) > 0:
+            interest_total = loan_amount * client.get("interest_rate", 0) / 100
+        interest_remaining[client.get("id")] = interest_total
+
+    total_payments = 0
+    total_interest_earned = 0
+    total_principal_collected = 0
+
     # Group payments by month
     monthly_data = {}
-    for payment in payments:
-        month_key = payment["payment_date"].strftime("%B %Y")  # "February 2026"
-        if month_key not in monthly_data:
-            monthly_data[month_key] = {"revenue": 0, "count": 0}
-        monthly_data[month_key]["revenue"] += payment.get("amount", 0)
-        monthly_data[month_key]["count"] += 1
-    
+    monthly_interest_map = {}
+
+    payments_sorted = sorted(payments_all, key=lambda p: p.get("payment_date") or datetime.min)
+    for payment in payments_sorted:
+        amount = payment.get("amount", 0)
+        client_id = payment.get("client_id")
+        remaining_interest = interest_remaining.get(client_id, 0)
+        interest_component = min(remaining_interest, amount)
+        principal_component = amount - interest_component
+        if client_id in interest_remaining:
+            interest_remaining[client_id] = max(remaining_interest - interest_component, 0)
+
+        if not in_range(payment):
+            continue
+
+        total_payments += amount
+        total_interest_earned += interest_component
+        total_principal_collected += principal_component
+
+        month_name = payment["payment_date"].strftime("%B %Y")
+        month_key = payment["payment_date"].strftime("%Y-%m")
+        if month_name not in monthly_data:
+            monthly_data[month_name] = {
+                "revenue": 0,
+                "count": 0,
+                "interest_earned": 0,
+                "principal_collected": 0,
+                "month_key": month_key,
+            }
+        monthly_data[month_name]["revenue"] += amount
+        monthly_data[month_name]["count"] += 1
+        monthly_data[month_name]["interest_earned"] += interest_component
+        monthly_data[month_name]["principal_collected"] += principal_component
+        monthly_interest_map[month_key] = monthly_interest_map.get(month_key, 0) + interest_component
+
     # Build monthly trend array
     monthly_trend = []
     for month_name, data in sorted(monthly_data.items(), key=lambda x: x[0]):
@@ -220,25 +270,25 @@ async def get_financial_report(
             "month": month_name,
             "revenue": round(data["revenue"], 2),
             "payments_count": data["count"],
+            "interest_earned": round(data["interest_earned"], 2),
+            "principal_collected": round(data["principal_collected"], 2),
         })
-    
-    # Calculate total interest earned (based on current outstanding balances * monthly rates)
-    total_interest_earned = sum(
-        (c.get("outstanding_balance", 0) * c.get("interest_rate", 0) / 100)
-        for c in clients if c.get("outstanding_balance", 0) > 0 and c.get("interest_rate", 0) > 0
-    )
-    
+
     # Monthly interest for past 6 months
     now = datetime.utcnow()
     monthly_interest_list = []
     for i in range(5, -1, -1):
         month_date = now - timedelta(days=30 * i)
+        month_key = month_date.strftime("%Y-%m")
         month_name = month_date.strftime("%B %Y")
         monthly_interest_list.append({
             "month": month_name,
-            "interest_earned": round(total_interest_earned, 2)
+            "interest_earned": round(monthly_interest_map.get(month_key, 0), 2)
         })
-    
+
+    total_disbursed = sum(c.get("loan_amount", 0) for c in clients)
+    total_outstanding = sum(c.get("outstanding_balance", 0) for c in clients)
+
     return {
         "total_payments": round(total_payments, 2),
         "total_late_fees": round(total_late_fees, 2),
@@ -249,9 +299,13 @@ async def get_financial_report(
         "monthly_interest": monthly_interest_list,
         "totals": {
             "total_revenue": round(total_payments + total_late_fees + total_processing_fees, 2),
-            "interest_earned": round(total_interest_earned * 6, 2),
-            "total_disbursed": round(sum(c.get("loan_amount", 0) for c in clients), 2),
-            "total_outstanding": round(sum(c.get("outstanding_balance", 0) for c in clients), 2),
+            "interest_earned": round(total_interest_earned, 2),
+            "principal_disbursed": round(total_disbursed, 2),
+            "principal_collected": round(total_principal_collected, 2),
+            "processing_fees": round(total_processing_fees, 2),
+            "late_fees": round(total_late_fees, 2),
+            "total_disbursed": round(total_disbursed, 2),
+            "total_outstanding": round(total_outstanding, 2),
         }
     }
 
