@@ -186,6 +186,14 @@ export default function Dashboard() {
       if (response.ok) {
         const data = await response.json();
         const revenue = data.monthly_revenue || {};
+        const interest = data.monthly_interest || {};
+        const now = new Date();
+        const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        setMonthStats({
+          revenue: revenue[currentKey] || 0,
+          profit: interest[currentKey] || 0,
+          dueOutstanding: data.financial?.total_outstanding || 0,
+        });
         
         // Generate last 6 months labels
         const months: string[] = [];
