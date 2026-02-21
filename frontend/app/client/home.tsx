@@ -1287,7 +1287,9 @@ export default function ClientHome() {
                     },
                   },
                 ]);
-              }}>
+              }}
+              data-testid="perm-autostart-card"
+              >
                 <View style={[styles.permCircle, permissionStates.autoStart ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.autoStart ? "checkmark" : "close"} size={28} color="#FFF" />
                 </View>
