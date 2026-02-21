@@ -573,6 +573,7 @@ export default function ClientDetails() {
       if (editClientName.trim()) updateData.name = editClientName.trim();
       if (editClientPhone.trim()) updateData.phone = editClientPhone.trim();
       if (editClientEmail.trim()) updateData.email = editClientEmail.trim();
+      if (editClientAddress.trim()) updateData.address = editClientAddress.trim();
 
       const adminQuery = await buildAdminTokenQuery();
       const response = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`, {
