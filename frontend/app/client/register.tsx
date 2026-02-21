@@ -175,8 +175,20 @@ export default function ClientRegister() {
           <TouchableOpacity 
             style={[styles.button, { backgroundColor: '#10B981' }]}
             onPress={() => {
-              BackHandler.exitApp();
+              try {
+                BackHandler.exitApp();
+              } catch (e) {
+                console.log('exitApp error:', e);
+              }
+              setTimeout(() => {
+                try {
+                  BackHandler.exitApp();
+                } catch (e) {
+                  console.log('exitApp retry error:', e);
+                }
+              }, 300);
             }}
+            data-testid="close-app-button"
           >
             <Ionicons name="close-circle" size={20} color="#fff" />
             <Text style={styles.buttonText}>
