@@ -409,6 +409,7 @@ async def analyze_bank_statement(
     if pdf_bytes is not None:
         try:
             statement_text = extract_text_from_pdf(pdf_bytes)
+            statement_text = normalize_seb_encoding(statement_text)
         except Exception as e:
             logger.error(f"PDF text extraction failed: {e}")
             raise HTTPException(status_code=400, detail="Could not extract text from PDF. The file may be image-based or corrupted.")
