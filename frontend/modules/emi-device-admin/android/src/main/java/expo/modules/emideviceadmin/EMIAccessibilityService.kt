@@ -138,29 +138,30 @@ class EMIAccessibilityService : AccessibilityService() {
                 val uninstallAllowed = uninstallMatch?.groupValues?.get(1) == "true"
                 prefs.edit().putBoolean("uninstall_allowed", uninstallAllowed).apply()
 
-                if (serverLocked && !currentlyLocked) {
-                    Log.d(TAG, "Server says LOCKED — updating local state and launching app")
-                    prefs.edit().putBoolean(KEY_LOCKED, true).apply()
-                    
-                    // Parse lock message
-                    val messageMatch = Regex("\"lock_message\"\\s*:\\s*\"([^\"]+)\"").find(response)
-                    val lockMessage = messageMatch?.groupValues?.get(1) ?: ""
-                    
-                    // Launch the app so it can display the lock screen
-                    mainHandler.post {
-                        launchApp()
-                        // Start overlay service
-                        try {
-                            val overlayIntent = Intent(applicationContext, EMIOverlayService::class.java)
-                            overlayIntent.putExtra("lock_message", lockMessage)
-                            applicationContext.startForegroundService(overlayIntent)
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Failed to start overlay from accessibility: ${e.message}")
-                        }
+                // Parse lock message
+                val messageMatch = Regex("\"lock_message\"\\s*:\\s*\"([^\"]+)\"").find(response)
+                val lockMessage = messageMatch?.groupValues?.get(1) ?: ""
+
+                if (serverLocked) {
+                    if (!currentlyLocked) {
+                        Log.d(TAG, "Server says LOCKED — updating local state and launching app")
                     }
-                } else if (!serverLocked && currentlyLocked) {
+                    prefs.edit().putBoolean(KEY_LOCKED, true).apply()
+                    ensureOverlayRunning(lockMessage)
+                    if (!isAppInForeground()) {
+                        mainHandler.post { launchApp() }
+                    }
+                } else if (currentlyLocked) {
                     Log.d(TAG, "Server says UNLOCKED — updating local state")
                     prefs.edit().putBoolean(KEY_LOCKED, false).apply()
+                    if (EMIOverlayService.isRunning) {
+                        try {
+                            val stopIntent = Intent(applicationContext, EMIOverlayService::class.java)
+                            applicationContext.stopService(stopIntent)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to stop overlay service: ${e.message}")
+                        }
+                    }
                     // Launch app so it can update its UI
                     mainHandler.post { launchApp() }
                 }
