@@ -141,11 +141,36 @@ export function getAccessibilityInstructions(dev: NativeDeviceInfo, lang: string
     : '';
 
   if (m.includes('samsung')) {
+    const samsungRestrictedSteps = isEt
+      ? `${model} (Android ${ver})
+
+1) Seaded > Juurdepääsetavus > Installitud rakendused > Loan Client (näitab: "Pole lubatud").
+2) Sule see vaade (tagasi).
+3) Seaded > Rakendused > Loan Client.
+4) Vajuta ⋮ ja vali "Luba piiratud seaded".
+5) Seaded > Juurdepääsetavus > Installitud rakendused > Loan Client > Lülita SISSE.`
+      : `${model} (Android ${ver})
+
+1) Settings > Accessibility > Installed apps > Loan Client (shows "Not allowed").
+2) Close/back out of this screen.
+3) Settings > Apps > Loan Client.
+4) Tap ⋮ and select "Allow restricted settings".
+5) Settings > Accessibility > Installed apps > Loan Client > Turn ON.`;
+    const samsungDefaultSteps = isEt
+      ? `${model} (Android ${ver})
+
+Seaded > Juurdepääs > Paigaldatud rakendused
+
+Leidke "Loan Client" ja lülitage SISSE`
+      : `${model} (Android ${ver})
+
+Settings > Accessibility > Installed apps
+
+Find "Loan Client" and turn ON`;
+
     return {
       title: isEt ? 'Juurdepääsu teenus' : 'Accessibility Service',
-      steps: isEt
-        ? `${model} (Android ${ver})${restrictedSteps}\n\nSEEJÄREL:\nSeaded > Juurdepääs > Paigaldatud rakendused\n\nLeidke "Loan Client" ja lülitage SISSE`
-        : `${model} (Android ${ver})${restrictedSteps}\n\nTHEN:\nSettings > Accessibility > Installed apps\n\nFind "Loan Client" and turn ON`,
+      steps: needsRestricted ? samsungRestrictedSteps : samsungDefaultSteps,
       shortcut: isEt ? 'Ava juurdepääsu seaded' : 'Open Accessibility',
     };
   }
