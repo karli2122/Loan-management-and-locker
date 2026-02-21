@@ -89,8 +89,8 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - Dashboard month stats now populated from analytics (interest + revenue for current month)
 
 ### Backend Updates
-- Financial report interest/profit recalculated from payment allocations (using loan tenure when total due missing)
-- Dashboard/paid-loans interest summaries now derived from payment allocations (not outstanding balances)
+- Financial report interest/profit recalculated from payment allocations (using paid-loans fallback when loan totals missing)
+- Dashboard/paid-loans interest summaries now derived from payment allocations with paid-loans client mapping
 - Added totals for principal_disbursed, principal_collected, processing_fees, late_fees
 - Contract PDF paragraphs 1.1/2.2 updated to “amount given” and “amount due (amount given + interest)” wording
 - OCR fallback for SEB PDFs (Tesseract) + AI retry with OCR text for encoded statements
