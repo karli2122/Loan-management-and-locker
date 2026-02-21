@@ -474,6 +474,7 @@ export default function LoansTab() {
           <TouchableOpacity
             style={[styles.paymentFilterButton, { backgroundColor: colors.surface, borderColor: colors.border }, paymentFilter === 'all' && styles.paymentFilterButtonActive]}
             onPress={() => setPaymentFilter('all')}
+            data-testid="payment-filter-all"
           >
             <Text style={[styles.paymentFilterText, { color: colors.textMuted }, paymentFilter === 'all' && styles.paymentFilterTextActive]}>
               {language === 'et' ? 'Kõik' : 'All'}
