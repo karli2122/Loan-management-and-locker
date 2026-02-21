@@ -14,9 +14,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Device from 'expo-device';
+import * as Application from 'expo-application';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import * as Notifications from 'expo-notifications';
+import * as Location from 'expo-location';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import API_URL from '../../src/constants/api';
+import devicePolicy from '../../src/utils/DevicePolicy';
+import { getApiErrors, getDiagnosticLogs } from '../../src/utils/diagnostics';
 
 
 interface Admin {
