@@ -119,12 +119,21 @@ def extract_seb_summary(statement_text: str):
 
     lines = [line.strip() for line in statement_text.splitlines() if line.strip()]
     account_holder = None
-    for line in lines[:6]:
-        if "KONTO" in line or "VÄLJAVÕTE" in line or "SEB" in line:
-            continue
-        if any(ch.isalpha() for ch in line):
-            account_holder = line.title()
-            break
+    for line in lines:
+        if "KONTO VÄLJAVÕTE" in line:
+            account_holder = line.split("KONTO VÄLJAVÕTE")[0].strip()
+            if account_holder:
+                break
+
+    if not account_holder:
+        for line in lines[:10]:
+            if "KONTO" in line or "VÄLJAVÕTE" in line or "SEB" in line:
+                continue
+            if any(ch.isdigit() for ch in line):
+                continue
+            if any(ch.isalpha() for ch in line):
+                account_holder = line.title()
+                break
 
     opening_match = re.search(r"Algsaldo\s*([\d.,-]+)", statement_text, re.IGNORECASE)
     closing_match = re.search(r"Lõppsaldo\s*([\d.,-]+)", statement_text, re.IGNORECASE)
