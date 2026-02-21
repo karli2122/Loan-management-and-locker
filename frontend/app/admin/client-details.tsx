@@ -1556,18 +1556,18 @@ export default function ClientDetails() {
               )}
               </>
             )}
-            
+            {client.admin_mode_active && (
+            <>
             <TouchableOpacity
               style={[styles.actionButton, styles.warningButton]}
               onPress={() => setWarningModal(true)}
               disabled={actionLoading}
+              data-testid="send-warning-btn"
             >
               <Ionicons name="warning" size={20} color="#fff" />
               <Text style={styles.actionButtonText}>{t('sendWarning')}</Text>
             </TouchableOpacity>
 
-            {client.admin_mode_active && (
-            <>
             <TouchableOpacity
               style={[styles.actionButton, client.is_locked ? styles.unlockButton : styles.lockButton]}
               onPress={client.is_locked ? handleUnlock : () => setLockModal(true)}
