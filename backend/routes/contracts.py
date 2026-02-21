@@ -130,7 +130,7 @@ def generate_loan_contract_pdf(lender: dict, client: dict, loan_amount: float, d
     # Section 1: Loan and its transfer
     story.append(Paragraph("1. Laen ja selle üleandmine", heading_style))
     story.append(Paragraph(
-        f"1.1. Laenuandja annab Laenusaajale laenu <b>{loan_amount:.2f} eurot</b> (edaspidi Laen).",
+        f"1.1. Laenuandja annab Laenusaajale laenu <b>{loan_amount:.2f} eurot</b> (edaspidi Antud summa).",
         normal_style
     ))
     story.append(Paragraph(
