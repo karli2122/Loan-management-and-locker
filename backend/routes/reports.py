@@ -229,12 +229,7 @@ async def get_financial_report(
     # Interest allocation setup
     interest_remaining = {}
     for client in clients:
-        loan_amount = client.get("loan_amount", 0)
-        total_due = client.get("total_amount_due", 0)
-        interest_total = max(total_due - loan_amount, 0)
-        if interest_total == 0 and loan_amount > 0 and client.get("interest_rate", 0) > 0:
-            interest_total = loan_amount * client.get("interest_rate", 0) / 100
-        interest_remaining[client.get("id")] = interest_total
+        interest_remaining[client.get("id")] = calculate_interest_total(client)
 
     total_payments = 0
     total_interest_earned = 0
