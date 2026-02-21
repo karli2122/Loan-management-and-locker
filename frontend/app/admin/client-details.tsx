@@ -1020,11 +1020,17 @@ export default function ClientDetails() {
           </View>
           <View style={styles.infoRow}>
             <Ionicons name="call" size={18} color="#64748B" />
-            <Text style={styles.infoText}>{client.phone}</Text>
+            <Text style={styles.infoText} data-testid="client-phone-text">{client.phone}</Text>
           </View>
           <View style={styles.infoRow}>
             <Ionicons name="mail" size={18} color="#64748B" />
-            <Text style={styles.infoText}>{client.email}</Text>
+            <Text style={styles.infoText} data-testid="client-email-text">{client.email}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Ionicons name="home" size={18} color="#64748B" />
+            <Text style={styles.infoText} data-testid="client-address-text">
+              {client.address || (language === 'et' ? 'Aadress puudub' : 'No address')}
+            </Text>
           </View>
         </View>
 
