@@ -158,6 +158,7 @@ export default function BankAnalyzer() {
     n != null ? `${n >= 0 ? '' : '-'}€${Math.abs(n).toFixed(2)}` : '-';
 
   const isSebFile = selectedFileName.toLowerCase().includes('seb');
+  const showSebOcrHint = uploading && isSebFile;
 
   const a = result?.analysis;
   const s = a?.summary;
@@ -228,10 +229,15 @@ export default function BankAnalyzer() {
                 ? 'AI analüüsib teie pangaväljavõtet'
                 : 'AI is analyzing your bank statement'}
             </Text>
-            {isSebFile && (
-              <Text style={styles.sebLoadingText} data-testid="seb-ocr-loading">
-                {language === 'et' ? 'SEB OCR töötleb faili...' : 'Processing SEB OCR...'}
-              </Text>
+            {showSebOcrHint && (
+              <>
+                <Text style={styles.sebLoadingText} data-testid="seb-ocr-loading">
+                  {language === 'et' ? 'SEB OCR töötleb faili...' : 'Processing SEB OCR...'}
+                </Text>
+                <Text style={styles.sebLoadingEta} data-testid="seb-ocr-eta">
+                  {language === 'et' ? 'OCR võib võtta ~30s' : 'OCR may take up to ~30s'}
+                </Text>
+              </>
             )}
           </View>
         )}
@@ -521,6 +527,7 @@ const styles = StyleSheet.create({
   loadingTitle: { fontSize: 18, fontWeight: '600', color: '#fff' },
   loadingSubtext: { fontSize: 14, color: '#94A3B8' },
   sebLoadingText: { fontSize: 13, color: '#38BDF8', fontWeight: '600' },
+  sebLoadingEta: { fontSize: 12, color: '#94A3B8' },
   errorContainer: { alignItems: 'center', gap: 8, paddingVertical: 40 },
   errorText: { fontSize: 14, color: '#EF4444', textAlign: 'center' },
   retryButton: { backgroundColor: '#4F46E5', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, marginTop: 8 },

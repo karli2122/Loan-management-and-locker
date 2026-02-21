@@ -428,6 +428,8 @@ async def analyze_bank_statement(
     if not statement_text.strip():
         raise HTTPException(status_code=400, detail="No text could be extracted from the PDF. It may be a scanned/image-based document.")
 
+    is_seb_file = is_seb_statement(statement_text, file.filename)
+
     # Extract SEB fallback summary (if applicable)
     seb_fallback = extract_seb_summary(statement_text)
 
@@ -447,8 +449,8 @@ async def analyze_bank_statement(
         logger.error(f"AI analysis failed: {e}")
         ai_error = e
 
-    if not has_transactions(analysis) and pdf_bytes is not None:
-        ocr_text = extract_text_from_pdf(pdf_bytes, force_ocr=True)
+    if not has_transactions(analysis) and pdf_bytes is not None and is_seb_file:
+        ocr_text = extract_text_from_pdf(pdf_bytes, force_ocr=True, filename=file.filename)
         if ocr_text and ocr_text != statement_text:
             statement_text = normalize_seb_encoding(ocr_text)
             analysis = await analyze_with_ai(statement_text)
