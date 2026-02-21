@@ -94,12 +94,13 @@ Loan management application with admin dashboard and client-facing mobile app. D
 
 ## Pending User Verification
 - P0: Client app crash after registration (~5s after home load) — verify on device; needs logcat if it persists
-- P0: Accessibility restricted settings on Samsung Android 16 — verify updated steps
-- P1: Profit calculations in Reports/Analytics — validate with real data
+- P0: Accessibility restricted settings on Samsung Android 16 — verify updated Loan Client sequence
+- P1: Profit calculations in Reports/Analytics/Dashboard — validate with real data
 - P1: Contract PDF text (1.1/2.2) and native Share with prefilled subject/body — verify on device
 - P1: Address field save/display + send warning visibility (admin mode only) — verify
 - P1: Diagnostic Report export (superadmin Settings) — verify PDF contents
-- P1: SEB PDF statement OCR extraction — verify totals populate
+- P1: SEB PDF statement OCR + AI retry — verify full analysis works
+- P1: Loans tab filters (Dashboard > Loans > change filters) — verify not stuck on All
 - P1: Client auth token persistence on restart — still needs investigation if issue persists
 - P2: Loans filter button sizing + filter reset — verify UI
 
