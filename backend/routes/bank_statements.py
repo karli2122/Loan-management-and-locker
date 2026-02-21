@@ -64,8 +64,12 @@ def extract_text_from_pdf(pdf_bytes: bytes) -> str:
             text_parts.append(page.get_text())
     text = "\n".join(text_parts)
     if _is_text_garbled(text):
-        ocr_text = extract_text_with_ocr(pdf_bytes)
-        return ocr_text or text
+        try:
+            ocr_text = extract_text_with_ocr(pdf_bytes)
+            return ocr_text or text
+        except Exception as e:
+            logger.error(f"OCR extraction failed: {e}")
+            return text
     return text
 
 
