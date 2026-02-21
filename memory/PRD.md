@@ -92,6 +92,7 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - Added totals for principal_disbursed, principal_collected, processing_fees, late_fees
 - Contract PDF paragraphs 1.1/2.2 updated to “amount given” and “amount due (amount given + interest)” wording
 - OCR fallback for SEB PDFs (Tesseract) + AI retry with OCR text for encoded statements
+- Added backend keepalive job (configurable via KEEPALIVE_URL + KEEPALIVE_INTERVAL_SECONDS)
 
 ## Pending User Verification
 - P0: Client app crash after registration (~5s after home load) — verify on device; needs logcat if it persists
