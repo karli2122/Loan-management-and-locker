@@ -55,8 +55,15 @@ def extract_pdf_from_asice(file_bytes: bytes) -> tuple:
         raise ValueError("Invalid .asice file - not a valid container")
 
 
-def extract_text_from_pdf(pdf_bytes: bytes) -> str:
+def extract_text_from_pdf(pdf_bytes: bytes, force_ocr: bool = False) -> str:
     """Extract text from PDF bytes using PyMuPDF."""
+    if force_ocr:
+        try:
+            return extract_text_with_ocr(pdf_bytes)
+        except Exception as e:
+            logger.error(f"OCR extraction failed: {e}")
+            return ""
+
     import fitz
     text_parts = []
     with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
