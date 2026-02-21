@@ -99,8 +99,8 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - P1: Profit calculations in Reports/Analytics/Dashboard — validate with real data
 - P1: Contract PDF text (1.1/2.2) validated via API; native Share still needs device verification
 - P1: Address field save/display + send warning visibility (admin mode only) — verify
-- P1: Diagnostic Report export (superadmin Settings) — verify PDF contents
-- P1: SEB PDF statement OCR + AI retry — verify full analysis works
+- P1: Diagnostic Report export button visible on web; verify PDF share on device
+- P1: SEB PDF statement OCR + AI retry — verify full analysis works in admin app
 - P1: Loans tab filters (Dashboard > Loans > change filters) — verify not stuck on All
 - P1: Client auth token persistence on restart — still needs investigation if issue persists
 - P2: Loans filter button sizing + filter reset — verify UI
