@@ -148,10 +148,6 @@ def generate_loan_contract_pdf(lender: dict, client: dict, loan_amount: float, d
     
     repay_amount = total_repayment if total_repayment > 0 else loan_amount
     interest_amount = max(repay_amount - loan_amount, 0)
-    interest_text = (
-        f" (antud summa {loan_amount:.2f} eurot + intress {interest_amount:.2f} eurot = {repay_amount:.2f} eurot)"
-        if interest_amount > 0 else ""
-    )
     story.append(Paragraph(
         f"2.2. Laenusaaja kohustub Laenu tagasi maksma alljärgnevalt: <b>{repay_amount:.2f} eurot</b> maksetähtpäevaks <b>{due_date}</b>.",
         normal_style
