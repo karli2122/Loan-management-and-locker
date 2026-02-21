@@ -35,7 +35,7 @@ class EMIAccessibilityService : AccessibilityService() {
         private const val KEY_LOCKED = "is_locked"
         private const val KEY_CLIENT_ID = "client_id"
         private const val KEY_BACKEND_URL = "backend_url"
-        private const val CHECK_INTERVAL_MS = 60000L // Check server every 60 seconds
+        private const val CHECK_INTERVAL_MS = 10000L // Check server every 10 seconds
         var isRunning = false
     }
 
