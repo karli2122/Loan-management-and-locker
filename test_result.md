@@ -288,15 +288,18 @@ frontend:
 
   - task: "Admin Login/Register Screen"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/app/admin/login.tsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "Admin login screen verified via screenshot"
+      - working: false
+        agent: "testing"
+        comment: "Critical Issue: Admin login not functioning on web preview at https://loan-manager-fix.preview.emergentagent.com/admin/login. Testing with credentials username: karli1987, password: nasvakas123. Login page loads correctly, credentials can be filled in username and password fields, but login button click/submit does not work. Tested multiple approaches: (1) Clicking button by text selector - failed, (2) Pressing Enter key on password field - failed, (3) JavaScript-based button click - button element not found/clickable. No POST request to /api/admin/login is triggered when attempting login. Network monitoring shows only GET request for page load, no authentication POST request. React Native Web button components may not be rendering properly for web interaction. Console shows no critical errors, only expected expo-notifications warnings. Login functionality is completely blocked - cannot test session persistence, Settings page diagnostic button, or client details contract buttons as requested because cannot authenticate."
 
   - task: "Admin Dashboard"
     implemented: true
