@@ -94,7 +94,7 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - Contract PDF paragraphs 1.1/2.2 updated to “amount given” and “amount due (amount given + interest)” wording
 - OCR fallback for SEB PDFs (Tesseract) + AI retry with OCR text for encoded statements
 - SEB statements decoded using Windows-1252/ISO-8859-1 normalization before analysis
-- SEB analyzer shows “Processing SEB OCR…” message while scanning SEB files
+- SEB analyzer shows “Processing SEB OCR…” + ETA (~30s) when SEB OCR is needed
 - Added backend keepalive job (configurable via KEEPALIVE_URL + KEEPALIVE_INTERVAL_SECONDS)
 
 ## Pending User Verification
