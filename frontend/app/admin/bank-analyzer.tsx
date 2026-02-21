@@ -61,6 +61,7 @@ export default function BankAnalyzer() {
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState('');
+  const [selectedFileName, setSelectedFileName] = useState('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const pickAndUploadFile = async () => {
