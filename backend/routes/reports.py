@@ -388,28 +388,68 @@ async def get_dashboard_analytics(
     # Monthly revenue trend (last 6 months)
     six_months_ago = datetime.utcnow() - timedelta(days=180)
     client_ids = [c["id"] for c in clients]
-    payments = await db.payments.find({
-        "client_id": {"$in": client_ids},
-        "payment_date": {"$gte": six_months_ago}
+    payments_all = await db.payments.find({
+        "client_id": {"$in": client_ids}
     }).to_list(10000)
-    
+
     monthly_revenue = {}
-    for payment in payments:
-        month_key = payment["payment_date"].strftime("%Y-%m")
-        monthly_revenue[month_key] = monthly_revenue.get(month_key, 0) + payment.get("amount", 0)
-    
-    # Monthly interest earned (last 6 months) — estimated from current outstanding balances
+    for payment in payments_all:
+        payment_date = payment.get("payment_date")
+        if not payment_date:
+            continue
+        if payment_date >= six_months_ago:
+            month_key = payment_date.strftime("%Y-%m")
+            monthly_revenue[month_key] = monthly_revenue.get(month_key, 0) + payment.get("amount", 0)
+
+    # Monthly interest earned (last 6 months) — computed from payment allocations
+    paid_loans = await db.paid_loans.find(
+        {"admin_id": target_admin_id} if target_admin_id else {},
+        {"_id": 0, "client_id": 1, "total_interest": 1, "archived_at": 1}
+    ).to_list(10000)
+
+    paid_loans_map = {}
+    for pl in paid_loans:
+        client_id = pl.get("client_id")
+        if not client_id:
+            continue
+        current = paid_loans_map.get(client_id)
+        if not current:
+            paid_loans_map[client_id] = pl
+            continue
+        current_date = current.get("archived_at") or datetime.min
+        pl_date = pl.get("archived_at") or datetime.min
+        if pl_date > current_date:
+            paid_loans_map[client_id] = pl
+
+    interest_remaining = {}
+    for client in clients:
+        interest_total = calculate_interest_total(client)
+        if interest_total == 0:
+            paid = paid_loans_map.get(client.get("id"))
+            if paid:
+                interest_total = paid.get("total_interest", 0) or 0
+        interest_remaining[client.get("id")] = interest_total
+
     monthly_interest = {}
-    current_monthly_interest = sum(
-        (c.get("outstanding_balance", 0) * c.get("interest_rate", 0) / 100)
-        for c in clients if c.get("outstanding_balance", 0) > 0 and c.get("interest_rate", 0) > 0
-    )
+    payments_sorted = sorted(payments_all, key=lambda p: p.get("payment_date") or datetime.min)
+    for payment in payments_sorted:
+        amount = payment.get("amount", 0)
+        client_id = payment.get("client_id")
+        remaining_interest = interest_remaining.get(client_id, 0)
+        interest_component = min(remaining_interest, amount)
+        if client_id in interest_remaining:
+            interest_remaining[client_id] = max(remaining_interest - interest_component, 0)
+        payment_date = payment.get("payment_date")
+        if payment_date and payment_date >= six_months_ago:
+            month_key = payment_date.strftime("%Y-%m")
+            monthly_interest[month_key] = monthly_interest.get(month_key, 0) + interest_component
+
     now = datetime.utcnow()
     for i in range(5, -1, -1):
         month_date = now - timedelta(days=30 * i)
         month_key = month_date.strftime("%Y-%m")
-        monthly_interest[month_key] = round(current_monthly_interest, 2)
-    
+        monthly_interest.setdefault(month_key, 0)
+
     # Activity log
     activity_log = []
     for client in sorted(clients, key=lambda x: x.get("registered_at") or datetime.min, reverse=True)[:10]:
