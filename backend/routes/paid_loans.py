@@ -219,61 +219,85 @@ async def get_paid_loans_summary(admin_token: str = Query(...)):
     now = datetime.utcnow()
     monthly_trend = []
     for i in range(5, -1, -1):
-        # Calculate month offset
         year = now.year
         month = now.month - i
         while month <= 0:
             month += 12
             year -= 1
         monthly_trend.append({"year": year, "month": month, "interest": 0.0})
-    
-    if not paid_loans:
-        return {
-            "total_loans_archived": 0,
-            "total_principal_disbursed": 0,
-            "total_amount_collected": 0,
-            "total_interest_earned": 0,
-            "total_payments_received": 0,
-            "current_month_interest": 0,
-            "current_month_loans_archived": 0,
-            "monthly_interest_trend": monthly_trend
-        }
-    
+
     total_principal = sum(pl.get("loan_amount", 0) for pl in paid_loans)
     total_collected = sum(pl.get("total_paid", 0) for pl in paid_loans)
-    total_interest = sum(pl.get("total_interest", 0) for pl in paid_loans)
     total_payments = sum(pl.get("payment_count", 0) for pl in paid_loans)
-    
-    # Calculate current month interest and populate trend
+
+    # Interest calculations from payments (active + archived)
+    clients = await db.clients.find({"admin_id": admin_id}, {"_id": 0}).to_list(1000)
+    client_ids = [c.get("id") for c in clients]
+    payments_all = await db.payments.find({"client_id": {"$in": client_ids}}, {"_id": 0}).to_list(10000)
+
+    paid_loans_map = {}
+    for pl in paid_loans:
+        client_id = pl.get("client_id")
+        if not client_id:
+            continue
+        current = paid_loans_map.get(client_id)
+        if not current:
+            paid_loans_map[client_id] = pl
+            continue
+        current_date = current.get("archived_at") or datetime.min
+        pl_date = pl.get("archived_at") or datetime.min
+        if pl_date > current_date:
+            paid_loans_map[client_id] = pl
+
+    interest_remaining = {}
+    for client in clients:
+        interest_total = calculate_interest_total(client)
+        if interest_total == 0:
+            paid = paid_loans_map.get(client.get("id"))
+            if paid:
+                interest_total = paid.get("total_interest", 0) or 0
+        interest_remaining[client.get("id")] = interest_total
+
     month_start = datetime(now.year, now.month, 1)
     current_month_interest = 0
+    total_interest_earned = 0
     current_month_count = 0
-    
+
     # Build a lookup for quick trend population
-    trend_lookup = {}
-    for entry in monthly_trend:
-        trend_lookup[(entry["year"], entry["month"])] = entry
-    
-    for pl in paid_loans:
-        archived_at = pl.get("archived_at")
-        if isinstance(archived_at, datetime):
-            if archived_at >= month_start:
-                current_month_interest += pl.get("total_interest", 0)
-                current_month_count += 1
-            # Add to trend if within range
-            key = (archived_at.year, archived_at.month)
-            if key in trend_lookup:
-                trend_lookup[key]["interest"] += pl.get("total_interest", 0)
-    
-    # Round trend values
+    trend_lookup = { (entry["year"], entry["month"]): entry for entry in monthly_trend }
+
+    payments_sorted = sorted(payments_all, key=lambda p: p.get("payment_date") or datetime.min)
+    for payment in payments_sorted:
+        payment_date = payment.get("payment_date")
+        if not payment_date:
+            continue
+        amount = payment.get("amount", 0)
+        client_id = payment.get("client_id")
+        remaining_interest = interest_remaining.get(client_id, 0)
+        interest_component = min(remaining_interest, amount)
+        if client_id in interest_remaining:
+            interest_remaining[client_id] = max(remaining_interest - interest_component, 0)
+
+        total_interest_earned += interest_component
+        if payment_date >= month_start:
+            current_month_interest += interest_component
+        key = (payment_date.year, payment_date.month)
+        if key in trend_lookup:
+            trend_lookup[key]["interest"] += interest_component
+
     for entry in monthly_trend:
         entry["interest"] = round(entry["interest"], 2)
-    
+
+    for pl in paid_loans:
+        archived_at = pl.get("archived_at")
+        if isinstance(archived_at, datetime) and archived_at >= month_start:
+            current_month_count += 1
+
     return {
         "total_loans_archived": len(paid_loans),
         "total_principal_disbursed": round(total_principal, 2),
         "total_amount_collected": round(total_collected, 2),
-        "total_interest_earned": round(total_interest, 2),
+        "total_interest_earned": round(total_interest_earned, 2),
         "total_payments_received": total_payments,
         "current_month_interest": round(current_month_interest, 2),
         "current_month_loans_archived": current_month_count,
