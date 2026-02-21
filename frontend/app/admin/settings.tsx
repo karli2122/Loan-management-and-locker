@@ -1215,6 +1215,44 @@ export default function AdminSettings() {
           </View>
         </View>
 
+        {isSuperAdmin && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {language === 'et' ? 'Diagnostika aruanne' : 'Diagnostic Report'}
+            </Text>
+            <View style={styles.diagnosticCard} data-testid="diagnostic-card">
+              <View style={styles.diagnosticHeader}>
+                <Ionicons name="shield-checkmark" size={24} color="#10B981" />
+                <Text style={styles.diagnosticTitle}>
+                  {language === 'et' ? 'Ekspordi diagnostika' : 'Export Diagnostics'}
+                </Text>
+              </View>
+              <Text style={styles.diagnosticText}>
+                {language === 'et'
+                  ? 'Koosta PDF raport seadme info, õiguste, logide ja API vigadega.'
+                  : 'Generate a PDF report with device info, permission status, logs, and API errors.'}
+              </Text>
+              <TouchableOpacity
+                style={[styles.diagnosticButton, diagnosticExporting && styles.buttonDisabled]}
+                onPress={generateDiagnosticReport}
+                disabled={diagnosticExporting}
+                data-testid="diagnostic-export-button"
+              >
+                {diagnosticExporting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="download" size={18} color="#fff" />
+                    <Text style={styles.diagnosticButtonText}>
+                      {language === 'et' ? 'Ekspordi PDF' : 'Export PDF'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Admin Management Section - Only for Admins */}
         {currentUserRole === 'admin' && (
           <View style={styles.section}>
