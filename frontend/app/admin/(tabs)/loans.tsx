@@ -513,6 +513,7 @@ export default function LoansTab() {
           <TouchableOpacity
             style={[styles.paymentFilterButton, { backgroundColor: colors.surface, borderColor: colors.border }, paymentFilter === 'next3days' && styles.paymentFilterButtonActive]}
             onPress={() => setPaymentFilter('next3days')}
+            data-testid="payment-filter-next3days"
           >
             <Ionicons 
               name="calendar-outline" 
