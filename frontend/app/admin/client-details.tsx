@@ -1856,6 +1856,18 @@ export default function ClientDetails() {
               />
             </View>
 
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>{language === 'et' ? 'Aadress' : 'Address'}</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={editClientAddress}
+                onChangeText={setEditClientAddress}
+                placeholder={language === 'et' ? 'Aadress' : 'Address'}
+                placeholderTextColor="#64748B"
+                data-testid="client-address-input"
+              />
+            </View>
+
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalCancelButton]}
