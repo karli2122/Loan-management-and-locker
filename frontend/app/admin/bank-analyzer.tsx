@@ -520,6 +520,7 @@ const styles = StyleSheet.create({
   loadingContainer: { alignItems: 'center', paddingVertical: 60, gap: 12 },
   loadingTitle: { fontSize: 18, fontWeight: '600', color: '#fff' },
   loadingSubtext: { fontSize: 14, color: '#94A3B8' },
+  sebLoadingText: { fontSize: 13, color: '#38BDF8', fontWeight: '600' },
   errorContainer: { alignItems: 'center', gap: 8, paddingVertical: 40 },
   errorText: { fontSize: 14, color: '#EF4444', textAlign: 'center' },
   retryButton: { backgroundColor: '#4F46E5', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, marginTop: 8 },
