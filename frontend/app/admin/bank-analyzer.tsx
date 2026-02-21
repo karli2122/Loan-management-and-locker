@@ -259,7 +259,14 @@ export default function BankAnalyzer() {
                   {language === 'et' ? 'Analüüs valmis' : 'Analysis Complete'}
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => { setResult(null); setError(''); }} data-testid="new-analysis-btn">
+              <TouchableOpacity
+                onPress={() => {
+                  setResult(null);
+                  setError('');
+                  setSelectedFileName('');
+                }}
+                data-testid="new-analysis-btn"
+              >
                 <Ionicons name="add-circle" size={28} color="#4F46E5" />
               </TouchableOpacity>
             </View>
