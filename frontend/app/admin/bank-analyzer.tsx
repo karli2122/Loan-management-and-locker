@@ -128,6 +128,7 @@ export default function BankAnalyzer() {
     setUploading(true);
     setError('');
     setResult(null);
+    setSelectedFileName(file.name || '');
     try {
       const adminToken = await AsyncStorage.getItem('admin_token');
       if (!adminToken) {
