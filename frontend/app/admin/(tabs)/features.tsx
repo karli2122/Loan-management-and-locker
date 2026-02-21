@@ -180,23 +180,6 @@ export default function FeaturesTab() {
           <Ionicons name="chevron-forward" size={20} color="#64748B" />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.featureCard}
-          onPress={() => router.push('/admin/device-setup')}
-        >
-          <View style={[styles.featureIcon, { backgroundColor: '#F59E0B20' }]}>
-            <Ionicons name="qr-code" size={24} color="#F59E0B" />
-          </View>
-          <View style={styles.featureInfo}>
-            <Text style={styles.featureTitle}>
-              {language === 'et' ? 'Seadme seadistus' : 'Device Setup'}
-            </Text>
-            <Text style={styles.featureDescription}>
-              {language === 'et' ? 'QR-kood automaatseks seadistuseks' : 'QR code for automatic setup'}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#64748B" />
-        </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>
           {language === 'et' ? 'Seaded' : 'Settings'}
