@@ -167,10 +167,10 @@ export default function ClientRegister() {
           <Text style={[styles.title, { marginBottom: 12, textAlign: 'center' }]}>
             {language === 'et' ? 'Registreerimine Õnnestus!' : 'Registration Successful!'}
           </Text>
-          <Text style={[styles.subtitle, { textAlign: 'center', marginBottom: 32 }]}>
+          Text style={[styles.subtitle, { textAlign: 'center', marginBottom: 32 }]}>
             {language === 'et' 
-              ? 'Palun sulgege rakendus ja avage see uuesti, et alustada seadme seadistamist.'
-              : 'Please close the app and reopen it to begin device setup.'}
+              ? 'Palun sulgege rakendus ja avage see uuesti, et alustada seadme seadistamist. Kui nupp ei tööta, avage hiljutised rakendused ja pühkige see ära.'
+              : 'Please close the app and reopen it to begin device setup. If the button does not work, open recent apps and swipe it away.'}
           </Text>
           <TouchableOpacity 
             style={[styles.button, { backgroundColor: '#10B981' }]}
