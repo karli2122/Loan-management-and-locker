@@ -86,6 +86,7 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - Device Setup button removed from Features tab
 - Superadmin-only Diagnostic Report export (PDF) in Settings with device info, permission status, logs, and API errors
 - Contract PDF download/email now uses amount given + explicit interest formula in 2.2
+- Dashboard month stats now populated from analytics (interest + revenue for current month)
 
 ### Backend Updates
 - Financial report interest/profit recalculated from payment allocations (using loan tenure when total due missing)
