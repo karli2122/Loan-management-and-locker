@@ -62,6 +62,37 @@ def extract_text_from_pdf(pdf_bytes: bytes) -> str:
     with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
         for page in doc:
             text_parts.append(page.get_text())
+    text = "\n".join(text_parts)
+    if _is_text_garbled(text):
+        ocr_text = extract_text_with_ocr(pdf_bytes)
+        return ocr_text or text
+    return text
+
+
+def _is_text_garbled(text: str) -> bool:
+    if not text:
+        return True
+    sample = text[:2000]
+    if not sample.strip():
+        return True
+    letters = sum(1 for ch in sample if ch.isalpha())
+    ratio = letters / max(len(sample), 1)
+    return ratio < 0.05
+
+
+def extract_text_with_ocr(pdf_bytes: bytes) -> str:
+    """Fallback OCR extraction for image-based or encoded PDFs."""
+    import fitz
+    from PIL import Image
+    import pytesseract
+
+    text_parts = []
+    with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+        for page in doc:
+            pix = page.get_pixmap(dpi=200)
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            ocr_text = pytesseract.image_to_string(img, lang="est+eng")
+            text_parts.append(ocr_text)
     return "\n".join(text_parts)
 
 
