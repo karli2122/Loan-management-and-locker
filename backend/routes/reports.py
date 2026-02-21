@@ -229,9 +229,33 @@ async def get_financial_report(
     total_processing_fees = sum(c.get("processing_fee", 0) for c in clients)
 
     # Interest allocation setup
+    paid_loans = await db.paid_loans.find(
+        {"admin_id": admin_id},
+        {"_id": 0, "client_id": 1, "total_interest": 1, "archived_at": 1}
+    ).to_list(10000)
+
+    paid_loans_map = {}
+    for pl in paid_loans:
+        client_id = pl.get("client_id")
+        if not client_id:
+            continue
+        current = paid_loans_map.get(client_id)
+        if not current:
+            paid_loans_map[client_id] = pl
+            continue
+        current_date = current.get("archived_at") or datetime.min
+        pl_date = pl.get("archived_at") or datetime.min
+        if pl_date > current_date:
+            paid_loans_map[client_id] = pl
+
     interest_remaining = {}
     for client in clients:
-        interest_remaining[client.get("id")] = calculate_interest_total(client)
+        interest_total = calculate_interest_total(client)
+        if interest_total == 0:
+            paid = paid_loans_map.get(client.get("id"))
+            if paid:
+                interest_total = paid.get("total_interest", 0) or 0
+        interest_remaining[client.get("id")] = interest_total
 
     total_payments = 0
     total_interest_earned = 0
