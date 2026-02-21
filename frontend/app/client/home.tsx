@@ -1183,9 +1183,11 @@ export default function ClientHome() {
 
             <View style={styles.permGrid}>
               {/* Row 1: Battery (auto) + Overlay (device-specific instructions) */}
-              <TouchableOpacity style={styles.permCard} onPress={() => {
-                const dev = devicePolicy.getDeviceInfo();
-                const manufacturer = (dev?.manufacturer || '').toLowerCase();
+              <TouchableOpacity
+                style={styles.permCard}
+                onPress={() => {
+                  const dev = devicePolicy.getDeviceInfo();
+                  const manufacturer = (dev?.manufacturer || '').toLowerCase();
                 const model = dev?.model || 'Device';
                 const ver = dev?.androidVersion || '';
                 
