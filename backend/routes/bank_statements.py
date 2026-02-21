@@ -98,6 +98,13 @@ def extract_text_with_ocr(pdf_bytes: bytes) -> str:
     import fitz
     from PIL import Image
     import pytesseract
+    from pathlib import Path
+
+    tesseract_cmd = os.environ.get("TESSERACT_CMD")
+    if tesseract_cmd:
+        pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
+    elif Path("/usr/bin/tesseract").exists():
+        pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
 
     text_parts = []
     with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
