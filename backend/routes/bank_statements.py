@@ -93,6 +93,42 @@ def _is_text_garbled(text: str) -> bool:
     return ratio < 0.05
 
 
+def decode_legacy_text_bytes(raw: bytes) -> str:
+    for enc in ("windows-1252", "iso-8859-1", "utf-8"):
+        try:
+            return raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("utf-8", errors="ignore")
+
+
+def normalize_seb_encoding(text: str) -> str:
+    if not text:
+        return text
+    if "SEB" not in text and "SEB Pank" not in text:
+        return text
+
+    if "Ã" not in text and "Â" not in text and "�" not in text:
+        return text
+
+    for enc in ("windows-1252", "iso-8859-1"):
+        try:
+            candidate = text.encode(enc, errors="ignore").decode("utf-8", errors="ignore")
+            if candidate and not _is_text_garbled(candidate):
+                return candidate
+        except Exception:
+            continue
+
+    try:
+        candidate = text.encode("latin-1", errors="ignore").decode("utf-8", errors="ignore")
+        if candidate and not _is_text_garbled(candidate):
+            return candidate
+    except Exception:
+        pass
+
+    return text
+
+
 def extract_text_with_ocr(pdf_bytes: bytes) -> str:
     """Fallback OCR extraction for image-based or encoded PDFs."""
     import fitz
