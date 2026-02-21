@@ -67,6 +67,28 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - Fixed yarn.lock / package-lock.json conflict for EAS builds
 - Submitted client-preview and admin-preview builds
 
+## Completed (Feb 21, 2026)
+
+### Client App Stability & Permissions
+- Disabled automatic permission prompts on startup (location/notification now only request on user action)
+- Overlay permission card now refreshes status after returning from settings
+- Added Samsung Android 13+ restricted settings guidance for Accessibility activation
+- Added retry + fallback guidance for “Close App” after registration
+- Added data-testid coverage for permission cards
+
+### Admin App Updates
+- Contract actions: removed Preview (contract review) button
+- Contract share now uses native share sheet with attached PDF and prefilled subject/body
+- Client details: address field added to contact info and edit modal
+- Send warning button now only shows when admin mode is active
+- Loans tab filter reset when query clears; payment filter buttons enlarged
+- Device Setup button removed from Features tab
+
+### Backend Updates
+- Financial report interest/profit recalculated from payment allocations (not outstanding balances)
+- Added totals for principal_disbursed, principal_collected, processing_fees, late_fees
+- Contract PDF paragraphs 1.1/2.2 updated to “amount given” and “amount due (amount given + interest)” wording
+
 ## Pending User Verification
 - P0: Client app registration crash fix — needs testing on device
 - P0: Client app loading loop fix — needs testing on device
