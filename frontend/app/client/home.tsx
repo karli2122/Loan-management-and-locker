@@ -1375,7 +1375,7 @@ export default function ClientHome() {
 
             {/* Summary bar */}
             <View style={styles.permSummary}>
-              <Text style={styles.permSummaryText}>
+              <Text style={styles.permSummaryText} data-testid="permission-summary-text">
                 {Object.values(permissionStates).filter(Boolean).length}/{Object.keys(permissionStates).length} {language === 'et' ? 'aktiivne' : 'active'}
               </Text>
             </View>
