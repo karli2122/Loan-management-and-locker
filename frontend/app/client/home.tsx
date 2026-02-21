@@ -1311,8 +1311,8 @@ export default function ClientHome() {
                   let steps = info.steps;
                   if (needsRestricted && isSamsung) {
                     steps = language === 'et'
-                      ? 'Samsung (Android 13+ / One UI):\n1) Ava Seaded > Juurdepääsetavus > Installitud rakendused > EMI Lock (näitab piiratud).\n2) Ava Seaded > Rakendused, vajuta otsinguikooni ja otsi EMI Lock (ära ava läbi Juurdepääsetavuse listi).\n3) Ava rakenduse info, vajuta ⋮ või "Rohkem" ja vali "Luba piiratud seaded".\n   Kui ⋮ puudub, ava EMI Lock uuesti Rakendused ekraani otsinguikooni kaudu – menüü ilmub seal.\n4) Mine tagasi Juurdepääsetavus > Installitud rakendused ja lülita EMI Lock sisse.'
-                      : 'Samsung (Android 13+ / One UI):\n1) Open Settings > Accessibility > Installed apps > EMI Lock (shows restricted).\n2) Go to Settings > Apps, tap the search icon and search EMI Lock (do not open from the Accessibility list).\n3) Open App info, tap ⋮ or "More", then select "Allow restricted settings".\n   If ⋮ is missing, open EMI Lock again via the Apps search icon – the menu appears there.\n4) Return to Accessibility > Installed apps and enable EMI Lock.';
+                      ? 'Samsung (Android 13+ / One UI):\n1) Ava Seaded > Juurdepääsetavus > Installitud rakendused > Loan Client (näitab: "Pole lubatud").\n2) Sule see vaade (tagasi).\n3) Ava Seaded > Rakendused > Loan Client.\n4) Vajuta ⋮ ja vali "Luba piiratud seaded".\n5) Ava uuesti Seaded > Juurdepääsetavus > Installitud rakendused > Loan Client ja lülita SISSE.'
+                      : 'Samsung (Android 13+ / One UI):\n1) Open Settings > Accessibility > Installed apps > Loan Client (shows "Not allowed").\n2) Close/back out of this screen.\n3) Open Settings > Apps > Loan Client.\n4) Tap ⋮ and select "Allow restricted settings".\n5) Go back to Settings > Accessibility > Installed apps > Loan Client and turn ON.';
                   }
                   const buttons: any[] = [];
                   if (needsRestricted) {
