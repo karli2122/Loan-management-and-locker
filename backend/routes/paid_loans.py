@@ -12,6 +12,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Paid Loans"])
 
 
+def calculate_interest_total(client: dict) -> float:
+    loan_amount = client.get("loan_amount", 0) or 0
+    total_due = client.get("total_amount_due", 0) or 0
+    interest_total = max(total_due - loan_amount, 0)
+    if interest_total == 0 and loan_amount > 0:
+        rate = client.get("interest_rate", 0) or 0
+        tenure = client.get("loan_tenure_months", 0) or 0
+        if rate > 0:
+            if tenure > 0:
+                interest_total = loan_amount * rate / 100 * tenure
+            else:
+                interest_total = loan_amount * rate / 100
+    return interest_total
+
+
 async def perform_archive(client_id: str, admin_id: str) -> dict:
     """
     Core archive logic: moves a fully-paid loan to paid_loans collection.
