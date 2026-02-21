@@ -395,11 +395,8 @@ async def analyze_bank_statement(
             if content_type == 'pdf':
                 pdf_bytes = content
             elif content_type in ('xml', 'csv', 'unknown'):
-                # For non-PDF files, use the raw text directly
-                try:
-                    statement_text = content.decode('utf-8')
-                except UnicodeDecodeError:
-                    statement_text = content.decode('latin-1')
+                # For non-PDF files, use the raw text directly (Windows-1252 / ISO-8859-1 fallback)
+                statement_text = decode_legacy_text_bytes(content)
                 pdf_bytes = None
             else:
                 pdf_bytes = content
