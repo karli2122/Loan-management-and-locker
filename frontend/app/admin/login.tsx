@@ -351,6 +351,8 @@ export default function AdminLogin() {
               onPress={handleSubmit}
               disabled={loading}
               data-testid="admin-login-button"
+              accessibilityRole="button"
+              accessibilityLabel={t('login')}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
