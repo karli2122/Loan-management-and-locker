@@ -387,31 +387,34 @@ async def analyze_bank_statement(
     seb_fallback = extract_seb_summary(statement_text)
 
     # Analyze with AI
+    def has_transactions(data: dict) -> bool:
+        if not data or data.get("error"):
+            return False
+        income = data.get("income_categories")
+        expense = data.get("expense_categories")
+        return isinstance(income, list) and isinstance(expense, list)
+
+    analysis = None
+    ai_error = None
     try:
         analysis = await analyze_with_ai(statement_text)
     except Exception as e:
         logger.error(f"AI analysis failed: {e}")
-        if pdf_bytes is not None:
-            ocr_text = extract_text_from_pdf(pdf_bytes, force_ocr=True)
-            if ocr_text and ocr_text != statement_text:
-                statement_text = ocr_text
-                analysis = await analyze_with_ai(statement_text)
-            else:
-                analysis = None
-        else:
-            analysis = None
-        if analysis is None:
-            if seb_fallback:
-                analysis = seb_fallback
-            else:
-                raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
+        ai_error = e
 
-    if analysis.get("error"):
-        if pdf_bytes is not None:
-            ocr_text = extract_text_from_pdf(pdf_bytes, force_ocr=True)
-            if ocr_text and ocr_text != statement_text:
-                statement_text = ocr_text
-                analysis = await analyze_with_ai(statement_text)
+    if not has_transactions(analysis) and pdf_bytes is not None:
+        ocr_text = extract_text_from_pdf(pdf_bytes, force_ocr=True)
+        if ocr_text and ocr_text != statement_text:
+            statement_text = ocr_text
+            analysis = await analyze_with_ai(statement_text)
+
+    if not has_transactions(analysis):
+        if ai_error:
+            raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(ai_error)}")
+        raise HTTPException(
+            status_code=422,
+            detail="AI analysis could not parse transactions from this statement. Please upload a clearer file."
+        )
 
     analysis = apply_fallback_analysis(analysis, seb_fallback)
 
