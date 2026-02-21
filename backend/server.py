@@ -185,4 +185,11 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Close database connection on shutdown."""
+    keepalive_task = getattr(app.state, "keepalive_task", None)
+    if keepalive_task:
+        keepalive_task.cancel()
+        try:
+            await keepalive_task
+        except asyncio.CancelledError:
+            pass
     await close_connection()
