@@ -1345,7 +1345,9 @@ export default function ClientHome() {
                     setPermissionStates(prev => ({ ...prev, location: true }));
                   }
                 }
-              }}>
+              }}
+              data-testid="perm-location-card"
+              >
                 <View style={[styles.permCircle, permissionStates.location ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.location ? "checkmark" : "close"} size={28} color="#FFF" />
                 </View>
