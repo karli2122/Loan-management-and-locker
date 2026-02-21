@@ -384,10 +384,27 @@ async def analyze_bank_statement(
         analysis = await analyze_with_ai(statement_text)
     except Exception as e:
         logger.error(f"AI analysis failed: {e}")
-        if seb_fallback:
-            analysis = seb_fallback
+        if pdf_bytes is not None:
+            ocr_text = extract_text_from_pdf(pdf_bytes, force_ocr=True)
+            if ocr_text and ocr_text != statement_text:
+                statement_text = ocr_text
+                analysis = await analyze_with_ai(statement_text)
+            else:
+                analysis = None
         else:
-            raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
+            analysis = None
+        if analysis is None:
+            if seb_fallback:
+                analysis = seb_fallback
+            else:
+                raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
+
+    if analysis.get("error"):
+        if pdf_bytes is not None:
+            ocr_text = extract_text_from_pdf(pdf_bytes, force_ocr=True)
+            if ocr_text and ocr_text != statement_text:
+                statement_text = ocr_text
+                analysis = await analyze_with_ai(statement_text)
 
     analysis = apply_fallback_analysis(analysis, seb_fallback)
 
