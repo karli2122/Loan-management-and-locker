@@ -71,7 +71,7 @@ def extract_text_from_pdf(pdf_bytes: bytes, force_ocr: bool = False, filename: s
             text_parts.append(page.get_text())
     text = "\n".join(text_parts)
     if _is_text_garbled(text):
-        if not is_seb_statement(text, filename):
+        if not (is_seb_statement(text, filename) or is_seb_pdf_bytes(pdf_bytes)):
             return text
         try:
             ocr_text = extract_text_with_ocr(pdf_bytes)
@@ -110,6 +110,16 @@ def is_seb_statement(text: str, filename: str = "") -> bool:
     if not text:
         return False
     return "SEB" in text or "SEB Pank" in text
+
+
+def is_seb_pdf_bytes(pdf_bytes: bytes) -> bool:
+    if not pdf_bytes:
+        return False
+    try:
+        sample = pdf_bytes[:20000].decode("latin-1", errors="ignore")
+        return "SEB" in sample or "SEB Pank" in sample
+    except Exception:
+        return False
 
 
 def normalize_seb_encoding(text: str) -> str:
@@ -428,7 +438,7 @@ async def analyze_bank_statement(
     if not statement_text.strip():
         raise HTTPException(status_code=400, detail="No text could be extracted from the PDF. It may be a scanned/image-based document.")
 
-    is_seb_file = is_seb_statement(statement_text, file.filename)
+    is_seb_file = is_seb_statement(statement_text, file.filename) or is_seb_pdf_bytes(pdf_bytes)
 
     # Extract SEB fallback summary (if applicable)
     seb_fallback = extract_seb_summary(statement_text)
