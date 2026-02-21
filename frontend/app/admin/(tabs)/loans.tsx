@@ -878,7 +878,7 @@ const styles = StyleSheet.create({
   },
   paymentFilterText: {
     color: '#94A3B8',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   paymentFilterTextActive: {
