@@ -55,6 +55,12 @@ export default function LoansTab() {
   const params = useLocalSearchParams<{ filter?: string }>();
   const { language } = useLanguage();
   const { colors } = useTheme();
+  const filterRef = useRef<string | undefined>(undefined);
+  const filterParam = useMemo(() => {
+    const raw = params?.filter;
+    if (!raw) return undefined;
+    return raw.toString().toLowerCase();
+  }, [params?.filter]);
   const [clients, setClients] = useState<Client[]>([]);
   const [paidLoans, setPaidLoans] = useState<PaidLoan[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
