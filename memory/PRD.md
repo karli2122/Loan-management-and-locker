@@ -81,7 +81,7 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - Contract share now uses native share sheet with attached PDF and prefilled subject/body
 - Client details: address field added to contact info and edit modal
 - Send warning button now only shows when admin mode is active
-- Loans tab filter reset when query clears; payment filter buttons enlarged
+- Loans tab filter reset when query clears; payment filter buttons enlarged; filter no longer stuck on All
 - Device Setup button removed from Features tab
 - Superadmin-only Diagnostic Report export (PDF) in Settings with device info, permission status, logs, and API errors
 
