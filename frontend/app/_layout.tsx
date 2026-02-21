@@ -31,6 +31,7 @@ export default function RootLayout() {
   const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {
+    initializeDiagnostics();
     setIsMounted(true);
   }, []);
 
