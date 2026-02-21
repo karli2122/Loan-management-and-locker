@@ -9,6 +9,9 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import Response, JSONResponse
 import logging
 import uuid
+import os
+import asyncio
+import aiohttp
 
 from config import LOG_LEVEL, LOG_FORMAT
 from database import db, create_indexes, close_connection
