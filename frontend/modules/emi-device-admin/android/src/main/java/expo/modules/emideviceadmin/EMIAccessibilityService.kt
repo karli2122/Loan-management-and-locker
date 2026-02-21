@@ -2,6 +2,7 @@ package expo.modules.emideviceadmin
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.os.Handler
