@@ -122,9 +122,13 @@ export default function LoansTab() {
       setFilter(f);
       if (f === 'paid') {
         setTab('archived');
+      } else {
+        setTab('given');
       }
     } else {
       setFilter(undefined);
+      setTab('given');
+      setPaymentFilter('all');
     }
   }, [params]);
 
