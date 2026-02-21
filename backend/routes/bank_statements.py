@@ -5,6 +5,7 @@ import tempfile
 import json
 import uuid
 import logging
+import re
 from datetime import datetime, timezone
 from io import BytesIO
 from fastapi import APIRouter, UploadFile, File, Query, HTTPException
