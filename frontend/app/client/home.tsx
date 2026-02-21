@@ -876,10 +876,10 @@ export default function ClientHome() {
     if (!clientId) return;
     if (freshRegistration) return; // Don't poll or check state during fresh registration
 
-    // Poll status every 30 seconds
+    // Poll status every 10 seconds
     intervalRef.current = setInterval(() => {
       fetchStatus(clientId).catch(() => {});
-    }, 30000);
+    }, 10000);
 
     // Handle app state changes
     const subscription = AppState.addEventListener('change', (nextAppState) => {
