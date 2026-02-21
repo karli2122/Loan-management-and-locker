@@ -285,7 +285,7 @@ eas build --profile client-preview --platform android
 ## 🌍 Deployment
 
 ### Current Setup
-- API URL: `https://kiosk-stability-test.preview.emergentagent.com`
+- API URL: `https://loan-manager-fix.preview.emergentagent.com`
 - Backend: Port 8001
 - Frontend: Port 3000
 - MongoDB: Connected
@@ -317,12 +317,12 @@ eas build --profile client-preview --platform android
 
 ### Backend Tests
 ```bash
-curl https://kiosk-stability-test.preview.emergentagent.com/api/health
+curl https://loan-manager-fix.preview.emergentagent.com/api/health
 ```
 
 ### Login Test
 ```bash
-curl -X POST https://kiosk-stability-test.preview.emergentagent.com/api/admin/login \
+curl -X POST https://loan-manager-fix.preview.emergentagent.com/api/admin/login \
   -H "Content-Type: application/json" \
   -d '{"username":"karli1987","password":"nasvakas123"}'
 ```
@@ -376,7 +376,7 @@ Proprietary - All rights reserved
 ## 📞 Support
 
 For issues or questions, refer to the API documentation at:
-`https://kiosk-stability-test.preview.emergentagent.com/api/`
+`https://loan-manager-fix.preview.emergentagent.com/api/`
 
 ---
 

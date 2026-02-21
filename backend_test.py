@@ -10,7 +10,7 @@ import sys
 from typing import Optional, Dict, Any
 
 # Configuration
-BASE_URL = "https://kiosk-stability-test.preview.emergentagent.com/api"
+BASE_URL = "https://loan-manager-fix.preview.emergentagent.com/api"
 ADMIN_USERNAME = "karli1987"
 ADMIN_PASSWORD = "nasvakas123"
 

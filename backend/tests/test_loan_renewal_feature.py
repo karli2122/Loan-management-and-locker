@@ -8,7 +8,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://kiosk-stability-test.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://loan-manager-fix.preview.emergentagent.com').rstrip('/')
 
 
 class TestLoanRenewalBackend:

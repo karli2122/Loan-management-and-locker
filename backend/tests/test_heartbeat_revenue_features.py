@@ -10,7 +10,7 @@ import os
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://kiosk-stability-test.preview.emergentagent.com"
+    BASE_URL = "https://loan-manager-fix.preview.emergentagent.com"
 
 # Test credentials
 ADMIN_USERNAME = "karli1987"
