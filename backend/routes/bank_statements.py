@@ -312,12 +312,20 @@ async def analyze_bank_statement(
     if not statement_text.strip():
         raise HTTPException(status_code=400, detail="No text could be extracted from the PDF. It may be a scanned/image-based document.")
 
+    # Extract SEB fallback summary (if applicable)
+    seb_fallback = extract_seb_summary(statement_text)
+
     # Analyze with AI
     try:
         analysis = await analyze_with_ai(statement_text)
     except Exception as e:
         logger.error(f"AI analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
+        if seb_fallback:
+            analysis = seb_fallback
+        else:
+            raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
+
+    analysis = apply_fallback_analysis(analysis, seb_fallback)
 
     # Store the analysis result
     record = {
