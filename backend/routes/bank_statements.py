@@ -132,6 +132,40 @@ def extract_seb_summary(statement_text: str):
     }
 
 
+def apply_fallback_analysis(analysis: dict, fallback: dict):
+    if not fallback:
+        return analysis
+    if analysis is None:
+        analysis = {}
+
+    summary = analysis.get("summary") or {}
+    fallback_summary = fallback.get("summary") or {}
+
+    has_summary_data = any(
+        summary.get(key) not in (None, 0) for key in ("total_income", "total_expenses", "net_balance")
+    )
+
+    if not has_summary_data:
+        summary = fallback_summary
+    else:
+        for key, value in fallback_summary.items():
+            if summary.get(key) in (None, 0) and value not in (None, 0):
+                summary[key] = value
+
+    if summary:
+        analysis["summary"] = summary
+
+    for key in ("bank_name", "period", "currency", "account_holder"):
+        if not analysis.get(key) and fallback.get(key):
+            analysis[key] = fallback.get(key)
+
+    if analysis.get("error") and summary:
+        analysis.pop("error", None)
+        analysis.pop("raw_response", None)
+
+    return analysis
+
+
 async def analyze_with_ai(statement_text: str) -> dict:
     """Send bank statement text to GPT for income/expense analysis."""
     from emergentintegrations.llm.chat import LlmChat, UserMessage
