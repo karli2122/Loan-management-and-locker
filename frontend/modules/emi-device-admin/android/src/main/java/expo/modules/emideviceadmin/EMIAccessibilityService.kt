@@ -77,6 +77,37 @@ class EMIAccessibilityService : AccessibilityService() {
         Log.d(TAG, "Started periodic lock state checking (every ${CHECK_INTERVAL_MS/1000}s)")
     }
 
+    private fun isAppInForeground(): Boolean {
+        return try {
+            val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val tasks = am.getRunningTasks(1)
+            if (tasks.isNotEmpty()) {
+                val topActivity = tasks[0].topActivity
+                topActivity?.packageName == applicationContext.packageName
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun ensureOverlayRunning(lockMessage: String) {
+        if (EMIOverlayService.isRunning) return
+        try {
+            val overlayIntent = Intent(applicationContext, EMIOverlayService::class.java)
+            overlayIntent.putExtra("lock_message", lockMessage)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                applicationContext.startForegroundService(overlayIntent)
+            } else {
+                applicationContext.startService(overlayIntent)
+            }
+            Log.d(TAG, "Overlay service started from accessibility")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start overlay from accessibility: ${e.message}")
+        }
+    }
+
     private fun checkServerLockState() {
         try {
             val prefs = applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
