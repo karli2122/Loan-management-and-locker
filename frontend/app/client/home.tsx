@@ -61,6 +61,7 @@ export default function ClientHome() {
   const [protectionComplete, setProtectionComplete] = useState(false);
   const [freshRegistration, setFreshRegistration] = useState(false);
   const [showAdminDialog, setShowAdminDialog] = useState(false);
+  const allowAutoPermissionRequests = false;
   const isMounted = useRef(false);
   const appState = useRef(AppState.currentState);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
