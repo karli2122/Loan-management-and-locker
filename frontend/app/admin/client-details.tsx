@@ -55,6 +55,7 @@ interface Client {
   name: string;
   phone: string;
   email: string;
+  address?: string;
   device_id: string;
   device_model: string;
   device_make: string;
