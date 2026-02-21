@@ -145,6 +145,17 @@ def extract_seb_summary(statement_text: str):
     total_income = _parse_seb_money(income_match.group(1)) if income_match else None
     total_expenses = _parse_seb_money(expense_match.group(1)) if expense_match else None
 
+    if total_income is None or total_expenses is None or closing_balance is None:
+        tail_amounts = re.findall(r"-?\d+[.,]\d{2}", statement_text)
+        if len(tail_amounts) >= 5:
+            tail = tail_amounts[-5:]
+            if total_expenses is None:
+                total_expenses = _parse_seb_money(tail[0])
+            if total_income is None:
+                total_income = _parse_seb_money(tail[1])
+            if closing_balance is None:
+                closing_balance = _parse_seb_money(tail[2])
+
     if total_expenses is not None:
         total_expenses = abs(total_expenses)
 
