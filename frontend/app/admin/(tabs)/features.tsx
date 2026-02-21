@@ -18,14 +18,14 @@ export default function FeaturesTab() {
   const { language, setLanguage } = useLanguage();
   const [username, setUsername] = useState('');
 
-  useEffect(() => {
-    loadUserData();
-  }, []);
-
   const loadUserData = async () => {
     const storedUsername = await AsyncStorage.getItem('admin_username');
     if (storedUsername) setUsername(storedUsername);
   };
+
+  useEffect(() => {
+    loadUserData();
+  }, []);
 
   const handleLogout = async () => {
     Alert.alert(
