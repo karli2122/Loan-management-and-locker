@@ -1296,30 +1296,41 @@ export default function ClientHome() {
                 <Text style={styles.permLabel}>{language === 'et' ? 'Autostart' : 'Auto Start'}</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.permCard} onPress={async () => {
-                const isEnabled = await devicePolicy.isAccessibilityEnabled();
-                if (isEnabled) {
-                  setPermissionStates(prev => ({ ...prev, accessibility: true }));
-                  return;
-                }
-                const dev = devicePolicy.getDeviceInfo();
-                const info = getAccessibilityInstructions(dev, language);
-                const needsRestricted = dev.sdkVersion >= 33;
-                const buttons: any[] = [];
-                if (needsRestricted) {
+              <TouchableOpacity
+                style={styles.permCard}
+                onPress={async () => {
+                  const isEnabled = await devicePolicy.isAccessibilityEnabled();
+                  if (isEnabled) {
+                    setPermissionStates(prev => ({ ...prev, accessibility: true }));
+                    return;
+                  }
+                  const dev = devicePolicy.getDeviceInfo();
+                  const info = getAccessibilityInstructions(dev, language);
+                  const needsRestricted = dev.sdkVersion >= 33;
+                  const isSamsung = (dev?.manufacturer || '').toLowerCase().includes('samsung');
+                  let steps = info.steps;
+                  if (needsRestricted && isSamsung) {
+                    steps = language === 'et'
+                      ? 'Samsung (Android 13+):\n1) Ava Seaded > Juurdepääsetavus > Installitud rakendused > EMI Lock (näitab piiratud).\n2) Ava Seaded > Rakendused, vajuta otsinguikooni ja otsi EMI Lock.\n3) Ava rakenduse info, vajuta ⋮ ja vali "Luba piiratud seaded". Kui ⋮ ei näe, ava rakendus Rakendused ekraani otsinguikooni kaudu.\n4) Mine tagasi Juurdepääsetavus > Installitud rakendused ja lülita EMI Lock sisse.'
+                      : 'Samsung (Android 13+):\n1) Open Settings > Accessibility > Installed apps > EMI Lock (shows restricted).\n2) Go to Settings > Apps, tap the search icon and search EMI Lock.\n3) Open App info, tap ⋮ and select "Allow restricted settings". If you don\'t see ⋮, open the app via the search icon on the Apps screen.\n4) Return to Accessibility > Installed apps and enable EMI Lock.';
+                  }
+                  const buttons: any[] = [];
+                  if (needsRestricted) {
+                    buttons.push({
+                      text: language === 'et' ? '1. Luba piiratud seaded' : '1. Allow Restricted Settings',
+                      onPress: async () => { await devicePolicy.openAppInfo(); },
+                    });
+                  }
                   buttons.push({
-                    text: language === 'et' ? '1. Luba piiratud seaded' : '1. Allow Restricted Settings',
-                    onPress: async () => { await devicePolicy.openAppInfo(); },
+                    text: needsRestricted
+                      ? (language === 'et' ? '2. Ava juurdepääs' : '2. Open Accessibility')
+                      : info.shortcut,
+                    onPress: async () => { await devicePolicy.openAccessibilitySettings(); },
                   });
-                }
-                buttons.push({
-                  text: needsRestricted
-                    ? (language === 'et' ? '2. Ava juurdepääs' : '2. Open Accessibility')
-                    : info.shortcut,
-                  onPress: async () => { await devicePolicy.openAccessibilitySettings(); },
-                });
-                Alert.alert(info.title, info.steps, buttons);
-              }}>
+                  Alert.alert(info.title, steps, buttons);
+                }}
+                data-testid="perm-accessibility-card"
+              >
                 <View style={[styles.permCircle, permissionStates.accessibility ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.accessibility ? "checkmark" : "close"} size={28} color="#FFF" />
                 </View>
