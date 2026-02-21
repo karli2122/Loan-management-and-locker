@@ -1363,7 +1363,9 @@ export default function ClientHome() {
                     await devicePolicy.openNotificationSettings();
                   }
                 }
-              }}>
+              }}
+              data-testid="perm-notification-card"
+              >
                 <View style={[styles.permCircle, permissionStates.notification ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.notification ? "checkmark" : "close"} size={28} color="#FFF" />
                 </View>
