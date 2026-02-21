@@ -341,6 +341,7 @@ export default function AdminLogin() {
                 onValueChange={setStaySignedIn}
                 trackColor={{ false: colors.border, true: '#4F46E5' }}
                 thumbColor="#fff"
+                data-testid="admin-stay-signed-in-switch"
               />
               <Text style={[styles.rememberText, { color: colors.textSecondary }]}>{t('staySignedIn')}</Text>
             </View>
