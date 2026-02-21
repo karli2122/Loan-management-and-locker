@@ -123,20 +123,22 @@ export default function LoansTab() {
   }, []);
 
   useEffect(() => {
-    if (params?.filter) {
-      const f = params.filter.toString().toLowerCase();
-      setFilter(f);
-      if (f === 'paid') {
-        setTab('archived');
+    if (filterParam !== filterRef.current) {
+      if (filterParam) {
+        setFilter(filterParam);
+        if (filterParam === 'paid') {
+          setTab('archived');
+          setPaymentFilter('all');
+        } else {
+          setTab('given');
+        }
       } else {
+        setFilter(undefined);
         setTab('given');
       }
-    } else {
-      setFilter(undefined);
-      setTab('given');
-      setPaymentFilter('all');
+      filterRef.current = filterParam;
     }
-  }, [params]);
+  }, [filterParam]);
 
   const onRefresh = async () => {
     setRefreshing(true);
