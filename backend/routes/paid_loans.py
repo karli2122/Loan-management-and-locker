@@ -214,7 +214,7 @@ async def get_paid_loans_summary(admin_token: str = Query(...)):
     # Get all paid loans for this admin
     paid_loans = await db.paid_loans.find(
         {"admin_id": admin_id},
-        {"_id": 0, "loan_amount": 1, "total_paid": 1, "total_interest": 1, "payment_count": 1, "archived_at": 1}
+        {"_id": 0, "client_id": 1, "loan_amount": 1, "total_paid": 1, "total_interest": 1, "payment_count": 1, "archived_at": 1}
     ).to_list(10000)
     
     # Build 6-month trend (always return 6 entries, even with no data)
