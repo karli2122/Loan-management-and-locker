@@ -440,7 +440,7 @@ async def analyze_bank_statement(
     if not has_transactions(analysis) and pdf_bytes is not None:
         ocr_text = extract_text_from_pdf(pdf_bytes, force_ocr=True)
         if ocr_text and ocr_text != statement_text:
-            statement_text = ocr_text
+            statement_text = normalize_seb_encoding(ocr_text)
             analysis = await analyze_with_ai(statement_text)
 
     if not has_transactions(analysis):
