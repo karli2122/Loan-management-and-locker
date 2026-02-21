@@ -179,6 +179,8 @@ async def startup_event():
         await db.loan_plans.insert_one(default_plan.dict())
         logger.info("Created default loan plan")
 
+    start_keepalive(app)
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
