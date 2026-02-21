@@ -228,6 +228,11 @@ export default function BankAnalyzer() {
                 ? 'AI analüüsib teie pangaväljavõtet'
                 : 'AI is analyzing your bank statement'}
             </Text>
+            {isSebFile && (
+              <Text style={styles.sebLoadingText} data-testid="seb-ocr-loading">
+                {language === 'et' ? 'SEB OCR töötleb faili...' : 'Processing SEB OCR...'}
+              </Text>
+            )}
           </View>
         )}
 
