@@ -1286,17 +1286,6 @@ export default function ClientDetails() {
             {/* Contract Actions */}
             <View style={styles.contractActions}>
               <TouchableOpacity
-                style={styles.contractButton}
-                onPress={handlePreviewContract}
-                disabled={actionLoading}
-                data-testid="preview-contract-btn"
-              >
-                <Ionicons name="document-text" size={16} color="#4F46E5" />
-                <Text style={styles.contractButtonText}>
-                  {language === 'et' ? 'Vaata' : 'Preview'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
                 style={[styles.contractButton, styles.downloadButton]}
                 onPress={handleDownloadContract}
                 disabled={actionLoading}
