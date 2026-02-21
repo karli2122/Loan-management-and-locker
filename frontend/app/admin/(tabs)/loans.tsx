@@ -856,7 +856,7 @@ const styles = StyleSheet.create({
   paymentFilterContainer: {
     marginHorizontal: 16,
     marginBottom: 12,
-    maxHeight: 48,
+    maxHeight: 56,
   },
   paymentFilterContent: {
     gap: 8,
