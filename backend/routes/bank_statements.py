@@ -65,6 +65,73 @@ def extract_text_from_pdf(pdf_bytes: bytes) -> str:
     return "\n".join(text_parts)
 
 
+def _parse_seb_money(value: str):
+    if value is None:
+        return None
+    cleaned = value.replace("\u00a0", " ").replace(" ", "")
+    cleaned = cleaned.replace("EUR", "").replace("€", "")
+    cleaned = cleaned.replace(",", ".")
+    if cleaned in ("", "-", "+"):
+        return None
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
+
+
+def extract_seb_summary(statement_text: str):
+    if "SEB" not in statement_text and "SEB Pank" not in statement_text:
+        return None
+
+    period_match = re.search(r"\d{2}\.\d{2}\.\d{4}\s*-\s*\d{2}\.\d{2}\.\d{4}", statement_text)
+    period = period_match.group(0) if period_match else None
+
+    lines = [line.strip() for line in statement_text.splitlines() if line.strip()]
+    account_holder = None
+    for line in lines[:6]:
+        if "KONTO" in line or "VÄLJAVÕTE" in line or "SEB" in line:
+            continue
+        if any(ch.isalpha() for ch in line):
+            account_holder = line.title()
+            break
+
+    opening_match = re.search(r"Algsaldo\s*([\d.,-]+)", statement_text, re.IGNORECASE)
+    closing_match = re.search(r"Lõppsaldo\s*([\d.,-]+)", statement_text, re.IGNORECASE)
+    income_match = re.search(r"Perioodi\s+sissetulekud\s*([\d.,-]+)", statement_text, re.IGNORECASE)
+    expense_match = re.search(r"Perioodi\s+väljaminekud\s*([\d.,-]+)", statement_text, re.IGNORECASE)
+
+    opening_balance = _parse_seb_money(opening_match.group(1)) if opening_match else None
+    closing_balance = _parse_seb_money(closing_match.group(1)) if closing_match else None
+    total_income = _parse_seb_money(income_match.group(1)) if income_match else None
+    total_expenses = _parse_seb_money(expense_match.group(1)) if expense_match else None
+
+    if total_expenses is not None:
+        total_expenses = abs(total_expenses)
+
+    if total_income is None and total_expenses is None and opening_balance is None and closing_balance is None:
+        return None
+
+    net_balance = None
+    if total_income is not None and total_expenses is not None:
+        net_balance = total_income - total_expenses
+    elif opening_balance is not None and closing_balance is not None:
+        net_balance = closing_balance - opening_balance
+
+    return {
+        "bank_name": "SEB",
+        "period": period,
+        "currency": "EUR" if "EUR" in statement_text else None,
+        "account_holder": account_holder,
+        "summary": {
+            "total_income": round(total_income, 2) if total_income is not None else None,
+            "total_expenses": round(total_expenses, 2) if total_expenses is not None else None,
+            "net_balance": round(net_balance, 2) if net_balance is not None else None,
+            "opening_balance": round(opening_balance, 2) if opening_balance is not None else None,
+            "closing_balance": round(closing_balance, 2) if closing_balance is not None else None,
+        },
+    }
+
+
 async def analyze_with_ai(statement_text: str) -> dict:
     """Send bank statement text to GPT for income/expense analysis."""
     from emergentintegrations.llm.chat import LlmChat, UserMessage
