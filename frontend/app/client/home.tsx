@@ -1315,18 +1315,33 @@ export default function ClientHome() {
                       : 'Samsung (Android 13+ / One UI):\n1) Open Settings > Accessibility > Installed apps > Loan Client (shows "Not allowed").\n2) Close/back out of this screen.\n3) Open Settings > Apps > Loan Client.\n4) Tap ⋮ and select "Allow restricted settings".\n5) Go back to Settings > Accessibility > Installed apps > Loan Client and turn ON.';
                   }
                   const buttons: any[] = [];
-                  if (needsRestricted) {
+                  if (needsRestricted && isSamsung) {
                     buttons.push({
-                      text: language === 'et' ? '1. Luba piiratud seaded' : '1. Allow Restricted Settings',
+                      text: language === 'et' ? '1. Ava juurdepääs' : '1. Open Accessibility',
+                      onPress: async () => { await devicePolicy.openAccessibilitySettings(); },
+                    });
+                    buttons.push({
+                      text: language === 'et' ? '2. Ava rakenduse info' : '2. Open App Info',
                       onPress: async () => { await devicePolicy.openAppInfo(); },
                     });
+                    buttons.push({
+                      text: language === 'et' ? '3. Ava juurdepääs' : '3. Open Accessibility',
+                      onPress: async () => { await devicePolicy.openAccessibilitySettings(); },
+                    });
+                  } else {
+                    if (needsRestricted) {
+                      buttons.push({
+                        text: language === 'et' ? '1. Luba piiratud seaded' : '1. Allow Restricted Settings',
+                        onPress: async () => { await devicePolicy.openAppInfo(); },
+                      });
+                    }
+                    buttons.push({
+                      text: needsRestricted
+                        ? (language === 'et' ? '2. Ava juurdepääs' : '2. Open Accessibility')
+                        : info.shortcut,
+                      onPress: async () => { await devicePolicy.openAccessibilitySettings(); },
+                    });
                   }
-                  buttons.push({
-                    text: needsRestricted
-                      ? (language === 'et' ? '2. Ava juurdepääs' : '2. Open Accessibility')
-                      : info.shortcut,
-                    onPress: async () => { await devicePolicy.openAccessibilitySettings(); },
-                  });
                   Alert.alert(info.title, steps, buttons);
                 }}
                 data-testid="perm-accessibility-card"
