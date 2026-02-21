@@ -119,7 +119,7 @@ export default function Reports() {
       if (monthYear !== selectedYear) return false;
       
       if (selectedMonth !== null) {
-        const monthIndex = months.findIndex(name => 
+        const monthIndex = monthsEn.findIndex(name => 
           monthName.toLowerCase().startsWith(name.substring(0, 3).toLowerCase())
         );
         if (monthIndex !== selectedMonth) return false;
