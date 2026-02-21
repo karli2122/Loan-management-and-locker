@@ -321,8 +321,12 @@ export default function AdminLogin() {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
+                data-testid="admin-password-input"
               />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                data-testid="admin-toggle-password"
+              >
                 <Ionicons
                   name={showPassword ? 'eye-off' : 'eye'}
                   size={20}
