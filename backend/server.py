@@ -117,6 +117,42 @@ async def health_check():
     return {"status": "healthy"}
 
 
+KEEPALIVE_URL_ENV = "KEEPALIVE_URL"
+KEEPALIVE_INTERVAL_ENV = "KEEPALIVE_INTERVAL_SECONDS"
+
+
+async def keepalive_loop(base_url: str, interval: int):
+    endpoint = base_url.rstrip("/")
+    if not endpoint.endswith("/api/health"):
+        endpoint = f"{endpoint}/api/health"
+
+    timeout = aiohttp.ClientTimeout(total=10)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        while True:
+            try:
+                async with session.get(endpoint) as resp:
+                    logger.info("Keepalive ping %s -> %s", endpoint, resp.status)
+            except Exception as e:
+                logger.warning("Keepalive ping failed: %s", e)
+            await asyncio.sleep(interval)
+
+
+def start_keepalive(app_instance: FastAPI):
+    keepalive_url = os.environ.get(KEEPALIVE_URL_ENV)
+    keepalive_interval = os.environ.get(KEEPALIVE_INTERVAL_ENV)
+    if not keepalive_url or not keepalive_interval:
+        logger.info("Keepalive disabled; set KEEPALIVE_URL and KEEPALIVE_INTERVAL_SECONDS to enable.")
+        return
+
+    try:
+        interval = int(keepalive_interval)
+    except ValueError:
+        logger.error("Invalid KEEPALIVE_INTERVAL_SECONDS value: %s", keepalive_interval)
+        return
+
+    app_instance.state.keepalive_task = asyncio.create_task(keepalive_loop(keepalive_url, interval))
+
+
 # ===================== LIFECYCLE EVENTS =====================
 
 @app.on_event("startup")
