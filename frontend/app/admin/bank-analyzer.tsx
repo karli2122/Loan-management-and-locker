@@ -77,6 +77,7 @@ export default function BankAnalyzer() {
       });
       if (docResult.canceled || !docResult.assets?.length) return;
       const asset = docResult.assets[0];
+      setSelectedFileName(asset.name || '');
       const ext = (asset.name || '').toLowerCase().split('.').pop();
       if (ext !== 'pdf' && ext !== 'asice') {
         setError(language === 'et' ? 'Ainult .pdf ja .asice failid' : 'Only .pdf and .asice files supported');
