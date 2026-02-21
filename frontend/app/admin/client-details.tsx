@@ -21,6 +21,8 @@ import { useLanguage } from '../../src/context/LanguageContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import API_URL from '../../src/constants/api';
 import { DatePicker } from '../../src/components/DatePicker';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 interface LoanDetails {
   loan_amount: number;
