@@ -1227,16 +1227,29 @@ export default function ClientHome() {
                 <Text style={styles.permLabel}>{language === 'et' ? 'Aku optim.' : 'Battery Optimization'}</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.permCard} onPress={() => {
-                const dev = devicePolicy.getDeviceInfo();
-                const info = getOverlayInstructions(dev, language);
-                Alert.alert(info.title, info.steps, [
-                  {
-                    text: info.shortcut,
-                    onPress: async () => { await devicePolicy.requestOverlayPermission(); },
-                  },
-                ]);
-              }}>
+              <TouchableOpacity
+                style={styles.permCard}
+                onPress={() => {
+                  const dev = devicePolicy.getDeviceInfo();
+                  const info = getOverlayInstructions(dev, language);
+                  Alert.alert(info.title, info.steps, [
+                    {
+                      text: info.shortcut,
+                      onPress: async () => {
+                        try {
+                          await devicePolicy.requestOverlayPermission();
+                          await new Promise(r => setTimeout(r, 1200));
+                          const granted = await devicePolicy.canDrawOverlays();
+                          setPermissionStates(prev => ({ ...prev, overlay: granted }));
+                        } catch (e) {
+                          console.log('Overlay permission error:', e);
+                        }
+                      },
+                    },
+                  ]);
+                }}
+                data-testid="perm-overlay-card"
+              >
                 <View style={[styles.permCircle, permissionStates.overlay ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.overlay ? "checkmark" : "close"} size={28} color="#FFF" />
                 </View>
