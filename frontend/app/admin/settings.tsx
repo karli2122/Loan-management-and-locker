@@ -92,6 +92,7 @@ export default function AdminSettings() {
   const [autoLockGraceDays, setAutoLockGraceDays] = useState<string>('3');
   const [autoLockEnabled, setAutoLockEnabled] = useState<boolean>(true);
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [diagnosticExporting, setDiagnosticExporting] = useState(false);
 
   const handleAuthError = async () => {
     await AsyncStorage.multiRemove(['admin_token', 'admin_stay_signed_in']);
