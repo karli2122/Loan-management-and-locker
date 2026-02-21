@@ -83,6 +83,8 @@ def extract_text_from_pdf(pdf_bytes: bytes, force_ocr: bool = False) -> str:
 def _is_text_garbled(text: str) -> bool:
     if not text:
         return True
+    if "(cid:" in text or "cid:" in text:
+        return True
     sample = text[:2000]
     if not sample.strip():
         return True
