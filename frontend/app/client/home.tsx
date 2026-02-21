@@ -1222,7 +1222,9 @@ export default function ClientHome() {
                     },
                   ]
                 );
-              }}>
+              }}
+              data-testid="perm-battery-card"
+              >
                 <View style={[styles.permCircle, permissionStates.batteryOptimization ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.batteryOptimization ? "checkmark" : "close"} size={28} color="#FFF" />
                 </View>
