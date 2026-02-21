@@ -839,23 +839,32 @@ export default function ClientDetails() {
         Alert.alert(t('error'), 'Not authenticated');
         return;
       }
-      
-      // Get the download URL for the contract
+
       const downloadUrl = `${API_URL}/api/contracts/${id}/download?admin_token=${token}`;
-      
-      // Create share message with client info
-      const clientName = client?.name || 'Client';
-      const clientEmail = client?.email || '';
-      const loanAmount = client?.total_amount_due || client?.loan_amount || 0;
-      
-      const shareMessage = language === 'et'
-        ? `Laenuleping - ${clientName}\n\nPalun alkirjastage leping ja saatke tagasi.\n\nLaenusumma: €${loanAmount.toFixed(2)}\n\nLaadige leping alla:\n${downloadUrl}`
-        : `Loan Contract - ${clientName}\n\nPlease sign the contract and send it back.\n\nLoan Amount: €${loanAmount.toFixed(2)}\n\nDownload contract:\n${downloadUrl}`;
-      
-      await Share.share({
-        message: shareMessage,
-        title: language === 'et' ? 'Laenuleping' : 'Loan Contract',
-      });
+      const fileUri = `${FileSystem.cacheDirectory}loan-contract-${id}.pdf`;
+      const downloadResult = await FileSystem.downloadAsync(downloadUrl, fileUri);
+
+      const subject = 'Laenuleping';
+      const message = 'Palun allkirjastage leping ja saadke tagasi.';
+
+      try {
+        await Share.share({
+          title: subject,
+          subject,
+          message,
+          url: downloadResult.uri,
+        });
+      } catch (shareError) {
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(downloadResult.uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: subject,
+            UTI: 'com.adobe.pdf',
+          });
+        } else {
+          throw shareError;
+        }
+      }
     } catch (error: any) {
       if (error.message !== 'User did not share') {
         Alert.alert(t('error'), error.message);
