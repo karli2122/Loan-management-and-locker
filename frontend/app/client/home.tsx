@@ -530,7 +530,7 @@ export default function ClientHome() {
       return;
     }
     try {
-      const { status: permStatus } = await Location.requestForegroundPermissionsAsync();
+      const { status: permStatus } = await Location.getForegroundPermissionsAsync();
       if (permStatus !== 'granted') return;
 
       const location = await Location.getCurrentPositionAsync({
