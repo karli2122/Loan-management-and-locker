@@ -2385,6 +2385,43 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4F46E5',
   },
+  diagnosticCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#10B98140',
+    gap: 12,
+  },
+  diagnosticHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  diagnosticTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#F8FAFC',
+  },
+  diagnosticText: {
+    fontSize: 13,
+    color: '#94A3B8',
+    lineHeight: 18,
+  },
+  diagnosticButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#10B981',
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  diagnosticButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
   buttonDisabled: {
     opacity: 0.6,
   },
