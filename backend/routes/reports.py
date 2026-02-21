@@ -75,8 +75,7 @@ async def get_heartbeat_summary(
                 critical.append(entry)
     
     all_critical = critical + never_reported
-    all_silent = warning + all_critical
-    
+
     return {
         "total_registered": len(clients),
         "online_count": len(online),
