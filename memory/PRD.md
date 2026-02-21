@@ -83,11 +83,13 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - Send warning button now only shows when admin mode is active
 - Loans tab filter reset when query clears; payment filter buttons enlarged
 - Device Setup button removed from Features tab
+- Superadmin-only Diagnostic Report export (PDF) in Settings with device info, permission status, logs, and API errors
 
 ### Backend Updates
 - Financial report interest/profit recalculated from payment allocations (not outstanding balances)
 - Added totals for principal_disbursed, principal_collected, processing_fees, late_fees
 - Contract PDF paragraphs 1.1/2.2 updated to “amount given” and “amount due (amount given + interest)” wording
+- OCR fallback for SEB PDFs (Tesseract) + summary extraction for encoded statements
 
 ## Pending User Verification
 - P0: Client app crash after registration (~5s after home load) — verify on device; needs logcat if it persists
