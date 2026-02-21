@@ -135,11 +135,9 @@ export default function Reports() {
 
     const filteredInterest = (financialReport?.monthly_interest || []).filter((m: any) => {
       const [monthName, year] = (m.month || '').split(' ');
-      if (selectedYear !== 'all' && parseInt(year) !== parseInt(selectedYear)) return false;
-      if (selectedMonth !== 'all') {
-        const months = ['January', 'February', 'March', 'April', 'May', 'June',
-          'July', 'August', 'September', 'October', 'November', 'December'];
-        const monthIndex = months.findIndex(name =>
+      if (parseInt(year) !== selectedYear) return false;
+      if (selectedMonth !== null) {
+        const monthIndex = monthsEn.findIndex(name =>
           monthName.toLowerCase().startsWith(name.substring(0, 3).toLowerCase())
         );
         if (monthIndex !== selectedMonth) return false;
