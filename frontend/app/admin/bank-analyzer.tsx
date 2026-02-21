@@ -157,6 +157,8 @@ export default function BankAnalyzer() {
   const fmt = (n: number | undefined | null) =>
     n != null ? `${n >= 0 ? '' : '-'}€${Math.abs(n).toFixed(2)}` : '-';
 
+  const isSebFile = selectedFileName.toLowerCase().includes('seb');
+
   const a = result?.analysis;
   const s = a?.summary;
 
