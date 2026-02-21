@@ -134,9 +134,9 @@ export default function ClientRegister() {
       // NOTE: Do NOT call any native module methods here (backupClientData, setRegistered, setClientInfo).
       // These trigger background native processes (AccessibilityService polling, BootReceiver)
       // that crash the app. Native setup is deferred to home.tsx on the first normal startup.
-      
-      // Show success state — user must reopen app to continue
-      setRegistrationSuccess(true);
+
+      router.replace('/client/home');
+      return;
     } catch (error: any) {
       console.error('Registration error:', error);
       Alert.alert(t('error'), error.message || 'Registration failed');
