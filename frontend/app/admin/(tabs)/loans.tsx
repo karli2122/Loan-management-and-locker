@@ -483,6 +483,7 @@ export default function LoansTab() {
           <TouchableOpacity
             style={[styles.paymentFilterButton, { backgroundColor: colors.surface, borderColor: colors.border }, paymentFilter === 'today' && styles.paymentFilterButtonActive]}
             onPress={() => setPaymentFilter('today')}
+            data-testid="payment-filter-today"
           >
             <Ionicons 
               name="today" 
