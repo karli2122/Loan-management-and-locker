@@ -122,6 +122,7 @@ export default function ClientRegister() {
 
       // Registration successful - save client data
       await AsyncStorage.setItem('client_id', clientId);
+      await AsyncStorage.setItem('registration_code', code);
       
       // Mark as fresh registration so home.tsx can delay admin prompt
       await AsyncStorage.setItem('fresh_registration', 'true');
