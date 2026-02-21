@@ -72,7 +72,7 @@ Loan management application with admin dashboard and client-facing mobile app. D
 ### Client App Stability & Permissions
 - Disabled automatic permission prompts on startup (location/notification now only request on user action)
 - Overlay permission card now refreshes status after returning from settings
-- Added Samsung Android 13+ restricted settings guidance for Accessibility activation (including missing menu fallback)
+- Updated Samsung Android 13+/One UI restricted settings guidance for Accessibility with Loan Client name and required sequence
 - Registration now proceeds directly to Home after successful registration
 - Added data-testid coverage for permission cards
 
