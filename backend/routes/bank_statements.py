@@ -55,7 +55,7 @@ def extract_pdf_from_asice(file_bytes: bytes) -> tuple:
         raise ValueError("Invalid .asice file - not a valid container")
 
 
-def extract_text_from_pdf(pdf_bytes: bytes, force_ocr: bool = False) -> str:
+def extract_text_from_pdf(pdf_bytes: bytes, force_ocr: bool = False, filename: str = "") -> str:
     """Extract text from PDF bytes using PyMuPDF."""
     if force_ocr:
         try:
@@ -71,6 +71,8 @@ def extract_text_from_pdf(pdf_bytes: bytes, force_ocr: bool = False) -> str:
             text_parts.append(page.get_text())
     text = "\n".join(text_parts)
     if _is_text_garbled(text):
+        if not is_seb_statement(text, filename):
+            return text
         try:
             ocr_text = extract_text_with_ocr(pdf_bytes)
             return ocr_text or text
@@ -100,6 +102,14 @@ def decode_legacy_text_bytes(raw: bytes) -> str:
         except UnicodeDecodeError:
             continue
     return raw.decode("utf-8", errors="ignore")
+
+
+def is_seb_statement(text: str, filename: str = "") -> bool:
+    if filename and "seb" in filename.lower():
+        return True
+    if not text:
+        return False
+    return "SEB" in text or "SEB Pank" in text
 
 
 def normalize_seb_encoding(text: str) -> str:
@@ -409,7 +419,7 @@ async def analyze_bank_statement(
     # Extract text from PDF (if we have PDF bytes)
     if pdf_bytes is not None:
         try:
-            statement_text = extract_text_from_pdf(pdf_bytes)
+            statement_text = extract_text_from_pdf(pdf_bytes, filename=file.filename)
             statement_text = normalize_seb_encoding(statement_text)
         except Exception as e:
             logger.error(f"PDF text extraction failed: {e}")
