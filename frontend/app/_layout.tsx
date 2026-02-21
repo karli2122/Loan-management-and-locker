@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, LogBox } from 'react-native';
 import { LanguageProvider } from '../src/context/LanguageContext';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
+import { initializeDiagnostics } from '../src/utils/diagnostics';
 
 // Suppress non-critical warnings that can cause crashes in production
 LogBox.ignoreLogs([
