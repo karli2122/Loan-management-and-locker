@@ -1097,6 +1097,7 @@ export default function ClientHome() {
   if (status?.is_locked) {
     return (
       <SafeAreaView style={styles.lockContainer}>
+        <StatusBar hidden />
         <View style={styles.lockContent}>
           <View style={styles.lockIconContainer}>
             <Ionicons name="lock-closed" size={80} color="#EF4444" />
