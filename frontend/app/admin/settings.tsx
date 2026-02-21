@@ -318,6 +318,117 @@ export default function AdminSettings() {
     );
   };
 
+  const generateDiagnosticReport = async () => {
+    setDiagnosticExporting(true);
+    try {
+      const entries = await AsyncStorage.multiGet([
+        'client_id',
+        'registration_code',
+        'admin_id',
+      ]);
+      const clientId = entries.find((e) => e[0] === 'client_id')?.[1] || null;
+      const registrationCode = entries.find((e) => e[0] === 'registration_code')?.[1] || null;
+      const adminId = entries.find((e) => e[0] === 'admin_id')?.[1] || null;
+
+      const logs = await getDiagnosticLogs();
+      const apiErrors = await getApiErrors();
+
+      const deviceInfo = {
+        manufacturer: Device.manufacturer || Device.brand || 'Unknown',
+        model: Device.modelName || Device.modelId || 'Unknown',
+        osName: Device.osName || 'Unknown',
+        osVersion: Device.osVersion || 'Unknown',
+        deviceYearClass: Device.deviceYearClass || 'Unknown',
+        isDevice: Device.isDevice,
+      };
+
+      const appVersion = Application.nativeApplicationVersion || Application.nativeBuildVersion || 'Unknown';
+
+      const [locationPerm, notificationPerm] = await Promise.all([
+        Location.getForegroundPermissionsAsync().catch(() => ({ status: 'unknown' } as any)),
+        Notifications.getPermissionsAsync().catch(() => ({ status: 'unknown' } as any)),
+      ]);
+
+      const overlay = await devicePolicy.canDrawOverlays().catch(() => null);
+      const accessibility = await devicePolicy.isAccessibilityEnabled().catch(() => null);
+      const batteryOptimization = await devicePolicy.isIgnoringBatteryOptimizations().catch(() => null);
+      const adminActive = await devicePolicy.isAdminActive().catch(() => null);
+      const autoStart = (await AsyncStorage.getItem('autostart_enabled')) === 'true';
+
+      const escapeHtml = (value: any) =>
+        String(value ?? 'N/A')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+
+      const logLines = logs
+        .map((log: any) => `${log.timestamp || ''} [${log.level || 'log'}] ${log.message || ''}`)
+        .join('\n');
+      const apiLines = apiErrors
+        .map((err: any) => `${err.timestamp || ''} ${err.method || ''} ${err.url || ''} ${err.status || ''} ${err.statusText || err.error || ''}`)
+        .join('\n');
+
+      const html = `
+        <html>
+          <body style="font-family: Helvetica, Arial, sans-serif; padding: 24px; color: #0f172a;">
+            <h1>Diagnostic Report</h1>
+            <p>Generated: ${new Date().toLocaleString()}</p>
+            <h2>Registration</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Admin ID</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(adminId)}</td></tr>
+              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Client ID</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(clientId)}</td></tr>
+              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Registration Code</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(registrationCode)}</td></tr>
+            </table>
+
+            <h2>Device Info</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Manufacturer</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(deviceInfo.manufacturer)}</td></tr>
+              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Model</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(deviceInfo.model)}</td></tr>
+              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">OS</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(deviceInfo.osName)} ${escapeHtml(deviceInfo.osVersion)}</td></tr>
+              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">App Version</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(appVersion)}</td></tr>
+              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Device Year Class</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(deviceInfo.deviceYearClass)}</td></tr>
+              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Is Physical Device</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(deviceInfo.isDevice)}</td></tr>
+            </table>
+
+            <h2>Permission Status</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Overlay</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(overlay)}</td></tr>
+              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Accessibility</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(accessibility)}</td></tr>
+              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Battery Optimization Ignored</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(batteryOptimization)}</td></tr>
+              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Location</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(locationPerm.status)}</td></tr>
+              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Notifications</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(notificationPerm.status)}</td></tr>
+              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Device Admin Active</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(adminActive)}</td></tr>
+              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Auto Start Flag</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(autoStart)}</td></tr>
+            </table>
+
+            <h2>Last 50 App Logs</h2>
+            <pre style="white-space: pre-wrap; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">${escapeHtml(logLines || 'No logs captured yet.')}</pre>
+
+            <h2>Last API Errors</h2>
+            <pre style="white-space: pre-wrap; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">${escapeHtml(apiLines || 'No API errors captured yet.')}</pre>
+          </body>
+        </html>
+      `;
+
+      const file = await Print.printToFileAsync({ html });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(file.uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Diagnostic Report',
+        });
+      } else {
+        Alert.alert(
+          language === 'et' ? 'Jagamine pole saadaval' : 'Sharing not available',
+          language === 'et' ? 'Seade ei toeta jagamist.' : 'This device does not support sharing.'
+        );
+      }
+    } catch (error: any) {
+      Alert.alert(language === 'et' ? 'Viga' : 'Error', error?.message || 'Failed to export report');
+    } finally {
+      setDiagnosticExporting(false);
+    }
+  };
+
   const handleAddAdmin = async () => {
     if (!newUsername.trim() || !newPassword.trim() || !newFirstName.trim() || !newLastName.trim()) {
       Alert.alert(
