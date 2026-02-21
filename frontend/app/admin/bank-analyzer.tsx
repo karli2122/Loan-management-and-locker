@@ -208,7 +208,10 @@ export default function BankAnalyzer() {
             style={{ display: 'none' }}
             onChange={(e: any) => {
               const file = e.target?.files?.[0];
-              if (file) handleWebFile(file);
+              if (file) {
+                setSelectedFileName(file.name || '');
+                handleWebFile(file);
+              }
             }}
           />
         )}
