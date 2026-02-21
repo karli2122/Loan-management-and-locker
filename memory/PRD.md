@@ -75,6 +75,7 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - Updated Samsung Android 13+/One UI restricted settings guidance for Accessibility with Loan Client name and required sequence
 - Registration now proceeds directly to Home after successful registration
 - Added data-testid coverage for permission cards
+- Accessibility service lock check + keepalive now runs every 10s and relaunches lock screen if app is swiped away; lock screen hides system bars
 
 ### Admin App Updates
 - Contract actions: removed Preview (contract review) button
