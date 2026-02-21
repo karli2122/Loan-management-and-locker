@@ -132,21 +132,36 @@ export default function Reports() {
     const filteredData = getFilteredMonthlyData();
     const totalRevenue = filteredData.reduce((sum, m) => sum + (m.revenue || 0), 0);
     const totalPayments = filteredData.reduce((sum, m) => sum + (m.payments_count || 0), 0);
-    
-    // Calculate interest earned from financial report
-    const interestEarned = financialReport?.totals?.interest_earned || 0;
+
+    const filteredInterest = (financialReport?.monthly_interest || []).filter((m: any) => {
+      const [monthName, year] = (m.month || '').split(' ');
+      if (selectedYear !== 'all' && parseInt(year) !== parseInt(selectedYear)) return false;
+      if (selectedMonth !== 'all') {
+        const months = ['January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December'];
+        const monthIndex = months.findIndex(name =>
+          monthName.toLowerCase().startsWith(name.substring(0, 3).toLowerCase())
+        );
+        if (monthIndex !== selectedMonth) return false;
+      }
+      return true;
+    });
+
+    const interestEarned = filteredInterest.reduce(
+      (sum: number, m: any) => sum + (m.interest_earned || 0),
+      0
+    );
     const principalDisbursed = financialReport?.totals?.principal_disbursed || 0;
-    const principalCollected = totalRevenue - (interestEarned * (filteredData.length / 6)); // Approximate
-    
-    // Calculate ROI (Return on Investment) = (Profit / Investment) * 100
+    const principalCollected = Math.max(totalRevenue - interestEarned, 0);
+
     const roi = principalDisbursed > 0 ? ((interestEarned / principalDisbursed) * 100) : 0;
-    
+
     return {
       totalRevenue,
       totalPayments,
-      interestEarned: interestEarned * (filteredData.length / 6),
+      interestEarned,
       principalCollected,
-      profit: interestEarned * (filteredData.length / 6), // Interest is profit
+      profit: interestEarned,
       roi,
     };
   };
