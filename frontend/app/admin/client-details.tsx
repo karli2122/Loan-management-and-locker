@@ -120,6 +120,7 @@ export default function ClientDetails() {
   const [editClientName, setEditClientName] = useState('');
   const [editClientPhone, setEditClientPhone] = useState('');
   const [editClientEmail, setEditClientEmail] = useState('');
+  const [editClientAddress, setEditClientAddress] = useState('');
   const [userCredits, setUserCredits] = useState<number>(5);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
