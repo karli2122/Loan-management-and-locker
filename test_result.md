@@ -352,11 +352,14 @@ frontend:
     file: "/app/frontend/app/client/register.tsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "Device registration screen verified via screenshot"
+      - working: true
+        agent: "testing"
+        comment: "Comprehensive UI rendering test completed successfully at https://loan-manager-fix.preview.emergentagent.com. All requested elements verified: 1) Language toggle (EST/ENG) visible and functional in top-left corner, 2) Registration code input field present with proper placeholder text ('Sisesta kood' in Estonian, 'Enter Code' in English), 3) Submit button visible and properly labeled ('Registreeri seade' / 'Register Device'), 4) Phone icon displayed in green circle, 5) Proper help text at bottom. Language toggle tested and working - switches between Estonian and English correctly. Page renders without blocking errors. Minor: Console shows expected expo-notifications warnings for web environment (not functional issue). Screenshots captured showing both EST and ENG language states. UI rendering is production-ready for unauthenticated client registration flow."
 
   - task: "Client Home/Lock Screen"
     implemented: true
