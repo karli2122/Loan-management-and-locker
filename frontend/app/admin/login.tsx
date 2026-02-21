@@ -350,6 +350,7 @@ export default function AdminLogin() {
               style={[styles.button, loading && styles.buttonDisabled]}
               onPress={handleSubmit}
               disabled={loading}
+              data-testid="admin-login-button"
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
