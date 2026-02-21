@@ -308,6 +308,7 @@ export default function AdminLogin() {
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
+                data-testid="admin-username-input"
               />
             </View>
 
