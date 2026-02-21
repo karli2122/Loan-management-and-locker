@@ -147,7 +147,11 @@ def generate_loan_contract_pdf(lender: dict, client: dict, loan_amount: float, d
     story.append(Paragraph("2.1. Laen on antud tähtajaliselt.", normal_style))
     
     repay_amount = total_repayment if total_repayment > 0 else loan_amount
-    interest_text = f" (antud summa {loan_amount:.2f} eurot + intress {interest_rate:.1f}% kuus = {repay_amount:.2f} eurot)" if interest_rate > 0 else ""
+    interest_amount = max(repay_amount - loan_amount, 0)
+    interest_text = (
+        f" (antud summa {loan_amount:.2f} eurot + intress {interest_amount:.2f} eurot = {repay_amount:.2f} eurot)"
+        if interest_amount > 0 else ""
+    )
     story.append(Paragraph(
         f"2.2. Laenusaaja kohustub Laenu tagasi maksma alljärgnevalt: <b>{repay_amount:.2f} eurot</b>{interest_text} maksetähtpäevaks <b>{due_date}</b>.",
         normal_style
