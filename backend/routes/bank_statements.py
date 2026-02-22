@@ -71,7 +71,10 @@ def extract_text_from_pdf(pdf_bytes: bytes, force_ocr: bool = False, filename: s
             text_parts.append(page.get_text())
     text = "\n".join(text_parts)
     if _is_text_garbled(text):
-        if not (is_seb_statement(text, filename) or is_seb_pdf_bytes(pdf_bytes)):
+        seb_hint = is_seb_statement(text, filename) or is_seb_pdf_bytes(pdf_bytes)
+        if not seb_hint:
+            seb_hint = detect_seb_via_ocr(pdf_bytes)
+        if not seb_hint:
             return text
         try:
             ocr_text = extract_text_with_ocr(pdf_bytes)
