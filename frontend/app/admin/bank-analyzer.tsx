@@ -189,8 +189,7 @@ export default function BankAnalyzer() {
   const fmt = (n: number | undefined | null) =>
     n != null ? `${n >= 0 ? '' : '-'}€${Math.abs(n).toFixed(2)}` : '-';
 
-  const isSebFile = selectedFileName.toLowerCase().includes('seb');
-  const isSebPdf = isSebFile && selectedFileName.toLowerCase().endsWith('.pdf');
+  const isSebPdf = sebLikely && selectedFileName.toLowerCase().endsWith('.pdf');
   const showSebOcrHint = uploading && isSebPdf;
 
   const a = result?.analysis;
