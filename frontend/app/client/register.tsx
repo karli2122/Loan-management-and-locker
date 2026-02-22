@@ -36,14 +36,27 @@ export default function ClientRegister() {
     try {
       const clientId = await AsyncStorage.getItem('client_id');
       if (clientId) {
-        const response = await fetch(buildApiUrl(`device/status/${clientId}`), {
-          headers: { Accept: 'application/json' },
-        });
-        if (response.ok) {
+        try {
+          const response = await fetch(buildApiUrl(`device/status/${clientId}`), {
+            headers: { Accept: 'application/json' },
+          });
+          if (response.ok) {
+            router.replace('/client/home');
+            return;
+          }
+          if (response.status === 404) {
+            // Device was deleted from server — clear local state
+            await AsyncStorage.removeItem('client_id');
+          } else {
+            // Server error / rate limit / other — keep client_id and go to home
+            router.replace('/client/home');
+            return;
+          }
+        } catch (_) {
+          // Network error — keep client_id and go to home (offline mode)
           router.replace('/client/home');
           return;
         }
-        await AsyncStorage.removeItem('client_id');
       }
     } catch (error) {
       console.error('Error checking registration:', error);
