@@ -457,8 +457,14 @@ async def analyze_bank_statement(
     # Extract text from PDF (if we have PDF bytes)
     if pdf_bytes is not None:
         try:
-            statement_text = extract_text_from_pdf(pdf_bytes, filename=file.filename)
+            loop = asyncio.get_event_loop()
+            statement_text = await asyncio.wait_for(
+                loop.run_in_executor(None, lambda: extract_text_from_pdf(pdf_bytes, filename=file.filename)),
+                timeout=90
+            )
             statement_text = normalize_seb_encoding(statement_text)
+        except asyncio.TimeoutError:
+            raise HTTPException(status_code=408, detail="PDF processing timed out. Please try again.")
         except Exception as e:
             logger.error(f"PDF text extraction failed: {e}")
             raise HTTPException(status_code=400, detail="Could not extract text from PDF. The file may be image-based or corrupted.")
