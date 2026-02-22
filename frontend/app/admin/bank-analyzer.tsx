@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
 
@@ -62,6 +63,7 @@ export default function BankAnalyzer() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState('');
   const [selectedFileName, setSelectedFileName] = useState('');
+  const [sebLikely, setSebLikely] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const pickAndUploadFile = async () => {
