@@ -494,7 +494,11 @@ async def analyze_bank_statement(
         ai_error = e
 
     if not has_transactions(analysis) and pdf_bytes is not None and is_seb_file:
-        ocr_text = extract_text_from_pdf(pdf_bytes, force_ocr=True, filename=file.filename)
+        loop = asyncio.get_event_loop()
+        ocr_text = await asyncio.wait_for(
+            loop.run_in_executor(None, lambda: extract_text_from_pdf(pdf_bytes, force_ocr=True, filename=file.filename)),
+            timeout=90
+        )
         if ocr_text and ocr_text != statement_text:
             statement_text = normalize_seb_encoding(ocr_text)
             analysis = await analyze_with_ai(statement_text)
