@@ -37,17 +37,38 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - `GET /api/contracts/{id}/preview` — PDF contract preview
 - `GET /api/reports/financial` — Financial reports
 
-## Completed (Feb 20, 2026)
+## Completed (Feb 22, 2026)
 
-### Bank Statement Analyzer Enhancement
-- Added `credit_recommendation` field to AI analysis prompt
-- Fields: monthly_credit_amount, yearly_credit_amount, debt_to_income_ratio, disposable_income, risk_level, reasoning
-- Frontend UI displays credit recommendation with monthly/yearly amounts, risk level badge, and reasoning
-- Calculates safe credit based on 30-40% of disposable income
+### Interest Calculation Fix (P0)
+- Fixed `calculate_interest_total()` — removed incorrect `* tenure` from fallback formula
+- Interest now correctly uses `loan_amount * rate / 100` when `total_amount_due == loan_amount`
+- Interest earned in reports now shows €141.31 instead of €0
 
-### Client App Fixes:
-- Registration crash fix (v3): Removed ALL native module calls from register.tsx
-- Loading stuck fix: setLoading(false) fires immediately after fetchStatus
+### Reports API Structure Fix (P0)
+- `GET /api/reports/collection` now returns nested `{overview, financial, this_month}` + flat fields
+- `GET /api/reports/clients` now returns `{summary: {...}, details: {on_time, at_risk, defaulted, completed}}`
+- Both endpoints now match the frontend's expected structure exactly
+
+### SEB Bank Statement OCR Fix (P0)
+- Installed `tesseract-ocr`, `tesseract-ocr-est` at OS level
+- Added auto-install logic in `server.py` startup event if tesseract not found
+- SEB statements are now auto-detected via OCR (`detect_seb_via_ocr`) when text is garbled
+- Bank name shows `SEB`, period, account holder, and correct financial summary
+
+### Loan Contract Share Fix
+- `handleShareContract()` in `client-details.tsx` simplified to use `expo-sharing` directly
+- Removed unreliable `Share.share` fallback (doesn't support file URLs on Android)
+
+### Lock State Persistence Fix (client app)
+- Moved lock screen check BEFORE loading spinner in `home.tsx`
+- Lock screen now shows immediately when `checkCachedLockStateOnStartup()` sets `is_locked: true`
+- Previously, loading spinner was blocking the lock screen from showing on restart
+
+### Overlay Watchdog Fix
+- `EMIOverlayService.kt` watchdog now uses `ActivityManager.getMyMemoryState()` for reliable foreground detection
+- Removed deprecated `getRunningTasks(1)` call which was incorrectly reporting app as foreground when it was in background
+
+
 - Contract date: Uses loan_start_date
 
 ### Admin App Fixes:
