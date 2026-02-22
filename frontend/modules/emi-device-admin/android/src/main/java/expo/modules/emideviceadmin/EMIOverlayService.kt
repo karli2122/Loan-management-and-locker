@@ -105,8 +105,8 @@ class EMIOverlayService : Service() {
     }
 
     /**
-     * Watchdog: if device is locked (SharedPreferences), force-relaunch app every second.
-     * This ensures the lock screen always stays on top even if user navigates away.
+     * Watchdog: if device is locked (SharedPreferences), force-relaunch app if not foreground.
+     * Uses getMyMemoryState for reliable foreground detection on modern Android.
      */
     private fun watchdogRelaunchIfLocked() {
         try {
@@ -114,27 +114,17 @@ class EMIOverlayService : Service() {
             val isLocked = prefs.getBoolean(KEY_LOCKED, false)
             if (!isLocked) return
 
-            // Check if our app is currently in the foreground
-            val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            val myPackage = packageName
-            var isInForeground = false
-
-            @Suppress("DEPRECATION")
-            val tasks = am.getRunningTasks(1)
-            if (tasks.isNotEmpty()) {
-                val topActivity = tasks[0].topActivity
-                if (topActivity?.packageName == myPackage) {
-                    isInForeground = true
-                }
-            }
+            // Use getMyMemoryState — works on all Android versions without extra permissions
+            val processInfo = ActivityManager.RunningAppProcessInfo()
+            ActivityManager.getMyMemoryState(processInfo)
+            val isInForeground = processInfo.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
 
             if (!isInForeground) {
                 Log.d(TAG, "Watchdog: App not in foreground while locked — relaunching")
-                val launchIntent = packageManager.getLaunchIntentForPackage(myPackage)
+                val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
                 if (launchIntent != null) {
                     launchIntent.addFlags(
                         Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
                         Intent.FLAG_ACTIVITY_SINGLE_TOP
                     )
                     startActivity(launchIntent)
