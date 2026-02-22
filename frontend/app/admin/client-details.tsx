@@ -842,28 +842,20 @@ export default function ClientDetails() {
 
       const downloadUrl = `${API_URL}/api/contracts/${id}/download?admin_token=${token}`;
       const fileUri = `${FileSystem.cacheDirectory}loan-contract-${id}.pdf`;
+      
       const downloadResult = await FileSystem.downloadAsync(downloadUrl, fileUri);
-
-      const subject = 'Laenuleping';
-      const message = 'Palun allkirjastage leping ja saadke tagasi.';
-
-      try {
-        await Share.share({
-          title: subject,
-          subject,
-          message,
-          url: downloadResult.uri,
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(downloadResult.uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: language === 'et' ? 'Jaga laenulepingut' : 'Share Loan Contract',
+          UTI: 'com.adobe.pdf',
         });
-      } catch (shareError) {
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(downloadResult.uri, {
-            mimeType: 'application/pdf',
-            dialogTitle: subject,
-            UTI: 'com.adobe.pdf',
-          });
-        } else {
-          throw shareError;
-        }
+      } else {
+        Alert.alert(
+          t('error'),
+          language === 'et' ? 'Jagamine pole saadaval' : 'Sharing not available on this device'
+        );
       }
     } catch (error: any) {
       if (error.message !== 'User did not share') {
