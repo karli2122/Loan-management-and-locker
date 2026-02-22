@@ -66,6 +66,29 @@ export default function BankAnalyzer() {
   const [sebLikely, setSebLikely] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const isSebText = (text: string) => text.includes('SEB') || text.includes('SEB Pank');
+
+  const detectSebFromWebFile = async (file: File): Promise<boolean> => {
+    try {
+      const blob = file.slice(0, 20000);
+      const buffer = await blob.arrayBuffer();
+      const decoder = new TextDecoder('latin1');
+      const text = decoder.decode(buffer);
+      return isSebText(text);
+    } catch (e) {
+      return false;
+    }
+  };
+
+  const detectSebFromNativeFile = async (uri: string): Promise<boolean> => {
+    try {
+      const text = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.UTF8 });
+      return isSebText(text);
+    } catch (e) {
+      return false;
+    }
+  };
+
   const pickAndUploadFile = async () => {
     try {
       if (Platform.OS === 'web') {
