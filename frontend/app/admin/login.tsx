@@ -46,8 +46,19 @@ export default function AdminLogin() {
                 router.replace('/admin/(tabs)');
                 return;
               }
-            } catch (_) {}
-            await AsyncStorage.multiRemove(['admin_token', 'admin_stay_signed_in']);
+              // Only clear token if server explicitly says it's invalid (not a network error)
+              if (res.status === 401 || res.status === 403) {
+                await AsyncStorage.multiRemove(['admin_token', 'admin_stay_signed_in']);
+              } else {
+                // Server error or timeout — keep token and redirect, home will handle it
+                router.replace('/admin/(tabs)');
+                return;
+              }
+            } catch (_) {
+              // Network error — don't clear the token; redirect to tabs (offline mode)
+              router.replace('/admin/(tabs)');
+              return;
+            }
           }
         }
       } finally {
