@@ -1,5 +1,6 @@
 """Bank Statement Analyzer - Upload and analyze bank statements with AI."""
 import os
+import asyncio
 import zipfile
 import tempfile
 import json
