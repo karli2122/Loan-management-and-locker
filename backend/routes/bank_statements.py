@@ -199,7 +199,7 @@ def extract_text_with_ocr(pdf_bytes: bytes) -> str:
         for i in range(pages_to_process):
             try:
                 page = doc.load_page(i)
-                tp = page.get_textpage_ocr(language="est+eng", dpi=72, full=True)
+                tp = page.get_textpage_ocr(language="est+eng", dpi=100, full=True)
                 text_parts.append(page.get_text(textpage=tp))
             except Exception as e:
                 logger.warning(f"OCR page {i+1} failed: {e}")
