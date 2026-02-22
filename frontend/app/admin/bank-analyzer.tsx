@@ -154,10 +154,13 @@ export default function BankAnalyzer() {
   };
 
   const handleWebFile = async (file: File) => {
-    setUploading(true);
     setError('');
     setResult(null);
     setSelectedFileName(file.name || '');
+    const nameLower = (file.name || '').toLowerCase();
+    const sebDetected = nameLower.includes('seb') || await detectSebFromWebFile(file);
+    setSebLikely(sebDetected);
+    setUploading(true);
     try {
       const adminToken = await AsyncStorage.getItem('admin_token');
       if (!adminToken) {
