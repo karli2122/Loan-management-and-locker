@@ -178,17 +178,22 @@ def normalize_seb_encoding(text: str) -> str:
 
 
 def extract_text_with_ocr(pdf_bytes: bytes) -> str:
-    """OCR extraction using PyMuPDF's built-in Tesseract C API (no subprocess, memory-safe)."""
+    """OCR extraction using PyMuPDF's built-in Tesseract API.
+    Limited to first 2 pages — SEB account summary is always on page 1-2.
+    """
     import fitz
+    import os
+    # Ensure tessdata path is set
+    if not os.environ.get("TESSDATA_PREFIX"):
+        os.environ["TESSDATA_PREFIX"] = "/usr/share/tesseract-ocr/5/tessdata"
 
-    MAX_PAGES = 6
+    MAX_PAGES = 2  # Summary info is on first 2 pages; full transaction list not needed
     text_parts = []
     with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
         pages_to_process = min(doc.page_count, MAX_PAGES)
         for i in range(pages_to_process):
             try:
                 page = doc.load_page(i)
-                # full=True forces image-based OCR; dpi=80 is sufficient and memory-light
                 tp = page.get_textpage_ocr(language="est+eng", dpi=80, full=True)
                 text_parts.append(page.get_text(textpage=tp))
             except Exception as e:
