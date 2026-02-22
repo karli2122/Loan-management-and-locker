@@ -1082,18 +1082,8 @@ export default function ClientHome() {
   };
 
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#10B981" />
-          <Text style={styles.loadingText}>{t('loadingAccount')}</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   // Lock Screen Overlay - Full screen, no escape
+  // Show BEFORE loading spinner so cached lock state is immediately visible on restart
   if (status?.is_locked) {
     return (
       <SafeAreaView style={styles.lockContainer}>
