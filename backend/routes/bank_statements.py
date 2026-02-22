@@ -122,6 +122,31 @@ def is_seb_pdf_bytes(pdf_bytes: bytes) -> bool:
         return False
 
 
+def detect_seb_via_ocr(pdf_bytes: bytes) -> bool:
+    if not pdf_bytes:
+        return False
+    try:
+        import fitz
+        from PIL import Image
+        import pytesseract
+
+        tesseract_cmd = os.environ.get("TESSERACT_CMD")
+        if tesseract_cmd:
+            pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
+
+        with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+            if doc.page_count == 0:
+                return False
+            page = doc.load_page(0)
+            pix = page.get_pixmap(dpi=120)
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            text = pytesseract.image_to_string(img, lang="est+eng")
+            return "SEB" in text or "SEB Pank" in text
+    except Exception as e:
+        logger.warning(f"SEB OCR detection failed: {e}")
+        return False
+
+
 def normalize_seb_encoding(text: str) -> str:
     if not text:
         return text
