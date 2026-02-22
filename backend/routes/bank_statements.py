@@ -57,7 +57,9 @@ def extract_pdf_from_asice(file_bytes: bytes) -> tuple:
 
 
 def extract_text_from_pdf(pdf_bytes: bytes, force_ocr: bool = False, filename: str = "") -> str:
-    """Extract text from PDF bytes using PyMuPDF."""
+    """Extract text from PDF bytes. Falls back to OCR if text is garbled."""
+    import fitz
+
     if force_ocr:
         try:
             return extract_text_with_ocr(pdf_bytes)
@@ -65,24 +67,21 @@ def extract_text_from_pdf(pdf_bytes: bytes, force_ocr: bool = False, filename: s
             logger.error(f"OCR extraction failed: {e}")
             return ""
 
-    import fitz
     text_parts = []
     with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
         for page in doc:
             text_parts.append(page.get_text())
     text = "\n".join(text_parts)
+
     if _is_text_garbled(text):
-        seb_hint = is_seb_statement(text, filename) or is_seb_pdf_bytes(pdf_bytes)
-        if not seb_hint:
-            seb_hint = detect_seb_via_ocr(pdf_bytes)
-        if not seb_hint:
-            return text
+        # Text is garbled — run ONE single OCR pass (low DPI + grayscale to save memory)
         try:
             ocr_text = extract_text_with_ocr(pdf_bytes)
-            return ocr_text or text
+            return ocr_text if ocr_text and not _is_text_garbled(ocr_text[:500]) else text
         except Exception as e:
-            logger.error(f"OCR extraction failed: {e}")
+            logger.error(f"OCR fallback failed: {e}")
             return text
+
     return text
 
 
