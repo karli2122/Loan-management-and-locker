@@ -106,8 +106,12 @@ export default function BankAnalyzer() {
       const ext = (asset.name || '').toLowerCase().split('.').pop();
       if (ext !== 'pdf' && ext !== 'asice') {
         setError(language === 'et' ? 'Ainult .pdf ja .asice failid' : 'Only .pdf and .asice files supported');
+        setSebLikely(false);
         return;
       }
+      const nameLower = (asset.name || '').toLowerCase();
+      const sebDetected = nameLower.includes('seb') || await detectSebFromNativeFile(asset.uri);
+      setSebLikely(sebDetected);
       await uploadFile(asset.uri, asset.name, asset.mimeType || 'application/octet-stream');
     } catch (err: any) {
       setError(err.message || 'File picker failed');
