@@ -15,15 +15,14 @@ def calculate_interest_total(client: dict) -> float:
     loan_amount = client.get("loan_amount", 0) or 0
     total_due = client.get("total_amount_due", 0) or 0
 
-    if total_due > 0:
-        return max(total_due - loan_amount, 0)
+    # If total_amount_due is properly set and higher than loan_amount, use the difference
+    if total_due > 0 and total_due > loan_amount:
+        return round(total_due - loan_amount, 2)
 
+    # Fallback: calculate from interest_rate (applied once to principal, not monthly)
     rate = client.get("interest_rate", 0) or 0
-    tenure = client.get("loan_tenure_months", 0) or 0
     if loan_amount > 0 and rate > 0:
-        if tenure > 0:
-            return loan_amount * rate / 100 * tenure
-        return loan_amount * rate / 100
+        return round(loan_amount * rate / 100, 2)
 
     return 0
 
