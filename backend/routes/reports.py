@@ -115,15 +115,13 @@ async def get_collection_report(
     """Get collection report for an admin. Superadmins can filter by specific admin."""
     admin_id = await get_admin_id_from_token(admin_token)
     
-    # Check if requester is superadmin for filtering capability
     admin = await db.admins.find_one({"id": admin_id})
     is_super_admin = admin.get("is_super_admin", False) if admin else False
     
-    # Determine which admin's data to fetch
     target_admin_id = admin_id
     if filter_admin_id and is_super_admin:
         if filter_admin_id == "all":
-            target_admin_id = None  # Fetch all clients
+            target_admin_id = None
         else:
             target_admin_id = filter_admin_id
     
@@ -133,22 +131,51 @@ async def get_collection_report(
     total_disbursed = sum(c.get("loan_amount", 0) for c in clients)
     total_collected = sum(c.get("total_paid", 0) for c in clients)
     total_outstanding = sum(c.get("outstanding_balance", 0) for c in clients)
+    total_late_fees = sum(c.get("late_fees_accumulated", 0) for c in clients)
     
     active_loans = sum(1 for c in clients if c.get("outstanding_balance", 0) > 0)
     completed_loans = sum(1 for c in clients if c.get("outstanding_balance", 0) <= 0 and c.get("loan_amount", 0) > 0)
-    overdue_loans = sum(1 for c in clients if c.get("days_overdue", 0) > 0)
+    overdue_clients = sum(1 for c in clients if c.get("days_overdue", 0) > 0)
     
     collection_rate = (total_collected / total_disbursed * 100) if total_disbursed > 0 else 0
+
+    # This month payments
+    now = datetime.utcnow()
+    first_of_month = datetime(now.year, now.month, 1)
+    client_ids = [c["id"] for c in clients]
+    this_month_payments = await db.payments.find(
+        {"client_id": {"$in": client_ids}, "payment_date": {"$gte": first_of_month}},
+        {"_id": 0, "amount": 1}
+    ).to_list(10000)
+    this_month_collected = sum(p.get("amount", 0) for p in this_month_payments)
     
     return {
+        "overview": {
+            "total_clients": len(clients),
+            "active_loans": active_loans,
+            "completed_loans": completed_loans,
+            "overdue_clients": overdue_clients,
+        },
+        "financial": {
+            "total_disbursed": round(total_disbursed, 2),
+            "total_collected": round(total_collected, 2),
+            "total_outstanding": round(total_outstanding, 2),
+            "total_late_fees": round(total_late_fees, 2),
+            "collection_rate": round(collection_rate, 2),
+        },
+        "this_month": {
+            "total_collected": round(this_month_collected, 2),
+            "number_of_payments": len(this_month_payments),
+        },
+        # Keep flat fields for backward compat
         "total_disbursed": round(total_disbursed, 2),
         "total_collected": round(total_collected, 2),
         "total_outstanding": round(total_outstanding, 2),
         "collection_rate": round(collection_rate, 2),
         "active_loans": active_loans,
         "completed_loans": completed_loans,
-        "overdue_loans": overdue_loans,
-        "total_clients": len(clients)
+        "overdue_loans": overdue_clients,
+        "total_clients": len(clients),
     }
 
 
