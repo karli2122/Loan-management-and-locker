@@ -178,33 +178,22 @@ def normalize_seb_encoding(text: str) -> str:
 
 
 def extract_text_with_ocr(pdf_bytes: bytes) -> str:
-    """OCR extraction for garbled/image-based PDFs. Uses low DPI + grayscale to minimise memory."""
+    """OCR extraction using PyMuPDF's built-in Tesseract C API (no subprocess, memory-safe)."""
     import fitz
-    from PIL import Image
-    import pytesseract
-    from pathlib import Path
 
-    if Path("/usr/bin/tesseract").exists():
-        pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
-
+    MAX_PAGES = 6
     text_parts = []
-    MAX_PAGES = 6  # Never OCR more than 6 pages — SEB summaries are always on first pages
     with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
         pages_to_process = min(doc.page_count, MAX_PAGES)
         for i in range(pages_to_process):
-            page = doc.load_page(i)
-            # 120 DPI grayscale — sufficient for OCR, uses ~75% less memory than 200 DPI RGB
-            pix = page.get_pixmap(dpi=120, colorspace=fitz.csGRAY)
-            img = Image.frombytes("L", [pix.width, pix.height], pix.samples)
             try:
-                ocr_text = pytesseract.image_to_string(img, lang="est+eng", timeout=25)
-                text_parts.append(ocr_text)
-            except RuntimeError as e:
-                logger.warning(f"OCR page {i+1} timed out or failed: {e}")
+                page = doc.load_page(i)
+                # full=True forces image-based OCR; dpi=80 is sufficient and memory-light
+                tp = page.get_textpage_ocr(language="est+eng", dpi=80, full=True)
+                text_parts.append(page.get_text(textpage=tp))
+            except Exception as e:
+                logger.warning(f"OCR page {i+1} failed: {e}")
                 continue
-            finally:
-                del img
-                del pix
     return "\n".join(text_parts)
 
 
