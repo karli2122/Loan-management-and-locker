@@ -64,9 +64,9 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - Lock screen now shows immediately when `checkCachedLockStateOnStartup()` sets `is_locked: true`
 - Previously, loading spinner was blocking the lock screen from showing on restart
 
-### Overlay Watchdog Fix
-- `EMIOverlayService.kt` watchdog now uses `ActivityManager.getMyMemoryState()` for reliable foreground detection
-- Removed deprecated `getRunningTasks(1)` call which was incorrectly reporting app as foreground when it was in background
+### Auth Token Persistence Fix (Feb 22, 2026)
+- **Admin app** (`login.tsx`): Token was cleared on ANY network error during startup verification. Fixed to only clear on explicit 401/403 (invalid token). Network errors now redirect to tabs (offline-friendly).
+- **Client app** (`register.tsx`): If `client_id` exists but server is unreachable (network error), now redirects to home instead of staying on register screen. Only clears `client_id` on explicit 404 (device deleted from server).
 
 
 - Contract date: Uses loan_start_date
