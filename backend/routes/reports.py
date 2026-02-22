@@ -181,29 +181,75 @@ async def get_collection_report(
 
 @router.get("/reports/clients")
 async def get_clients_report(admin_token: str = Query(...)):
-    """Get detailed clients report."""
+    """Get detailed clients report with summary and details."""
     admin_id = await get_admin_id_from_token(admin_token)
     clients = await db.clients.find(
         {"admin_id": admin_id},
         {"_id": 0, "registration_code": 0}
     ).to_list(1000)
-    
-    report = []
+
+    now = datetime.utcnow()
+    first_of_month = datetime(now.year, now.month, 1)
+
+    # Fetch repeat customers: clients that appear in paid_loans (completed a loan before)
+    paid_loan_client_ids = set()
+    async for pl in db.paid_loans.find({"admin_id": admin_id}, {"_id": 0, "client_id": 1}):
+        if pl.get("client_id"):
+            paid_loan_client_ids.add(pl["client_id"])
+
+    on_time_list = []
+    at_risk_list = []
+    defaulted_list = []
+    completed_list = []
+    new_this_month = 0
+
     for client in clients:
-        report.append({
+        days_overdue = client.get("days_overdue", 0) or 0
+        loan_amount = client.get("loan_amount", 0) or 0
+        outstanding = client.get("outstanding_balance", 0) or 0
+        total_paid = client.get("total_paid", 0) or 0
+
+        row = {
             "id": client["id"],
             "name": client["name"],
             "phone": client.get("phone", ""),
-            "loan_amount": client.get("loan_amount", 0),
-            "total_paid": client.get("total_paid", 0),
-            "outstanding_balance": client.get("outstanding_balance", 0),
-            "days_overdue": client.get("days_overdue", 0),
+            "loan_amount": loan_amount,
+            "total_paid": total_paid,
+            "outstanding_balance": outstanding,
+            "days_overdue": days_overdue,
             "is_locked": client.get("is_locked", False),
-            "is_registered": client.get("is_registered", False),
-            "last_payment_date": client.get("last_payment_date")
-        })
-    
-    return report
+        }
+
+        created_at = client.get("created_at")
+        if created_at and created_at >= first_of_month:
+            new_this_month += 1
+
+        if outstanding <= 0 and loan_amount > 0:
+            completed_list.append(row)
+        elif days_overdue > 7:
+            defaulted_list.append(row)
+        elif days_overdue > 0:
+            at_risk_list.append(row)
+        elif loan_amount > 0:
+            on_time_list.append(row)
+
+    return {
+        "summary": {
+            "on_time_clients": len(on_time_list),
+            "at_risk_clients": len(at_risk_list),
+            "defaulted_clients": len(defaulted_list),
+            "completed_clients": len(completed_list),
+            "new_clients_this_month": new_this_month,
+            "repeat_customers": len(paid_loan_client_ids),
+            "total_clients": len(clients),
+        },
+        "details": {
+            "on_time": on_time_list,
+            "at_risk": at_risk_list,
+            "defaulted": defaulted_list,
+            "completed": completed_list,
+        }
+    }
 
 
 @router.get("/reports/financial")
