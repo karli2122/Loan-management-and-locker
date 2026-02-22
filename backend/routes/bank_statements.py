@@ -112,7 +112,13 @@ def is_seb_statement(text: str, filename: str = "") -> bool:
         return True
     if not text:
         return False
-    return "SEB" in text or "SEB Pank" in text
+    text_upper = text.upper()
+    return (
+        "SEB" in text_upper
+        or "KONTO VÄLJAVÕTE" in text  # Estonian "account statement" — unique to SEB
+        or "EEUHEE2X" in text_upper   # SEB Estonia BIC
+        or "SEB PANK" in text_upper
+    )
 
 
 def is_seb_pdf_bytes(pdf_bytes: bytes) -> bool:
