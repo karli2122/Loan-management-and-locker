@@ -217,10 +217,18 @@ export default function ClientDetails() {
     fetchCredits();
   }, [id]);
 
-  // Auto-refresh client data every 15 seconds to keep admin mode status updated
+  // Track if any modal is open to prevent auto-refresh race conditions
+  const isModalOpenRef = useRef(false);
+  useEffect(() => {
+    isModalOpenRef.current = warningModal || lockModal || paymentModal || editDeviceModal || editClientModal || editLoanModal;
+  }, [warningModal, lockModal, paymentModal, editDeviceModal, editClientModal, editLoanModal]);
+
+  // Auto-refresh client data every 15 seconds (paused when modals are open)
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchClient();
+      if (!isModalOpenRef.current) {
+        fetchClient();
+      }
     }, 15000);
     return () => clearInterval(interval);
   }, [id]);
