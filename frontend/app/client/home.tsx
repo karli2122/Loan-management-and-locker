@@ -388,14 +388,16 @@ export default function ClientHome() {
           loan_due_date: null,
         });
         wasLocked.current = true;
-        // Engage immersive mode + overlay on boot if locked
-        // NO startLockTask — shows unpin instructions
+        // Engage immersive mode + overlay + OS screen lock on boot if locked
         if (Platform.OS === 'android') {
           try {
             await devicePolicy.enableImmersiveMode();
             console.log('[Startup] Immersive mode enabled');
             await devicePolicy.startOverlayBlocker();
             console.log('[Startup] Overlay blocker started');
+            // Hard OS-level screen lock on boot
+            const lockResult = await devicePolicy.lockDevice();
+            console.log('[Startup] Device screen locked via lockNow():', lockResult);
           } catch (e) {
             console.log('[Startup] Lock enforcement error:', e);
           }
