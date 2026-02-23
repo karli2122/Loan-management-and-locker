@@ -471,20 +471,16 @@ export default function ClientHome() {
       setIsOffline(true);
       
       // On error, check and enforce cached lock state
+      // Only update if we already have a valid status (don't create blank objects)
       const cachedState = await devicePolicy.getCachedLockState();
       if (cachedState.isLocked) {
-        setStatus(prev => prev ? {
-          ...prev,
-          is_locked: true,
-          lock_message: cachedState.lockMessage,
-        } : {
-          id: '',
-          name: '',
-          is_locked: true,
-          lock_message: cachedState.lockMessage,
-          warning_message: '',
-          loan_amount: 0,
-          loan_due_date: null,
+        setStatus(prev => {
+          if (!prev) return prev; // Don't overwrite null with a blank object
+          return {
+            ...prev,
+            is_locked: true,
+            lock_message: cachedState.lockMessage,
+          };
         });
         wasLocked.current = true;
         console.log('[Error] Enforcing cached lock state');
