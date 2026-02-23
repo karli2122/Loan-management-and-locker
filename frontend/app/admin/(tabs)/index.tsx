@@ -270,11 +270,21 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    loadUserData();
-    fetchStats(selectedAdminId);
-    fetchHeartbeat(selectedAdminId);
-    fetchRevenueChart(selectedAdminId);
-    fetchInterestSummary();
+    const loadInitialData = async () => {
+      setInitialLoading(true);
+      try {
+        await Promise.all([
+          loadUserData(),
+          fetchStats(selectedAdminId),
+          fetchHeartbeat(selectedAdminId),
+          fetchRevenueChart(selectedAdminId),
+          fetchInterestSummary(),
+        ]);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+    loadInitialData();
   }, []);
 
   // Fetch admin list for superadmins
@@ -311,6 +321,19 @@ export default function Dashboard() {
     const admin = adminList.find(a => a.id === selectedAdminId);
     return admin ? (admin.first_name || admin.username) : '';
   };
+
+  if (initialLoading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#4F46E5" />
+          <Text style={{ color: colors.textMuted, marginTop: 12, fontSize: 14 }}>
+            {language === 'et' ? 'Laen andmeid...' : 'Loading data...'}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
