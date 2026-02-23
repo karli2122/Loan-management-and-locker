@@ -35,6 +35,8 @@ export default function TransactionsTab() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'disbursement' | 'payment'>('all');
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
 
   const fetchTransactions = async () => {
     try {
@@ -121,6 +123,18 @@ export default function TransactionsTab() {
   const filteredTransactions = filter === 'all' 
     ? transactions 
     : transactions.filter(t => t.type === filter);
+
+  // Paginated transactions
+  const totalPages = Math.ceil(filteredTransactions.length / pageSize);
+  const paginatedTransactions = filteredTransactions.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
+
+  // Reset page when filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [filter]);
 
   const renderTransaction = ({ item }: { item: Transaction }) => {
     const isDisbursement = item.type === 'disbursement';
@@ -212,12 +226,48 @@ export default function TransactionsTab() {
       </View>
 
       <FlatList
-        data={filteredTransactions}
+        data={paginatedTransactions}
         renderItem={renderTransaction}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+        }
+        ListHeaderComponent={
+          filteredTransactions.length > pageSize ? (
+            <View style={styles.paginationInfo}>
+              <Text style={[styles.paginationText, { color: colors.textMuted }]}>
+                {language === 'et' 
+                  ? `Näitan ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, filteredTransactions.length)} / ${filteredTransactions.length}`
+                  : `Showing ${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, filteredTransactions.length)} of ${filteredTransactions.length}`}
+              </Text>
+            </View>
+          ) : null
+        }
+        ListFooterComponent={
+          totalPages > 1 ? (
+            <View style={styles.pagination}>
+              <TouchableOpacity
+                style={[styles.pageButton, { backgroundColor: colors.surface, borderColor: colors.border }, page === 1 && styles.pageButtonDisabled]}
+                onPress={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                data-testid="prev-page-btn"
+              >
+                <Ionicons name="chevron-back" size={18} color={page === 1 ? colors.textMuted : colors.text} />
+              </TouchableOpacity>
+              <Text style={[styles.pageInfo, { color: colors.text }]}>
+                {page} / {totalPages}
+              </Text>
+              <TouchableOpacity
+                style={[styles.pageButton, { backgroundColor: colors.surface, borderColor: colors.border }, page === totalPages && styles.pageButtonDisabled]}
+                onPress={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                data-testid="next-page-btn"
+              >
+                <Ionicons name="chevron-forward" size={18} color={page === totalPages ? colors.textMuted : colors.text} />
+              </TouchableOpacity>
+            </View>
+          ) : null
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -378,5 +428,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#64748B',
     marginTop: 16,
+  },
+  // Pagination styles
+  paginationInfo: {
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  paginationText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  pagination: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    paddingVertical: 16,
+    marginTop: 8,
+  },
+  pageButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  pageButtonDisabled: {
+    opacity: 0.5,
+  },
+  pageInfo: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
