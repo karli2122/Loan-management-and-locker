@@ -71,6 +71,7 @@ export default function ClientHome() {
   const hasInitialized = useRef(false);
   const initComplete = useRef(false);
   const lastWarningRef = useRef<string>('');
+  const uninstallHandledRef = useRef(false); // Prevent repeated uninstall alerts
   const resolveProjectId = useCallback(
     () => Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId,
     []
