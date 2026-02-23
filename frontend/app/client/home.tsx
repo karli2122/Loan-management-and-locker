@@ -349,13 +349,15 @@ export default function ClientHome() {
       await devicePolicy.setNativeLockState(locked);
       wasLocked.current = locked;
 
-      // Manage immersive mode and overlay based on lock state
-      // NO startLockTask — it shows "unpin" instructions to the user
-      // Instead we rely on: overlay watchdog (1s relaunch) + AccessibilityService + immersive mode
+      // Manage immersive mode, overlay, and OS-level screen lock based on lock state
       if (Platform.OS === 'android') {
         if (locked) {
           await devicePolicy.enableImmersiveMode();
           await devicePolicy.startOverlayBlocker();
+          // Hard OS-level screen lock via DevicePolicyManager.lockNow()
+          // Forces the device to the Android lock screen (PIN/pattern/biometric required)
+          const lockResult = await devicePolicy.lockDevice();
+          console.log('[Lock] Device screen locked via lockNow():', lockResult);
         } else {
           await devicePolicy.disableImmersiveMode();
           await devicePolicy.stopOverlayBlocker();
