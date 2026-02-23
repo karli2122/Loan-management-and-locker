@@ -944,6 +944,13 @@ export default function ClientHome() {
               if (overlay && wasLocked.current) {
                 await devicePolicy.startOverlayBlocker();
               }
+              
+              // Re-lock device screen on resume if device is locked
+              // This forces PIN/pattern entry every time the user tries to access the phone
+              if (wasLocked.current) {
+                const lockResult = await devicePolicy.lockDevice();
+                console.log('[Resume] Device screen re-locked via lockNow():', lockResult);
+              }
             } catch (e) {
               console.log('Protection refresh error:', e);
             }
