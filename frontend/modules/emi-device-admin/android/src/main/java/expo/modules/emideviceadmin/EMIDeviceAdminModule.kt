@@ -3,9 +3,11 @@ package expo.modules.emideviceadmin
 import android.app.Activity
 import android.app.ActivityManager
 import android.app.admin.DevicePolicyManager
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -28,6 +30,7 @@ class EMIDeviceAdminModule : Module() {
         private const val PREFS_NAME = "emi_device_admin_prefs"
         private const val KEY_REGISTERED = "device_registered"
         private const val KEY_UNINSTALL_ALLOWED = "uninstall_allowed"
+        private const val ACTION_REAPPLY_IMMERSIVE = "expo.modules.emideviceadmin.REAPPLY_IMMERSIVE"
     }
 
     private val context: Context
@@ -44,6 +47,11 @@ class EMIDeviceAdminModule : Module() {
 
     private val prefs: SharedPreferences
         get() = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    // Broadcast receiver to re-apply immersive mode when overlay service requests it
+    private var immersiveReceiver: BroadcastReceiver? = null
+    // Track whether the system UI visibility listener is installed
+    private var visibilityListenerInstalled = false
 
     override fun definition() = ModuleDefinition {
         Name("EMIDeviceAdmin")
