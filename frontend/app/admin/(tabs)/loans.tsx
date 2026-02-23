@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -55,12 +55,6 @@ export default function LoansTab() {
   const params = useLocalSearchParams<{ filter?: string }>();
   const { language } = useLanguage();
   const { colors } = useTheme();
-  const filterRef = useRef<string | undefined>(undefined);
-  const filterParam = useMemo(() => {
-    const raw = params?.filter;
-    if (!raw) return undefined;
-    return raw.toString().toLowerCase();
-  }, [params?.filter]);
   const [clients, setClients] = useState<Client[]>([]);
   const [paidLoans, setPaidLoans] = useState<PaidLoan[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,6 +63,9 @@ export default function LoansTab() {
   const [filter, setFilter] = useState<string | undefined>(undefined);
   const [tab, setTab] = useState<'given' | 'archived'>('given');
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'today' | 'tomorrow' | 'next3days'>('all');
+
+  // Derive filter from URL params directly
+  const filterParam = params?.filter?.toString().toLowerCase() || undefined;
 
   const fetchClients = async () => {
     try {
@@ -122,21 +119,18 @@ export default function LoansTab() {
     fetchPaidLoans();
   }, []);
 
+  // Sync filter state with URL params
   useEffect(() => {
-    if (filterParam !== filterRef.current) {
-      if (filterParam) {
-        setFilter(filterParam);
-        if (filterParam === 'paid') {
-          setTab('archived');
-          setPaymentFilter('all');
-        } else {
-          setTab('given');
-        }
+    if (filterParam) {
+      setFilter(filterParam);
+      if (filterParam === 'paid') {
+        setTab('archived');
+        setPaymentFilter('all');
       } else {
-        setFilter(undefined);
         setTab('given');
       }
-      filterRef.current = filterParam;
+    } else {
+      setFilter(undefined);
     }
   }, [filterParam]);
 
