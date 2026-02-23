@@ -33,7 +33,6 @@ export default function TransactionsTab() {
   const { colors } = useTheme();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'disbursement' | 'payment'>('all');
   const [page, setPage] = useState(1);
   const pageSize = 20;

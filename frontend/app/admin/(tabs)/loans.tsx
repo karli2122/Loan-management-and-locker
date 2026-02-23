@@ -59,7 +59,6 @@ export default function LoansTab() {
   const [paidLoans, setPaidLoans] = useState<PaidLoan[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string | undefined>(undefined);
   const [tab, setTab] = useState<'given' | 'archived'>('given');
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'today' | 'tomorrow' | 'next3days'>('all');
