@@ -53,6 +53,7 @@ export default function Reports() {
   
   // PDF/Export
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [calculatingFees, setCalculatingFees] = useState(false);
 
   const months = language === 'et' 
     ? ['Jaanuar', 'Veebruar', 'Märts', 'Aprill', 'Mai', 'Juuni', 'Juuli', 'August', 'September', 'Oktoober', 'November', 'Detsember']
@@ -97,14 +98,31 @@ export default function Reports() {
   };
 
   const handleCalculateLateFees = async () => {
+    setCalculatingFees(true);
     try {
       const token = await AsyncStorage.getItem('admin_token');
-      await fetch(`${API_URL}/api/late-fees/calculate-all?admin_token=${token}`, {
+      const response = await fetch(`${API_URL}/api/late-fees/calculate-all?admin_token=${token}`, {
         method: 'POST',
       });
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Failed to calculate late fees');
+      }
+      const data = await response.json();
+      Alert.alert(
+        language === 'et' ? 'Õnnestus' : 'Success',
+        language === 'et' 
+          ? `Viivised arvutatud! ${data.updated_count || 0} klienti uuendatud.`
+          : `Late fees calculated! ${data.updated_count || 0} clients updated.`
+      );
       fetchReports(); // Refresh data
-    } catch (error) {
-      console.error('Error calculating late fees:', error);
+    } catch (error: any) {
+      Alert.alert(
+        language === 'et' ? 'Viga' : 'Error',
+        error.message || (language === 'et' ? 'Viiviste arvutamine ebaõnnestus' : 'Failed to calculate late fees')
+      );
+    } finally {
+      setCalculatingFees(false);
     }
   };
 
@@ -491,8 +509,17 @@ export default function Reports() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>{language === 'et' ? 'Aruanded ja analüütika' : 'Reports & Analytics'}</Text>
-        <TouchableOpacity onPress={handleCalculateLateFees} style={styles.refreshButton}>
-          <Ionicons name="calculator" size={20} color="#fff" />
+        <TouchableOpacity 
+          onPress={handleCalculateLateFees} 
+          style={styles.refreshButton}
+          disabled={calculatingFees}
+          data-testid="calculate-late-fees-btn"
+        >
+          {calculatingFees ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Ionicons name="calculator" size={20} color="#fff" />
+          )}
         </TouchableOpacity>
       </View>
 
