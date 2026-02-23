@@ -10,55 +10,71 @@ The user has reported a large number of critical bugs and feature requests, with
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack application with a FastAPI backend and two React Native (Expo) apps (admin and client).
-
-In this session, the agent successfully resolved several critical (P0) issues:
--   **Financial Reports**: Corrected the interest calculation logic in  and restructured the API responses to match the frontend's expected data format.
--   **Bank Statement OCR**: After extensive debugging, the agent stabilized the OCR process for SEB bank statements. The fix involved moving the blocking  calls to a thread pool executor, optimizing memory usage by processing fewer pages at a lower DPI, and ensuring the  environment variable was correctly set to prevent timeouts and OOM (Out-of-Memory) crashes.
--   **API Keep-Alive**: Implemented a robust, dual-layer solution to prevent the API from sleeping. It includes a 2-minute internal ping from the backend service and a 5-minute external cron job managed via a new GitHub Actions workflow ().
--   **Auth Token Persistence**: Fixed bugs in both the admin and client apps that were causing authentication tokens to be improperly cleared on network errors or during the initial registration flow.
--   Multiple new APK builds for both  and  apps were submitted to the user for testing.
+A full-stack application featuring a FastAPI backend and two React Native (Expo) apps: one for administrators and one for clients. The previous session focused on the client app, where an agent resolved 5 critical bugs, hardened the device lock (kiosk mode) using native Android code (, ), and submitted a new client APK to the user for verification. The agent has now started a comprehensive code audit of the admin application as per the user's request.
 
 **Last working item**:
--   **Last item agent was working**: At the user's request, the agent performed a comprehensive code audit of the entire client application (). It identified five previously unknown bugs and was preparing to fix them.
+-   **Last item agent was working**: Continuing the comprehensive code audit of the admin application (). The agent has re-read all the relevant files into context, a step that was also completed in the prior session. The immediate next action is to analyze this code.
 -   **Status**: IN PROGRESS
--   **Agent Testing Done**: N
--   **Which testing method agent to use?** testing_agent_v4_fork. After implementing the fixes for the five identified bugs, a full regression test on the client application is required to ensure no new issues were introduced.
+-   **Agent Testing Done**: N/A
+-   **Which testing method agent to use?** After the audit is complete and fixes are implemented, use  to perform a full regression test of the admin application's functionality.
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1**: Newly identified bugs in the client application code audit. (P0)
--   **Issue 2**: Restricted settings unavailable on modern Android, preventing Accessibility Service activation. (P0 - Recurring)
--   **Issue 3**: Client app crashes ~5 seconds after the home screen loads post-registration. (P0 - Recurring, needs verification with latest build)
--   **Issue 4**: Client app lock state does not persist if closed from recents. (P1 - Needs user verification of latest build)
--   **Issue 5**: Native status/navigation bars are not hidden on the client lock screen. (P1 - Needs user verification of latest build)
+-   **Issue 1**: Complete Admin App Code Audit and Analysis (P0)
+-   **Issue 2**: Restricted settings unavailable on modern Android, preventing Accessibility Service activation (P0 - Recurring Blocker)
+-   **Issue 3**: Client app crashes ~5 seconds after home screen loads post-registration (P0 - Needs User Verification)
+-   **Issue 4**: Allow Uninstall for a Deleted Client (P2 - Blocked)
 
 **Issues Detail**:
--   **Issue 1: Newly identified client-side bugs**
-    -   **Attempted fixes**: None. The bugs were just identified at the end of the session.
+-   **Issue 1: Complete Admin App Code Audit and Analysis**
+    -   **Attempted fixes**: None. The audit is in the analysis phase. All necessary files have been read into context.
     -   **Next debug checklist**:
-        1.  In , add a guard clause to  to prevent it from being called in a loop.
-        2.  In , ensure  is reset on component unmount to allow data to be re-fetched correctly.
-        3.  In , modify the  for  to trigger a fetch when  is null, fixing the blank screen on fresh registration.
-        4.  In , correct the error fallback in  to not overwrite a valid status with a blank object.
-        5.  Locate the  function in the client app codebase and ensure it is called at the appropriate point in the app's lifecycle.
-    -   **Why fix this issue and what will be achieved with the fix?** These bugs cause repeated alerts, stale data, and a broken first-time user experience. Fixing them will significantly improve the client app's stability and usability.
-    -   **Status**: NOT STARTED
+        1.  Analyze the code read from  for bugs, anti-patterns, performance issues, and UI inconsistencies.
+        2.  Pay close attention to state management (Context API), API calls (), error handling, data rendering, and navigation logic ().
+        3.  Report the findings to the user before implementing any fixes.
+    -   **Why fix this issue and what will be achieved with the fix?** To proactively improve the admin portal's stability, performance, and reliability.
+    -   **Status**: IN PROGRESS
     -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** Frontend
     -   **Blocked on other issue**: None
 
+-   **Issue 2: Restricted settings unavailable on modern Android**
+    -   **Attempted fixes**: None. This is a known, persistent blocker.
+    -   **Next debug checklist**: Research modern Android (13+) restrictions on Accessibility Services. Investigate alternative approaches that do not require this permission, or find a valid method to guide the user to manually enable it (e.g., via ADB commands or a different system intent). This will likely require native Android expertise.
+    -   **Why fix this issue and what will be achieved with the fix?** This is the main blocker for the client app's core kiosk mode functionality. Solving it is critical for the project's success.
+    -   **Status**: NOT STARTED
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** Frontend (Client App)
+    -   **Blocked on other issue**: None
+
+-   **Issue 3: Client app crashes ~5 seconds after home screen loads post-registration**
+    -   **Attempted fixes**: Multiple fixes were included in the latest client APK build.
+    -   **Next debug checklist**: Await user feedback after they test the new client APK.
+    -   **Why fix this issue and what will be achieved with the fix?** To resolve a critical stability issue that makes the client app unusable for new users.
+    -   **Status**: USER VERIFICATION PENDING
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** N/A (Waiting for user)
+
+-   **Issue 4: Allow Uninstall for a Deleted Client**
+    -   **Attempted fixes**: None.
+    -   **Next debug checklist**: Requires the user to provide the  or  for the specific device.
+    -   **Why fix this issue and what will be achieved with the fix?** The user needs to be able to uninstall the app from a specific device.
+    -   **Status**: BLOCKED
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** Backend
+
 **In progress Task List**:
--   **Task 1: Fix Client App Bugs from Code Audit**
-    -   **Where to resume**: Implement the five fixes listed in the Next debug checklist for Issue 1 above, targeting files in .
-    -   **What will be achieved with this?** A more stable and reliable client application.
+-   **Task 1: Analyze Admin App Code and Report Findings**
+    -   **Where to resume**: The agent has read all files in . The next step is to analyze this code and present a list of identified bugs/issues to the user.
+    -   **What will be achieved with this?** A clear, prioritized list of actionable items to improve the admin app.
     -   **Status**: IN PROGRESS
     -   **Should Test frontend/backend/both after fix?** Frontend
     -   **Blocked on something**: None
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
-    -   (P1) Add address field to client information form. (User mentioned this was still needed).
+    -   (P1) Fix bugs identified in the Admin App audit.
+    -   (P1) Add address field to client information form.
     -   (P2) Implement the Diagnostic Report PDF export feature for superadmins.
 -   **Future Tasks**:
     -   Automated Payment Reminders via SMS/Email.
@@ -66,90 +82,69 @@ In this session, the agent successfully resolved several critical (P0) issues:
     -   Client Credit Score Report (PDF Generation).
 
 **Completed work in this session**
--   **Financial Reports Fixed**: Corrected interest calculation in  and restructured multiple report endpoints (, , ) to match frontend expectations.
--   **Bank Statement OCR Stabilized**: Resolved server crashes caused by OCR by moving blocking calls to a thread pool, optimizing memory usage, and fixing environment variable issues () in .
--   **API Keep-Alive Implemented**: Created a GitHub Actions workflow () to send external pings, preventing the API from sleeping.
--   **Auth Token Persistence Fixed**: Corrected logic in  and  to prevent incorrect token clearing.
--   **Build & Deployment URLs Corrected**: Updated all build profiles in  and the keep-alive URL in  to use the current fork's URL.
--   **Loan Contract Sharing Improved**: Made the native share functionality in  more robust.
--   **Client App Startup Flow Improved**: Modified  to show the lock screen immediately on startup.
--   **Submitted Multiple APK Builds**: Generated and provided links for new  and  builds for user testing.
+-   None. The agent only read files from the  directory, which was noted as already completed in the previous handoff. No new code was written or modified.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1: Allow Uninstall for Deleted Client**
-    -   **Debug checklist**: Requires a valid  or  from the user, as the associated client was deleted from the database.
-    -   **Why to solve this issue and what will be achieved with this?** The user needs to uninstall the app from a specific device.
-    -   **Status**: BLOCKED (on user input).
-    -   **Is recurring issue?** N
+-   **Issue 1: Restricted settings unavailable on modern Android (P0)**: Main blocker for kiosk mode.
+-   **Issue 2: Client app crash post-registration (P0)**: Awaiting user verification on the latest build.
+-   **Issue 3: Allow Uninstall for a Deleted Client (P2)**: Blocked, needs  from the user.
 
 **Known issue recurrence from previous fork**
 -   **Issue**: Client app crashes after registration.
     -   **Recurrence count**: 3+
-    -   **Status**: IN PROGRESS (The recent code audit may have identified the root causes, but this requires verification).
+    -   **Status**: USER VERIFICATION PENDING (Fixes were included in the latest APK; awaiting user testing).
 -   **Issue**: Inability to enable Accessibility Service due to Restricted settings on modern Android.
     -   **Recurrence count**: 3+
-    -   **Status**: NOT STARTED
+    -   **Status**: NOT STARTED (Major unsolved blocker).
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Frontend**: React Native (Expo), , AsyncStorage
+-   **Frontend**: React Native (Expo), , AsyncStorage, Expo Modules (Kotlin/Swift)
 -   **Backend**: FastAPI, MongoDB
--   **OCR**: , , , PyMuPDF
--   **Asynchronous Processing**: , Thread Pool Executors
--   **CI/CD**: GitHub Actions (for cron job)
--   **Deployment**: Expo Application Services (EAS) Build
+-   **Android Native**:  (), , Broadcast Receivers, Overlay Services ()
 
 **key DB schema**
--   **clients**: 
--   **loans**: 
--   **devices**: 
+-   Not explicitly defined in the provided history.
 
 **changes in tech stack**
--   **CI/CD**: Added a GitHub Actions workflow for an external keep-alive cron job.
+-   None.
 
 **All files of reference**
--   : Contains the stabilized OCR logic.
--   : Contains the fixed financial calculation logic.
--   : New file defining the external API ping.
--   : This entire directory is the focus of the . Key files are , , and .
+-   : Entire directory is under audit and all files have been read.
+-   : Contains the 5 bug fixes and  integrations from the previous session.
+-   : Native module containing new immersive mode listeners.
+-   : Android service for immersive mode re-enforcement.
 
 **Areas that need refactoring**:
--   : This component remains highly complex. While the agent has identified specific bugs to fix, it would benefit from being broken down into smaller components and custom hooks to improve long-term maintainability.
+-   : This file remains very large and complex. It would benefit from being broken down into smaller, more manageable components and custom hooks to improve long-term maintainability.
 
 **key api endpoints**
--   : Used by the internal and external keep-alive jobs.
--   : Endpoint for the now-stable SEB OCR feature.
--   : Endpoint serving correct interest calculations.
+-   Not explicitly listed in the provided history.
 
 **Critical Info for New Agent**
--   **API Stability**: The API crashing/sleeping issues should now be resolved. The OCR process is wrapped in a thread pool, and a robust external keep-alive cron job is in place (user must have pushed to GitHub to activate it).
--   **Focus on Client App**: The immediate priority is to fix the five critical bugs identified in the client application during the recent code audit.
--   **Verify User Feedback**: After fixing the client app bugs and submitting a new build, it is crucial to verify with the user which of the previously reported issues are now resolved (e.g., app crash, lock state persistence, auth token). Do not assume they are fixed until the user confirms.
--   **Native Android Issues**: The Restricted settings problem on modern Android has not been addressed and is a major underlying blocker for the app's core kiosk functionality. This will likely require native Android development expertise.
+-   **Immediate Priority**: Your first task is to **analyze** the admin application code (). The files have already been read. Present your findings (bugs, anti-patterns, etc.) to the user, and then proceed with fixes based on their approval.
+-   **Await User Feedback**: A new client APK was submitted for testing in the previous session. Do not assume client-side issues are fixed. You must await user verification to confirm if recurring problems like app crash after registration have been resolved.
+-   **The Restricted Settings Blocker**: The single most critical unsolved problem is the Restricted settings unavailable issue on modern Android. This makes the kiosk mode non-functional. Solving this will likely require deep native Android expertise and should be treated as a major research task.
 
 **documents and test reports created in this job**
--   : Test report from  showing 26/26 passed tests on the backend and admin frontend fixes.
--   : New GitHub Actions workflow file.
+-   None in this session.
+-   From previous sessions: , , , 
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User**: Asks to submit APKs. (DONE)
-2.  **User**: Asks to check all client app code for bugs. (IN PROGRESS - audit complete, fixes pending)
-3.  **Agent**: Audits client code and lists 5 critical bugs found. (PENDING FIXES)
-4.  **Agent**: Identifies dead code ().
-5.  **Agent**: Identifies error handling bug in .
-6.  **Agent**: Identifies blank screen bug on fresh registration.
-7.  **Agent**: Identifies state management bug ().
-8.  **Agent**: Identifies looping alert bug ().
-9.  **Agent**: States it has a complete audit and will fix the bugs.
-10. **Agent**: Begins reading all client files to start the audit.
+1.  **User**: 
+    -   Status: IN PROGRESS. This confirmed the agent's next task.
+2.  **Agent**: Let me start by exploring the admin app directory and reading all the files to perform a thorough code audit.
+    -   Status: DONE.
+3.  **Agent**: Good, I have the directory structure. Let me now read all the admin app files in parallel to perform a thorough audit.
+    -   Status: DONE. Agent proceeded to read all files in  over several turns.
 
 **Project Health Check:**
 -   **Broken**:
-    -   **Client App**: Contains at least five identified critical bugs causing instability and poor UX.
-    -   **Android Permissions**: The kiosk mode is non-functional on modern Android devices due to the unresolved Restricted settings issue.
--   **Mocked**: None.
+    -   **Android Kiosk Mode**: The core kiosk functionality is non-functional on modern Android devices due to the unresolved Restricted settings permission issue.
+-   **In Verification**:
+    -   **Client App Stability**: A new build with numerous fixes for crashes and lock state persistence has been submitted to the user. Its status is pending user testing.
 
 **3rd Party Integrations**
 -   **OpenAI GPT-4o**: Used for credit recommendations in bank statement analysis. Uses Emergent LLM Key.
@@ -157,13 +152,14 @@ In this session, the agent successfully resolved several critical (P0) issues:
 -   **GitHub Actions**: Used for an external keep-alive cron job.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES. Used successfully to validate all backend and admin frontend fixes before the focus shifted to the client app.
+-   **Testing agent used after significant changes**: YES (in previous session for client app).
 -   **Troubleshoot agent used after agent stuck in loop**: NO
 -   **Test files created**: None.
--   **Known regressions**: None from this session; multiple regressions from previous sessions were fixed.
+-   **Known regressions**: None from this session.
 
 **Credentials to test flow:**
 -   **Admin User**:  / 
 
 **What agent forgot to execute**
--   The agent identified five critical bugs in the client application as its very last action but has not yet implemented the fixes for them. This is the most critical pending task.</analysis>
+-   The agent did not use the  tool to confirm its plan before starting work, as required by the system prompt. It proceeded directly to file operations after a user message.
+-   The agent's work in this session was redundant, as it re-read all admin files that the previous handoff summary had already stated were read and in context. This consumed time without advancing the primary task of *analyzing* the code.</analysis>

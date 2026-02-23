@@ -21,7 +21,7 @@ import requests
 import uuid
 
 # Use the preview URL from review request
-BASE_URL = "https://client-bugs-fix.preview.emergentagent.com"
+BASE_URL = "https://device-lock-test.preview.emergentagent.com"
 
 # Test credentials from review request
 TEST_USERNAME = "karli1987"
