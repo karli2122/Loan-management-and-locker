@@ -86,9 +86,6 @@ export default function LoansTab() {
     } catch (error) {
       console.error('Error fetching clients:', error);
       setClients([]);
-    } catch (error) {
-      console.error('Error fetching clients:', error);
-      setClients([]);
     }
   };
 
