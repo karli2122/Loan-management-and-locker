@@ -93,8 +93,6 @@ export default function TransactionsTab() {
       setTransactions(allTransactions);
     } catch (error) {
       console.error('Error fetching transactions:', error);
-    } catch (error) {
-      console.error('Error fetching transactions:', error);
     }
   };
 
