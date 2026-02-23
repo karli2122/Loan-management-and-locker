@@ -1660,6 +1660,7 @@ export default function ClientDetails() {
                 style={[styles.modalButton, styles.paymentConfirmButton]}
                 onPress={handleRecordPayment}
                 disabled={actionLoading}
+                data-testid="confirm-payment-btn"
               >
                 {actionLoading ? (
                   <ActivityIndicator color="#fff" size="small" />
@@ -1697,6 +1698,7 @@ export default function ClientDetails() {
                 style={[styles.modalButton, styles.modalConfirmButton]}
                 onPress={handleSendWarning}
                 disabled={actionLoading}
+                data-testid="confirm-warning-btn"
               >
                 {actionLoading ? (
                   <ActivityIndicator color="#fff" size="small" />
@@ -1735,6 +1737,7 @@ export default function ClientDetails() {
                 style={[styles.modalButton, styles.lockConfirmButton]}
                 onPress={handleLock}
                 disabled={actionLoading}
+                data-testid="confirm-lock-btn"
               >
                 {actionLoading ? (
                   <ActivityIndicator color="#fff" size="small" />
@@ -1798,6 +1801,7 @@ export default function ClientDetails() {
                 style={[styles.modalButton, styles.modalConfirmButton]}
                 onPress={handleSaveDeviceInfo}
                 disabled={actionLoading}
+                data-testid="save-device-info-btn"
               >
                 {actionLoading ? (
                   <ActivityIndicator color="#fff" size="small" />
@@ -1877,6 +1881,7 @@ export default function ClientDetails() {
                 style={[styles.modalButton, styles.modalConfirmButton]}
                 onPress={handleSaveClientInfo}
                 disabled={actionLoading}
+                data-testid="save-client-info-btn"
               >
                 {actionLoading ? (
                   <ActivityIndicator color="#fff" size="small" />
