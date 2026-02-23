@@ -81,7 +81,7 @@ export const DeviceInfo = ({
             </View>
             <View style={styles.priceInfo}>
               <Text style={styles.priceLabel}>{t('usedPrice')}</Text>
-              <Text style={styles.priceValue}>${client.used_price_eur.toFixed(2)}</Text>
+              <Text style={styles.priceValue}>{'\u20AC'}{client.used_price_eur.toFixed(2)}</Text>
               {client.price_fetched_at && (
                 <Text style={styles.priceDate}>
                   {new Date(client.price_fetched_at).toLocaleDateString('et-EE')}
