@@ -129,6 +129,15 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - **Bug 5**: Connected `checkAndSetupDeviceProtection` to lifecycle — Function was defined but never called; now invoked in `initializeProtection` effect for proper device admin setup
 - All 5 fixes verified via testing agent (12/12 tests passed)
 
+### OS-Level Screen Lock via DevicePolicyManager.lockNow()
+- Integrated `devicePolicy.lockDevice()` (calls native `DevicePolicyManager.lockNow()`) at 4 security-critical points:
+  1. **Lock state transition**: When admin locks device, OS screen locks immediately (PIN/pattern required)
+  2. **Boot with cached lock**: If device was locked when rebooted, locks OS screen on app startup
+  3. **Tamper detection**: When Device Admin is forcefully disabled, locks device immediately
+  4. **App resume while locked**: Re-locks OS screen every time app returns to foreground
+- This is a hard OS-level lock — even if user bypasses the app's lock screen, the device itself requires PIN/pattern
+- Verified via testing agent (all integration points confirmed)
+
 ## Pending User Verification
 - P0: Client app crash after registration (~5s after home load) — verify on device; needs logcat if it persists
 - P0: Accessibility restricted settings on Samsung Android 16 — verify updated Loan Client sequence
