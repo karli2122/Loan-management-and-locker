@@ -138,6 +138,13 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - This is a hard OS-level lock — even if user bypasses the app's lock screen, the device itself requires PIN/pattern
 - Verified via testing agent (all integration points confirmed)
 
+### Status Bar & Navigation Bar Hide Workaround (3-Layer Defense)
+- **Layer 1 — Enhanced Overlay Service**: Expanded blocker overlays by 20px beyond actual bar heights to catch edge swipe gestures. Added `FLAG_WATCH_OUTSIDE_TOUCH` to intercept touches outside the overlay. Service now sends `REAPPLY_IMMERSIVE` broadcast every 1s to the module.
+- **Layer 2 — Broadcast Receiver Guard**: Native module registers a `BroadcastReceiver` that re-applies immersive mode on the activity every time the overlay service pings (every ~1s). This catches cases where focus changes, dialogs, or system events restore bars.
+- **Layer 3 — Instant Visibility Listener**: `OnSystemUiVisibilityChangeListener` (pre-API 30) instantly re-hides bars the moment Android shows them. For API 30+, `BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE` auto-hides bars after swipe.
+- Guards are installed when `enableImmersiveMode()` is called and cleaned up when `disableImmersiveMode()` is called.
+- Verified via testing agent (8/8 features confirmed)
+
 ## Pending User Verification
 - P0: Client app crash after registration (~5s after home load) — verify on device; needs logcat if it persists
 - P0: Accessibility restricted settings on Samsung Android 16 — verify updated Loan Client sequence
