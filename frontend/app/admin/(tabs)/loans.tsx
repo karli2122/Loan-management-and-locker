@@ -71,7 +71,6 @@ export default function LoansTab() {
       const adminToken = await AsyncStorage.getItem('admin_token');
       if (!adminToken) {
         setClients([]);
-        setLoading(false);
         return;
       }
       const response = await fetch(`${API_URL}/api/clients?limit=500&admin_token=${adminToken}`);
@@ -87,8 +86,9 @@ export default function LoansTab() {
     } catch (error) {
       console.error('Error fetching clients:', error);
       setClients([]);
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+      setClients([]);
     }
   };
 

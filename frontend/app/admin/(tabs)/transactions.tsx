@@ -42,13 +42,11 @@ export default function TransactionsTab() {
       const adminToken = await AsyncStorage.getItem('admin_token');
       if (!adminToken) {
         setTransactions([]);
-        setLoading(false);
         return;
       }
       const response = await fetch(`${API_URL}/api/clients?limit=500&admin_token=${adminToken}`);
       if (!response.ok) {
         setTransactions([]);
-        setLoading(false);
         return;
       }
       const data = await response.json();
@@ -95,8 +93,8 @@ export default function TransactionsTab() {
       setTransactions(allTransactions);
     } catch (error) {
       console.error('Error fetching transactions:', error);
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
     }
   };
 
