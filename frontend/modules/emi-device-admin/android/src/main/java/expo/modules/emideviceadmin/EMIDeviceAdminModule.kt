@@ -754,6 +754,7 @@ class EMIDeviceAdminModule : Module() {
         }
 
         // Enable immersive mode — hides status bar and navigation bar completely
+        // Also installs a broadcast receiver + visibility listener to auto-re-hide bars
         AsyncFunction("enableImmersiveMode") { promise: Promise ->
             try {
                 val currentActivity = activity
@@ -762,23 +763,10 @@ class EMIDeviceAdminModule : Module() {
                     return@AsyncFunction
                 }
                 currentActivity.runOnUiThread {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        currentActivity.window.insetsController?.let { controller ->
-                            controller.hide(android.view.WindowInsets.Type.statusBars() or android.view.WindowInsets.Type.navigationBars())
-                            controller.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                        }
-                    } else {
-                        @Suppress("DEPRECATION")
-                        currentActivity.window.decorView.systemUiVisibility =
-                            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
-                            View.SYSTEM_UI_FLAG_FULLSCREEN or
-                            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
-                            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
-                            View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    }
+                    applyImmersiveMode(currentActivity)
+                    installImmersiveGuards(currentActivity)
                 }
-                Log.d(TAG, "enableImmersiveMode: System bars hidden")
+                Log.d(TAG, "enableImmersiveMode: System bars hidden + guards installed")
                 promise.resolve("enabled")
             } catch (e: Exception) {
                 Log.e(TAG, "enableImmersiveMode error: ${e.message}")
@@ -787,6 +775,7 @@ class EMIDeviceAdminModule : Module() {
         }
 
         // Disable immersive mode — restores status bar and navigation bar
+        // Also removes the broadcast receiver and visibility listener
         AsyncFunction("disableImmersiveMode") { promise: Promise ->
             try {
                 val currentActivity = activity
@@ -804,7 +793,8 @@ class EMIDeviceAdminModule : Module() {
                         currentActivity.window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
                     }
                 }
-                Log.d(TAG, "disableImmersiveMode: System bars restored")
+                uninstallImmersiveGuards()
+                Log.d(TAG, "disableImmersiveMode: System bars restored + guards removed")
                 promise.resolve("disabled")
             } catch (e: Exception) {
                 Log.e(TAG, "disableImmersiveMode error: ${e.message}")
