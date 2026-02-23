@@ -21,9 +21,10 @@ import android.view.WindowManager
 
 /**
  * Foreground overlay service that:
- * - Blocks status bar pull-down and navigation bar
+ * - Blocks status bar pull-down and navigation bar with expanded overlay zones
  * - Runs as foreground service (won't be killed by Android)
  * - When device is LOCKED: watchdog relaunches app every second if not in foreground
+ * - Re-enforces immersive mode every refresh cycle to prevent bar re-appearance
  * - Refreshes overlay every second for persistence
  */
 class EMIOverlayService : Service() {
@@ -34,6 +35,8 @@ class EMIOverlayService : Service() {
         private const val REFRESH_INTERVAL_MS = 1000L
         private const val PREFS_NAME = "emi_device_admin_prefs"
         private const val KEY_LOCKED = "is_locked"
+        // Extra pixels beyond the actual bar height to catch edge swipe gestures
+        private const val BLOCKER_OVERFLOW_PX = 20
         var isRunning = false
     }
 
@@ -97,11 +100,47 @@ class EMIOverlayService : Service() {
         refreshRunnable = object : Runnable {
             override fun run() {
                 ensureBlockersActive()
+                reEnforceImmersiveMode()
                 watchdogRelaunchIfLocked()
                 handler.postDelayed(this, REFRESH_INTERVAL_MS)
             }
         }
         handler.postDelayed(refreshRunnable!!, REFRESH_INTERVAL_MS)
+    }
+
+    /**
+     * Re-enforce immersive mode every refresh cycle.
+     * The system can restore bars after edge swipes, focus changes, or dialogs.
+     * This ensures they are hidden again within 1 second.
+     */
+    private fun reEnforceImmersiveMode() {
+        try {
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val isLocked = prefs.getBoolean(KEY_LOCKED, false)
+            if (!isLocked) return
+
+            // Find the foreground activity and re-apply immersive mode
+            val am = getSystemService(ACTIVITY_SERVICE) as? ActivityManager ?: return
+            val processInfo = ActivityManager.RunningAppProcessInfo()
+            ActivityManager.getMyMemoryState(processInfo)
+            val isInForeground = processInfo.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+
+            if (isInForeground) {
+                handler.post {
+                    try {
+                        // Use reflection-free approach: post to main thread and find the decor view
+                        // The overlay service can't directly access the activity, but we can
+                        // send a broadcast that the module will pick up
+                        val intent = Intent("expo.modules.emideviceadmin.REAPPLY_IMMERSIVE")
+                        sendBroadcast(intent)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "reEnforceImmersiveMode error: ${e.message}")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "reEnforceImmersiveMode error: ${e.message}")
+        }
     }
 
     /**
@@ -150,15 +189,17 @@ class EMIOverlayService : Service() {
     private fun createBlockers() {
         val wm = windowManager ?: return
 
-        // Status bar blocker — solid black to completely hide the status bar when locked
+        // Status bar blocker — solid black, expanded height to catch edge swipe gestures
         topBlocker = View(this).apply {
             setBackgroundColor(Color.BLACK)
             setOnTouchListener { _, _ -> true } // Consume all touches
         }
 
+        val topHeight = getStatusBarHeight() + BLOCKER_OVERFLOW_PX
+
         val topParams = WindowManager.LayoutParams().apply {
             width = WindowManager.LayoutParams.MATCH_PARENT
-            height = getStatusBarHeight()
+            height = topHeight
             type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             } else {
@@ -167,7 +208,8 @@ class EMIOverlayService : Service() {
             }
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
             format = PixelFormat.OPAQUE
             gravity = Gravity.TOP
         }
@@ -178,15 +220,17 @@ class EMIOverlayService : Service() {
             Log.e(TAG, "Failed to add top blocker: ${e.message}")
         }
 
-        // Navigation bar blocker — solid black to completely hide the nav bar when locked
+        // Navigation bar blocker — solid black, expanded height to catch edge swipe gestures
         bottomBlocker = View(this).apply {
             setBackgroundColor(Color.BLACK)
             setOnTouchListener { _, _ -> true } // Consume all touches
         }
 
+        val bottomHeight = getNavigationBarHeight() + BLOCKER_OVERFLOW_PX
+
         val bottomParams = WindowManager.LayoutParams().apply {
             width = WindowManager.LayoutParams.MATCH_PARENT
-            height = getNavigationBarHeight()
+            height = bottomHeight
             type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             } else {
@@ -195,7 +239,8 @@ class EMIOverlayService : Service() {
             }
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
             format = PixelFormat.OPAQUE
             gravity = Gravity.BOTTOM
         }
