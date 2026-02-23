@@ -768,6 +768,13 @@ export default function ClientHome() {
           // Native setup (setClientInfo, setRegistered, backupClientData) 
           // will happen on the NEXT app open via loadClientData() and protection setup flow.
           
+          // Fetch status so the user sees their data instead of a blank screen
+          try {
+            await fetchStatus(id);
+          } catch (e) {
+            console.log('Fresh registration fetchStatus error (non-fatal):', e);
+          }
+          
           return;
         }
         
