@@ -145,6 +145,19 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - Guards are installed when `enableImmersiveMode()` is called and cleaned up when `disableImmersiveMode()` is called.
 - Verified via testing agent (8/8 features confirmed)
 
+### Admin App Code Audit - All 12 Issues Resolved (Feb 23, 2026)
+- **Fixes from previous session (7 of 12)**:
+  - UI: Corrected dashboard interest card margins, reduced tab bar height
+  - UX: Added dashboard loading state, pagination for transactions, success/error feedback in reports
+  - Bug: Fixed stale closure in loans filter, strengthened due date validation in add-loan
+- **Fixes completed this session (5 of 12)**:
+  - **#7/#8 (HIGH)**: Auto-refresh race condition in `client-details.tsx` — Added `useRef`-based modal guard that pauses the 15-second auto-refresh when any modal is open (payment, warning, lock, edit device, edit client, edit loan)
+  - **#10 (MINOR)**: Removed unused `loading` state variables in `loans.tsx` and `transactions.tsx`
+  - **#12 (MINOR)**: Added 10+ missing `data-testid` attributes to interactive elements in `client-details.tsx` (confirm-payment-btn, confirm-warning-btn, confirm-lock-btn, save-device-info-btn, save-client-info-btn, toggle-lock-btn, allow-uninstall-btn, delete-client-btn)
+  - **#9 (MEDIUM)**: Installed missing `date-fns` dependency
+  - **Testing agent fixes**: Fixed missing `ActivityIndicator` import in dashboard `index.tsx`, removed duplicate catch blocks in `loans.tsx` and `transactions.tsx`
+- **All 12 audit items resolved**. Full regression test passed (100% - login, dashboard, loans, transactions, client details, add loan all working)
+
 ## Pending User Verification
 - P0: Client app crash after registration (~5s after home load) — verify on device; needs logcat if it persists
 - P0: Accessibility restricted settings on Samsung Android 16 — verify updated Loan Client sequence
