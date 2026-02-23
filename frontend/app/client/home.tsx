@@ -980,19 +980,9 @@ export default function ClientHome() {
         
         await AsyncStorage.setItem('last_app_start', now.toString());
 
-        // Enable uninstall protection if admin is active — silently, no alerts
-        try {
-          const isAdmin = await devicePolicy.isAdminActive();
-          if (isAdmin) {
-            await devicePolicy.preventUninstall(true);
-            await reportAdminStatus(clientId, true);
-            console.log('Uninstall protection enabled');
-          } else {
-            await reportAdminStatus(clientId, false);
-          }
-        } catch (adminErr) {
-          console.log('Protection check error (non-fatal):', adminErr);
-        }
+        // Setup device protection: checks admin status, prompts user if needed,
+        // enables uninstall protection, and reports status to backend
+        await checkAndSetupDeviceProtection();
         
       } catch (error) {
         console.log('Protection initialization error:', error);
