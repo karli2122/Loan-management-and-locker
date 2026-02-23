@@ -907,7 +907,7 @@ export default function ClientDetails() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.text }]}>{t('clientDetails')}</Text>
-        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete} data-testid="delete-client-btn">
           <Ionicons name="trash" size={20} color={colors.error} />
         </TouchableOpacity>
       </View>
@@ -1572,6 +1572,7 @@ export default function ClientDetails() {
               style={[styles.actionButton, client.is_locked ? styles.unlockButton : styles.lockButton]}
               onPress={client.is_locked ? handleUnlock : () => setLockModal(true)}
               disabled={actionLoading}
+              data-testid="toggle-lock-btn"
             >
               <Ionicons name={client.is_locked ? 'lock-open' : 'lock-closed'} size={20} color="#fff" />
               <Text style={styles.actionButtonText}>
@@ -1583,6 +1584,7 @@ export default function ClientDetails() {
               style={[styles.actionButton, styles.allowUninstallButton]}
               onPress={handleAllowUninstall}
               disabled={actionLoading}
+              data-testid="allow-uninstall-btn"
             >
               <Ionicons name="shield-checkmark" size={20} color="#fff" />
               <Text style={styles.actionButtonText}>Allow Uninstall</Text>
