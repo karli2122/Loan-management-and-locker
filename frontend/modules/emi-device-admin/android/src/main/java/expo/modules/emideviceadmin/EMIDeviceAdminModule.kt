@@ -1024,4 +1024,124 @@ class EMIDeviceAdminModule : Module() {
             }
         }
     }
+
+    // ===================== IMMERSIVE MODE HELPERS =====================
+
+    /**
+     * Apply immersive mode to the given activity — hides status bar and navigation bar.
+     * Must be called on the UI thread.
+     */
+    private fun applyImmersiveMode(act: Activity) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                act.window.insetsController?.let { controller ->
+                    controller.hide(android.view.WindowInsets.Type.statusBars() or android.view.WindowInsets.Type.navigationBars())
+                    controller.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                act.window.decorView.systemUiVisibility =
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                    View.SYSTEM_UI_FLAG_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "applyImmersiveMode error: ${e.message}")
+        }
+    }
+
+    /**
+     * Install two persistent guards that auto-re-hide system bars:
+     * 1. A BroadcastReceiver that re-applies immersive mode when the overlay service requests it (every ~1s)
+     * 2. An OnSystemUiVisibilityChangeListener that instantly re-hides bars the moment Android shows them
+     */
+    private fun installImmersiveGuards(act: Activity) {
+        // Guard 1: Broadcast receiver — overlay service sends REAPPLY_IMMERSIVE every second
+        if (immersiveReceiver == null) {
+            immersiveReceiver = object : BroadcastReceiver() {
+                override fun onReceive(ctx: Context?, intent: Intent?) {
+                    try {
+                        val currentAct = activity ?: return
+                        currentAct.runOnUiThread {
+                            applyImmersiveMode(currentAct)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "immersiveReceiver onReceive error: ${e.message}")
+                    }
+                }
+            }
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    context.registerReceiver(
+                        immersiveReceiver,
+                        IntentFilter(ACTION_REAPPLY_IMMERSIVE),
+                        Context.RECEIVER_NOT_EXPORTED
+                    )
+                } else {
+                    context.registerReceiver(
+                        immersiveReceiver,
+                        IntentFilter(ACTION_REAPPLY_IMMERSIVE)
+                    )
+                }
+                Log.d(TAG, "Immersive broadcast receiver registered")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to register immersive receiver: ${e.message}")
+            }
+        }
+
+        // Guard 2: System UI visibility change listener — instant re-hide when bars appear
+        if (!visibilityListenerInstalled) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                // Pre-Android 11: use deprecated but effective listener
+                @Suppress("DEPRECATION")
+                act.window.decorView.setOnSystemUiVisibilityChangeListener { visibility ->
+                    @Suppress("DEPRECATION")
+                    val fullscreen = View.SYSTEM_UI_FLAG_FULLSCREEN
+                    // If bars become visible (fullscreen flag dropped), re-hide them immediately
+                    if (visibility and fullscreen == 0) {
+                        act.window.decorView.postDelayed({
+                            applyImmersiveMode(act)
+                        }, 100) // Small delay to let the system settle
+                    }
+                }
+            }
+            // For Android 11+ (API 30+), the WindowInsetsController with BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            // already auto-hides bars after swipe. The broadcast-based 1s refresh is the backup.
+            visibilityListenerInstalled = true
+            Log.d(TAG, "System UI visibility listener installed")
+        }
+    }
+
+    /**
+     * Remove the immersive mode guards (broadcast receiver + visibility listener).
+     * Called when immersive mode is disabled (device unlocked).
+     */
+    private fun uninstallImmersiveGuards() {
+        try {
+            immersiveReceiver?.let {
+                context.unregisterReceiver(it)
+                immersiveReceiver = null
+                Log.d(TAG, "Immersive broadcast receiver unregistered")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to unregister immersive receiver: ${e.message}")
+        }
+
+        if (visibilityListenerInstalled) {
+            try {
+                val act = activity
+                if (act != null && Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                    @Suppress("DEPRECATION")
+                    act.window.decorView.setOnSystemUiVisibilityChangeListener(null)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to remove visibility listener: ${e.message}")
+            }
+            visibilityListenerInstalled = false
+            Log.d(TAG, "System UI visibility listener removed")
+        }
+    }
 }
