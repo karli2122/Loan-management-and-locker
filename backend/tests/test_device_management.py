@@ -11,7 +11,7 @@ import secrets
 # Use environment variable for backend URL
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://audit-fixes-preview.preview.emergentagent.com"
+    BASE_URL = "https://loan-admin-refactor.preview.emergentagent.com"
 
 # Test credentials
 ADMIN_USERNAME = "karli1987"
