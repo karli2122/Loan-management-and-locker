@@ -89,6 +89,7 @@ export default function Dashboard() {
     labels: [],
     data: [],
   });
+  const [initialLoading, setInitialLoading] = useState(true);
   
   // Admin filter state
   const [adminList, setAdminList] = useState<AdminUser[]>([]);
@@ -1058,7 +1059,6 @@ const styles = StyleSheet.create({
   interestCard: {
     borderRadius: 12,
     padding: 14,
-    marginHorizontal: 20,
     marginTop: 10,
     borderWidth: 1,
   },
