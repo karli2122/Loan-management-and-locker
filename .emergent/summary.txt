@@ -1,122 +1,169 @@
-<analysis>**original_problem_statement**: The user initially requested features for dashboard analytics, a client portal, an audit log, and credit score tracking. Subsequent requests included a dark/light theme, automatic credit score adjustments, and various UI/UX improvements like date pickers and loan archiving.
+<analysis>**original_problem_statement**: The user's project is a loan management application with a client-facing Android app that requires a robust device-locking (kiosk) mode, and an admin-facing app for management.
 
-The most recent user requests, which are the focus of the current work, are:
-1.  Fixing the Theme Persistence Bug.
-2.  Applying the theme to all remaining pages.
-3.  Adding a Loan History section on client detail pages for archived loans.
-4.  Automating the loan archiving process and removing the Settled tab from the loans page.
+The user has reported a large number of critical bugs and feature requests, with the highest priorities being:
+1.  **Bank Statement Analyzer (P0)**: The app was crashing when trying to process SEB bank statements via OCR.
+2.  **Financial Calculations (P0)**: Interest and profit calculations were incorrect (showing as 0) across the admin dashboard, reports, and analytics.
+3.  **Client App Stability (P0)**: The client app was reported to crash after registration, forget its authentication token on restart, and fail to maintain its locked state.
+4.  **API Inactivity (P0)**: The preview environment's API was sleeping due to inactivity, making the application unreliable for testing.
+5.  **Native Android Issues (P0)**: A persistent Restricted settings unavailable issue on modern Android devices blocks the app's core kiosk functionality.
 
-**PRODUCT REQUIREMENTS**:
-1.  **Loan Archiving**: Completed loans must be moved to a separate Paid Loans collection for historical records. (Completed, pending user verification)
-2.  **Theme Persistence**: Fix the bug where the dark/light theme does not persist visually across page navigations. (Completed in this session)
-3.  **Full Theme Support**: Apply the dark/light theme to all pages in the application. (Completed for major pages in this session)
-4.  **Client Loan History**: Display a history of a client's previously archived loans on their detail page. (In Progress)
-5.  **Automated Archiving**: When a loan is marked as paid, it should be automatically archived, and the Settled tab should be removed. (Not Started)
-
-**User's preferred language**: English (Note: The application's UI text is in Estonian).
+**User's preferred language**: English
 
 **what currently exists?**
-The application's critical theme persistence bug has been resolved. The agent systematically refactored multiple pages (, , , , etc.) to remove hardcoded colors and replace them with dynamic styles from the  hook. The fix was validated by the testing subagent, which confirmed that the theme now toggles correctly and persists across pages.
+A full-stack application with a FastAPI backend and two React Native (Expo) apps (admin and client).
 
-Following the theme fix, the agent began implementing the Loan History feature. A new backend endpoint  was created to fetch archived loans for a specific client. The frontend client detail page () was updated to include the logic and UI to display this history.
+In this session, the agent successfully resolved several critical (P0) issues:
+-   **Financial Reports**: Corrected the interest calculation logic in  and restructured the API responses to match the frontend's expected data format.
+-   **Bank Statement OCR**: After extensive debugging, the agent stabilized the OCR process for SEB bank statements. The fix involved moving the blocking  calls to a thread pool executor, optimizing memory usage by processing fewer pages at a lower DPI, and ensuring the  environment variable was correctly set to prevent timeouts and OOM (Out-of-Memory) crashes.
+-   **API Keep-Alive**: Implemented a robust, dual-layer solution to prevent the API from sleeping. It includes a 2-minute internal ping from the backend service and a 5-minute external cron job managed via a new GitHub Actions workflow ().
+-   **Auth Token Persistence**: Fixed bugs in both the admin and client apps that were causing authentication tokens to be improperly cleared on network errors or during the initial registration flow.
+-   Multiple new APK builds for both  and  apps were submitted to the user for testing.
 
 **Last working item**:
--   Last item agent was working: Implementing the Loan History section on the client detail page. This involved creating a backend endpoint to fetch a specific client's archived loans and adding the corresponding UI and data fetching logic on the frontend.
--   Status: IN PROGRESS
--   Agent Testing Done: N (Backend endpoint tested via , but no end-to-end test of the feature has been performed).
--   Which testing method agent to use? Frontend testing agent. The test should log in, navigate to a client that has an archived loan, and verify that the Loan History section appears and correctly displays the archived loan data.
--   User Testing Done: N
+-   **Last item agent was working**: At the user's request, the agent performed a comprehensive code audit of the entire client application (). It identified five previously unknown bugs and was preparing to fix them.
+-   **Status**: IN PROGRESS
+-   **Agent Testing Done**: N
+-   **Which testing method agent to use?** testing_agent_v4_fork. After implementing the fixes for the five identified bugs, a full regression test on the client application is required to ensure no new issues were introduced.
+-   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-There are no outstanding issues. The primary bug (theme persistence) was resolved in this session.
+-   **Issue 1**: Newly identified bugs in the client application code audit. (P0)
+-   **Issue 2**: Restricted settings unavailable on modern Android, preventing Accessibility Service activation. (P0 - Recurring)
+-   **Issue 3**: Client app crashes ~5 seconds after the home screen loads post-registration. (P0 - Recurring, needs verification with latest build)
+-   **Issue 4**: Client app lock state does not persist if closed from recents. (P1 - Needs user verification of latest build)
+-   **Issue 5**: Native status/navigation bars are not hidden on the client lock screen. (P1 - Needs user verification of latest build)
+
+**Issues Detail**:
+-   **Issue 1: Newly identified client-side bugs**
+    -   **Attempted fixes**: None. The bugs were just identified at the end of the session.
+    -   **Next debug checklist**:
+        1.  In , add a guard clause to  to prevent it from being called in a loop.
+        2.  In , ensure  is reset on component unmount to allow data to be re-fetched correctly.
+        3.  In , modify the  for  to trigger a fetch when  is null, fixing the blank screen on fresh registration.
+        4.  In , correct the error fallback in  to not overwrite a valid status with a blank object.
+        5.  Locate the  function in the client app codebase and ensure it is called at the appropriate point in the app's lifecycle.
+    -   **Why fix this issue and what will be achieved with the fix?** These bugs cause repeated alerts, stale data, and a broken first-time user experience. Fixing them will significantly improve the client app's stability and usability.
+    -   **Status**: NOT STARTED
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** Frontend
+    -   **Blocked on other issue**: None
 
 **In progress Task List**:
--   **Task 1: Complete and Verify the Loan History Feature** (P0)
-    -   **Where to resume**: The backend and frontend code has been written. The next step is to perform an end-to-end test to validate the feature.
-    -   **What will be achieved with this?** A key user requirement will be fulfilled, allowing admins to see a client's past loan activities directly on their detail page.
+-   **Task 1: Fix Client App Bugs from Code Audit**
+    -   **Where to resume**: Implement the five fixes listed in the Next debug checklist for Issue 1 above, targeting files in .
+    -   **What will be achieved with this?** A more stable and reliable client application.
     -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?** both (frontend focus)
-    -   **Blocked on something**: None.
+    -   **Should Test frontend/backend/both after fix?** Frontend
+    -   **Blocked on something**: None
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
-    -   **(P1) Automate Loan Archiving**: Modify the backend so that when a loan's final payment is made, it is automatically moved to the  collection. This removes the need for the manual Archive button.
-    -   **(P2) Remove Tasutud (Settled) Tab**: Once auto-archiving is implemented, the Tasutud (Settled) loans tab on the main loans page () will be redundant and should be removed.
+    -   (P1) Add address field to client information form. (User mentioned this was still needed).
+    -   (P2) Implement the Diagnostic Report PDF export feature for superadmins.
 -   **Future Tasks**:
-    -   Add a search bar to the new Loan History section to allow admins to quickly find specific past loans.
+    -   Automated Payment Reminders via SMS/Email.
+    -   Bulk Payment Import from a CSV file.
+    -   Client Credit Score Report (PDF Generation).
 
 **Completed work in this session**
--   **Theme Persistence Bug Fix (DONE)**:
-    -   Resolved the critical bug preventing the theme from persisting across page navigations.
-    -   Refactored numerous components to use dynamic theme variables instead of hardcoded colors, including , , , , , , and .
-    -   Verified with  (see ).
--   **Full Theme Support (DONE)**:
-    -   Applied dark/light theme support to all major pages of the application, creating a consistent user experience.
+-   **Financial Reports Fixed**: Corrected interest calculation in  and restructured multiple report endpoints (, , ) to match frontend expectations.
+-   **Bank Statement OCR Stabilized**: Resolved server crashes caused by OCR by moving blocking calls to a thread pool, optimizing memory usage, and fixing environment variable issues () in .
+-   **API Keep-Alive Implemented**: Created a GitHub Actions workflow () to send external pings, preventing the API from sleeping.
+-   **Auth Token Persistence Fixed**: Corrected logic in  and  to prevent incorrect token clearing.
+-   **Build & Deployment URLs Corrected**: Updated all build profiles in  and the keep-alive URL in  to use the current fork's URL.
+-   **Loan Contract Sharing Improved**: Made the native share functionality in  more robust.
+-   **Client App Startup Flow Improved**: Modified  to show the lock screen immediately on startup.
+-   **Submitted Multiple APK Builds**: Generated and provided links for new  and  builds for user testing.
 
 **Earlier issues found/mentioned but not fixed**
--   None.
+-   **Issue 1: Allow Uninstall for Deleted Client**
+    -   **Debug checklist**: Requires a valid  or  from the user, as the associated client was deleted from the database.
+    -   **Why to solve this issue and what will be achieved with this?** The user needs to uninstall the app from a specific device.
+    -   **Status**: BLOCKED (on user input).
+    -   **Is recurring issue?** N
 
 **Known issue recurrence from previous fork**
--   **Issue recurrence in previous fork**: Theme persistence bug.
--   **Recurrence count**: 2+
--   **Status**: RESOLVED
+-   **Issue**: Client app crashes after registration.
+    -   **Recurrence count**: 3+
+    -   **Status**: IN PROGRESS (The recent code audit may have identified the root causes, but this requires verification).
+-   **Issue**: Inability to enable Accessibility Service due to Restricted settings on modern Android.
+    -   **Recurrence count**: 3+
+    -   **Status**: NOT STARTED
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Frontend**: React (Expo), React Navigation, Dynamic styling with a  hook, AsyncStorage for theme persistence.
--   **Backend**: FastAPI, Pydantic, MongoDB.
--   **Testing**: , .
+-   **Frontend**: React Native (Expo), , AsyncStorage
+-   **Backend**: FastAPI, MongoDB
+-   **OCR**: , , , PyMuPDF
+-   **Asynchronous Processing**: , Thread Pool Executors
+-   **CI/CD**: GitHub Actions (for cron job)
+-   **Deployment**: Expo Application Services (EAS) Build
 
 **key DB schema**
--   No changes to the database schema were made in this session.
+-   **clients**: 
+-   **loans**: 
+-   **devices**: 
 
 **changes in tech stack**
--   None.
+-   **CI/CD**: Added a GitHub Actions workflow for an external keep-alive cron job.
 
 **All files of reference**
--   : Modified to add the new client-specific loan history endpoint.
--   : Modified to implement the Loan History feature.
--   , , , etc.: Modified to fix the theme persistence bug.
--   : Test report from the testing agent confirming the theme fix.
--   : Updated with the latest progress.
+-   : Contains the stabilized OCR logic.
+-   : Contains the fixed financial calculation logic.
+-   : New file defining the external API ping.
+-   : This entire directory is the focus of the . Key files are , , and .
 
 **Areas that need refactoring**:
--   None identified. The major refactoring of hardcoded styles has been completed.
+-   : This component remains highly complex. While the agent has identified specific bugs to fix, it would benefit from being broken down into smaller components and custom hooks to improve long-term maintainability.
 
 **key api endpoints**
--   : **(New)** Retrieves all archived loans for a specific client.
+-   : Used by the internal and external keep-alive jobs.
+-   : Endpoint for the now-stable SEB OCR feature.
+-   : Endpoint serving correct interest calculations.
 
 **Critical Info for New Agent**
--   The highest priority (P0) from the previous session, the theme persistence bug, is now **RESOLVED** and verified.
--   Your immediate task is to complete the Loan History feature. The code is written, but you must perform a full end-to-end test to ensure it works as expected. The feature is not complete until it is tested.
--   After verifying the Loan History feature, proceed to the next user requirement: automating the loan archiving process.
+-   **API Stability**: The API crashing/sleeping issues should now be resolved. The OCR process is wrapped in a thread pool, and a robust external keep-alive cron job is in place (user must have pushed to GitHub to activate it).
+-   **Focus on Client App**: The immediate priority is to fix the five critical bugs identified in the client application during the recent code audit.
+-   **Verify User Feedback**: After fixing the client app bugs and submitting a new build, it is crucial to verify with the user which of the previously reported issues are now resolved (e.g., app crash, lock state persistence, auth token). Do not assume they are fixed until the user confirms.
+-   **Native Android Issues**: The Restricted settings problem on modern Android has not been addressed and is a major underlying blocker for the app's core kiosk functionality. This will likely require native Android development expertise.
 
 **documents and test reports created in this job**
--   
--   
+-   : Test report from  showing 26/26 passed tests on the backend and admin frontend fixes.
+-   : New GitHub Actions workflow file.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User**:  - **Status: COMPLETED**. The agent proceeded with its plan to fix the theme and implement the next feature. There are no other pending user messages.
+1.  **User**: Asks to submit APKs. (DONE)
+2.  **User**: Asks to check all client app code for bugs. (IN PROGRESS - audit complete, fixes pending)
+3.  **Agent**: Audits client code and lists 5 critical bugs found. (PENDING FIXES)
+4.  **Agent**: Identifies dead code ().
+5.  **Agent**: Identifies error handling bug in .
+6.  **Agent**: Identifies blank screen bug on fresh registration.
+7.  **Agent**: Identifies state management bug ().
+8.  **Agent**: Identifies looping alert bug ().
+9.  **Agent**: States it has a complete audit and will fix the bugs.
+10. **Agent**: Begins reading all client files to start the audit.
 
 **Project Health Check:**
--   **Broken**: The new Loan History feature is untested and should be considered non-functional until verified.
+-   **Broken**:
+    -   **Client App**: Contains at least five identified critical bugs causing instability and poor UX.
+    -   **Android Permissions**: The kiosk mode is non-functional on modern Android devices due to the unresolved Restricted settings issue.
 -   **Mocked**: None.
 
 **3rd Party Integrations**
--   
--   
+-   **OpenAI GPT-4o**: Used for credit recommendations in bank statement analysis. Uses Emergent LLM Key.
+-   **Tesseract OCR**: Used via PyMuPDF for PDF bank statement parsing.
+-   **GitHub Actions**: Used for an external keep-alive cron job.
 
 **Testing status**
--   Testing agent used after significant changes: YES (for the theme fix)
--   Troubleshoot agent used after agent stuck in loop: NO
--   Test files created: None
--   Known regressions: None.
+-   **Testing agent used after significant changes**: YES. Used successfully to validate all backend and admin frontend fixes before the focus shifted to the client app.
+-   **Troubleshoot agent used after agent stuck in loop**: NO
+-   **Test files created**: None.
+-   **Known regressions**: None from this session; multiple regressions from previous sessions were fixed.
 
 **Credentials to test flow:**
--   **Superadmin**: , 
--   **Admin**: , 
+-   **Admin User**:  / 
 
 **What agent forgot to execute**
--   The agent did not forget any planned tasks. It successfully completed the highest priority item (theme bug) and began the next task (Loan History), which is now ready for testing.</analysis>
+-   The agent identified five critical bugs in the client application as its very last action but has not yet implemented the fixes for them. This is the most critical pending task.</analysis>

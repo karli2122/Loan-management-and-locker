@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 # Get backend URL from environment
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
 if not BASE_URL:
-    BASE_URL = "https://loan-manager-fix.preview.emergentagent.com"
+    BASE_URL = "https://client-bugs-fix.preview.emergentagent.com"
 
 
 class TestHealthAndRoot:
