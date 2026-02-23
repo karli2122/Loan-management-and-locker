@@ -119,6 +119,16 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - SEB analyzer shows “Processing SEB OCR…” + ETA (~30s) only for SEB PDFs (auto-detected)
 - Added backend keepalive job (configurable via KEEPALIVE_URL + KEEPALIVE_INTERVAL_SECONDS)
 
+## Completed (Feb 23, 2026)
+
+### Client App Bug Fixes from Code Audit (P0)
+- **Bug 1**: Fixed `handleUninstallSignal` looping alert — Added `uninstallHandledRef` guard to prevent repeated uninstall alerts during 10s polling loop
+- **Bug 2**: Fixed `hasInitialized.current` not reset on unmount — Added reset in cleanup function so component re-initializes correctly on remount
+- **Bug 3**: Fixed blank screen on fresh registration — Added `fetchStatus(id)` call in the fresh registration path so user data is populated immediately
+- **Bug 4**: Fixed error fallback creating blank status object — Error path now preserves `null` status instead of overwriting with empty `{id:'', name:''}` 
+- **Bug 5**: Connected `checkAndSetupDeviceProtection` to lifecycle — Function was defined but never called; now invoked in `initializeProtection` effect for proper device admin setup
+- All 5 fixes verified via testing agent (12/12 tests passed)
+
 ## Pending User Verification
 - P0: Client app crash after registration (~5s after home load) — verify on device; needs logcat if it persists
 - P0: Accessibility restricted settings on Samsung Android 16 — verify updated Loan Client sequence
