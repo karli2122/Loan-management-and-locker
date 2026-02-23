@@ -8,7 +8,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://fin-calc-debug.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://audit-fixes-preview.preview.emergentagent.com').rstrip('/')
 
 # Superadmin credentials
 SUPERADMIN_USERNAME = "karli1987"

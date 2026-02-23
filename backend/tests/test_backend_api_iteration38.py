@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime, timedelta
 
 # Backend URL
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://fin-calc-debug.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://audit-fixes-preview.preview.emergentagent.com").rstrip("/")
 
 # Test admin credentials
 TEST_ADMIN_USERNAME = "test_api_admin_001"

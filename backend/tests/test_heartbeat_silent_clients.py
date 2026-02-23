@@ -13,7 +13,7 @@ import time
 import uuid
 from datetime import datetime
 
-BASE_URL = "https://fin-calc-debug.preview.emergentagent.com"
+BASE_URL = "https://audit-fixes-preview.preview.emergentagent.com"
 
 # Test credentials
 TEST_USERNAME = "karli1987"
