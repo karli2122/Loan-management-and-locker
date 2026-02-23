@@ -240,6 +240,13 @@ export default function ClientHome() {
             await reportTamperAttempt('admin_disabled');
             await reportAdminStatus(storedId, false);
           }
+          // Hard OS-level screen lock on tamper — locks device immediately
+          try {
+            const lockResult = await devicePolicy.lockDevice();
+            console.log('[Tamper] Device screen locked via lockNow():', lockResult);
+          } catch (lockErr) {
+            console.log('[Tamper] lockDevice failed (admin was disabled):', lockErr);
+          }
           // Clear the flag so we don't report it again
           try {
             await devicePolicy.clearTamperFlags();
