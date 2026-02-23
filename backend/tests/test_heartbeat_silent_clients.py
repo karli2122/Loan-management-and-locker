@@ -13,7 +13,7 @@ import time
 import uuid
 from datetime import datetime
 
-BASE_URL = "https://device-lock-test.preview.emergentagent.com"
+BASE_URL = "https://fin-calc-debug.preview.emergentagent.com"
 
 # Test credentials
 TEST_USERNAME = "karli1987"

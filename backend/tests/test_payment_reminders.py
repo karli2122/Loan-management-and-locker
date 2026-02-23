@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 BASE_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "").rstrip("/")
 if not BASE_URL:
     # Fallback for direct test runs
-    BASE_URL = "https://device-lock-test.preview.emergentagent.com"
+    BASE_URL = "https://fin-calc-debug.preview.emergentagent.com"
 
 # Test credentials
 TEST_SUPERADMIN = {

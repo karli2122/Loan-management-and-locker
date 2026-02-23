@@ -31,7 +31,7 @@
   "seed_data_creation": "No seed data created; used existing karli1987 admin data",
   "retest_needed": false,
   "should_main_agent_self_test": false,
-  "context_for_next_testing_agent": "All 5 requested features verified working. Test file: /app/backend/tests/test_reports_and_seb_iteration39.py (26 tests). Key confirmed values: interest_earned=141.31, monthly_interest={'2026-02':141.31,...}. SEB bank statement analysis takes ~35-47s per call due to AI. Admin creds: karli1987/nasvakas123. Backend URL: https://device-lock-test.preview.emergentagent.com",
+  "context_for_next_testing_agent": "All 5 requested features verified working. Test file: /app/backend/tests/test_reports_and_seb_iteration39.py (26 tests). Key confirmed values: interest_earned=141.31, monthly_interest={'2026-02':141.31,...}. SEB bank statement analysis takes ~35-47s per call due to AI. Admin creds: karli1987/nasvakas123. Backend URL: https://fin-calc-debug.preview.emergentagent.com",
   "features_verified": {
     "GET /api/reports/financial - interest_earned nonzero": "PASS - interest_earned=141.31 (exactly as expected)",
     "GET /api/reports/collection - nested structure": "PASS - {overview, financial, this_month} + flat fields all present",
