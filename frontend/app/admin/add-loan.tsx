@@ -269,12 +269,17 @@ export default function AddLoan() {
       return;
     }
 
-    // Validate due date is in the future
+    // Validate due date is at least one day in the future (timezone-safe)
     const selectedDate = new Date(dueDate);
-    if (selectedDate <= new Date()) {
+    selectedDate.setHours(0, 0, 0, 0);
+    const tomorrow = new Date();
+    tomorrow.setHours(0, 0, 0, 0);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    if (selectedDate < tomorrow) {
       Alert.alert(
         language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Tähtaeg peab olema tulevikus' : 'Due date must be in the future'
+        language === 'et' ? 'Tähtaeg peab olema vähemalt homme' : 'Due date must be at least tomorrow'
       );
       return;
     }
