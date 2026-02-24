@@ -17,7 +17,45 @@ class EMIRestartReceiver : BroadcastReceiver() {
         private const val TAG = "EMIRestartReceiver"
         private const val PREFS_NAME = "EMIDeviceAdminPrefs"
         private const val KEY_LOCKED = "device_locked"
-        private const val ACTION_RESTART = "expo.modules.emideviceadmin.ACTION_RESTART"
+        const val ACTION_RESTART = "expo.modules.emideviceadmin.ACTION_RESTART"
+
+        fun scheduleRestart(context: Context, delayMs: Long = 3000) {
+            try {
+                val intent = Intent(context, EMIRestartReceiver::class.java).apply {
+                    action = ACTION_RESTART
+                }
+                val pendingIntent = PendingIntent.getBroadcast(
+                    context, 2001, intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                val am = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+                am?.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    System.currentTimeMillis() + delayMs,
+                    pendingIntent
+                )
+                Log.d(TAG, "Restart alarm scheduled in ${delayMs}ms")
+            } catch (e: Exception) {
+                Log.e(TAG, "scheduleRestart error: ${e.message}")
+            }
+        }
+
+        fun cancelRestart(context: Context) {
+            try {
+                val intent = Intent(context, EMIRestartReceiver::class.java).apply {
+                    action = ACTION_RESTART
+                }
+                val pendingIntent = PendingIntent.getBroadcast(
+                    context, 2001, intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                val am = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+                am?.cancel(pendingIntent)
+                Log.d(TAG, "Restart alarm cancelled")
+            } catch (e: Exception) {
+                Log.e(TAG, "cancelRestart error: ${e.message}")
+            }
+        }
     }
 
     override fun onReceive(context: Context, intent: Intent?) {
@@ -61,52 +99,11 @@ class EMIRestartReceiver : BroadcastReceiver() {
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to restart monitor: ${e.message}")
             }
+
+            // Schedule next restart check in case we get killed again
+            scheduleRestart(context, 5000)
         } catch (e: Exception) {
             Log.e(TAG, "Restart error: ${e.message}")
-        }
-    }
-
-    companion object Scheduler {
-        /**
-         * Schedule a restart alarm to fire in [delayMs] milliseconds.
-         * This is called when services are killed while the device is locked.
-         */
-        fun scheduleRestart(context: Context, delayMs: Long = 3000) {
-            try {
-                val intent = Intent(context, EMIRestartReceiver::class.java).apply {
-                    action = ACTION_RESTART
-                }
-                val pendingIntent = PendingIntent.getBroadcast(
-                    context, 2001, intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-                val am = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-                am?.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    System.currentTimeMillis() + delayMs,
-                    pendingIntent
-                )
-                Log.d(TAG, "Restart alarm scheduled in ${delayMs}ms")
-            } catch (e: Exception) {
-                Log.e(TAG, "scheduleRestart error: ${e.message}")
-            }
-        }
-
-        fun cancelRestart(context: Context) {
-            try {
-                val intent = Intent(context, EMIRestartReceiver::class.java).apply {
-                    action = ACTION_RESTART
-                }
-                val pendingIntent = PendingIntent.getBroadcast(
-                    context, 2001, intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-                val am = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-                am?.cancel(pendingIntent)
-                Log.d(TAG, "Restart alarm cancelled")
-            } catch (e: Exception) {
-                Log.e(TAG, "cancelRestart error: ${e.message}")
-            }
         }
     }
 }
