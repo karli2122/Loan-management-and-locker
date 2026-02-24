@@ -469,6 +469,114 @@ export async function setStatusBarDisabled(disabled: boolean): Promise<string> {
   }
 }
 
+// ===================== FOREGROUND APP MONITOR =====================
+
+export async function startForegroundMonitor(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.startForegroundMonitor();
+  } catch (e) {
+    console.log('startForegroundMonitor error:', e);
+    return 'error';
+  }
+}
+
+export async function stopForegroundMonitor(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.stopForegroundMonitor();
+  } catch (e) {
+    console.log('stopForegroundMonitor error:', e);
+    return 'error';
+  }
+}
+
+export async function hasUsageStatsPermission(): Promise<boolean> {
+  if (!isModuleAvailable()) return false;
+  try {
+    return await EMIDeviceAdminModule.hasUsageStatsPermission();
+  } catch (e) {
+    console.log('hasUsageStatsPermission error:', e);
+    return false;
+  }
+}
+
+export async function requestUsageStatsPermission(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.requestUsageStatsPermission();
+  } catch (e) {
+    console.log('requestUsageStatsPermission error:', e);
+    return 'error';
+  }
+}
+
+// ===================== NOTIFICATION LISTENER =====================
+
+export async function hasNotificationListenerPermission(): Promise<boolean> {
+  if (!isModuleAvailable()) return false;
+  try {
+    return await EMIDeviceAdminModule.hasNotificationListenerPermission();
+  } catch (e) {
+    console.log('hasNotificationListenerPermission error:', e);
+    return false;
+  }
+}
+
+export async function requestNotificationListenerPermission(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.requestNotificationListenerPermission();
+  } catch (e) {
+    console.log('requestNotificationListenerPermission error:', e);
+    return 'error';
+  }
+}
+
+// ===================== CAMERA / BLUETOOTH DISABLE =====================
+
+export async function setCameraDisabled(disabled: boolean): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.setCameraDisabled(disabled);
+  } catch (e) {
+    console.log('setCameraDisabled error:', e);
+    return 'error';
+  }
+}
+
+export async function setBluetoothDisabled(disabled: boolean): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.setBluetoothDisabled(disabled);
+  } catch (e) {
+    console.log('setBluetoothDisabled error:', e);
+    return 'error';
+  }
+}
+
+// ===================== AUTO-RESTART ON KILL =====================
+
+export async function scheduleAutoRestart(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.scheduleAutoRestart();
+  } catch (e) {
+    console.log('scheduleAutoRestart error:', e);
+    return 'error';
+  }
+}
+
+export async function cancelAutoRestart(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.cancelAutoRestart();
+  } catch (e) {
+    console.log('cancelAutoRestart error:', e);
+    return 'error';
+  }
+}
+
 // ===================== ACCESSIBILITY (DIRECT) =====================
 
 export async function openAccessibilitySettingsDirect(): Promise<string> {
