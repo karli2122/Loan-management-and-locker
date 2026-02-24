@@ -345,7 +345,7 @@ async def send_warning(client_id: str, message: str = Query(...), admin_token: s
 
 
 @router.get("/clients/{client_id}/fetch-price")
-async def fetch_device_price(client_id: str, admin_token: str = Query(...)):
+async def fetch_device_price(client_id: str, admin_token: str = Query(...), force: bool = Query(False)):
     """Fetch estimated used price for a client's device from eBay.de."""
     admin_id = await get_admin_id_from_token(admin_token)
     
@@ -362,8 +362,9 @@ async def fetch_device_price(client_id: str, admin_token: str = Query(...)):
         raise HTTPException(status_code=400, detail="Device model not available. Please register the device first.")
     
     # Check if we have a recent cached price (within 7 days)
-    price_fetched_at = client.get("price_fetched_at")
-    if price_fetched_at and client.get("used_price_eur"):
+    if not force:
+        price_fetched_at = client.get("price_fetched_at")
+        if price_fetched_at and client.get("used_price_eur"):
         age = (datetime.utcnow() - price_fetched_at).days
         if age < 7:
             return {
