@@ -4,6 +4,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { styles } from './styles';
 import { Client } from './types';
 
+// Credit score color helper
+const getCreditScoreColor = (score: number) => {
+  if (score >= 800) return '#10B981';
+  if (score >= 650) return '#3B82F6';
+  if (score >= 500) return '#F59E0B';
+  if (score >= 350) return '#F97316';
+  return '#EF4444';
+};
+
 interface Props {
   client: Client;
   language: string;
@@ -23,7 +32,15 @@ export const ClientInfoCard = ({
     <View style={[styles.avatarContainer, { backgroundColor: colors.primary }]}>
       <Text style={styles.avatarText}>{client.name.charAt(0).toUpperCase()}</Text>
     </View>
-    <Text style={[styles.clientName, { color: colors.text }]}>{client.name}</Text>
+    <View style={styles.clientNameWithScore}>
+      <Text style={[styles.clientName, { color: colors.text }]}>{client.name}</Text>
+      {client.credit_score != null && (
+        <View style={[styles.creditScoreBadge, { backgroundColor: getCreditScoreColor(client.credit_score) + '20' }]}>
+          <Ionicons name="star" size={12} color={getCreditScoreColor(client.credit_score)} />
+          <Text style={[styles.creditScoreValue, { color: getCreditScoreColor(client.credit_score) }]}>{client.credit_score}</Text>
+        </View>
+      )}
+    </View>
     <View style={[styles.statusBadge, client.is_locked ? styles.lockedBadge : styles.unlockedBadge]}>
       <Ionicons
         name={client.is_locked ? 'lock-closed' : 'lock-open'}

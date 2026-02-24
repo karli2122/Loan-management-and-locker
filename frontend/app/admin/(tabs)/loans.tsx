@@ -716,11 +716,28 @@ const styles = StyleSheet.create({
   clientInfo: {
     flex: 1,
   },
+  clientNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
   clientName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
-    marginBottom: 4,
+  },
+  creditScoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  creditScoreText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   clientPhone: {
     fontSize: 14,
