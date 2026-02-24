@@ -73,4 +73,5 @@ export const PaymentHistory = ({ paymentHistory, paymentHistoryLoading, language
       ))
     )}
   </View>
-);
+  );
+};
