@@ -6,8 +6,16 @@
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
   <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
+  <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+  <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+  <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+  <uses-permission android:name="android.permission.BLUETOOTH" />
+  <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+  <uses-permission android:name="android.permission.CAMERA" />
 
   <application>
+    <!-- Device Admin Receiver -->
     <receiver
       android:name=".EMIDeviceAdminReceiver"
       android:permission="android.permission.BIND_DEVICE_ADMIN"
@@ -22,6 +30,7 @@
       </intent-filter>
     </receiver>
 
+    <!-- Boot Receiver - Auto-start on device boot -->
     <receiver
       android:name=".EMIBootReceiver"
       android:enabled="true"
@@ -34,6 +43,17 @@
       </intent-filter>
     </receiver>
 
+    <!-- Restart Receiver - Auto-restart app if killed while locked -->
+    <receiver
+      android:name=".EMIRestartReceiver"
+      android:enabled="true"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="expo.modules.emideviceadmin.ACTION_RESTART" />
+      </intent-filter>
+    </receiver>
+
+    <!-- Accessibility Service -->
     <service
       android:name=".EMIAccessibilityService"
       android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
@@ -46,6 +66,7 @@
         android:resource="@xml/accessibility_service_config" />
     </service>
 
+    <!-- Overlay Service - Status bar/nav bar blocker -->
     <service
       android:name=".EMIOverlayService"
       android:foregroundServiceType="specialUse"
@@ -53,6 +74,21 @@
       <property
         android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
         android:value="Device protection overlay that blocks status bar and navigation bar access on locked devices" />
+    </service>
+
+    <!-- Foreground App Monitor - Detects foreign apps and brings ours back -->
+    <service
+      android:name=".EMIForegroundMonitorService"
+      android:exported="false" />
+
+    <!-- Notification Listener - Auto-dismisses notifications while locked -->
+    <service
+      android:name=".EMINotificationListenerService"
+      android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="android.service.notification.NotificationListenerService" />
+      </intent-filter>
     </service>
   </application>
 </manifest>
