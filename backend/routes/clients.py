@@ -379,7 +379,7 @@ async def fetch_device_price(client_id: str, admin_token: str = Query(...), forc
                     },
                     "listing_count": client.get("price_listing_count", 0),
                     "search_query": client.get("price_search_query", ""),
-                    "source": "ebay.de (cached)",
+                    "source": "swappa.com (cached)",
                     "cached_days_ago": age,
                     "sample_listings": client.get("price_sample_listings", []),
                 }
