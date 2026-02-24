@@ -89,13 +89,14 @@ const LoanHistoryList = ({
   language: string;
   colors: any;
 }) => {
+  const { formatAmount } = useCurrency();
   const query = loanHistorySearch.toLowerCase().trim();
   const filtered = query
     ? loanHistory.filter((loan) => {
-        const amount = `\u20AC${loan.loan_amount?.toFixed(2) || '0'}`;
-        const paid = `\u20AC${loan.total_paid?.toFixed(2) || '0'}`;
+        const amount = formatAmount(loan.loan_amount || 0);
+        const paid = formatAmount(loan.total_paid || 0);
         const interest = `${loan.interest_rate?.toFixed(1) || '0'}%`;
-        const interestEarned = `\u20AC${loan.total_interest?.toFixed(2) || '0'}`;
+        const interestEarned = formatAmount(loan.total_interest || 0);
         const date = loan.archived_at ? new Date(loan.archived_at).toLocaleDateString('et-EE') : '';
         const searchable = `${amount} ${paid} ${interest} ${interestEarned} ${date}`.toLowerCase();
         return searchable.includes(query);
@@ -141,7 +142,7 @@ const LoanHistoryList = ({
                 {language === 'et' ? 'Laenusumma' : 'Loan Amount'}
               </Text>
               <Text style={[styles.loanHistoryValue, { color: colors.text }]}>
-                {'\u20AC'}{loan.loan_amount?.toFixed(2) || '0.00'}
+                {formatAmount(loan.loan_amount || 0)}
               </Text>
             </View>
             <View style={styles.loanHistoryDetailRow}>
@@ -157,7 +158,7 @@ const LoanHistoryList = ({
                 {language === 'et' ? 'Makstud kokku' : 'Total Paid'}
               </Text>
               <Text style={[styles.loanHistoryValue, { color: colors.success }]}>
-                {'\u20AC'}{loan.total_paid?.toFixed(2) || '0.00'}
+                {formatAmount(loan.total_paid || 0)}
               </Text>
             </View>
             <View style={styles.loanHistoryDetailRow}>
@@ -165,7 +166,7 @@ const LoanHistoryList = ({
                 {language === 'et' ? 'Intressitulu' : 'Interest Earned'}
               </Text>
               <Text style={[styles.loanHistoryValue, { color: colors.primary }]}>
-                {'\u20AC'}{loan.total_interest?.toFixed(2) || '0.00'}
+                {formatAmount(loan.total_interest || 0)}
               </Text>
             </View>
             <View style={styles.loanHistoryDetailRow}>
