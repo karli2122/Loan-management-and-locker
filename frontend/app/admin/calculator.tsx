@@ -93,7 +93,7 @@ export default function Calculator() {
           <Text style={styles.sectionTitle}>Loan Details</Text>
           
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Principal Amount (€)</Text>
+            <Text style={styles.inputLabel}>Principal Amount ({currencySymbol})</Text>
             <TextInput
               style={styles.input}
               value={principal}

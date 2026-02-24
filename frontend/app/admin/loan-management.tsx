@@ -505,7 +505,7 @@ export default function LoanManagement() {
             <Text style={styles.modalTitle}>Setup Loan</Text>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Loan Amount (€)</Text>
+              <Text style={styles.inputLabel}>Loan Amount ({currencySymbol})</Text>
               <TextInput
                 style={styles.input}
                 value={loanAmount}
@@ -570,7 +570,7 @@ export default function LoanManagement() {
             <Text style={styles.modalTitle}>Record Payment</Text>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Amount (€)</Text>
+              <Text style={styles.inputLabel}>Amount ({currencySymbol})</Text>
               <TextInput
                 style={styles.input}
                 value={paymentAmount}
@@ -708,7 +708,7 @@ export default function LoanManagement() {
             <Text style={styles.modalTitle}>Edit Loan</Text>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Loan Amount (€)</Text>
+              <Text style={styles.inputLabel}>Loan Amount ({currencySymbol})</Text>
               <TextInput
                 style={styles.input}
                 value={editLoanAmount}
