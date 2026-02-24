@@ -1277,6 +1277,12 @@ class EMIDeviceAdminModule : Module() {
             Log.e(TAG, "Failed to unregister immersive receiver: ${e.message}")
         }
 
+        // Stop rapid-fire collapse handler
+        collapseRunnable?.let { collapseHandler?.removeCallbacks(it) }
+        collapseHandler = null
+        collapseRunnable = null
+        Log.d(TAG, "Rapid-fire collapse handler stopped")
+
         if (visibilityListenerInstalled) {
             try {
                 val act = activity
