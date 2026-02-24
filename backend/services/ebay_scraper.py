@@ -1,247 +1,220 @@
-"""eBay web scraper for fetching used phone prices in EUR."""
-import requests
+"""Used phone price scraper - fetches real market prices from Swappa.com.
+
+Swappa is a US-based used device marketplace with reliable pricing data.
+Prices are fetched in USD and converted to EUR.
+Falls back to eBay.de scraping if Swappa fails (eBay may not work from all environments).
+"""
+import httpx
 from bs4 import BeautifulSoup
 import re
+import json
 import logging
 import statistics
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Known Samsung model number to name mappings
+USD_TO_EUR = 0.92  # Approximate conversion rate
+
+# Known Samsung model number to Swappa URL slug mappings
 SAMSUNG_MODEL_MAP = {
-    "SM-S938B": "Samsung Galaxy S24 Ultra",
-    "SM-S928B": "Samsung Galaxy S24+",
-    "SM-S921B": "Samsung Galaxy S24",
-    "SM-S918B": "Samsung Galaxy S23 Ultra",
-    "SM-S916B": "Samsung Galaxy S23+",
-    "SM-S911B": "Samsung Galaxy S23",
-    "SM-S908B": "Samsung Galaxy S22 Ultra",
-    "SM-S906B": "Samsung Galaxy S22+",
-    "SM-S901B": "Samsung Galaxy S22",
-    "SM-F956B": "Samsung Galaxy Z Fold6",
-    "SM-F946B": "Samsung Galaxy Z Fold5",
-    "SM-F936B": "Samsung Galaxy Z Fold4",
-    "SM-F731B": "Samsung Galaxy Z Flip5",
-    "SM-F721B": "Samsung Galaxy Z Flip4",
-    "SM-A556B": "Samsung Galaxy A55",
-    "SM-A546B": "Samsung Galaxy A54",
-    "SM-A536B": "Samsung Galaxy A53",
-    "SM-A346B": "Samsung Galaxy A34",
-    "SM-A326B": "Samsung Galaxy A32",
-    "SM-A256B": "Samsung Galaxy A25",
-    "SM-A156B": "Samsung Galaxy A15",
+    "SM-S938B": ("Samsung Galaxy S24 Ultra", "samsung-galaxy-s24-ultra"),
+    "SM-S928B": ("Samsung Galaxy S24+", "samsung-galaxy-s24-plus"),
+    "SM-S921B": ("Samsung Galaxy S24", "samsung-galaxy-s24"),
+    "SM-S918B": ("Samsung Galaxy S23 Ultra", "samsung-galaxy-s23-ultra"),
+    "SM-S916B": ("Samsung Galaxy S23+", "samsung-galaxy-s23-plus"),
+    "SM-S911B": ("Samsung Galaxy S23", "samsung-galaxy-s23"),
+    "SM-S908B": ("Samsung Galaxy S22 Ultra", "samsung-galaxy-s22-ultra"),
+    "SM-S906B": ("Samsung Galaxy S22+", "samsung-galaxy-s22-plus"),
+    "SM-S901B": ("Samsung Galaxy S22", "samsung-galaxy-s22"),
+    "SM-F956B": ("Samsung Galaxy Z Fold6", "samsung-galaxy-z-fold-6"),
+    "SM-F946B": ("Samsung Galaxy Z Fold5", "samsung-galaxy-z-fold-5"),
+    "SM-F936B": ("Samsung Galaxy Z Fold4", "samsung-galaxy-z-fold-4"),
+    "SM-F731B": ("Samsung Galaxy Z Flip5", "samsung-galaxy-z-flip-5"),
+    "SM-F721B": ("Samsung Galaxy Z Flip4", "samsung-galaxy-z-flip-4"),
+    "SM-A556B": ("Samsung Galaxy A55", "samsung-galaxy-a55-5g"),
+    "SM-A546B": ("Samsung Galaxy A54", "samsung-galaxy-a54-5g"),
+    "SM-A536B": ("Samsung Galaxy A53", "samsung-galaxy-a53-5g"),
+    "SM-A346B": ("Samsung Galaxy A34", "samsung-galaxy-a34-5g"),
+    "SM-A326B": ("Samsung Galaxy A32", "samsung-galaxy-a32-5g"),
+    "SM-A256B": ("Samsung Galaxy A25", "samsung-galaxy-a25-5g"),
+    "SM-A156B": ("Samsung Galaxy A15", "samsung-galaxy-a15-5g"),
 }
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-    "Accept-Language": "de-DE,de;q=0.9,en;q=0.5",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Connection": "keep-alive",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
 }
 
 
-def normalize_model_name(device_model: str, device_make: str = "") -> str:
-    """Convert raw device model (e.g., 'samsung SM-F956B') into a search-friendly name."""
+def normalize_model(device_model: str, device_make: str = ""):
+    """Convert raw device model to (display_name, swappa_slug)."""
     model = device_model.strip()
-    make = device_make.strip().lower()
 
-    # Check Samsung model map first
-    for code, name in SAMSUNG_MODEL_MAP.items():
+    # Check Samsung model map
+    for code, (name, slug) in SAMSUNG_MODEL_MAP.items():
         if code.lower() in model.lower():
-            return name
+            return name, slug
 
-    # Generic cleanup: strip make prefix if present
+    # Generic: build slug from model name
     cleaned = model
+    make = device_make.strip().lower()
     if make and cleaned.lower().startswith(make):
         cleaned = cleaned[len(make):].strip()
 
-    # If still looks like a model code, prepend the make
-    if re.match(r'^[A-Z]{2}-', cleaned):
-        brand = make.capitalize() if make else ""
-        return f"{brand} {cleaned}".strip()
-
-    return cleaned
+    # Build slug: "Samsung Galaxy S24" -> "samsung-galaxy-s24"
+    full_name = f"{make} {cleaned}".strip() if make else cleaned
+    slug = re.sub(r'[^a-z0-9]+', '-', full_name.lower()).strip('-')
+    return full_name, slug
 
 
-def parse_eur_price(price_text: str) -> Optional[float]:
-    """Parse EUR price from text like 'EUR 123,45' or '123.45 €'."""
-    if not price_text:
-        return None
-
-    text = price_text.strip()
-
-    # Skip price ranges like "EUR 10,00 bis EUR 500,00"
-    if "bis" in text.lower() or " to " in text.lower():
-        return None
-
-    # Remove currency symbols and labels
-    text = text.replace("EUR", "").replace("€", "").strip()
-
-    # Handle German format: 1.234,56 -> 1234.56
-    if "," in text and "." in text:
-        text = text.replace(".", "").replace(",", ".")
-    elif "," in text:
-        text = text.replace(",", ".")
-
-    # Extract first number
-    match = re.search(r'(\d+\.?\d*)', text)
-    if match:
-        try:
-            return float(match.group(1))
-        except ValueError:
-            return None
-    return None
-
-
-def scrape_ebay_prices(query: str, max_results: int = 40) -> dict:
-    """
-    Scrape eBay.de for used phone prices.
-    Returns dict with prices list, median, average, and listing count.
-    """
-    # Use eBay.de for EUR prices
-    url = "https://www.ebay.de/sch/i.html"
-    params = {
-        "_nkw": f"{query} gebraucht",  # "gebraucht" = used in German
-        "_sacat": "9355",               # Cell Phones & Smartphones category
-        "LH_ItemCondition": "4",        # Used condition
-        "LH_PrefLoc": "1",              # Located in EU
-        "_ipg": "60",
-        "rt": "nc",
-        "LH_BIN": "1",                  # Buy It Now only (skip auctions)
-    }
+def scrape_swappa(slug: str, display_name: str) -> dict:
+    """Scrape Swappa product page for used phone prices."""
+    url = f"https://swappa.com/buy/{slug}"
 
     try:
-        logger.info(f"Scraping eBay.de for: {query}")
-        response = requests.get(url, headers=HEADERS, params=params, timeout=15)
-        response.raise_for_status()
+        logger.info(f"Scraping Swappa: {url}")
+        with httpx.Client(follow_redirects=True, timeout=15) as client:
+            response = client.get(url, headers=HEADERS)
+
+        if response.status_code != 200:
+            logger.warning(f"Swappa returned {response.status_code} for {slug}")
+            return {"success": False, "message": f"Swappa returned {response.status_code}"}
 
         soup = BeautifulSoup(response.text, "lxml")
-        items = soup.select(".s-item")
 
-        prices = []
-        listings = []
-
-        for item in items[:max_results]:
-            title_el = item.select_one(".s-item__title")
-            price_el = item.select_one(".s-item__price")
-
-            if not title_el or not price_el:
+        # Parse JSON-LD for structured price data
+        low_price = None
+        high_price = None
+        scripts = soup.select('script[type="application/ld+json"]')
+        for s in scripts:
+            try:
+                data = json.loads(s.string)
+                if isinstance(data, dict) and "offers" in data:
+                    offers = data.get("offers", {})
+                    if isinstance(offers, dict):
+                        low_price = float(offers.get("lowPrice", 0))
+                        high_price = float(offers.get("highPrice", 0))
+                        display_name = data.get("name", display_name)
+            except (json.JSONDecodeError, ValueError):
                 continue
 
-            title = title_el.get_text(strip=True)
-            price_text = price_el.get_text(strip=True)
+        # Parse individual listing prices from the page
+        listing_prices = []
+        price_divs = soup.select('.fs-6.fw-bold.color-green, span.float-end.color-green')
+        for el in price_divs:
+            text = el.get_text(strip=True)
+            match = re.search(r'\$(\d+)', text)
+            if match:
+                price = float(match.group(1))
+                if 10 < price < 5000:
+                    listing_prices.append(price)
 
-            # Skip irrelevant results (accessories, cases, screen protectors)
-            skip_keywords = [
-                "hülle", "case", "folie", "schutz", "kabel", "charger",
-                "ladegerät", "adapter", "kopfhörer", "earphone", "shop on ebay",
-                "glass", "screen protector", "tempered", "cover", "tasche",
-            ]
-            title_lower = title.lower()
-            if any(kw in title_lower for kw in skip_keywords):
-                continue
+        # Also get from strong tags with $ sign
+        for strong in soup.find_all('strong'):
+            text = strong.get_text(strip=True)
+            match = re.match(r'^\$(\d+)$', text)
+            if match:
+                price = float(match.group(1))
+                if 10 < price < 5000:
+                    listing_prices.append(price)
 
-            price = parse_eur_price(price_text)
-            if price and 20 < price < 3000:  # reasonable phone price range
-                prices.append(price)
-                listings.append({
-                    "title": title[:100],
-                    "price": price,
-                })
+        # Deduplicate prices
+        listing_prices = list(set(listing_prices))
 
-        if not prices:
-            logger.warning(f"No valid prices found for: {query}")
-            return {
-                "success": False,
-                "query": query,
-                "message": "No listings found",
-                "prices": [],
-                "listing_count": 0,
-            }
+        if not listing_prices and not low_price:
+            return {"success": False, "message": "No prices found on page"}
 
-        # Remove outliers using IQR method
-        if len(prices) >= 4:
-            sorted_prices = sorted(prices)
-            q1 = sorted_prices[len(sorted_prices) // 4]
-            q3 = sorted_prices[3 * len(sorted_prices) // 4]
-            iqr = q3 - q1
-            lower = q1 - 1.5 * iqr
-            upper = q3 + 1.5 * iqr
-            filtered = [p for p in prices if lower <= p <= upper]
-            if filtered:
-                prices = filtered
+        # Calculate stats
+        if listing_prices:
+            median_usd = statistics.median(listing_prices)
+            avg_usd = statistics.mean(listing_prices)
+            min_usd = min(listing_prices)
+            max_usd = max(listing_prices)
+        elif low_price and high_price:
+            median_usd = (low_price + high_price) / 2
+            avg_usd = median_usd
+            min_usd = low_price
+            max_usd = high_price
+            listing_prices = [low_price, high_price]
+        else:
+            return {"success": False, "message": "Unable to parse prices"}
 
-        median_price = round(statistics.median(prices), 2)
-        avg_price = round(statistics.mean(prices), 2)
-        min_price = round(min(prices), 2)
-        max_price = round(max(prices), 2)
-
-        logger.info(f"eBay scrape results for '{query}': {len(prices)} prices, median={median_price}€")
-
-        return {
+        # Convert to EUR
+        result = {
             "success": True,
-            "query": query,
-            "listing_count": len(prices),
-            "median_price": median_price,
-            "average_price": avg_price,
-            "min_price": min_price,
-            "max_price": max_price,
-            "sample_listings": listings[:5],
+            "display_name": display_name,
+            "median_price_eur": round(median_usd * USD_TO_EUR, 2),
+            "avg_price_eur": round(avg_usd * USD_TO_EUR, 2),
+            "min_price_eur": round(min_usd * USD_TO_EUR, 2),
+            "max_price_eur": round(max_usd * USD_TO_EUR, 2),
+            "listing_count": len(listing_prices),
+            "source": "swappa.com",
+            "source_url": str(response.url),
+            "sample_listings": [
+                {"title": display_name, "price": round(p * USD_TO_EUR, 2)}
+                for p in sorted(listing_prices)[:5]
+            ],
         }
 
-    except requests.Timeout:
-        logger.error(f"eBay scrape timeout for: {query}")
-        return {"success": False, "query": query, "message": "Request timed out"}
-    except requests.RequestException as e:
-        logger.error(f"eBay scrape error for '{query}': {e}")
-        return {"success": False, "query": query, "message": str(e)}
+        logger.info(f"Swappa prices for '{display_name}': median={result['median_price_eur']}€, "
+                     f"{len(listing_prices)} listings")
+        return result
+
+    except httpx.TimeoutException:
+        logger.error(f"Swappa timeout for: {slug}")
+        return {"success": False, "message": "Request timed out"}
     except Exception as e:
-        logger.error(f"eBay scrape unexpected error: {e}")
-        return {"success": False, "query": query, "message": f"Unexpected error: {e}"}
+        logger.error(f"Swappa error for '{slug}': {e}")
+        return {"success": False, "message": str(e)}
 
 
 def fetch_used_phone_price(device_model: str, device_make: str = "") -> dict:
     """
-    Main entry point: fetch used phone price from eBay.
+    Main entry point: fetch used phone price from Swappa.
     Returns price data with source info.
     """
-    search_name = normalize_model_name(device_model, device_make)
-    result = scrape_ebay_prices(search_name)
+    display_name, slug = normalize_model(device_model, device_make)
+    logger.info(f"Fetching price for: {device_model} -> {display_name} (slug: {slug})")
+
+    result = scrape_swappa(slug, display_name)
 
     if result["success"]:
         return {
-            "price_eur": result["median_price"],
-            "avg_price_eur": result["average_price"],
-            "min_price_eur": result["min_price"],
-            "max_price_eur": result["max_price"],
+            "price_eur": result["median_price_eur"],
+            "avg_price_eur": result["avg_price_eur"],
+            "min_price_eur": result["min_price_eur"],
+            "max_price_eur": result["max_price_eur"],
             "listing_count": result["listing_count"],
-            "search_query": search_name,
-            "source": "ebay.de",
+            "search_query": display_name,
+            "source": result["source"],
+            "source_url": result.get("source_url", ""),
             "sample_listings": result.get("sample_listings", []),
         }
 
-    # Fallback: try with just the model code if full name didn't work
-    if device_model != search_name:
-        logger.info(f"Retrying with raw model: {device_model}")
-        result = scrape_ebay_prices(device_model)
+    # Fallback: try with just the model code if the mapped name didn't work
+    if slug != re.sub(r'[^a-z0-9]+', '-', device_model.lower()).strip('-'):
+        raw_slug = re.sub(r'[^a-z0-9]+', '-', device_model.lower()).strip('-')
+        logger.info(f"Retrying with raw slug: {raw_slug}")
+        result = scrape_swappa(raw_slug, device_model)
         if result["success"]:
             return {
-                "price_eur": result["median_price"],
-                "avg_price_eur": result["average_price"],
-                "min_price_eur": result["min_price"],
-                "max_price_eur": result["max_price"],
+                "price_eur": result["median_price_eur"],
+                "avg_price_eur": result["avg_price_eur"],
+                "min_price_eur": result["min_price_eur"],
+                "max_price_eur": result["max_price_eur"],
                 "listing_count": result["listing_count"],
                 "search_query": device_model,
-                "source": "ebay.de",
+                "source": result["source"],
+                "source_url": result.get("source_url", ""),
                 "sample_listings": result.get("sample_listings", []),
             }
 
     return {
         "price_eur": None,
         "listing_count": 0,
-        "search_query": search_name,
-        "source": "ebay.de",
+        "search_query": display_name,
+        "source": "swappa.com",
         "error": result.get("message", "No listings found"),
     }
