@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { styles } from './styles';
 import { Client } from './types';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface Props {
   client: Client;
