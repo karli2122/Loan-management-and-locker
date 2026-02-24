@@ -1109,14 +1109,30 @@ export default function ClientHome() {
   };
 
 
-  // Re-engage immersive mode periodically while device is locked
-  // This ensures the status bar stays hidden even after user swipe gestures
+  // Re-engage immersive mode + kiosk mode periodically while device is locked
+  // This ensures the status bar and navigation bar stay hidden
   useEffect(() => {
     if (!status?.is_locked || Platform.OS !== 'android') return;
+    
+    // Immediately hide everything
+    StatusBar.setHidden(true, 'none');
+    devicePolicy.enableImmersiveMode().catch(() => {});
+    devicePolicy.startKioskMode().catch(() => {});
+    devicePolicy.startOverlayBlocker().catch(() => {});
+    
+    // Re-apply every 1.5 seconds to counter any user swipe attempts
     const immersiveInterval = setInterval(() => {
+      StatusBar.setHidden(true, 'none');
       devicePolicy.enableImmersiveMode().catch(() => {});
-    }, 2000);
-    return () => clearInterval(immersiveInterval);
+    }, 1500);
+    
+    return () => {
+      clearInterval(immersiveInterval);
+      // Restore when unlocked
+      StatusBar.setHidden(false, 'fade');
+      devicePolicy.disableImmersiveMode().catch(() => {});
+      devicePolicy.stopKioskMode().catch(() => {});
+    };
   }, [status?.is_locked]);
 
 
