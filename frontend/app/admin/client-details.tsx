@@ -13,6 +13,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
+import { useCurrency } from '../../src/context/CurrencyContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import API_URL from '../../src/constants/api';
 import * as FileSystem from 'expo-file-system';
@@ -40,6 +41,7 @@ export default function ClientDetails() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { t, language } = useLanguage();
+  const { formatAmount } = useCurrency();
   const { colors } = useTheme();
 
   // Core state
