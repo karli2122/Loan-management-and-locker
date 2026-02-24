@@ -321,6 +321,7 @@ class EMIDeviceAdminModule : Module() {
 
         // Start kiosk mode - pins the app so user cannot leave.
         // If Device Owner: seamless kiosk via setLockTaskPackages + startLockTask
+        // Also disables status bar and sets lock task features to NONE (most restrictive)
         // If not Device Owner: uses startLockTask which shows a system confirmation dialog
         AsyncFunction("startKioskMode") { promise: Promise ->
             try {
@@ -335,6 +336,20 @@ class EMIDeviceAdminModule : Module() {
                 if (dpm.isDeviceOwnerApp(context.packageName)) {
                     dpm.setLockTaskPackages(adminComponent, arrayOf(context.packageName))
                     Log.d(TAG, "startKioskMode: Lock task packages set (device owner)")
+
+                    // Disable ALL lock task features = no status bar, no notifications, no home, no overview, no global actions
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        dpm.setLockTaskFeatures(adminComponent, DevicePolicyManager.LOCK_TASK_FEATURE_NONE)
+                        Log.d(TAG, "startKioskMode: Lock task features set to NONE (most restrictive)")
+                    }
+
+                    // Explicitly disable the status bar (Device Owner only)
+                    try {
+                        dpm.setStatusBarDisabled(adminComponent, true)
+                        Log.d(TAG, "startKioskMode: Status bar DISABLED via DPM")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "startKioskMode: setStatusBarDisabled failed: ${e.message}")
+                    }
                 }
 
                 // Check if already in lock task mode
@@ -356,7 +371,7 @@ class EMIDeviceAdminModule : Module() {
             }
         }
 
-        // Stop kiosk mode - unpins the app.
+        // Stop kiosk mode - unpins the app and re-enables status bar.
         AsyncFunction("stopKioskMode") { promise: Promise ->
             try {
                 val currentActivity = activity
@@ -364,6 +379,16 @@ class EMIDeviceAdminModule : Module() {
                     Log.e(TAG, "stopKioskMode: No activity")
                     promise.resolve("no_activity")
                     return@AsyncFunction
+                }
+
+                // Re-enable status bar if device owner
+                if (dpm.isDeviceOwnerApp(context.packageName)) {
+                    try {
+                        dpm.setStatusBarDisabled(adminComponent, false)
+                        Log.d(TAG, "stopKioskMode: Status bar RE-ENABLED via DPM")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "stopKioskMode: setStatusBarDisabled(false) failed: ${e.message}")
+                    }
                 }
 
                 val am = currentActivity.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
