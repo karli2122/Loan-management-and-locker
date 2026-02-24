@@ -252,7 +252,7 @@ export default function Reports() {
         monthlyBreakdownHtml += `
           <tr>
             <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${m.month}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">€${m.revenue.toFixed(2)}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">${currencySymbol}${m.revenue.toFixed(2)}</td>
             <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: center;">${m.payments_count}</td>
           </tr>
         `;
@@ -389,15 +389,15 @@ export default function Reports() {
             <div class="summary-grid">
               <div class="summary-card">
                 <h3>${language === 'et' ? 'Kogutulu' : 'Total Revenue'}</h3>
-                <div class="value">€${summary.totalRevenue.toFixed(2)}</div>
+                <div class="value">${currencySymbol}${summary.totalRevenue.toFixed(2)}</div>
               </div>
               <div class="summary-card profit">
                 <h3>${language === 'et' ? 'Kasum (intress)' : 'Profit (Interest)'}</h3>
-                <div class="value">€${summary.profit.toFixed(2)}</div>
+                <div class="value">${currencySymbol}${summary.profit.toFixed(2)}</div>
               </div>
               <div class="summary-card">
                 <h3>${language === 'et' ? 'Teenitud intress' : 'Interest Earned'}</h3>
-                <div class="value">€${summary.interestEarned.toFixed(2)}</div>
+                <div class="value">${currencySymbol}${summary.interestEarned.toFixed(2)}</div>
               </div>
               <div class="summary-card">
                 <h3>${language === 'et' ? 'Maksete arv' : 'Number of Payments'}</h3>
@@ -430,23 +430,23 @@ export default function Reports() {
                   <tbody>
                     <tr>
                       <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${language === 'et' ? 'Väljastatud põhiosa' : 'Principal Disbursed'}</td>
-                      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">€${financialReport.totals.principal_disbursed.toFixed(2)}</td>
+                      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">${currencySymbol}${financialReport.totals.principal_disbursed.toFixed(2)}</td>
                     </tr>
                     <tr>
                       <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${language === 'et' ? 'Teenitud intress' : 'Interest Earned'}</td>
-                      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right; color: #10B981;">€${financialReport.totals.interest_earned.toFixed(2)}</td>
+                      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right; color: #10B981;">${currencySymbol}${financialReport.totals.interest_earned.toFixed(2)}</td>
                     </tr>
                     <tr>
                       <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${language === 'et' ? 'Töötlustasud' : 'Processing Fees'}</td>
-                      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">€${financialReport.totals.processing_fees.toFixed(2)}</td>
+                      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">${currencySymbol}${financialReport.totals.processing_fees.toFixed(2)}</td>
                     </tr>
                     <tr>
                       <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${language === 'et' ? 'Viivised' : 'Late Fees'}</td>
-                      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">€${financialReport.totals.late_fees.toFixed(2)}</td>
+                      <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">${currencySymbol}${financialReport.totals.late_fees.toFixed(2)}</td>
                     </tr>
                     <tr class="totals-row">
                       <td style="padding: 12px 8px;">${language === 'et' ? 'Kogutulu' : 'Total Revenue'}</td>
-                      <td style="padding: 12px 8px; text-align: right; color: #4F46E5; font-size: 18px;">€${financialReport.totals.total_revenue.toFixed(2)}</td>
+                      <td style="padding: 12px 8px; text-align: right; color: #4F46E5; font-size: 18px;">${currencySymbol}${financialReport.totals.total_revenue.toFixed(2)}</td>
                     </tr>
                   </tbody>
                 </table>
