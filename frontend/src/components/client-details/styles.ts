@@ -326,6 +326,29 @@ export const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#10B981',
   },
+  priceRange: {
+    fontSize: 13,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  priceMetaRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
+  },
+  priceMetaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(100,116,139,0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  priceMetaText: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
   priceDate: {
     fontSize: 12,
     color: '#64748B',
