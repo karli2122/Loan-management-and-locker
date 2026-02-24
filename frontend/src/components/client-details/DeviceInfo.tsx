@@ -8,6 +8,7 @@ interface Props {
   client: Client;
   colors: any;
   t: (key: string) => string;
+  language: string;
   fetchingPrice: boolean;
   onEditDevice: () => void;
   onOpenMap: () => void;
@@ -15,7 +16,7 @@ interface Props {
 }
 
 export const DeviceInfo = ({
-  client, colors, t, fetchingPrice, onEditDevice, onOpenMap, onFetchPrice,
+  client, colors, t, language, fetchingPrice, onEditDevice, onOpenMap, onFetchPrice,
 }: Props) => (
   <>
     {/* Device Info */}
@@ -63,6 +64,7 @@ export const DeviceInfo = ({
             style={styles.fetchPriceButton}
             onPress={onFetchPrice}
             disabled={fetchingPrice}
+            data-testid="fetch-price-btn"
           >
             {fetchingPrice ? (
               <ActivityIndicator size="small" color="#4F46E5" />
@@ -80,8 +82,33 @@ export const DeviceInfo = ({
               <Ionicons name="pricetag" size={32} color="#10B981" />
             </View>
             <View style={styles.priceInfo}>
-              <Text style={styles.priceLabel}>{t('usedPrice')}</Text>
-              <Text style={styles.priceValue}>{'\u20AC'}{client.used_price_eur.toFixed(2)}</Text>
+              <Text style={styles.priceLabel}>
+                {language === 'et' ? 'Turuhind (mediaan)' : 'Market Price (median)'}
+              </Text>
+              <Text style={styles.priceValue} data-testid="device-price-value">
+                {'\u20AC'}{client.used_price_eur.toFixed(2)}
+              </Text>
+              {(client.price_min_eur != null && client.price_max_eur != null) && (
+                <Text style={styles.priceRange}>
+                  {'\u20AC'}{client.price_min_eur?.toFixed(0)} - {'\u20AC'}{client.price_max_eur?.toFixed(0)}
+                </Text>
+              )}
+              <View style={styles.priceMetaRow}>
+                {client.price_listing_count != null && client.price_listing_count > 0 && (
+                  <View style={styles.priceMetaBadge}>
+                    <Ionicons name="list" size={11} color="#64748B" />
+                    <Text style={styles.priceMetaText}>
+                      {client.price_listing_count} {language === 'et' ? 'kuulutust' : 'listings'}
+                    </Text>
+                  </View>
+                )}
+                {client.price_source && (
+                  <View style={styles.priceMetaBadge}>
+                    <Ionicons name="globe" size={11} color="#64748B" />
+                    <Text style={styles.priceMetaText}>{client.price_source}</Text>
+                  </View>
+                )}
+              </View>
               {client.price_fetched_at && (
                 <Text style={styles.priceDate}>
                   {new Date(client.price_fetched_at).toLocaleDateString('et-EE')}
