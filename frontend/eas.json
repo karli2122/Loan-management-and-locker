@@ -47,7 +47,7 @@
       "distribution": "internal",
       "env": {
         "APP_MODE": "client",
-        "EXPO_PUBLIC_BACKEND_URL": "https://loan-admin-refactor.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://admin-dashboard-v2-20.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
@@ -60,7 +60,7 @@
       "credentialsSource": "remote",
       "env": {
         "APP_MODE": "client",
-        "EXPO_PUBLIC_BACKEND_URL": "https://loan-admin-refactor.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://admin-dashboard-v2-20.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
@@ -74,7 +74,7 @@
       "credentialsSource": "remote",
       "env": {
         "APP_MODE": "client",
-        "EXPO_PUBLIC_BACKEND_URL": "https://loan-admin-refactor.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://admin-dashboard-v2-20.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
