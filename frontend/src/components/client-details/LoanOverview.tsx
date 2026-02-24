@@ -72,22 +72,22 @@ export const LoanOverview = ({
       <View style={styles.loanStatsGrid}>
         <View style={styles.loanStatItem}>
           <Text style={styles.loanStatLabel}>{language === 'et' ? 'Laen antud' : 'Amount Given'}</Text>
-          <Text style={styles.loanStatValue}>{'\u20AC'}{(client.loan_amount || 0).toFixed(2)}</Text>
+          <Text style={styles.loanStatValue}>{formatAmount(client.loan_amount || 0)}</Text>
         </View>
         <View style={styles.loanStatItem}>
           <Text style={styles.loanStatLabel}>{language === 'et' ? 'Tagasimakse intressiga' : 'Amount Due (with Interest)'}</Text>
-          <Text style={[styles.loanStatValue, { color: '#EF4444' }]}>{'\u20AC'}{(() => {
+          <Text style={[styles.loanStatValue, { color: '#EF4444' }]}>{formatAmount((() => {
             const loanAmt = client.loan_amount || 0;
             const rate = client.interest_rate || 0;
             const totalDue = client.total_amount_due || 0;
-            if (totalDue > loanAmt) return totalDue.toFixed(2);
-            if (loanAmt > 0 && rate > 0) return (loanAmt + loanAmt * rate / 100).toFixed(2);
-            return loanAmt.toFixed(2);
-          })()}</Text>
+            if (totalDue > loanAmt) return totalDue;
+            if (loanAmt > 0 && rate > 0) return loanAmt + loanAmt * rate / 100;
+            return loanAmt;
+          })())}</Text>
         </View>
         <View style={styles.loanStatItem}>
           <Text style={styles.loanStatLabel}>{language === 'et' ? 'Makstud' : 'Paid'}</Text>
-          <Text style={[styles.loanStatValue, { color: '#10B981' }]}>{'\u20AC'}{(client.total_paid || 0).toFixed(2)}</Text>
+          <Text style={[styles.loanStatValue, { color: '#10B981' }]}>{formatAmount(client.total_paid || 0)}</Text>
         </View>
         <View style={styles.loanStatItem}>
           <Text style={styles.loanStatLabel}>{language === 'et' ? 'T\u00e4htaeg' : 'Due Date'}</Text>
@@ -114,12 +114,12 @@ export const LoanOverview = ({
           <View style={styles.lateFeeDetails}>
             <View style={styles.lateFeeDetailItem}>
               <Text style={styles.lateFeeLabel}>{language === 'et' ? 'Viivise summa' : 'Late Fee Amount'}</Text>
-              <Text style={styles.lateFeeValue}>{'\u20AC'}{(client.late_fees_accumulated || 0).toFixed(2)}</Text>
+              <Text style={styles.lateFeeValue}>{formatAmount(client.late_fees_accumulated || 0)}</Text>
             </View>
             <View style={styles.lateFeeDetailItem}>
               <Text style={styles.lateFeeLabel}>{language === 'et' ? 'Kokku maksta' : 'Total Due'}</Text>
               <Text style={styles.lateFeeValueTotal}>
-                {'\u20AC'}{((client.outstanding_balance || 0) + (client.late_fees_accumulated || 0)).toFixed(2)}
+                {formatAmount((client.outstanding_balance || 0) + (client.late_fees_accumulated || 0))}
               </Text>
             </View>
           </View>
