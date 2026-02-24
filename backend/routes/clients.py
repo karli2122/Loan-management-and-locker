@@ -278,6 +278,17 @@ async def lock_client(client_id: str, admin_token: str = Query(...), message: st
         update["lock_message"] = message
     
     await db.clients.update_one({"id": client_id}, {"$set": update})
+    
+    # Send push notification for instant lock enforcement
+    push_token = client.get("expo_push_token")
+    if push_token:
+        await send_expo_push_notification(
+            push_token,
+            "Device Locked",
+            message or "Your device has been locked by the administrator.",
+            {"action": "lock", "is_locked": True}
+        )
+    
     return {"message": "Device locked", "client_id": client_id}
 
 
@@ -293,6 +304,17 @@ async def unlock_client(client_id: str, admin_token: str = Query(...)):
     await enforce_client_scope(client, admin_id)
     
     await db.clients.update_one({"id": client_id}, {"$set": {"is_locked": False}})
+    
+    # Send push notification for instant unlock
+    push_token = client.get("expo_push_token")
+    if push_token:
+        await send_expo_push_notification(
+            push_token,
+            "Device Unlocked",
+            "Your device has been unlocked.",
+            {"action": "unlock", "is_locked": False}
+        )
+    
     return {"message": "Device unlocked", "client_id": client_id}
 
 
@@ -308,6 +330,17 @@ async def send_warning(client_id: str, message: str = Query(...), admin_token: s
     await enforce_client_scope(client, admin_id)
     
     await db.clients.update_one({"id": client_id}, {"$set": {"warning_message": message}})
+    
+    # Send push notification for instant warning delivery
+    push_token = client.get("expo_push_token")
+    if push_token:
+        await send_expo_push_notification(
+            push_token,
+            "Warning from Administrator",
+            message,
+            {"action": "warning", "warning_message": message}
+        )
+    
     return {"message": "Warning sent", "client_id": client_id}
 
 
