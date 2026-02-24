@@ -213,6 +213,21 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - Note: eBay blocks datacenter IPs (503), so Swappa is used as primary source
 - Admin APK build: https://expo.dev/accounts/karli1987/projects/loans/builds/12c6e311-7200-4681-a3ca-24efbff1affd
 
+### Maximum Security Lock Screen Implementation (Device Admin)
+- **Foreground App Monitor**: New `EMIForegroundMonitorService` uses UsageStatsManager to detect foreign apps in foreground every 500ms and brings our app back immediately
+- **Notification Listener**: New `EMINotificationListenerService` auto-dismisses ALL notifications while locked — status bar shade is empty/useless
+- **Camera/Bluetooth Disable**: `setCameraDisabled(true)` via DPM + `setBluetoothDisabled(true)` while locked
+- **Auto-Restart on Kill**: New `EMIRestartReceiver` + AlarmManager schedules restart in 3s if services are killed while locked
+- **Back/Recent Apps Blocking**: Already implemented via BackHandler + kiosk screen pinning
+- **Status Bar Maximum Protection**: 
+  - Native rapid-fire `collapseStatusBar()` every 150ms
+  - `WindowInsetsAnimation.Callback` (Android 11+) collapses during animation
+  - DPM `setStatusBarDisabled(true)` for Device Owner (silent no-op for Device Admin)
+  - Overlay blocker with 60px overflow
+  - Boot receiver starts all protection services on device boot
+- **Permission Requirements**: UsageStats (Settings → Usage access), NotificationListener (Settings → Notification access)
+- Client APK build: https://expo.dev/accounts/karli1987/projects/client/builds/e39aed44-6cbb-4b76-908c-cd33dd0503fc
+
 ## Backlog
 - P1: Refactor home.tsx into smaller components
 - P1: Add "address" field to client information form
