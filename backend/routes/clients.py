@@ -402,7 +402,7 @@ async def fetch_device_price(client_id: str, admin_token: str = Query(...), forc
                 "price_max_eur": result.get("max_price_eur"),
                 "price_listing_count": result.get("listing_count", 0),
                 "price_search_query": result.get("search_query", ""),
-                "price_source": "ebay.de",
+                "price_source": result.get("source", "swappa.com"),
                 "price_sample_listings": result.get("sample_listings", []),
                 "price_fetched_at": datetime.utcnow(),
             }}
@@ -420,13 +420,13 @@ async def fetch_device_price(client_id: str, admin_token: str = Query(...), forc
             },
             "listing_count": result.get("listing_count", 0),
             "search_query": result.get("search_query", ""),
-            "source": "ebay.de",
+            "source": result.get("source", "swappa.com"),
             "sample_listings": result.get("sample_listings", []),
         }
     else:
         raise HTTPException(
             status_code=404,
-            detail=f"No eBay listings found for '{result.get('search_query', device_model)}'. {result.get('error', '')}"
+            detail=f"No listings found for '{result.get('search_query', device_model)}'. {result.get('error', '')}"
         )
 
 
