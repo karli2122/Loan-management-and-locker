@@ -1,236 +1,61 @@
 # EMI Device Admin - Product Requirements Document
 
 ## Original Problem Statement
-Loan management application with admin dashboard and client-facing mobile app. Device management features lock down client phones as loan collateral. Two-state device protection: PROTECTED (prevents uninstall) and LOCKED (inescapable lock screen).
+Loan management application with client-facing Android app (kiosk/lock mode) and admin-facing app for management. Requires multi-language support, currency selection, device locking, and comprehensive loan management.
 
-## Tech Stack
-- **Frontend**: React Native (Expo 54), TypeScript
-- **Backend**: FastAPI, MongoDB, Pydantic
-- **Native Android**: Custom Expo module (emi-device-admin)
-- **AI**: OpenAI GPT-4.1 via Emergent LLM Key (bank statement analysis)
+## Architecture
+- **Backend**: FastAPI (Python) on port 8001
+- **Frontend**: React Native (Expo) on port 3000
+- **Database**: MongoDB
+- **Build System**: EAS Build for Android APKs
+- **Native Module**: emi-device-admin (Kotlin) for Device Admin kiosk mode
 
-## Key Files
-- `app/client/home.tsx` — Client UI with lock screen + permission grid
-- `app/client/register.tsx` — Client registration flow
-- `app/admin/add-client.tsx` — Admin form for creating clients
-- `app/admin/client-details.tsx` — Client detail page
-- `app/admin/loan-plans.tsx` — Loan plan management
-- `app/admin/bank-analyzer.tsx` — Bank statement analyzer UI with credit recommendation
-- `app/admin/login.tsx` — Admin login with auth persistence
-- `app/admin/reports.tsx` — Financial reports with monthly interest
-- `backend/routes/clients.py` — Client CRUD
-- `backend/routes/loans.py` — Loan operations
-- `backend/routes/reports.py` — Reports + monthly interest earned
-- `backend/routes/contracts.py` — PDF contract generation
-- `backend/routes/bank_statements.py` — .asice/.pdf parsing + AI analysis with credit recommendation
-- `backend/routes/device.py` — Device registration and status
-- `modules/emi-device-admin/.../EMIAccessibilityService.kt` — Background polling
+## What's Been Implemented
 
-## Key API Endpoints
-- `POST /api/clients` — Create client
-- `POST /api/device/register` — Register device with code
-- `GET /api/device/status/{id}` — Device status with loan amount (includes interest)
-- `POST /api/loans/{id}/setup` — Setup loan with EMI calculation
-- `POST /api/loans/{id}/payments` — Record payment
-- `POST /api/bank-statements/analyze` — Upload and analyze bank statement (returns credit_recommendation)
-- `GET /api/bank-statements/history` — Past analyses
-- `GET /api/contracts/{id}/preview` — PDF contract preview
-- `GET /api/reports/financial` — Financial reports
+### Session 1-19 (Previous Sessions)
+- Full loan management system (CRUD clients, loans, payments)
+- Admin app with dashboard, client details, reports, calculator
+- Client app with registration, home screen, kiosk lock mode
+- Device Admin native module (Kotlin) for Android lock screen
+- Credit score display
+- Used phone price scraper (Swappa)
+- Maximum security features: Foreground Monitor, Notification Blocker, Auto-Restart, Camera/Bluetooth disable
+- Multi-language support (16 languages) via LanguageContext
 
-## Completed (Feb 22, 2026)
+### Session 20 (Feb 24, 2026) - Language & Currency Selectors
+- **CurrencyContext**: Created with 8 currencies (EUR, NOK, SEK, DKK, PLN, CHF, GBP, USD) with conversion rates from EUR, `formatAmount()` function, AsyncStorage persistence
+- **LanguagePicker component**: Reusable modal dropdown with flag emojis, 16 languages, compact mode
+- **CurrencyPicker component**: Reusable modal dropdown with flags, currency codes, symbols, names
+- **Admin Settings**: Replaced ET/EN toggle with LanguagePicker dropdown + added CurrencyPicker dropdown
+- **Admin Dashboard (tabs/index)**: Replaced ET/EN toggle with LanguagePicker, all financial values use formatAmount
+- **All admin pages updated**: dashboard, reports, client-details, clients, loans, transactions, add-loan, add-client, calculator, bank-analyzer, client-map, payment-reminders, loan-management
+- **Client pages updated**: home.tsx, register.tsx, portal-dashboard, payment-history
+- **PDF export**: Updated to use currencySymbol variable
+- **Zero hardcoded €** symbols remaining in codebase
 
-### Interest Calculation Fix (P0)
-- Fixed `calculate_interest_total()` — removed incorrect `* tenure` from fallback formula
-- Interest now correctly uses `loan_amount * rate / 100` when `total_amount_due == loan_amount`
-- Interest earned in reports now shows €141.31 instead of €0
+## Pending Verification
+- Client app max security features build (d0be2f0b-f64b-4bcc-ae82-98b17154affa) - User needs to test on device
+- Guided permission setup for Usage Stats / Notification Access
 
-### Reports API Structure Fix (P0)
-- `GET /api/reports/collection` now returns nested `{overview, financial, this_month}` + flat fields
-- `GET /api/reports/clients` now returns `{summary: {...}, details: {on_time, at_risk, defaulted, completed}}`
-- Both endpoints now match the frontend's expected structure exactly
+## Prioritized Backlog
 
-### SEB Bank Statement OCR Fix (P0)
-- Installed `tesseract-ocr`, `tesseract-ocr-est` at OS level
-- Added auto-install logic in `server.py` startup event if tesseract not found
-- SEB statements are now auto-detected via OCR (`detect_seb_via_ocr`) when text is garbled
-- Bank name shows `SEB`, period, account holder, and correct financial summary
+### P0
+- Guided permission setup screen in client app (for Usage Stats, Notification Access)
 
-### Loan Contract Share Fix
-- `handleShareContract()` in `client-details.tsx` simplified to use `expo-sharing` directly
-- Removed unreliable `Share.share` fallback (doesn't support file URLs on Android)
+### P1
+- Custom Launcher (Default Home App) for client app
+- Add "address" field to client information form
+- Offline mode data accuracy fix
+- Client app crash post-registration fix
 
-### Lock State Persistence Fix (client app)
-- Moved lock screen check BEFORE loading spinner in `home.tsx`
-- Lock screen now shows immediately when `checkCachedLockStateOnStartup()` sets `is_locked: true`
-- Previously, loading spinner was blocking the lock screen from showing on restart
+### P2
+- Diagnostic Report PDF export for superadmins
+- Allow Uninstall for Deleted Client
+- Credit Score PDF Report
 
-### Auth Token Persistence Fix (Feb 22, 2026)
-- **Admin app** (`login.tsx`): Token was cleared on ANY network error during startup verification. Fixed to only clear on explicit 401/403 (invalid token). Network errors now redirect to tabs (offline-friendly).
-- **Client app** (`register.tsx`): If `client_id` exists but server is unreachable (network error), now redirects to home instead of staying on register screen. Only clears `client_id` on explicit 404 (device deleted from server).
-
-
-- Contract date: Uses loan_start_date
-
-### Admin App Fixes:
-- Add Client form, Client Details, Client List, Dashboard, Login persistence
-- Reports: Monthly interest earned
-- Interest rate label: "Interest (Monthly)" in loan history
-
-### Backend Fixes:
-- ClientCreate schema, loan calculations, reports, bank statements, contracts
-- All 35 API endpoint tests passing (100%)
-
-### Native Android Fixes:
-- AccessibilityService: Reads uninstall_allowed from server
-- New openAccessibilitySettingsDirect method for Android 13+
-
-### Build & Deployment:
-- Fixed yarn.lock / package-lock.json conflict for EAS builds
-- Submitted client-preview and admin-preview builds
-
-## Completed (Feb 21, 2026)
-
-### Client App Stability & Permissions
-- Disabled automatic permission prompts on startup (location/notification now only request on user action)
-- Overlay permission card now refreshes status after returning from settings
-- Updated Samsung Android 13+/One UI restricted settings guidance for Accessibility with Loan Client name and required sequence
-- Registration now proceeds directly to Home after successful registration
-- Added data-testid coverage for permission cards
-- Accessibility service lock check + keepalive now runs every 10s and relaunches lock screen if app is swiped away; lock screen hides system bars
-
-### Admin App Updates
-- Contract actions: removed Preview (contract review) button
-- Contract share now uses native share sheet with attached PDF and prefilled subject/body
-- Client details: address field added to contact info and edit modal
-- Send warning button now only shows when admin mode is active
-- Loans tab filter reset when query clears; payment filter buttons enlarged; filter no longer stuck on All
-- Device Setup button removed from Features tab
-- Superadmin-only Diagnostic Report export (PDF) in Settings with device info, permission status, logs, and API errors
-- Contract PDF download/email now uses amount given + explicit interest formula in 2.2
-- Dashboard month stats now populated from analytics (interest + revenue for current month)
-
-### Backend Updates
-- Financial report interest/profit recalculated from payment allocations (using paid-loans fallback when loan totals missing)
-- Dashboard/paid-loans interest summaries now derived from payment allocations with paid-loans client mapping
-- Added totals for principal_disbursed, principal_collected, processing_fees, late_fees
-- Contract PDF paragraphs 1.1/2.2 updated to “amount given” and “amount due (amount given + interest)” wording
-- OCR fallback for SEB PDFs (Tesseract) + AI retry with OCR text for encoded statements
-- SEB statements decoded using Windows-1252/ISO-8859-1 normalization before analysis
-- SEB analyzer shows “Processing SEB OCR…” + ETA (~30s) only for SEB PDFs (auto-detected)
-- Added backend keepalive job (configurable via KEEPALIVE_URL + KEEPALIVE_INTERVAL_SECONDS)
-
-## Completed (Feb 23, 2026)
-
-### Client App Bug Fixes from Code Audit (P0)
-- **Bug 1**: Fixed `handleUninstallSignal` looping alert — Added `uninstallHandledRef` guard to prevent repeated uninstall alerts during 10s polling loop
-- **Bug 2**: Fixed `hasInitialized.current` not reset on unmount — Added reset in cleanup function so component re-initializes correctly on remount
-- **Bug 3**: Fixed blank screen on fresh registration — Added `fetchStatus(id)` call in the fresh registration path so user data is populated immediately
-- **Bug 4**: Fixed error fallback creating blank status object — Error path now preserves `null` status instead of overwriting with empty `{id:'', name:''}` 
-- **Bug 5**: Connected `checkAndSetupDeviceProtection` to lifecycle — Function was defined but never called; now invoked in `initializeProtection` effect for proper device admin setup
-- All 5 fixes verified via testing agent (12/12 tests passed)
-
-### OS-Level Screen Lock via DevicePolicyManager.lockNow()
-- Integrated `devicePolicy.lockDevice()` (calls native `DevicePolicyManager.lockNow()`) at 4 security-critical points:
-  1. **Lock state transition**: When admin locks device, OS screen locks immediately (PIN/pattern required)
-  2. **Boot with cached lock**: If device was locked when rebooted, locks OS screen on app startup
-  3. **Tamper detection**: When Device Admin is forcefully disabled, locks device immediately
-  4. **App resume while locked**: Re-locks OS screen every time app returns to foreground
-- This is a hard OS-level lock — even if user bypasses the app's lock screen, the device itself requires PIN/pattern
-- Verified via testing agent (all integration points confirmed)
-
-### Status Bar & Navigation Bar Hide Workaround (3-Layer Defense)
-- **Layer 1 — Enhanced Overlay Service**: Expanded blocker overlays by 20px beyond actual bar heights to catch edge swipe gestures. Added `FLAG_WATCH_OUTSIDE_TOUCH` to intercept touches outside the overlay. Service now sends `REAPPLY_IMMERSIVE` broadcast every 1s to the module.
-- **Layer 2 — Broadcast Receiver Guard**: Native module registers a `BroadcastReceiver` that re-applies immersive mode on the activity every time the overlay service pings (every ~1s). This catches cases where focus changes, dialogs, or system events restore bars.
-- **Layer 3 — Instant Visibility Listener**: `OnSystemUiVisibilityChangeListener` (pre-API 30) instantly re-hides bars the moment Android shows them. For API 30+, `BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE` auto-hides bars after swipe.
-- Guards are installed when `enableImmersiveMode()` is called and cleaned up when `disableImmersiveMode()` is called.
-- Verified via testing agent (8/8 features confirmed)
-
-### Admin App Code Audit - All 12 Issues Resolved (Feb 23, 2026)
-- **Fixes from previous session (7 of 12)**:
-  - UI: Corrected dashboard interest card margins, reduced tab bar height
-  - UX: Added dashboard loading state, pagination for transactions, success/error feedback in reports
-  - Bug: Fixed stale closure in loans filter, strengthened due date validation in add-loan
-- **Fixes completed this session (5 of 12)**:
-  - **#7/#8 (HIGH)**: Auto-refresh race condition in `client-details.tsx` — Added `useRef`-based modal guard that pauses the 15-second auto-refresh when any modal is open (payment, warning, lock, edit device, edit client, edit loan)
-  - **#10 (MINOR)**: Removed unused `loading` state variables in `loans.tsx` and `transactions.tsx`
-  - **#12 (MINOR)**: Added 10+ missing `data-testid` attributes to interactive elements in `client-details.tsx` (confirm-payment-btn, confirm-warning-btn, confirm-lock-btn, save-device-info-btn, save-client-info-btn, toggle-lock-btn, allow-uninstall-btn, delete-client-btn)
-  - **#9 (MEDIUM)**: Installed missing `date-fns` dependency
-  - **Testing agent fixes**: Fixed missing `ActivityIndicator` import in dashboard `index.tsx`, removed duplicate catch blocks in `loans.tsx` and `transactions.tsx`
-- **All 12 audit items resolved**. Full regression test passed (100% - login, dashboard, loans, transactions, client details, add loan all working)
-
-### Client Details Page Refactoring (Feb 24, 2026)
-- **Completed**: Split 2995-line `client-details.tsx` into 11 modular component files
-- **New structure**: `/app/frontend/src/components/client-details/`
-  - `types.ts` (76 lines) - Client, LoanHistoryItem, LoanPreview interfaces
-  - `styles.ts` (931 lines) - All StyleSheet definitions
-  - `ClientInfoCard.tsx` (100 lines) - Avatar, name, badges, registration code, key generation
-  - `ContactInfo.tsx` (38 lines) - Phone, email, address section
-  - `DeviceInfo.tsx` (101 lines) - Device info + price section
-  - `LoanOverview.tsx` (164 lines) - Loan progress, stats, late fees, contract actions
-  - `LoanHistory.tsx` (183 lines) - Collapsible loan history with search
-  - `PaymentHistory.tsx` (73 lines) - Payment history tab
-  - `ActionButtons.tsx` (93 lines) - Quick action buttons
-  - `ClientModals.tsx` (540 lines) - All 6 modals (payment, warning, lock, edit device/client/loan)
-  - `index.ts` (17 lines) - Barrel export
-- **Main route file**: `client-details.tsx` reduced from 2995 to 782 lines (74% reduction)
-- **Testing**: Full regression via testing_agent_v3_fork - 95% pass rate, all components verified
-
-## Pending User Verification
-- P0: Client app crash after registration (~5s after home load) — verify on device; needs logcat if it persists
-- P0: Accessibility restricted settings on Samsung Android 16 — verify updated Loan Client sequence
-- P1: Profit calculations in Reports/Analytics/Dashboard — validate with real data
-- P1: Contract PDF text (1.1/2.2) validated via API; native Share still needs device verification
-- P1: Address field save/display + send warning visibility (admin mode only) — verify
-- P1: Diagnostic Report export button visible on web; verify PDF share on device
-- P1: SEB PDF statement OCR + AI retry — backend API validated; verify in admin app UI
-- P1: Loans tab filters (Dashboard > Loans > change filters) — verify not stuck on All
-- P1: Client auth token persistence on restart — still needs investigation if issue persists
-- P2: Loans filter button sizing + filter reset — VERIFIED (iteration 45)
-
-## Completed (Feb 24, 2026 - Session 2)
-
-### Admin App Bug Fixes Verified (P0)
-- **Filter button sizing**: Loans tab payment date filter buttons correctly sized (minHeight: 36, paddingVertical: 8, paddingHorizontal: 14)
-- **Payments in Transactions**: Transactions tab now fetches and displays payment records via `/api/loans/{client_id}/payments` alongside disbursements
-- **Admin name display**: Dashboard header shows `firstName` ("Karli") from AsyncStorage instead of username ("karli1987")
-- All 3 fixes verified via testing_agent_v3_fork (100% pass rate - iteration 45)
-
-### Credit Score Badge Feature
-- Added credit score badge next to client name in 3 locations:
-  1. **Loans tab - Active loans** (`loans.tsx`): Star icon + score with color-coded background
-  2. **Loans tab - Archived loans** (`loans.tsx`): Star icon + final_credit_score next to archived client name
-  3. **Client Details page** (`ClientInfoCard.tsx`): Star icon + score next to client name header
-- Color coding: 800+ green, 650+ blue, 500+ amber, 350+ orange, <350 red
-
-### Real Used Phone Price Scraping (Swappa.com)
-- Replaced mock price endpoint with real web scraper using Swappa.com
-- Created `/app/backend/services/ebay_scraper.py` with Swappa integration
-- Features: model code resolution (SM-A326B -> Samsung Galaxy A32), price range (min/max/avg), listing count, sample listings
-- Prices in USD converted to EUR (0.92 rate), cached for 7 days in MongoDB
-- Frontend updated: DeviceInfo shows price range, listing count, source, fetch date
-- `force=true` query param bypasses cache for fresh scrape
-- Samsung model map covers 20+ common models
-- Note: eBay blocks datacenter IPs (503), so Swappa is used as primary source
-- Admin APK build: https://expo.dev/accounts/karli1987/projects/loans/builds/12c6e311-7200-4681-a3ca-24efbff1affd
-
-### Maximum Security Lock Screen Implementation (Device Admin)
-- **Foreground App Monitor**: New `EMIForegroundMonitorService` uses UsageStatsManager to detect foreign apps in foreground every 500ms and brings our app back immediately
-- **Notification Listener**: New `EMINotificationListenerService` auto-dismisses ALL notifications while locked — status bar shade is empty/useless
-- **Camera/Bluetooth Disable**: `setCameraDisabled(true)` via DPM + `setBluetoothDisabled(true)` while locked
-- **Auto-Restart on Kill**: New `EMIRestartReceiver` + AlarmManager schedules restart in 3s if services are killed while locked
-- **Back/Recent Apps Blocking**: Already implemented via BackHandler + kiosk screen pinning
-- **Status Bar Maximum Protection**: 
-  - Native rapid-fire `collapseStatusBar()` every 150ms
-  - `WindowInsetsAnimation.Callback` (Android 11+) collapses during animation
-  - DPM `setStatusBarDisabled(true)` for Device Owner (silent no-op for Device Admin)
-  - Overlay blocker with 60px overflow
-  - Boot receiver starts all protection services on device boot
-- **Permission Requirements**: UsageStats (Settings → Usage access), NotificationListener (Settings → Notification access)
-- Client APK build: https://expo.dev/accounts/karli1987/projects/client/builds/e39aed44-6cbb-4b76-908c-cd33dd0503fc
-
-## Backlog
-- P1: Refactor home.tsx into smaller components
-- P1: Add "address" field to client information form
-- P2: Diagnostic Report PDF export for superadmins
-- P2: Payment Reminders, Bulk Import, Credit Score PDF, P/L Dashboard
-- P3: AMAPI, FCM Push Notifications
+### P3
+- iOS client app (soft lock)
+- Automated Payment Reminders (SMS/Email)
+- Bulk Payment Import (CSV)
+- AMAPI integration
+- FCM Push Notifications
