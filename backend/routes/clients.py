@@ -11,6 +11,7 @@ from database import db
 from models.schemas import Client, ClientCreate, ClientUpdate, BulkOperationRequest
 from utils.auth import get_admin_id_from_token, enforce_client_scope
 from utils.exceptions import ValidationException, AuthenticationException, AuthorizationException
+from routes.reminders import send_expo_push_notification
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Clients"])
