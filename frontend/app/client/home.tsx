@@ -240,13 +240,6 @@ export default function ClientHome() {
             await reportTamperAttempt('admin_disabled');
             await reportAdminStatus(storedId, false);
           }
-          // Hard OS-level screen lock on tamper — locks device immediately
-          try {
-            const lockResult = await devicePolicy.lockDevice();
-            console.log('[Tamper] Device screen locked via lockNow():', lockResult);
-          } catch (lockErr) {
-            console.log('[Tamper] lockDevice failed (admin was disabled):', lockErr);
-          }
           // Clear the flag so we don't report it again
           try {
             await devicePolicy.clearTamperFlags();
@@ -356,15 +349,12 @@ export default function ClientHome() {
       await devicePolicy.setNativeLockState(locked);
       wasLocked.current = locked;
 
-      // Manage immersive mode, overlay, and OS-level screen lock based on lock state
+      // Manage immersive mode and overlay based on lock state
+      // The app's own lock screen UI handles the visual lock (no native lockNow())
       if (Platform.OS === 'android') {
         if (locked) {
           await devicePolicy.enableImmersiveMode();
           await devicePolicy.startOverlayBlocker();
-          // Hard OS-level screen lock via DevicePolicyManager.lockNow()
-          // Forces the device to the Android lock screen (PIN/pattern/biometric required)
-          const lockResult = await devicePolicy.lockDevice();
-          console.log('[Lock] Device screen locked via lockNow():', lockResult);
         } else {
           await devicePolicy.disableImmersiveMode();
           await devicePolicy.stopOverlayBlocker();
@@ -395,16 +385,13 @@ export default function ClientHome() {
           loan_due_date: null,
         });
         wasLocked.current = true;
-        // Engage immersive mode + overlay + OS screen lock on boot if locked
+        // Engage immersive mode + overlay on boot if locked
         if (Platform.OS === 'android') {
           try {
             await devicePolicy.enableImmersiveMode();
             console.log('[Startup] Immersive mode enabled');
             await devicePolicy.startOverlayBlocker();
             console.log('[Startup] Overlay blocker started');
-            // Hard OS-level screen lock on boot
-            const lockResult = await devicePolicy.lockDevice();
-            console.log('[Startup] Device screen locked via lockNow():', lockResult);
           } catch (e) {
             console.log('[Startup] Lock enforcement error:', e);
           }
@@ -959,13 +946,6 @@ export default function ClientHome() {
               // Only start overlay blocker if device is actually LOCKED
               if (overlay && wasLocked.current) {
                 await devicePolicy.startOverlayBlocker();
-              }
-              
-              // Re-lock device screen on resume if device is locked
-              // This forces PIN/pattern entry every time the user tries to access the phone
-              if (wasLocked.current) {
-                const lockResult = await devicePolicy.lockDevice();
-                console.log('[Resume] Device screen re-locked via lockNow():', lockResult);
               }
             } catch (e) {
               console.log('Protection refresh error:', e);
