@@ -26,6 +26,8 @@ export default {
       },
       package: IS_ADMIN_APP ? "com.emi.admin" : "com.emi.client",
       versionCode: 1,
+      navigationBarColor: "#1E293B",
+      navigationBarStyle: "dark",
       // Permissions: Admin app needs basic location/network, 
       // Client app needs elevated permissions for Device Admin protection
       permissions: IS_ADMIN_APP 
