@@ -805,6 +805,37 @@ class EMIDeviceAdminModule : Module() {
         // ===================== SCREEN PINNING =====================
         // startKioskMode/stopKioskMode/isInKioskMode already handle screen pinning above
 
+        // ===================== COLLAPSE STATUS BAR =====================
+        // Programmatically close the notification shade / status bar if pulled down
+        AsyncFunction("collapseStatusBar") { promise: Promise ->
+            try {
+                val currentActivity = activity
+                if (currentActivity == null) {
+                    promise.resolve("no_activity")
+                    return@AsyncFunction
+                }
+                currentActivity.runOnUiThread {
+                    try {
+                        // Use StatusBarManager.collapsePanels() via reflection
+                        @Suppress("WrongConstant")
+                        val statusBarService = currentActivity.getSystemService("statusbar")
+                        if (statusBarService != null) {
+                            val collapse = statusBarService.javaClass.getMethod("collapsePanels")
+                            collapse.invoke(statusBarService)
+                        }
+                        // Also re-apply immersive mode
+                        applyImmersiveMode(currentActivity)
+                    } catch (e: Exception) {
+                        Log.d(TAG, "collapseStatusBar reflection failed (expected on some devices): ${e.message}")
+                    }
+                }
+                promise.resolve("collapsed")
+            } catch (e: Exception) {
+                Log.e(TAG, "collapseStatusBar error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
         // ===================== BATTERY OPTIMIZATION =====================
 
         // Check if app is exempted from battery optimization
