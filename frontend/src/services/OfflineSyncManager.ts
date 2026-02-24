@@ -157,13 +157,11 @@ class OfflineSyncManager {
     } catch (error) {
       console.error('[OfflineSync] Sync error:', error);
       
-      // Return cached data if available
+      // Return cached data if available — include ALL fields for proper UI
       const cached = await this.getCachedStatus(clientId);
       if (cached) {
         return {
-          is_locked: cached.is_locked,
-          lock_message: cached.lock_message,
-          warning_message: cached.warning_message,
+          ...cached,
           offline: true,
         };
       }

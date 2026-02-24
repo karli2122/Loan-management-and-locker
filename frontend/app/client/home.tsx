@@ -1140,7 +1140,7 @@ export default function ClientHome() {
           </View>
 
           <Text style={styles.lockFooter}>
-            {t('clearLoanToUnlock')}
+            {t('clearEmiToUnlock')}
           </Text>
           
           {/* Protection Status */}
