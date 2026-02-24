@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCurrency } from '../../src/context/CurrencyContext';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
 import { getErrorMessage } from '../../src/utils/errorHandler';
@@ -41,6 +42,7 @@ export default function AddLoan() {
   const clientId = params.clientId;
   const renew = params.renew;
   const { language } = useLanguage();
+  const { formatAmount, currencySymbol } = useCurrency();
   const [loading, setLoading] = useState(false);
   const [loadingClients, setLoadingClients] = useState(true);
   const [loadingPlans, setLoadingPlans] = useState(true);
@@ -388,7 +390,7 @@ export default function AddLoan() {
       const monthlyEmi = loanResponseData?.loan_details?.monthly_emi;
       const tenureMonths = loanResponseData?.loan_details?.tenure_months;
       const emiText = (typeof monthlyEmi === 'number' && !isNaN(monthlyEmi)) 
-        ? `€${monthlyEmi.toFixed(2)}` 
+        ? `${formatAmount(monthlyEmi, 2)}` 
         : 'N/A';
       const tenureText = tenureMonths ? `${tenureMonths} ${language === 'et' ? 'kuud' : 'months'}` : '';
       

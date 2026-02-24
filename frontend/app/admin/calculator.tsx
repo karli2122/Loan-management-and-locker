@@ -12,10 +12,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import API_URL from '../../src/constants/api';
+import { useCurrency } from '../../src/context/CurrencyContext';
 
 
 export default function Calculator() {
   const router = useRouter();
+  const { formatAmount, currencySymbol } = useCurrency();
   const [principal, setPrincipal] = useState('1000');
   const [rate, setRate] = useState('10');
   const [months, setMonths] = useState('12');
@@ -52,11 +54,11 @@ export default function Calculator() {
       <View style={styles.methodDetails}>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Monthly Payment</Text>
-          <Text style={styles.detailValue}>€{method.monthly_emi}</Text>
+          <Text style={styles.detailValue}>{formatAmount(method.monthly_emi)}</Text>
         </View>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Total Payment</Text>
-          <Text style={styles.detailValue}>€{method.total_amount}</Text>
+          <Text style={styles.detailValue}>{formatAmount(method.total_amount)}</Text>
         </View>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Interest</Text>

@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCurrency } from '../../../src/context/CurrencyContext';
 import { useLanguage } from '../../../src/context/LanguageContext';
 import { useTheme } from '../../../src/context/ThemeContext';
 import API_URL from '../../../src/constants/api';
@@ -30,6 +31,7 @@ interface Transaction {
 export default function TransactionsTab() {
   const router = useRouter();
   const { language } = useLanguage();
+  const { formatAmount, currencySymbol } = useCurrency();
   const { colors } = useTheme();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [refreshing, setRefreshing] = useState(false);

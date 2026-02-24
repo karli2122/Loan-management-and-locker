@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCurrency } from '../../src/context/CurrencyContext';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
 
@@ -40,6 +41,7 @@ interface ReminderSummary {
 export default function PaymentReminders() {
   const router = useRouter();
   const { language } = useLanguage();
+  const { formatAmount, currencySymbol } = useCurrency();
   const [reminders, setReminders] = useState<PendingReminder[]>([]);
   const [summary, setSummary] = useState<ReminderSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -279,11 +281,11 @@ export default function PaymentReminders() {
               <View style={styles.reminderDetails}>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>{language === 'et' ? 'Kuumakse' : 'Monthly EMI'}</Text>
-                  <Text style={styles.detailValue}>€{reminder.monthly_emi.toFixed(2)}</Text>
+                  <Text style={styles.detailValue}>{formatAmount(reminder.monthly_emi, 2)}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>{language === 'et' ? 'Võlgnevus' : 'Outstanding'}</Text>
-                  <Text style={styles.detailValue}>€{reminder.outstanding_balance.toFixed(2)}</Text>
+                  <Text style={styles.detailValue}>{formatAmount(reminder.outstanding_balance, 2)}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>{language === 'et' ? 'Tähtaeg' : 'Due Date'}</Text>

@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
+import { useCurrency } from '../../src/context/CurrencyContext';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
 
@@ -59,6 +60,7 @@ interface AnalysisResult {
 export default function BankAnalyzer() {
   const router = useRouter();
   const { language } = useLanguage();
+  const { formatAmount, currencySymbol } = useCurrency();
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState('');
@@ -187,7 +189,7 @@ export default function BankAnalyzer() {
   };
 
   const fmt = (n: number | undefined | null) =>
-    n != null ? `${n >= 0 ? '' : '-'}€${Math.abs(n).toFixed(2)}` : '-';
+    n != null ? `${n >= 0 ? '' : '-'}${formatAmount(Math.abs(n), 2)}` : '-';
 
   const isSebPdf = sebLikely && selectedFileName.toLowerCase().endsWith('.pdf');
   const showSebOcrHint = uploading && isSebPdf;

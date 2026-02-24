@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useCurrency } from '../../src/context/CurrencyContext';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
 import { getAuthInfo, handleAuthFailure } from '../../src/utils/adminAuth';
@@ -23,6 +24,7 @@ import { DatePicker } from '../../src/components/DatePicker';
 export default function AddClient() {
   const router = useRouter();
   const { t, language } = useLanguage();
+  const { formatAmount, currencySymbol } = useCurrency();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: '',

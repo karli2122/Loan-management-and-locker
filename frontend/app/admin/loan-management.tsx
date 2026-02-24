@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCurrency } from '../../src/context/CurrencyContext';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
 
@@ -55,6 +56,7 @@ export default function LoanManagement() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { t } = useLanguage();
+  const { formatAmount, currencySymbol } = useCurrency();
   
   const [client, setClient] = useState<Client | null>(null);
   const [loanDetails, setLoanDetails] = useState<LoanDetails | null>(null);
@@ -173,7 +175,7 @@ export default function LoanManagement() {
       if (!response.ok) throw new Error('Failed to setup loan');
       
       const data = await response.json();
-      Alert.alert(t('success'), `Loan setup successfully!\nMonthly Payment: €${data.loan_details.monthly_emi}`);
+      Alert.alert(t('success'), `Loan setup successfully!\nMonthly Payment: ${formatAmount(data.loan_details.monthly_emi)}`);
       setSetupLoanModal(false);
       fetchData();
     } catch (error: any) {
@@ -213,7 +215,7 @@ export default function LoanManagement() {
       if (!response.ok) throw new Error('Failed to update loan');
       
       const data = await response.json();
-      Alert.alert(t('success'), `Loan updated successfully!\nNew Monthly Payment: €${data.loan_details?.monthly_emi || 'N/A'}`);
+      Alert.alert(t('success'), `Loan updated successfully!\nNew Monthly Payment: ${formatAmount(data.loan_details?.monthly_emi || 'N/A')}`);
       setEditLoanModal(false);
       fetchData();
     } catch (error: any) {
@@ -247,7 +249,7 @@ export default function LoanManagement() {
       const data = await response.json();
       Alert.alert(
         t('success'),
-        `Payment recorded!\n\nPaid: €${data.payment.amount}\nOutstanding: €${data.updated_balance.outstanding_balance.toFixed(2)}`
+        `Payment recorded!\n\nPaid: ${formatAmount(data.payment.amount)}\nOutstanding: ${formatAmount(data.updated_balance.outstanding_balance, 2)}`
       );
       setRecordPaymentModal(false);
       setPaymentAmount('');
@@ -376,7 +378,7 @@ export default function LoanManagement() {
               <View style={styles.summaryGrid}>
                 <View style={styles.summaryItem}>
                   <Text style={styles.summaryLabel}>Total Loan</Text>
-                  <Text style={styles.summaryValue}>€{loanDetails.total_amount_due.toFixed(2)}</Text>
+                  <Text style={styles.summaryValue}>{formatAmount(loanDetails.total_amount_due, 2)}</Text>
                 </View>
                 <View style={styles.summaryItem}>
                   <Text style={styles.summaryLabel}>Paid</Text>
@@ -392,7 +394,7 @@ export default function LoanManagement() {
                 </View>
                 <View style={styles.summaryItem}>
                   <Text style={styles.summaryLabel}>Monthly Payment</Text>
-                  <Text style={styles.summaryValue}>€{loanDetails.monthly_emi.toFixed(2)}</Text>
+                  <Text style={styles.summaryValue}>{formatAmount(loanDetails.monthly_emi, 2)}</Text>
                 </View>
               </View>
 
@@ -449,7 +451,7 @@ export default function LoanManagement() {
                     <Ionicons name="checkmark-circle" size={24} color="#10B981" />
                   </View>
                   <View style={styles.paymentDetails}>
-                    <Text style={styles.paymentAmount}>€{payment.amount.toFixed(2)}</Text>
+                    <Text style={styles.paymentAmount}>{formatAmount(payment.amount, 2)}</Text>
                     <Text style={styles.paymentDate}>
                       {new Date(payment.payment_date).toLocaleDateString('et-EE')}
                     </Text>
@@ -480,7 +482,7 @@ export default function LoanManagement() {
                   <Text style={styles.scheduleDate}>
                     {new Date(item.due_date).toLocaleDateString('et-EE')}
                   </Text>
-                  <Text style={styles.scheduleAmount}>€{item.amount_due.toFixed(2)}</Text>
+                  <Text style={styles.scheduleAmount}>{formatAmount(item.amount_due, 2)}</Text>
                 </View>
                 <View style={[
                   styles.scheduleStatus,

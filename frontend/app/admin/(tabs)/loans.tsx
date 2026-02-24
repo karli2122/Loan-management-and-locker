@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCurrency } from '../../../src/context/CurrencyContext';
 import { useLanguage } from '../../../src/context/LanguageContext';
 import { useTheme } from '../../../src/context/ThemeContext';
 import API_URL from '../../../src/constants/api';
@@ -55,6 +56,7 @@ export default function LoansTab() {
   const router = useRouter();
   const params = useLocalSearchParams<{ filter?: string }>();
   const { language } = useLanguage();
+  const { formatAmount, currencySymbol } = useCurrency();
   const { colors } = useTheme();
   const [clients, setClients] = useState<Client[]>([]);
   const [paidLoans, setPaidLoans] = useState<PaidLoan[]>([]);
@@ -274,14 +276,14 @@ export default function LoansTab() {
                 <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
                   {language === 'et' ? 'Laen' : 'Loan'}
                 </Text>
-                <Text style={[styles.loanDetailValue, { color: colors.text }]}>€{totalLoan.toFixed(0)}</Text>
+                <Text style={[styles.loanDetailValue, { color: colors.text }]}>{formatAmount(totalLoan, 0)}</Text>
               </View>
               
               <View style={styles.loanDetailItem}>
                 <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
                   {language === 'et' ? 'Makstud' : 'Paid'}
                 </Text>
-                <Text style={[styles.loanDetailValue, { color: colors.success }]}>€{paid.toFixed(0)}</Text>
+                <Text style={[styles.loanDetailValue, { color: colors.success }]}>{formatAmount(paid, 0)}</Text>
               </View>
               
               <View style={styles.loanDetailItem}>
@@ -378,21 +380,21 @@ export default function LoansTab() {
               <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
                 {language === 'et' ? 'Laen' : 'Loan'}
               </Text>
-              <Text style={[styles.loanDetailValue, { color: colors.text }]}>€{item.loan_amount?.toFixed(0) || '0'}</Text>
+              <Text style={[styles.loanDetailValue, { color: colors.text }]}>{formatAmount(item.loan_amount?.toFixed(0) || '0')}</Text>
             </View>
             
             <View style={styles.loanDetailItem}>
               <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
                 {language === 'et' ? 'Makstud' : 'Total Paid'}
               </Text>
-              <Text style={[styles.loanDetailValue, { color: '#10B981' }]}>€{item.total_paid?.toFixed(0) || '0'}</Text>
+              <Text style={[styles.loanDetailValue, { color: '#10B981' }]}>{formatAmount(item.total_paid?.toFixed(0) || '0')}</Text>
             </View>
             
             <View style={styles.loanDetailItem}>
               <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
                 {language === 'et' ? 'Intress' : 'Interest'}
               </Text>
-              <Text style={[styles.loanDetailValue, { color: '#F59E0B' }]}>€{item.total_interest?.toFixed(0) || '0'}</Text>
+              <Text style={[styles.loanDetailValue, { color: '#F59E0B' }]}>{formatAmount(item.total_interest?.toFixed(0) || '0')}</Text>
             </View>
           </View>
           
