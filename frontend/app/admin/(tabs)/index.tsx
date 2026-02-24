@@ -538,7 +538,7 @@ export default function Dashboard() {
           <View style={styles.interestCardBody}>
             <View style={styles.interestMainStat}>
               <Text style={[styles.interestMainValue, { color: '#10B981' }]} data-testid="total-interest-value">
-                €{interestSummary.total_interest_earned.toFixed(2)}
+                {formatAmount(interestSummary.total_interest_earned)}
               </Text>
               <Text style={[styles.interestMainLabel, { color: colors.textMuted }]}>
                 {language === 'et' ? 'Kokku intressitulu' : 'Total Interest Earned'}
@@ -548,7 +548,7 @@ export default function Dashboard() {
             <View style={styles.interestSubStats}>
               <View style={styles.interestSubStat}>
                 <Text style={[styles.interestSubValue, { color: '#4F46E5' }]} data-testid="month-interest-value">
-                  €{interestSummary.current_month_interest.toFixed(2)}
+                  {formatAmount(interestSummary.current_month_interest)}
                 </Text>
                 <Text style={[styles.interestSubLabel, { color: colors.textMuted }]}>
                   {language === 'et' ? 'Jooksev kuu' : 'This Month'}
@@ -587,7 +587,7 @@ export default function Dashboard() {
               }}
               width={Dimensions.get('window').width - 56}
               height={160}
-              yAxisLabel="€"
+              yAxisLabel={currencySymbol}
               yAxisSuffix=""
               chartConfig={{
                 backgroundColor: colors.surface,
@@ -672,7 +672,7 @@ export default function Dashboard() {
               }}
               width={Dimensions.get('window').width - 56}
               height={160}
-              yAxisLabel="€"
+              yAxisLabel={currencySymbol}
               yAxisSuffix=""
               chartConfig={{
                 backgroundColor: colors.surface,
