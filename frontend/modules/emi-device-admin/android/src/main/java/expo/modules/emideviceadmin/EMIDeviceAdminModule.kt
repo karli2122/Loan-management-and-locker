@@ -1421,7 +1421,6 @@ class EMIDeviceAdminModule : Module() {
             // Expected to fail on some devices - silently ignore
         }
     }
-    }
 
     /**
      * Remove the immersive mode guards (broadcast receiver + visibility listener).
