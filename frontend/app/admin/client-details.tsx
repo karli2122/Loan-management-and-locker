@@ -344,7 +344,11 @@ export default function ClientDetails() {
       if (!response.ok) { const error = await response.json(); throw new Error(error.detail || 'Failed to fetch price'); }
       const data = await response.json();
       await fetchClient();
-      Alert.alert(t('success'), `${t('devicePrice')}: \u20AC${data.used_price_eur}\n${data.note || ''}`);
+      const rangeText = data.price_range?.min && data.price_range?.max
+        ? `\n${language === 'et' ? 'Vahemik' : 'Range'}: \u20AC${data.price_range.min?.toFixed(0)} - \u20AC${data.price_range.max?.toFixed(0)}`
+        : '';
+      const countText = data.listing_count ? `\n${data.listing_count} ${language === 'et' ? 'kuulutust' : 'listings'} (${data.source || 'ebay.de'})` : '';
+      Alert.alert(t('success'), `${t('devicePrice')}: \u20AC${data.used_price_eur}${rangeText}${countText}`);
     } catch (error: any) { Alert.alert(t('error'), error.message); }
     finally { setFetchingPrice(false); }
   };
