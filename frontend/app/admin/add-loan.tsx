@@ -578,7 +578,7 @@ export default function AddLoan() {
           </TouchableOpacity>
 
           <Text style={styles.label}>
-            {language === 'et' ? 'Laenusumma (€)' : 'Loan Amount (€)'}
+            {language === 'et' ? `Laenusumma (${currencySymbol})` : `Loan Amount (${currencySymbol})`}
           </Text>
           <View style={styles.inputContainer}>
             <Ionicons name="cash" size={20} color="#64748B" />
@@ -656,7 +656,7 @@ export default function AddLoan() {
                   {language === 'et' ? 'Kuumakse' : 'Monthly EMI'}
                 </Text>
                 <Text style={styles.emiPreviewValue}>
-                  €{emiPreview.monthlyEmi.toFixed(2)}
+                  {formatAmount(emiPreview.monthlyEmi)}
                 </Text>
               </View>
               <View style={styles.emiPreviewItem}>
@@ -672,7 +672,7 @@ export default function AddLoan() {
                   {language === 'et' ? 'Intress kokku' : 'Total Interest'}
                 </Text>
                 <Text style={[styles.emiPreviewValueSmall, { color: '#F59E0B' }]}>
-                  €{emiPreview.totalInterest.toFixed(2)}
+                  {formatAmount(emiPreview.totalInterest)}
                 </Text>
               </View>
               <View style={styles.emiPreviewItem}>
@@ -680,7 +680,7 @@ export default function AddLoan() {
                   {language === 'et' ? 'Kokku tagasi' : 'Total Payable'}
                 </Text>
                 <Text style={styles.emiPreviewValueSmall}>
-                  €{emiPreview.totalAmount.toFixed(2)}
+                  {formatAmount(emiPreview.totalAmount)}
                 </Text>
               </View>
             </View>

@@ -260,7 +260,7 @@ export default function ClientsList() {
           <View style={styles.clientMeta}>
             {(item.outstanding_balance || item.loan_amount || 0) > 0 ? (
               <Text style={[styles.emiAmount, { color: '#EF4444' }]}>
-                {language === 'et' ? 'Tagasimakse' : 'Due'}: €{(() => {
+                {language === 'et' ? 'Tagasimakse' : 'Due'}: {formatAmount((() => {
                   const loanAmt = item.loan_amount || 0;
                   const rate = (item as any).interest_rate || 0;
                   const totalDue = (item as any).total_amount_due || 0;
@@ -271,7 +271,7 @@ export default function ClientsList() {
               </Text>
             ) : (
               <Text style={[styles.emiAmount, { color: colors.textSecondary }]}>
-                {language === 'et' ? 'Laen' : 'Loan'}: €0
+                {language === 'et' ? 'Laen' : 'Loan'}: {currencySymbol}0
               </Text>
             )}
             {item.is_registered ? (

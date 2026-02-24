@@ -167,7 +167,7 @@ export default function ClientMapScreen() {
                 {client.outstanding_balance > 0 && (
                   <View style={styles.balanceBadge}>
                     <Text style={styles.balanceText}>
-                      €{client.outstanding_balance.toFixed(0)}
+                      {formatAmount(client.outstanding_balance, 0)}
                     </Text>
                   </View>
                 )}

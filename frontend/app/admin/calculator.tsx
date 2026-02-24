@@ -63,14 +63,14 @@ export default function Calculator() {
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Interest</Text>
           <Text style={[styles.detailValue, { color: '#F59E0B' }]}>
-            €{method.total_interest}
+            {formatAmount(method.total_interest)}
           </Text>
         </View>
         {method.savings_vs_highest > 0 && (
           <View style={styles.savingsRow}>
             <Ionicons name="trending-down" size={16} color="#10B981" />
             <Text style={styles.savingsText}>
-              Saves €{method.savings_vs_highest} vs most expensive
+              Saves {formatAmount(method.savings_vs_highest)} vs most expensive
             </Text>
           </View>
         )}

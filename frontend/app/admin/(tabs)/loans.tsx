@@ -291,7 +291,7 @@ export default function LoansTab() {
                   {language === 'et' ? 'Võlg' : 'Due'}
                 </Text>
                 <Text style={[styles.loanDetailValue, { color: outstanding > 0 ? colors.warning : colors.success }]}>
-                  €{outstanding.toFixed(0)}
+                  {formatAmount(outstanding, 0)}
                 </Text>
               </View>
             </View>
@@ -320,7 +320,7 @@ export default function LoansTab() {
                 <View style={styles.lateFeeBadge}>
                   <Ionicons name="cash" size={12} color="#DC2626" />
                   <Text style={styles.lateFeeText}>
-                    {language === 'et' ? 'Viivis' : 'Late Fee'}: €{(item.late_fees_accumulated ?? 0).toFixed(2)}
+                    {language === 'et' ? 'Viivis' : 'Late Fee'}: {formatAmount(item.late_fees_accumulated ?? 0)}
                   </Text>
                 </View>
               )}

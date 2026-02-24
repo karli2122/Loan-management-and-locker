@@ -219,7 +219,7 @@ export default function AddClient() {
 
             <Text style={styles.label}>{language === 'et' ? 'Laenusumma' : 'Loan Amount'}</Text>
             <View style={styles.inputContainer}>
-              <Text style={styles.currencySymbol}>€</Text>
+              <Text style={styles.currencySymbol}>{currencySymbol}</Text>
               <TextInput
                 style={styles.input}
                 placeholder={language === 'et' ? 'Sisesta laenusumma' : 'Enter loan amount'}

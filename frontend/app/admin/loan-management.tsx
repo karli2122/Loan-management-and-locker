@@ -383,13 +383,13 @@ export default function LoanManagement() {
                 <View style={styles.summaryItem}>
                   <Text style={styles.summaryLabel}>Paid</Text>
                   <Text style={[styles.summaryValue, { color: '#10B981' }]}>
-                    €{loanDetails.total_paid.toFixed(2)}
+                    {formatAmount(loanDetails.total_paid)}
                   </Text>
                 </View>
                 <View style={styles.summaryItem}>
                   <Text style={styles.summaryLabel}>Outstanding</Text>
                   <Text style={[styles.summaryValue, { color: '#EF4444' }]}>
-                    €{loanDetails.outstanding_balance.toFixed(2)}
+                    {formatAmount(loanDetails.outstanding_balance)}
                   </Text>
                 </View>
                 <View style={styles.summaryItem}>

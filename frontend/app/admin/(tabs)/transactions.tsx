@@ -181,7 +181,7 @@ export default function TransactionsTab() {
           </View>
           <View style={styles.amountContainer}>
             <Text style={[styles.amount, { color: isDisbursement ? colors.warning : colors.success }]}>
-              {isDisbursement ? '-' : '+'}€{item.amount.toFixed(2)}
+              {isDisbursement ? '-' : '+'}{formatAmount(item.amount)}
             </Text>
             {item.payment_method && (
               <Text style={[styles.paymentMethod, { color: colors.textMuted }]}>{item.payment_method}</Text>
