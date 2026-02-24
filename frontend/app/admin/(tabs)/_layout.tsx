@@ -1,10 +1,16 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../../../src/context/LanguageContext';
 
 export default function TabLayout() {
   const { language } = useLanguage();
+  const insets = useSafeAreaInsets();
+
+  // Use actual bottom inset from the device + small padding for visual comfort
+  const bottomPadding = Platform.OS === 'android' ? Math.max(insets.bottom, 12) + 8 : insets.bottom + 4;
 
   return (
     <Tabs
@@ -15,8 +21,8 @@ export default function TabLayout() {
           backgroundColor: '#1E293B',
           borderTopColor: '#334155',
           borderTopWidth: 1,
-          height: 85,
-          paddingBottom: 24,
+          height: 60 + bottomPadding,
+          paddingBottom: bottomPadding,
           paddingTop: 8,
         },
         tabBarActiveTintColor: '#4F46E5',
