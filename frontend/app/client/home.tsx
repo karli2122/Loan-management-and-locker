@@ -898,6 +898,22 @@ export default function ClientHome() {
       fetchStatus(clientId).catch(() => {});
     }, 10000);
 
+    // Listen for push notifications — immediately refresh status on lock/unlock/warning
+    const notifReceivedSub = Notifications.addNotificationReceivedListener((notification) => {
+      const data = notification.request.content.data;
+      if (data?.action === 'lock' || data?.action === 'unlock' || data?.action === 'warning') {
+        console.log(`[Push] Received ${data.action} notification — refreshing status immediately`);
+        fetchStatus(clientId).catch(() => {});
+      }
+    });
+    const notifResponseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      if (data?.action === 'lock' || data?.action === 'unlock' || data?.action === 'warning') {
+        console.log(`[Push] User tapped ${data.action} notification — refreshing status`);
+        fetchStatus(clientId).catch(() => {});
+      }
+    });
+
     // Handle app state changes
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
