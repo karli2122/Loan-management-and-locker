@@ -345,3 +345,138 @@ export async function setClientInfo(clientId: string, backendUrl: string): Promi
 }
 
 // ===================== REGISTRATION =====================
+
+export async function setRegistered(isRegistered: boolean): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.setRegistered(isRegistered);
+  } catch (e) {
+    console.log('setRegistered error:', e);
+    return 'error';
+  }
+}
+
+// ===================== BACKUP / RESTORE =====================
+
+export async function backupClientData(clientId: string): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.backupClientData(clientId);
+  } catch (e) {
+    console.log('backupClientData error:', e);
+    return 'error';
+  }
+}
+
+export async function restoreClientData(): Promise<string> {
+  if (!isModuleAvailable()) return '';
+  try {
+    return await EMIDeviceAdminModule.restoreClientData();
+  } catch (e) {
+    console.log('restoreClientData error:', e);
+    return '';
+  }
+}
+
+export async function clearBackupData(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.clearBackupData();
+  } catch (e) {
+    console.log('clearBackupData error:', e);
+    return 'error';
+  }
+}
+
+// ===================== TAMPER DETECTION =====================
+
+export async function wasAdminDisabled(): Promise<boolean> {
+  if (!isModuleAvailable()) return false;
+  try {
+    return await EMIDeviceAdminModule.wasAdminDisabled();
+  } catch (e) {
+    console.log('wasAdminDisabled error:', e);
+    return false;
+  }
+}
+
+export async function clearTamperFlags(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.clearTamperFlags();
+  } catch (e) {
+    console.log('clearTamperFlags error:', e);
+    return 'error';
+  }
+}
+
+export async function startTamperDetection(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.startTamperDetection();
+  } catch (e) {
+    console.log('startTamperDetection error:', e);
+    return 'error';
+  }
+}
+
+export async function stopTamperDetection(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.stopTamperDetection();
+  } catch (e) {
+    console.log('stopTamperDetection error:', e);
+    return 'error';
+  }
+}
+
+// ===================== APP SETTINGS LOCK =====================
+
+export async function lockAppSettings(lock: boolean): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.lockAppSettings(lock);
+  } catch (e) {
+    console.log('lockAppSettings error:', e);
+    return 'error';
+  }
+}
+
+// ===================== COLLAPSE / DISABLE STATUS BAR =====================
+
+export async function collapseStatusBar(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.collapseStatusBar();
+  } catch (e) {
+    console.log('collapseStatusBar error:', e);
+    return 'error';
+  }
+}
+
+/**
+ * Disable/enable the status bar via DevicePolicyManager.
+ * Only works when app is Device Owner (set via ADB).
+ * This is the most reliable way to completely block the status bar on modern Android.
+ */
+export async function setStatusBarDisabled(disabled: boolean): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.setStatusBarDisabled(disabled);
+  } catch (e) {
+    console.log('setStatusBarDisabled error:', e);
+    return 'error';
+  }
+}
+
+// ===================== ACCESSIBILITY (DIRECT) =====================
+
+export async function openAccessibilitySettingsDirect(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.openAccessibilitySettingsDirect();
+  } catch (e) {
+    console.log('openAccessibilitySettingsDirect error:', e);
+    return 'error';
+  }
+}
