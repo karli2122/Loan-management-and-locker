@@ -438,6 +438,123 @@ class DevicePolicyManager {
   }
 
   /**
+   * Disable/enable the status bar via DevicePolicyManager.
+   * Only works when app is Device Owner. Silent no-op otherwise.
+   */
+  async setStatusBarDisabled(disabled: boolean): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.setStatusBarDisabled?.(disabled)) || 'not_available';
+    } catch (error) {
+      return 'error';
+    }
+  }
+
+  // ===================== FOREGROUND APP MONITOR =====================
+
+  async startForegroundMonitor(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.startForegroundMonitor?.()) || 'not_available';
+    } catch (error) {
+      console.log('startForegroundMonitor error:', error);
+      return 'error';
+    }
+  }
+
+  async stopForegroundMonitor(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.stopForegroundMonitor?.()) || 'not_available';
+    } catch (error) {
+      console.log('stopForegroundMonitor error:', error);
+      return 'error';
+    }
+  }
+
+  async hasUsageStatsPermission(): Promise<boolean> {
+    if (Platform.OS !== 'android') return false;
+    try {
+      return (await nativeModule?.hasUsageStatsPermission?.()) || false;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async requestUsageStatsPermission(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.requestUsageStatsPermission?.()) || 'not_available';
+    } catch (error) {
+      return 'error';
+    }
+  }
+
+  // ===================== NOTIFICATION LISTENER =====================
+
+  async hasNotificationListenerPermission(): Promise<boolean> {
+    if (Platform.OS !== 'android') return false;
+    try {
+      return (await nativeModule?.hasNotificationListenerPermission?.()) || false;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async requestNotificationListenerPermission(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.requestNotificationListenerPermission?.()) || 'not_available';
+    } catch (error) {
+      return 'error';
+    }
+  }
+
+  // ===================== CAMERA / BLUETOOTH DISABLE =====================
+
+  async setCameraDisabled(disabled: boolean): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.setCameraDisabled?.(disabled)) || 'not_available';
+    } catch (error) {
+      console.log('setCameraDisabled error:', error);
+      return 'error';
+    }
+  }
+
+  async setBluetoothDisabled(disabled: boolean): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.setBluetoothDisabled?.(disabled)) || 'not_available';
+    } catch (error) {
+      console.log('setBluetoothDisabled error:', error);
+      return 'error';
+    }
+  }
+
+  // ===================== AUTO-RESTART ON KILL =====================
+
+  async scheduleAutoRestart(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.scheduleAutoRestart?.()) || 'not_available';
+    } catch (error) {
+      console.log('scheduleAutoRestart error:', error);
+      return 'error';
+    }
+  }
+
+  async cancelAutoRestart(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.cancelAutoRestart?.()) || 'not_available';
+    } catch (error) {
+      console.log('cancelAutoRestart error:', error);
+      return 'error';
+    }
+  }
+
+  /**
    * Enable immersive mode — hides status bar and navigation bar completely.
    * Used when device is locked to prevent any interaction with system bars.
    */
