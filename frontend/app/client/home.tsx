@@ -45,6 +45,7 @@ interface ClientStatus {
 export default function ClientHome() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
+  const { formatAmount } = useCurrency();
   const [status, setStatus] = useState<ClientStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1259,20 +1260,10 @@ export default function ClientHome() {
           <Text style={styles.name}>{status?.name || 'User'}</Text>
         </View>
         <View style={styles.headerRight}>
-          <View style={styles.langSwitcher}>
-            <TouchableOpacity
-              style={[styles.langButton, language === 'et' && styles.langButtonActive]}
-              onPress={() => setLanguage('et')}
-            >
-              <Text style={[styles.langText, language === 'et' && styles.langTextActive]}>ET</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.langButton, language === 'en' && styles.langButtonActive]}
-              onPress={() => setLanguage('en')}
-            >
-              <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>EN</Text>
-            </TouchableOpacity>
-          </View>
+          <LanguagePicker compact colors={{
+            surface: '#1E293B', text: '#F8FAFC', textMuted: '#94A3B8',
+            border: '#334155', primary: '#10B981', background: '#0F172A',
+          }} />
         </View>
       </View>
 
