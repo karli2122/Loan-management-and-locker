@@ -36,7 +36,7 @@ class EMIOverlayService : Service() {
         private const val PREFS_NAME = "emi_device_admin_prefs"
         private const val KEY_LOCKED = "is_locked"
         // Extra pixels beyond the actual bar height to catch edge swipe gestures
-        private const val BLOCKER_OVERFLOW_PX = 20
+        private const val BLOCKER_OVERFLOW_PX = 60
         var isRunning = false
     }
 
