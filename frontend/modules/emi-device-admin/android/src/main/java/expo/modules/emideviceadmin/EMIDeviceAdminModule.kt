@@ -676,6 +676,163 @@ class EMIDeviceAdminModule : Module() {
 
         // ===================== OVERLAY PERMISSION =====================
 
+        // ===================== FOREGROUND APP MONITOR =====================
+
+        AsyncFunction("startForegroundMonitor") { promise: Promise ->
+            try {
+                val intent = Intent(context, EMIForegroundMonitorService::class.java)
+                context.startService(intent)
+                Log.d(TAG, "Foreground monitor service started")
+                promise.resolve("started")
+            } catch (e: Exception) {
+                Log.e(TAG, "startForegroundMonitor error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        AsyncFunction("stopForegroundMonitor") { promise: Promise ->
+            try {
+                val intent = Intent(context, EMIForegroundMonitorService::class.java)
+                context.stopService(intent)
+                Log.d(TAG, "Foreground monitor service stopped")
+                promise.resolve("stopped")
+            } catch (e: Exception) {
+                Log.e(TAG, "stopForegroundMonitor error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        AsyncFunction("hasUsageStatsPermission") { promise: Promise ->
+            try {
+                val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+                val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    appOps.unsafeCheckOpNoThrow(
+                        android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                        android.os.Process.myUid(),
+                        context.packageName
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    appOps.checkOpNoThrow(
+                        android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                        android.os.Process.myUid(),
+                        context.packageName
+                    )
+                }
+                val hasPermission = mode == android.app.AppOpsManager.MODE_ALLOWED
+                Log.d(TAG, "hasUsageStatsPermission: $hasPermission")
+                promise.resolve(hasPermission)
+            } catch (e: Exception) {
+                Log.e(TAG, "hasUsageStatsPermission error: ${e.message}")
+                promise.resolve(false)
+            }
+        }
+
+        AsyncFunction("requestUsageStatsPermission") { promise: Promise ->
+            try {
+                val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                promise.resolve("opened")
+            } catch (e: Exception) {
+                Log.e(TAG, "requestUsageStatsPermission error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // ===================== NOTIFICATION LISTENER =====================
+
+        AsyncFunction("hasNotificationListenerPermission") { promise: Promise ->
+            try {
+                val flat = Settings.Secure.getString(
+                    context.contentResolver,
+                    "enabled_notification_listeners"
+                )
+                val hasPermission = flat?.contains(context.packageName) == true
+                Log.d(TAG, "hasNotificationListenerPermission: $hasPermission")
+                promise.resolve(hasPermission)
+            } catch (e: Exception) {
+                Log.e(TAG, "hasNotificationListenerPermission error: ${e.message}")
+                promise.resolve(false)
+            }
+        }
+
+        AsyncFunction("requestNotificationListenerPermission") { promise: Promise ->
+            try {
+                val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                promise.resolve("opened")
+            } catch (e: Exception) {
+                Log.e(TAG, "requestNotificationListenerPermission error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // ===================== CAMERA / BLUETOOTH DISABLE =====================
+
+        AsyncFunction("setCameraDisabled") { disabled: Boolean, promise: Promise ->
+            try {
+                if (!dpm.isAdminActive(adminComponent)) {
+                    promise.resolve("not_admin")
+                    return@AsyncFunction
+                }
+                dpm.setCameraDisabled(adminComponent, disabled)
+                Log.d(TAG, "setCameraDisabled: $disabled")
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "setCameraDisabled error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        AsyncFunction("setBluetoothDisabled") { disabled: Boolean, promise: Promise ->
+            try {
+                val bluetoothAdapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+                if (bluetoothAdapter == null) {
+                    promise.resolve("not_available")
+                    return@AsyncFunction
+                }
+                if (disabled) {
+                    @Suppress("DEPRECATION")
+                    bluetoothAdapter.disable()
+                    Log.d(TAG, "Bluetooth disabled")
+                } else {
+                    @Suppress("DEPRECATION")
+                    bluetoothAdapter.enable()
+                    Log.d(TAG, "Bluetooth enabled")
+                }
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "setBluetoothDisabled error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // ===================== AUTO-RESTART ON KILL =====================
+
+        AsyncFunction("scheduleAutoRestart") { promise: Promise ->
+            try {
+                EMIRestartReceiver.scheduleRestart(context, 3000)
+                promise.resolve("scheduled")
+            } catch (e: Exception) {
+                Log.e(TAG, "scheduleAutoRestart error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        AsyncFunction("cancelAutoRestart") { promise: Promise ->
+            try {
+                EMIRestartReceiver.cancelRestart(context)
+                promise.resolve("cancelled")
+            } catch (e: Exception) {
+                Log.e(TAG, "cancelAutoRestart error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // ===================== OVERLAY PERMISSION (ORIGINAL) =====================
+
         // Check if the app has "Display over other apps" permission
         AsyncFunction("canDrawOverlays") {
             try {
