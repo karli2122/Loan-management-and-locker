@@ -880,9 +880,11 @@ export default function ClientHome() {
     if (!clientId) return;
     if (freshRegistration) return; // Don't poll or check state during fresh registration
 
-    // Poll status every 10 seconds
+    // Poll status every 10 seconds — skip if refresh is in progress
     intervalRef.current = setInterval(() => {
-      fetchStatus(clientId).catch(() => {});
+      if (!isRefreshingRef.current) {
+        fetchStatus(clientId).catch(() => {});
+      }
     }, 10000);
 
     // Listen for push notifications — immediately refresh status on lock/unlock/warning
