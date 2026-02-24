@@ -834,26 +834,26 @@ export default function Reports() {
             <View style={styles.revenueCard}>
               <View style={styles.revenueItem}>
                 <Text style={styles.revenueLabel}>{language === 'et' ? 'Põhiosa' : 'Principal'}</Text>
-                <Text style={styles.revenueValue}>€{(financialReport.totals?.principal_disbursed || 0).toFixed(2)}</Text>
+                <Text style={styles.revenueValue}>{formatAmount(financialReport.totals?.principal_disbursed || 0)}</Text>
               </View>
               <View style={styles.revenueItem}>
                 <Text style={styles.revenueLabel}>{language === 'et' ? 'Intress' : 'Interest'}</Text>
                 <Text style={[styles.revenueValue, { color: '#10B981' }]}>
-                  €{(financialReport.totals?.interest_earned || 0).toFixed(2)}
+                  {formatAmount(financialReport.totals?.interest_earned || 0)}
                 </Text>
               </View>
               <View style={styles.revenueItem}>
                 <Text style={styles.revenueLabel}>{language === 'et' ? 'Töötlustasud' : 'Processing Fees'}</Text>
-                <Text style={styles.revenueValue}>€{(financialReport.totals?.processing_fees || 0).toFixed(2)}</Text>
+                <Text style={styles.revenueValue}>{formatAmount(financialReport.totals?.processing_fees || 0)}</Text>
               </View>
               <View style={styles.revenueItem}>
                 <Text style={styles.revenueLabel}>{language === 'et' ? 'Viivised' : 'Late Fees'}</Text>
-                <Text style={styles.revenueValue}>€{(financialReport.totals?.late_fees || 0).toFixed(2)}</Text>
+                <Text style={styles.revenueValue}>{formatAmount(financialReport.totals?.late_fees || 0)}</Text>
               </View>
               <View style={[styles.revenueItem, styles.separator]}>
                 <Text style={[styles.revenueLabel, { fontWeight: 'bold' }]}>{language === 'et' ? 'Kogutulu' : 'Total Revenue'}</Text>
                 <Text style={[styles.revenueValue, { color: '#4F46E5', fontWeight: 'bold', fontSize: 20 }]}>
-                  €{(financialReport.totals?.total_revenue || 0).toFixed(2)}
+                  {formatAmount(financialReport.totals?.total_revenue || 0)}
                 </Text>
               </View>
             </View>
@@ -918,7 +918,7 @@ export default function Reports() {
               {(financialReport.monthly_trend || []).map((month: any, index: number) => (
                 <View key={index} style={styles.trendSummaryItem}>
                   <Text style={styles.trendSummaryMonth}>{month.month}</Text>
-                  <Text style={styles.trendSummaryValue}>€{(month.revenue || 0).toFixed(0)}</Text>
+                  <Text style={styles.trendSummaryValue}>{formatAmount(month.revenue || 0, 0)}</Text>
                   <Text style={styles.trendSummaryCount}>{month.payments_count || 0} {language === 'et' ? 'makset' : 'payments'}</Text>
                 </View>
               ))}
@@ -932,7 +932,7 @@ export default function Reports() {
               {(financialReport.monthly_interest || []).map((month: any, index: number) => (
                 <View key={index} style={styles.trendSummaryItem}>
                   <Text style={styles.trendSummaryMonth}>{month.month}</Text>
-                  <Text style={[styles.trendSummaryValue, { color: '#10B981' }]}>€{(month.interest_earned || 0).toFixed(0)}</Text>
+                  <Text style={[styles.trendSummaryValue, { color: '#10B981' }]}>{formatAmount(month.interest_earned || 0, 0)}</Text>
                 </View>
               ))}
             </View>
