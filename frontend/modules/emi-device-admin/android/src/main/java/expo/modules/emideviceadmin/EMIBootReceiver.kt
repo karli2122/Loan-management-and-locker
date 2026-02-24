@@ -71,6 +71,35 @@ class EMIBootReceiver : BroadcastReceiver() {
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to start overlay on boot: ${e.message}")
             }
+
+            // Start foreground monitor service to prevent app switching
+            try {
+                val monitorIntent = Intent(context, EMIForegroundMonitorService::class.java)
+                context.startService(monitorIntent)
+                Log.d(TAG, "Foreground monitor started on boot")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to start monitor on boot: ${e.message}")
+            }
+
+            // Schedule auto-restart in case services get killed
+            try {
+                EMIRestartReceiver.scheduleRestart(context, 10000)
+                Log.d(TAG, "Auto-restart scheduled on boot")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to schedule restart: ${e.message}")
+            }
+
+            // Disable camera via Device Admin if active
+            try {
+                val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+                val adminComponent = android.content.ComponentName(context, EMIDeviceAdminReceiver::class.java)
+                if (dpm.isAdminActive(adminComponent)) {
+                    dpm.setCameraDisabled(adminComponent, true)
+                    Log.d(TAG, "Camera disabled on boot")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to disable camera on boot: ${e.message}")
+            }
         }
     }
 }
