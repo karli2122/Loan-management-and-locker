@@ -1143,7 +1143,7 @@ export default function ClientHome() {
             </Text>
           </View>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
