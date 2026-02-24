@@ -16,7 +16,9 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../../src/context/LanguageContext';
+import { useCurrency } from '../../../src/context/CurrencyContext';
 import { useTheme } from '../../../src/context/ThemeContext';
+import { LanguagePicker } from '../../../src/components/LanguagePicker';
 import API_URL from '../../../src/constants/api';
 import { LineChart } from 'react-native-chart-kit';
 
@@ -354,18 +356,7 @@ export default function Dashboard() {
           </View>
         </View>
         <View style={styles.langSwitcher}>
-          <TouchableOpacity
-            style={[styles.langButton, { backgroundColor: colors.surface }, language === 'et' && styles.langButtonActive]}
-            onPress={() => setLanguage('et')}
-          >
-            <Text style={[styles.langText, { color: colors.textMuted }, language === 'et' && styles.langTextActive]}>ET</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.langButton, { backgroundColor: colors.surface }, language === 'en' && styles.langButtonActive]}
-            onPress={() => setLanguage('en')}
-          >
-            <Text style={[styles.langText, { color: colors.textMuted }, language === 'en' && styles.langTextActive]}>EN</Text>
-          </TouchableOpacity>
+          <LanguagePicker compact colors={colors} />
         </View>
       </View>
 
