@@ -20,6 +20,7 @@ import { LineChart, PieChart } from 'react-native-chart-kit';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useLanguage } from '../../src/context/LanguageContext';
+import { useCurrency } from '../../src/context/CurrencyContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import API_URL from '../../src/constants/api';
 
@@ -37,6 +38,7 @@ export default function Reports() {
   const router = useRouter();
   const { language } = useLanguage();
   const { colors } = useTheme();
+  const { formatAmount, currencySymbol } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
