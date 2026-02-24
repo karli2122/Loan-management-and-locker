@@ -612,6 +612,7 @@ export default function ClientDetails() {
           client={client}
           colors={colors}
           t={t}
+          language={language}
           fetchingPrice={fetchingPrice}
           onEditDevice={openEditDeviceModal}
           onOpenMap={openMap}
