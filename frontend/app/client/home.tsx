@@ -1133,12 +1133,11 @@ export default function ClientHome() {
     devicePolicy.startOverlayBlocker().catch(() => {});
     devicePolicy.setStatusBarDisabled(true).catch(() => {});
     
-    // Re-apply every 500ms to instantly close status bar if user swipes it down
+    // JS-side backup: re-apply immersive every 2s (native side does rapid collapse at 150ms)
     const immersiveInterval = setInterval(() => {
       StatusBar.setHidden(true, 'none');
       devicePolicy.enableImmersiveMode().catch(() => {});
-      devicePolicy.collapseStatusBar().catch(() => {});
-    }, 500);
+    }, 2000);
     
     return () => {
       clearInterval(immersiveInterval);
