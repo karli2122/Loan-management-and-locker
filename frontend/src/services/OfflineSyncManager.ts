@@ -114,9 +114,7 @@ class OfflineSyncManager {
         const cached = await this.getCachedStatus(clientId);
         if (cached) {
           return {
-            is_locked: cached.is_locked,
-            lock_message: cached.lock_message,
-            warning_message: cached.warning_message,
+            ...cached,
             offline: true,
           };
         }
