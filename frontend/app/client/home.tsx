@@ -981,6 +981,8 @@ export default function ClientHome() {
         clearInterval(intervalRef.current);
       }
       subscription.remove();
+      notifReceivedSub.remove();
+      notifResponseSub.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId, freshRegistration]);
