@@ -33,6 +33,7 @@ interface Client {
   total_paid?: number;
   is_late?: boolean;
   late_fees_accumulated?: number;
+  credit_score?: number;
 }
 
 interface PaidLoan {
@@ -188,6 +189,15 @@ export default function LoansTab() {
         client.phone.includes(searchQuery)
     );
   }, [clients, filter, searchQuery, tab, paymentFilter]);
+
+  // Credit score color helper
+  const getCreditScoreColor = (score: number) => {
+    if (score >= 800) return '#10B981'; // excellent - green
+    if (score >= 650) return '#3B82F6'; // good - blue
+    if (score >= 500) return '#F59E0B'; // fair - amber
+    if (score >= 350) return '#F97316'; // poor - orange
+    return '#EF4444'; // very poor - red
+  };
 
   const renderClient = ({ item }: { item: Client }) => {
     // Calculate payment progress - check both principal_amount and total_amount_due
