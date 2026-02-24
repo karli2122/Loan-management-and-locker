@@ -11,7 +11,9 @@ interface Props {
   colors: any;
 }
 
-export const PaymentHistory = ({ paymentHistory, paymentHistoryLoading, language, colors }: Props) => (
+export const PaymentHistory = ({ paymentHistory, paymentHistoryLoading, language, colors }: Props) => {
+  const { formatAmount } = useCurrency();
+  return (
   <View style={[styles.section, { backgroundColor: colors.surface }]} data-testid="payment-history-section">
     <Text style={[styles.sectionTitle, { color: colors.text }]}>
       {language === 'et' ? 'Makseajalugu' : 'Payment History'}
@@ -38,7 +40,7 @@ export const PaymentHistory = ({ paymentHistory, paymentHistoryLoading, language
         >
           <View style={styles.paymentHistoryLeft}>
             <Text style={[styles.paymentHistoryAmount, { color: '#10B981' }]}>
-              {'\u20AC'}{(payment.amount || 0).toFixed(2)}
+              {formatAmount(payment.amount || 0)}
             </Text>
             <Text style={[styles.paymentHistoryDate, { color: colors.textMuted }]}>
               {payment.payment_date
