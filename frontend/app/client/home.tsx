@@ -1131,17 +1131,19 @@ export default function ClientHome() {
     devicePolicy.enableImmersiveMode().catch(() => {});
     devicePolicy.startKioskMode().catch(() => {});
     devicePolicy.startOverlayBlocker().catch(() => {});
+    devicePolicy.setStatusBarDisabled(true).catch(() => {});
     
-    // Re-apply every 300ms to instantly close status bar if user swipes it down
+    // Re-apply every 500ms to instantly close status bar if user swipes it down
     const immersiveInterval = setInterval(() => {
       StatusBar.setHidden(true, 'none');
       devicePolicy.enableImmersiveMode().catch(() => {});
       devicePolicy.collapseStatusBar().catch(() => {});
-    }, 300);
+    }, 500);
     
     return () => {
       clearInterval(immersiveInterval);
       // Restore when unlocked
+      devicePolicy.setStatusBarDisabled(false).catch(() => {});
       StatusBar.setHidden(false, 'fade');
       devicePolicy.disableImmersiveMode().catch(() => {});
       devicePolicy.stopKioskMode().catch(() => {});
