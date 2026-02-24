@@ -23,6 +23,8 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
+import { useCurrency } from '../../src/context/CurrencyContext';
+import { LanguagePicker } from '../../src/components/LanguagePicker';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
 import { getAutoStartInstructions, getOverlayInstructions, getAccessibilityInstructions } from '../../src/utils/deviceInstructions';
 import OfflineSyncManager from '../../src/services/OfflineSyncManager';
