@@ -357,7 +357,11 @@ export default function ClientHome() {
           await devicePolicy.enableImmersiveMode();
           await devicePolicy.startOverlayBlocker();
           await devicePolicy.startKioskMode();
+          // Explicitly disable status bar via DPM (Device Owner only - strongest protection)
+          await devicePolicy.setStatusBarDisabled(true);
         } else {
+          // Re-enable status bar before restoring UI
+          await devicePolicy.setStatusBarDisabled(false);
           StatusBar.setHidden(false, 'fade');
           await devicePolicy.disableImmersiveMode();
           await devicePolicy.stopOverlayBlocker();
