@@ -968,22 +968,17 @@ export default function AdminSettings() {
         {/* Language Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            {language === 'et' ? 'Keel' : 'Language'}
+            {t('language')}
           </Text>
-          <View style={styles.langContainer}>
-            <TouchableOpacity
-              style={[styles.langOption, { backgroundColor: colors.surface }, language === 'et' && styles.langOptionActive]}
-              onPress={() => setLanguage('et')}
-            >
-              <Text style={[styles.langText, { color: colors.textMuted }, language === 'et' && styles.langTextActive]}>Eesti</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.langOption, { backgroundColor: colors.surface }, language === 'en' && styles.langOptionActive]}
-              onPress={() => setLanguage('en')}
-            >
-              <Text style={[styles.langText, { color: colors.textMuted }, language === 'en' && styles.langTextActive]}>English</Text>
-            </TouchableOpacity>
-          </View>
+          <LanguagePicker colors={colors} />
+        </View>
+
+        {/* Currency Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+            {t('currency')}
+          </Text>
+          <CurrencyPicker colors={colors} />
         </View>
 
         {/* Theme Section */}
