@@ -16,11 +16,17 @@ import { useLanguage } from '../../../src/context/LanguageContext';
 export default function FeaturesTab() {
   const router = useRouter();
   const { language, setLanguage } = useLanguage();
-  const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
 
   const loadUserData = async () => {
+    const firstName = await AsyncStorage.getItem('admin_first_name');
+    const lastName = await AsyncStorage.getItem('admin_last_name');
     const storedUsername = await AsyncStorage.getItem('admin_username');
-    if (storedUsername) setUsername(storedUsername);
+    if (firstName || lastName) {
+      setDisplayName([firstName, lastName].filter(Boolean).join(' '));
+    } else if (storedUsername) {
+      setDisplayName(storedUsername);
+    }
   };
 
   useEffect(() => {
@@ -37,7 +43,7 @@ export default function FeaturesTab() {
           text: language === 'et' ? 'Logi välja' : 'Logout',
           style: 'destructive',
           onPress: async () => {
-            await AsyncStorage.multiRemove(['admin_token', 'admin_id', 'admin_username', 'admin_role', 'is_super_admin']);
+            await AsyncStorage.multiRemove(['admin_token', 'admin_id', 'admin_username', 'admin_role', 'is_super_admin', 'admin_first_name', 'admin_last_name']);
             router.replace('/');
           },
         },
@@ -56,10 +62,10 @@ export default function FeaturesTab() {
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         <View style={styles.userCard}>
           <View style={styles.userAvatar}>
-            <Text style={styles.userAvatarText}>{username.charAt(0).toUpperCase()}</Text>
+            <Text style={styles.userAvatarText}>{displayName.charAt(0).toUpperCase()}</Text>
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{username}</Text>
+            <Text style={styles.userName}>{displayName}</Text>
             <View style={styles.languageToggle}>
               <TouchableOpacity
                 style={[styles.langButton, language === 'et' && styles.langButtonActive]}
