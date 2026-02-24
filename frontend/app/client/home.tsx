@@ -1117,19 +1117,29 @@ export default function ClientHome() {
       devicePolicy.enableImmersiveMode().catch(() => {});
     }
     return (
-      <View style={[styles.lockContainer, { paddingTop: 0 }]}>
+      <Pressable 
+        style={[styles.lockContainer, { paddingTop: 0 }]}
+        onPress={() => {
+          // Re-engage immersive mode on any touch — hides status bar if user swiped to reveal
+          if (Platform.OS === 'android') {
+            devicePolicy.enableImmersiveMode().catch(() => {});
+          }
+        }}
+      >
         <StatusBar hidden translucent backgroundColor="transparent" />
         <View style={styles.lockContent}>
           <View style={styles.lockIconContainer}>
             <Ionicons name="lock-closed" size={80} color="#EF4444" />
           </View>
           <Text style={styles.lockTitle}>{t('deviceLocked')}</Text>
-          <Text style={styles.lockMessage}>{status.lock_message}</Text>
+          <Text style={styles.lockMessage}>
+            {status.lock_message || t('defaultLockMessage')}
+          </Text>
 
           <View style={styles.lockLoanInfo}>
             <View style={styles.lockLoanItem}>
               <Text style={styles.lockLoanLabel}>{t('pendingAmount')}</Text>
-              <Text style={styles.lockLoanValue}>€{(status.loan_amount ?? 0).toLocaleString()}</Text>
+              <Text style={styles.lockLoanValue}>{'\u20AC'}{(status.outstanding_balance ?? status.loan_amount ?? 0).toLocaleString()}</Text>
             </View>
             {status.loan_due_date && (
               <View style={styles.lockLoanItem}>
@@ -1138,10 +1148,6 @@ export default function ClientHome() {
               </View>
             )}
           </View>
-
-          <Text style={styles.lockFooter}>
-            {t('clearEmiToUnlock')}
-          </Text>
           
           {/* Protection Status */}
           <View style={styles.protectionStatus}>
@@ -1157,7 +1163,7 @@ export default function ClientHome() {
             </Text>
           </View>
         </View>
-      </View>
+      </Pressable>
     );
   }
 
