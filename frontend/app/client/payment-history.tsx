@@ -168,7 +168,7 @@ export default function PaymentHistoryScreen() {
                 {language === 'et' ? 'Makstud' : 'Total Paid'}
               </Text>
               <Text style={[styles.summaryValue, { color: '#10B981' }]}>
-                €{data?.total_paid?.toFixed(2) || '0.00'}
+                {formatAmount(data?.total_paid || 0)}
               </Text>
             </View>
             <View style={styles.summaryItem}>
@@ -176,7 +176,7 @@ export default function PaymentHistoryScreen() {
                 {language === 'et' ? 'Jääk' : 'Outstanding'}
               </Text>
               <Text style={[styles.summaryValue, { color: '#F59E0B' }]}>
-                €{data?.outstanding_balance?.toFixed(2) || '0.00'}
+                {formatAmount(data?.outstanding_balance || 0)}
               </Text>
             </View>
             <View style={styles.summaryItem}>
