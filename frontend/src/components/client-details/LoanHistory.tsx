@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, ActivityIndicator } from 'reac
 import { Ionicons } from '@expo/vector-icons';
 import { styles } from './styles';
 import { LoanHistoryItem } from './types';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface Props {
   loanHistory: LoanHistoryItem[];

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { styles } from './styles';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface Props {
   paymentHistory: any[];
