@@ -1067,15 +1067,27 @@ export default function ClientHome() {
     }
   };
 
+  const isRefreshingRef = useRef(false);
   const onRefresh = useCallback(async () => {
-    if (!clientId) return;
+    if (!clientId || isRefreshingRef.current) return;
+    isRefreshingRef.current = true;
     setRefreshing(true);
+    
+    // Safety timeout — force stop refresh after 10 seconds to prevent infinite spinner
+    const safetyTimer = setTimeout(() => {
+      console.log('[Refresh] Safety timeout — forcing refresh complete');
+      isRefreshingRef.current = false;
+      setRefreshing(false);
+    }, 10000);
+    
     try {
       await fetchStatus(clientId);
       await updateLocation(clientId).catch(() => {});
     } catch (e) {
       console.log('Refresh error:', e);
     } finally {
+      clearTimeout(safetyTimer);
+      isRefreshingRef.current = false;
       setRefreshing(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchStatus/updateLocation are stable; only depend on clientId
