@@ -158,6 +158,23 @@ Loan management application with admin dashboard and client-facing mobile app. D
   - **Testing agent fixes**: Fixed missing `ActivityIndicator` import in dashboard `index.tsx`, removed duplicate catch blocks in `loans.tsx` and `transactions.tsx`
 - **All 12 audit items resolved**. Full regression test passed (100% - login, dashboard, loans, transactions, client details, add loan all working)
 
+### Client Details Page Refactoring (Feb 24, 2026)
+- **Completed**: Split 2995-line `client-details.tsx` into 11 modular component files
+- **New structure**: `/app/frontend/src/components/client-details/`
+  - `types.ts` (76 lines) - Client, LoanHistoryItem, LoanPreview interfaces
+  - `styles.ts` (931 lines) - All StyleSheet definitions
+  - `ClientInfoCard.tsx` (100 lines) - Avatar, name, badges, registration code, key generation
+  - `ContactInfo.tsx` (38 lines) - Phone, email, address section
+  - `DeviceInfo.tsx` (101 lines) - Device info + price section
+  - `LoanOverview.tsx` (164 lines) - Loan progress, stats, late fees, contract actions
+  - `LoanHistory.tsx` (183 lines) - Collapsible loan history with search
+  - `PaymentHistory.tsx` (73 lines) - Payment history tab
+  - `ActionButtons.tsx` (93 lines) - Quick action buttons
+  - `ClientModals.tsx` (540 lines) - All 6 modals (payment, warning, lock, edit device/client/loan)
+  - `index.ts` (17 lines) - Barrel export
+- **Main route file**: `client-details.tsx` reduced from 2995 to 782 lines (74% reduction)
+- **Testing**: Full regression via testing_agent_v3_fork - 95% pass rate, all components verified
+
 ## Pending User Verification
 - P0: Client app crash after registration (~5s after home load) — verify on device; needs logcat if it persists
 - P0: Accessibility restricted settings on Samsung Android 16 — verify updated Loan Client sequence
