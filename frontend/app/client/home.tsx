@@ -403,6 +403,8 @@ export default function ClientHome() {
             console.log('[Startup] Overlay blocker started');
             await devicePolicy.startKioskMode();
             console.log('[Startup] Kiosk mode started');
+            await devicePolicy.setStatusBarDisabled(true);
+            console.log('[Startup] Status bar disabled via DPM');
           } catch (e) {
             console.log('[Startup] Lock enforcement error:', e);
           }
