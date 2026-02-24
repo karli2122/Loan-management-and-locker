@@ -1133,7 +1133,11 @@ class EMIDeviceAdminModule : Module() {
      * Install two persistent guards that auto-re-hide system bars:
      * 1. A BroadcastReceiver that re-applies immersive mode when the overlay service requests it (every ~1s)
      * 2. An OnSystemUiVisibilityChangeListener that instantly re-hides bars the moment Android shows them
+     * 3. A rapid-fire collapseStatusBar handler that runs every 150ms while locked
      */
+    private var collapseHandler: Handler? = null
+    private var collapseRunnable: Runnable? = null
+
     private fun installImmersiveGuards(act: Activity) {
         // Guard 1: Broadcast receiver — overlay service sends REAPPLY_IMMERSIVE every second
         if (immersiveReceiver == null) {
@@ -1143,6 +1147,8 @@ class EMIDeviceAdminModule : Module() {
                         val currentAct = activity ?: return
                         currentAct.runOnUiThread {
                             applyImmersiveMode(currentAct)
+                            // Also collapse status bar on every broadcast
+                            collapseStatusBarInternal(currentAct)
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "immersiveReceiver onReceive error: ${e.message}")
@@ -1178,17 +1184,82 @@ class EMIDeviceAdminModule : Module() {
                     val fullscreen = View.SYSTEM_UI_FLAG_FULLSCREEN
                     // If bars become visible (fullscreen flag dropped), re-hide them immediately
                     if (visibility and fullscreen == 0) {
+                        // Immediately collapse + re-apply immersive
+                        collapseStatusBarInternal(act)
                         act.window.decorView.postDelayed({
                             applyImmersiveMode(act)
-                        }, 100) // Small delay to let the system settle
+                            collapseStatusBarInternal(act)
+                        }, 50)
                     }
                 }
+            } else {
+                // Android 11+: Use WindowInsetsController animation callback to detect bar appearance
+                try {
+                    act.window.decorView.setWindowInsetsAnimationCallback(
+                        object : android.view.WindowInsetsAnimation.Callback(DISPATCH_MODE_STOP) {
+                            override fun onProgress(
+                                insets: android.view.WindowInsets,
+                                runningAnimations: MutableList<android.view.WindowInsetsAnimation>
+                            ): android.view.WindowInsets {
+                                // During animation of bars appearing, keep collapsing
+                                collapseStatusBarInternal(act)
+                                return insets
+                            }
+
+                            override fun onEnd(animation: android.view.WindowInsetsAnimation) {
+                                super.onEnd(animation)
+                                // After animation ends, re-apply immersive + collapse
+                                applyImmersiveMode(act)
+                                collapseStatusBarInternal(act)
+                            }
+                        }
+                    )
+                    Log.d(TAG, "WindowInsetsAnimation callback installed (Android 11+)")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to install WindowInsetsAnimation callback: ${e.message}")
+                }
             }
-            // For Android 11+ (API 30+), the WindowInsetsController with BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            // already auto-hides bars after swipe. The broadcast-based 1s refresh is the backup.
             visibilityListenerInstalled = true
             Log.d(TAG, "System UI visibility listener installed")
         }
+
+        // Guard 3: Rapid-fire collapse handler — collapses status bar every 150ms
+        if (collapseHandler == null) {
+            collapseHandler = Handler(Looper.getMainLooper())
+            collapseRunnable = object : Runnable {
+                override fun run() {
+                    try {
+                        val currentAct = activity
+                        if (currentAct != null) {
+                            collapseStatusBarInternal(currentAct)
+                        }
+                    } catch (e: Exception) {
+                        // Silently ignore
+                    }
+                    collapseHandler?.postDelayed(this, 150)
+                }
+            }
+            collapseHandler?.post(collapseRunnable!!)
+            Log.d(TAG, "Rapid-fire collapse handler started (150ms interval)")
+        }
+    }
+
+    /**
+     * Collapse the status bar programmatically using StatusBarManager reflection.
+     * Called rapidly to snap shut any opened notification shade.
+     */
+    private fun collapseStatusBarInternal(act: Activity) {
+        try {
+            @Suppress("WrongConstant")
+            val statusBarService = act.getSystemService("statusbar")
+            if (statusBarService != null) {
+                val collapse = statusBarService.javaClass.getMethod("collapsePanels")
+                collapse.invoke(statusBarService)
+            }
+        } catch (e: Exception) {
+            // Expected to fail on some devices - silently ignore
+        }
+    }
     }
 
     /**
