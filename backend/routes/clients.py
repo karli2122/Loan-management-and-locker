@@ -346,11 +346,7 @@ async def send_warning(client_id: str, message: str = Query(...), admin_token: s
 
 @router.get("/clients/{client_id}/fetch-price")
 async def fetch_device_price(client_id: str, admin_token: str = Query(...)):
-    """Fetch estimated price for a client's device.
-    
-    This is a placeholder implementation that returns a mock price based on device model.
-    In production, this would integrate with a real price lookup service.
-    """
+    """Fetch estimated used price for a client's device from eBay.de."""
     admin_id = await get_admin_id_from_token(admin_token)
     
     client = await db.clients.find_one({"id": client_id})
@@ -359,62 +355,78 @@ async def fetch_device_price(client_id: str, admin_token: str = Query(...)):
     
     await enforce_client_scope(client, admin_id)
     
-    device_model = client.get("device_model", "").lower()
-    device_make = client.get("device_make", "").lower()
+    device_model = client.get("device_model", "").strip()
+    device_make = client.get("device_make", "").strip()
     
-    if not device_model or device_model == "unknown device":
+    if not device_model or device_model.lower() == "unknown device":
         raise HTTPException(status_code=400, detail="Device model not available. Please register the device first.")
     
-    # Simple price estimation based on device model patterns
-    # In production, this would call an external price API
-    estimated_price = 150.0  # Base price
+    # Check if we have a recent cached price (within 7 days)
+    price_fetched_at = client.get("price_fetched_at")
+    if price_fetched_at and client.get("used_price_eur"):
+        age = (datetime.utcnow() - price_fetched_at).days
+        if age < 7:
+            return {
+                "client_id": client_id,
+                "device_model": device_model,
+                "device_make": device_make,
+                "used_price_eur": client["used_price_eur"],
+                "price_range": {
+                    "min": client.get("price_min_eur"),
+                    "max": client.get("price_max_eur"),
+                    "avg": client.get("price_avg_eur"),
+                },
+                "listing_count": client.get("price_listing_count", 0),
+                "search_query": client.get("price_search_query", ""),
+                "source": "ebay.de (cached)",
+                "cached_days_ago": age,
+                "sample_listings": client.get("price_sample_listings", []),
+            }
     
-    # Adjust price based on device model
-    if "iphone" in device_model or "iphone" in device_make:
-        if "14" in device_model or "15" in device_model:
-            estimated_price = 450.0
-        elif "13" in device_model:
-            estimated_price = 350.0
-        elif "12" in device_model:
-            estimated_price = 280.0
-        elif "11" in device_model:
-            estimated_price = 220.0
-        else:
-            estimated_price = 180.0
-    elif "samsung" in device_model or "samsung" in device_make or "galaxy" in device_model:
-        if "s24" in device_model or "s23" in device_model:
-            estimated_price = 400.0
-        elif "s22" in device_model or "s21" in device_model:
-            estimated_price = 300.0
-        elif "a5" in device_model:
-            estimated_price = 200.0
-        else:
-            estimated_price = 150.0
-    elif "pixel" in device_model:
-        estimated_price = 250.0
-    elif "huawei" in device_model or "huawei" in device_make:
-        estimated_price = 180.0
-    elif "xiaomi" in device_model or "xiaomi" in device_make:
-        estimated_price = 120.0
-    elif "oneplus" in device_model or "oneplus" in device_make:
-        estimated_price = 200.0
+    # Fetch real price from eBay
+    from services.ebay_scraper import fetch_used_phone_price
     
-    # Update client with fetched price
-    await db.clients.update_one(
-        {"id": client_id},
-        {"$set": {
+    result = fetch_used_phone_price(device_model, device_make)
+    
+    if result.get("price_eur"):
+        estimated_price = result["price_eur"]
+        
+        # Update client with fetched price and metadata
+        await db.clients.update_one(
+            {"id": client_id},
+            {"$set": {
+                "used_price_eur": estimated_price,
+                "price_avg_eur": result.get("avg_price_eur"),
+                "price_min_eur": result.get("min_price_eur"),
+                "price_max_eur": result.get("max_price_eur"),
+                "price_listing_count": result.get("listing_count", 0),
+                "price_search_query": result.get("search_query", ""),
+                "price_source": "ebay.de",
+                "price_sample_listings": result.get("sample_listings", []),
+                "price_fetched_at": datetime.utcnow(),
+            }}
+        )
+        
+        return {
+            "client_id": client_id,
+            "device_model": device_model,
+            "device_make": device_make,
             "used_price_eur": estimated_price,
-            "price_fetched_at": datetime.utcnow()
-        }}
-    )
-    
-    return {
-        "client_id": client_id,
-        "device_model": client.get("device_model"),
-        "device_make": client.get("device_make"),
-        "used_price_eur": estimated_price,
-        "note": "Estimated based on device model. Actual market value may vary."
-    }
+            "price_range": {
+                "min": result.get("min_price_eur"),
+                "max": result.get("max_price_eur"),
+                "avg": result.get("avg_price_eur"),
+            },
+            "listing_count": result.get("listing_count", 0),
+            "search_query": result.get("search_query", ""),
+            "source": "ebay.de",
+            "sample_listings": result.get("sample_listings", []),
+        }
+    else:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No eBay listings found for '{result.get('search_query', device_model)}'. {result.get('error', '')}"
+        )
 
 
 @router.post("/clients/{client_id}/report-tamper")
