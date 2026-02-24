@@ -97,9 +97,21 @@ class OfflineSyncManager {
 
   async syncStatus(clientId: string, apiUrl: string): Promise<any> {
     try {
-      // Check if online
-      const netState = await NetInfo.fetch();
-      if (!netState.isConnected) {
+      // Check if online with timeout to prevent hanging
+      let isOnline = false;
+      try {
+        const netPromise = NetInfo.fetch();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('NetInfo timeout')), 3000)
+        );
+        const netState = await Promise.race([netPromise, timeoutPromise]) as any;
+        isOnline = netState?.isConnected ?? false;
+      } catch {
+        // If NetInfo hangs or fails, assume online and try fetch anyway
+        isOnline = true;
+      }
+      
+      if (!isOnline) {
         console.log('[OfflineSync] Offline - using cached status');
         const cached = await this.getCachedStatus(clientId);
         if (cached) {
@@ -113,25 +125,35 @@ class OfflineSyncManager {
         throw new Error('No cached data available');
       }
 
-      // Online - fetch from server
-      const response = await fetch(`${apiUrl}/api/device/status/${clientId}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
+      // Online - fetch from server with AbortController timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      
+      try {
+        const response = await fetch(`${apiUrl}/api/device/status/${clientId}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch status');
+        if (!response.ok) {
+          throw new Error('Failed to fetch status');
+        }
+
+        const status = await response.json();
+        
+        // Cache the new status
+        await this.setCachedStatus(clientId, status);
+        
+        // Process pending actions
+        await this.processPendingActions(clientId, apiUrl);
+        
+        return { ...status, offline: false };
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        throw fetchError;
       }
-
-      const status = await response.json();
-      
-      // Cache the new status
-      await this.setCachedStatus(clientId, status);
-      
-      // Process pending actions
-      await this.processPendingActions(clientId, apiUrl);
-      
-      return { ...status, offline: false };
     } catch (error) {
       console.error('[OfflineSync] Sync error:', error);
       
