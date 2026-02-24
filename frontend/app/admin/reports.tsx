@@ -582,12 +582,12 @@ export default function Reports() {
             <View style={styles.profitMainRow}>
               <View style={styles.profitMainItem}>
                 <Ionicons name="wallet" size={32} color={colors.success} />
-                <Text style={[styles.profitMainValue, { color: colors.text }]}>€{profitSummary.totalRevenue.toFixed(2)}</Text>
+                <Text style={[styles.profitMainValue, { color: colors.text }]}>{formatAmount(profitSummary.totalRevenue)}</Text>
                 <Text style={[styles.profitMainLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Kogutulu' : 'Total Revenue'}</Text>
               </View>
               <View style={styles.profitMainItem}>
                 <Ionicons name="trending-up" size={32} color={colors.primary} />
-                <Text style={[styles.profitMainValue, { color: colors.primary }]}>€{profitSummary.profit.toFixed(2)}</Text>
+                <Text style={[styles.profitMainValue, { color: colors.primary }]}>{formatAmount(profitSummary.profit)}</Text>
                 <Text style={[styles.profitMainLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Kasum (intress)' : 'Profit (Interest)'}</Text>
               </View>
             </View>
@@ -598,7 +598,7 @@ export default function Reports() {
               </View>
               <View style={styles.profitDetailItem}>
                 <Text style={styles.profitDetailLabel}>{language === 'et' ? 'Intress teenitud' : 'Interest Earned'}</Text>
-                <Text style={styles.profitDetailValue}>€{profitSummary.interestEarned.toFixed(2)}</Text>
+                <Text style={styles.profitDetailValue}>{formatAmount(profitSummary.interestEarned)}</Text>
               </View>
               <View style={styles.profitDetailItem}>
                 <Text style={styles.profitDetailLabel}>{language === 'et' ? 'ROI' : 'ROI'}</Text>
@@ -668,7 +668,7 @@ export default function Reports() {
               <View style={styles.badLoansDivider} />
               <View style={styles.badLoansItem}>
                 <Text style={styles.badLoansLabel}>{language === 'et' ? 'Summa' : 'Amount'}</Text>
-                <Text style={[styles.badLoansValue, { color: '#EF4444' }]}>€{advancedMetrics.badLoansAmount.toFixed(2)}</Text>
+                <Text style={[styles.badLoansValue, { color: '#EF4444' }]}>{formatAmount(advancedMetrics.badLoansAmount)}</Text>
               </View>
             </View>
           </View>
@@ -708,7 +708,7 @@ export default function Reports() {
             <View style={styles.financialCard}>
               <View style={styles.financialRow}>
                 <Text style={styles.financialLabel}>{language === 'et' ? 'Väljastatud' : 'Disbursed'}</Text>
-                <Text style={styles.financialValue}>€{(collectionReport.financial?.total_disbursed || 0).toFixed(2)}</Text>
+                <Text style={styles.financialValue}>{formatAmount(collectionReport.financial?.total_disbursed || 0)}</Text>
               </View>
               <View style={styles.financialRow}>
                 <Text style={styles.financialLabel}>{language === 'et' ? 'Kogutud' : 'Collected'}</Text>
