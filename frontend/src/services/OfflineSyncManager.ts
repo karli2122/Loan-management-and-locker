@@ -67,10 +67,8 @@ class OfflineSyncManager {
 
   async setCachedStatus(clientId: string, status: any) {
     try {
-      const cached: CachedStatus = {
-        is_locked: status.is_locked,
-        lock_message: status.lock_message || '',
-        warning_message: status.warning_message || '',
+      const cached = {
+        ...status,
         last_sync: Date.now(),
         pending_actions: [],
       };
