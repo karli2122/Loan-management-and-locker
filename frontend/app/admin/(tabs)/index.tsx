@@ -50,6 +50,7 @@ interface AdminUser {
 export default function Dashboard() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
+  const { formatAmount, currencySymbol } = useCurrency();
   const { colors, isDark } = useTheme();
   const [loanStats, setLoanStats] = useState<LoanStats>({
     total_clients: 0,
