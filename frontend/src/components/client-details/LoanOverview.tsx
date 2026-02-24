@@ -22,6 +22,7 @@ export const LoanOverview = ({
   onEditLoan, onRecordPayment, onAddNewLoan,
   onDownloadContract, onShareContract,
 }: Props) => {
+  const { formatAmount } = useCurrency();
   if (!client.loan_start_date) return null;
 
   return (
