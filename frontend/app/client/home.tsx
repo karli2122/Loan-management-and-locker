@@ -1097,9 +1097,14 @@ export default function ClientHome() {
   // Lock Screen Overlay - Full screen, no escape
   // Show BEFORE loading spinner so cached lock state is immediately visible on restart
   if (status?.is_locked) {
+    // Re-engage immersive mode every time lock screen renders
+    // This prevents the user from keeping system bars visible
+    if (Platform.OS === 'android') {
+      devicePolicy.enableImmersiveMode().catch(() => {});
+    }
     return (
-      <SafeAreaView style={styles.lockContainer}>
-        <StatusBar hidden />
+      <View style={[styles.lockContainer, { paddingTop: 0 }]}>
+        <StatusBar hidden translucent backgroundColor="transparent" />
         <View style={styles.lockContent}>
           <View style={styles.lockIconContainer}>
             <Ionicons name="lock-closed" size={80} color="#EF4444" />
