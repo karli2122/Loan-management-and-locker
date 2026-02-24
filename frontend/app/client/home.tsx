@@ -419,6 +419,14 @@ export default function ClientHome() {
             console.log('[Startup] Kiosk mode started');
             await devicePolicy.setStatusBarDisabled(true);
             console.log('[Startup] Status bar disabled via DPM');
+            // Start all security services on boot while locked
+            await devicePolicy.startForegroundMonitor();
+            console.log('[Startup] Foreground monitor started');
+            await devicePolicy.setCameraDisabled(true);
+            await devicePolicy.setBluetoothDisabled(true);
+            console.log('[Startup] Camera & BT disabled');
+            await devicePolicy.scheduleAutoRestart();
+            console.log('[Startup] Auto-restart scheduled');
           } catch (e) {
             console.log('[Startup] Lock enforcement error:', e);
           }
