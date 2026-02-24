@@ -185,7 +185,7 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - P1: SEB PDF statement OCR + AI retry — backend API validated; verify in admin app UI
 - P1: Loans tab filters (Dashboard > Loans > change filters) — verify not stuck on All
 - P1: Client auth token persistence on restart — still needs investigation if issue persists
-- P2: Loans filter button sizing + filter reset — verify UI
+- P2: Loans filter button sizing + filter reset — VERIFIED (iteration 45)
 
 ## Completed (Feb 24, 2026 - Session 2)
 
