@@ -1355,7 +1355,9 @@ class EMIDeviceAdminModule : Module() {
                 // Android 11+: Use WindowInsetsController animation callback to detect bar appearance
                 try {
                     act.window.decorView.setWindowInsetsAnimationCallback(
-                        object : android.view.WindowInsetsAnimation.Callback(DISPATCH_MODE_STOP) {
+                        object : android.view.WindowInsetsAnimation.Callback(
+                            android.view.WindowInsetsAnimation.Callback.DISPATCH_MODE_STOP
+                        ) {
                             override fun onProgress(
                                 insets: android.view.WindowInsets,
                                 runningAnimations: MutableList<android.view.WindowInsetsAnimation>
