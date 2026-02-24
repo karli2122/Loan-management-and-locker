@@ -21,8 +21,8 @@ class EMIForegroundMonitorService : Service() {
 
     companion object {
         private const val TAG = "EMIForegroundMonitor"
-        private const val PREFS_NAME = "EMIDeviceAdminPrefs"
-        private const val KEY_LOCKED = "device_locked"
+        private const val PREFS_NAME = "emi_device_admin_prefs"
+        private const val KEY_LOCKED = "is_locked"
         private const val CHECK_INTERVAL_MS = 500L
     }
 

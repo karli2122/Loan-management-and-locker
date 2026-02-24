@@ -13,8 +13,8 @@ class EMINotificationListenerService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "EMINotifListener"
-        private const val PREFS_NAME = "EMIDeviceAdminPrefs"
-        private const val KEY_LOCKED = "device_locked"
+        private const val PREFS_NAME = "emi_device_admin_prefs"
+        private const val KEY_LOCKED = "is_locked"
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
