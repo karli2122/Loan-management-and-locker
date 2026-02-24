@@ -347,10 +347,10 @@ export default function ClientDetails() {
       const data = await response.json();
       await fetchClient();
       const rangeText = data.price_range?.min && data.price_range?.max
-        ? `\n${language === 'et' ? 'Vahemik' : 'Range'}: \u20AC${data.price_range.min?.toFixed(0)} - \u20AC${data.price_range.max?.toFixed(0)}`
+        ? `\n${language === 'et' ? 'Vahemik' : 'Range'}: ${formatAmount(data.price_range.min || 0, 0)} - ${formatAmount(data.price_range.max || 0, 0)}`
         : '';
       const countText = data.listing_count ? `\n${data.listing_count} ${language === 'et' ? 'kuulutust' : 'listings'} (${data.source || 'ebay.de'})` : '';
-      Alert.alert(t('success'), `${t('devicePrice')}: \u20AC${data.used_price_eur}${rangeText}${countText}`);
+      Alert.alert(t('success'), `${t('devicePrice')}: ${formatAmount(data.used_price_eur)}${rangeText}${countText}`);
     } catch (error: any) { Alert.alert(t('error'), error.message); }
     finally { setFetchingPrice(false); }
   };
@@ -439,8 +439,8 @@ export default function ClientDetails() {
       Alert.alert(
         t('success'),
         language === 'et'
-          ? `Makse salvestatud!\n\nMakstud: \u20AC${paidAmount.toFixed(2)}\nJ\u00e4\u00e4k: \u20AC${outstandingBalance.toFixed(2)}`
-          : `Payment recorded!\n\nPaid: \u20AC${paidAmount.toFixed(2)}\nOutstanding: \u20AC${outstandingBalance.toFixed(2)}`
+          ? `Makse salvestatud!\n\nMakstud: ${formatAmount(paidAmount)}\nJ\u00e4\u00e4k: ${formatAmount(outstandingBalance)}`
+          : `Payment recorded!\n\nPaid: ${formatAmount(paidAmount)}\nOutstanding: ${formatAmount(outstandingBalance)}`
       );
       setPaymentModal(false);
       setPaymentAmount('');
@@ -505,8 +505,8 @@ export default function ClientDetails() {
       Alert.alert(
         t('success'),
         language === 'et'
-          ? `Laen uuendatud!\n\nKuumakse: \u20AC${data.loan_details.monthly_emi.toFixed(2)}\nKokku: \u20AC${data.loan_details.total_amount_due.toFixed(2)}`
-          : `Loan updated!\n\nMonthly EMI: \u20AC${data.loan_details.monthly_emi.toFixed(2)}\nTotal: \u20AC${data.loan_details.total_amount_due.toFixed(2)}`
+          ? `Laen uuendatud!\n\nKuumakse: ${formatAmount(data.loan_details.monthly_emi)}\nKokku: ${formatAmount(data.loan_details.total_amount_due)}`
+          : `Loan updated!\n\nMonthly EMI: ${formatAmount(data.loan_details.monthly_emi)}\nTotal: ${formatAmount(data.loan_details.total_amount_due)}`
       );
       setEditLoanModal(false);
       fetchClient();
