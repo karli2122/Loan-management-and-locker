@@ -53,11 +53,15 @@ export default function TransactionsTab() {
       const allTransactions: Transaction[] = [];
 
       const clients = data.clients || (Array.isArray(data) ? data : []);
-      clients.forEach((client: any) => {
+      
+      // Fetch payments for each client in parallel
+      const paymentPromises = clients.map(async (client: any) => {
+        const clientTransactions: Transaction[] = [];
+        
         // Add loan disbursement as a transaction
         const loanAmount = client.loan_amount || client.principal_amount || 0;
         if (loanAmount > 0) {
-          allTransactions.push({
+          clientTransactions.push({
             id: `disbursement-${client.id}`,
             client_id: client.id,
             client_name: client.name,
@@ -68,22 +72,35 @@ export default function TransactionsTab() {
           });
         }
 
-        // Add payments as transactions
-        if (client.payments_history && Array.isArray(client.payments_history)) {
-          client.payments_history.forEach((payment: any) => {
-            allTransactions.push({
-              id: payment.id || `payment-${client.id}-${payment.payment_date}`,
-              client_id: client.id,
-              client_name: client.name,
-              amount: payment.amount,
-              date: payment.payment_date,
-              type: 'payment',
-              payment_method: payment.payment_method,
-              notes: payment.notes,
-            });
-          });
+        // Fetch actual payments from the payments API
+        try {
+          const paymentsRes = await fetch(`${API_URL}/api/loans/${client.id}/payments?admin_token=${adminToken}`);
+          if (paymentsRes.ok) {
+            const payments = await paymentsRes.json();
+            if (Array.isArray(payments)) {
+              payments.forEach((payment: any) => {
+                clientTransactions.push({
+                  id: payment.id || `payment-${client.id}-${payment.payment_date}`,
+                  client_id: client.id,
+                  client_name: client.name,
+                  amount: payment.amount,
+                  date: payment.payment_date,
+                  type: 'payment',
+                  payment_method: payment.payment_method,
+                  notes: payment.notes,
+                });
+              });
+            }
+          }
+        } catch (e) {
+          // Non-fatal — skip payments for this client
         }
+
+        return clientTransactions;
       });
+
+      const results = await Promise.all(paymentPromises);
+      results.forEach(txns => allTransactions.push(...txns));
 
       // Sort by date (most recent first)
       allTransactions.sort(
