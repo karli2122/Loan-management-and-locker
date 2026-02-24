@@ -861,6 +861,26 @@ class EMIDeviceAdminModule : Module() {
             }
         }
 
+        // ===================== STATUS BAR CONTROL (DEVICE OWNER) =====================
+        // Explicitly disable/enable the status bar via DevicePolicyManager
+        // This is the most reliable way to block status bar on modern Android
+        // Requires Device Owner (set via ADB: adb shell dpm set-device-owner ...)
+        AsyncFunction("setStatusBarDisabled") { disabled: Boolean, promise: Promise ->
+            try {
+                if (!dpm.isDeviceOwnerApp(context.packageName)) {
+                    Log.w(TAG, "setStatusBarDisabled: Not device owner")
+                    promise.resolve("not_device_owner")
+                    return@AsyncFunction
+                }
+                dpm.setStatusBarDisabled(adminComponent, disabled)
+                Log.d(TAG, "setStatusBarDisabled: $disabled")
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "setStatusBarDisabled error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
         // ===================== BATTERY OPTIMIZATION =====================
 
         // Check if app is exempted from battery optimization
