@@ -21,7 +21,10 @@ import * as Sharing from 'expo-sharing';
 import * as Notifications from 'expo-notifications';
 import * as Location from 'expo-location';
 import { useLanguage } from '../../src/context/LanguageContext';
+import { useCurrency } from '../../src/context/CurrencyContext';
 import { useTheme } from '../../src/context/ThemeContext';
+import { LanguagePicker } from '../../src/components/LanguagePicker';
+import { CurrencyPicker } from '../../src/components/CurrencyPicker';
 import API_URL from '../../src/constants/api';
 import devicePolicy from '../../src/utils/DevicePolicy';
 import { getApiErrors, getDiagnosticLogs } from '../../src/utils/diagnostics';
@@ -40,7 +43,8 @@ interface Admin {
 
 export default function AdminSettings() {
   const router = useRouter();
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
+  const { currency, setCurrency, formatAmount } = useCurrency();
   const { theme, toggleTheme, colors, isDark } = useTheme();
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(true);
