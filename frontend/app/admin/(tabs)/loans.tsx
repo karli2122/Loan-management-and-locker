@@ -238,7 +238,15 @@ export default function LoansTab() {
             <Text style={styles.clientAvatarText}>{item.name.charAt(0).toUpperCase()}</Text>
           </View>
           <View style={styles.clientInfo}>
-            <Text style={[styles.clientName, { color: colors.text }]}>{item.name}</Text>
+            <View style={styles.clientNameRow}>
+              <Text style={[styles.clientName, { color: colors.text }]}>{item.name}</Text>
+              {item.credit_score != null && (
+                <View style={[styles.creditScoreBadge, { backgroundColor: getCreditScoreColor(item.credit_score) + '20' }]}>
+                  <Ionicons name="star" size={10} color={getCreditScoreColor(item.credit_score)} />
+                  <Text style={[styles.creditScoreText, { color: getCreditScoreColor(item.credit_score) }]}>{item.credit_score}</Text>
+                </View>
+              )}
+            </View>
             <Text style={[styles.clientPhone, { color: colors.textMuted }]}>{item.phone}</Text>
           </View>
           <View style={[styles.statusBadge, item.is_locked ? styles.statusLocked : styles.statusUnlocked]}>
@@ -339,7 +347,15 @@ export default function LoansTab() {
             <Ionicons name="checkmark" size={18} color="#fff" />
           </View>
           <View style={styles.clientInfo}>
-            <Text style={[styles.clientName, { color: colors.text }]}>{item.client_name}</Text>
+            <View style={styles.clientNameRow}>
+              <Text style={[styles.clientName, { color: colors.text }]}>{item.client_name}</Text>
+              {item.final_credit_score != null && item.final_credit_score > 0 && (
+                <View style={[styles.creditScoreBadge, { backgroundColor: getCreditScoreColor(item.final_credit_score) + '20' }]}>
+                  <Ionicons name="star" size={10} color={getCreditScoreColor(item.final_credit_score)} />
+                  <Text style={[styles.creditScoreText, { color: getCreditScoreColor(item.final_credit_score) }]}>{item.final_credit_score}</Text>
+                </View>
+              )}
+            </View>
             <Text style={[styles.clientPhone, { color: colors.textMuted }]}>{item.client_phone}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: '#10B981' }]}>
