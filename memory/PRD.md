@@ -187,7 +187,25 @@ Loan management application with admin dashboard and client-facing mobile app. D
 - P1: Client auth token persistence on restart — still needs investigation if issue persists
 - P2: Loans filter button sizing + filter reset — verify UI
 
+## Completed (Feb 24, 2026 - Session 2)
+
+### Admin App Bug Fixes Verified (P0)
+- **Filter button sizing**: Loans tab payment date filter buttons correctly sized (minHeight: 36, paddingVertical: 8, paddingHorizontal: 14)
+- **Payments in Transactions**: Transactions tab now fetches and displays payment records via `/api/loans/{client_id}/payments` alongside disbursements
+- **Admin name display**: Dashboard header shows `firstName` ("Karli") from AsyncStorage instead of username ("karli1987")
+- All 3 fixes verified via testing_agent_v3_fork (100% pass rate - iteration 45)
+
+### Credit Score Badge Feature
+- Added credit score badge next to client name in 3 locations:
+  1. **Loans tab - Active loans** (`loans.tsx`): Star icon + score (e.g., ★500) with color-coded background
+  2. **Loans tab - Archived loans** (`loans.tsx`): Star icon + final_credit_score next to archived client name
+  3. **Client Details page** (`ClientInfoCard.tsx`): Star icon + score next to client name header
+- Color coding: 800+ green, 650+ blue, 500+ amber, 350+ orange, <350 red
+- New styles added: `clientNameRow`, `creditScoreBadge`, `creditScoreText` in loans.tsx; `clientNameWithScore`, `creditScoreBadge`, `creditScoreValue` in client-details styles
+- Admin APK build submitted: https://expo.dev/accounts/karli1987/projects/loans/builds/305a161d-da97-4d68-b30d-17b467cb54d5
+
 ## Backlog
 - P1: Refactor home.tsx into smaller components
+- P1: eBay used phone price scraping integration (replace mock price)
 - P2: Payment Reminders, Bulk Import, Credit Score PDF, P/L Dashboard
 - P3: AMAPI, FCM Push Notifications
