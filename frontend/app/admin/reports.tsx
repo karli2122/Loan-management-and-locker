@@ -713,19 +713,19 @@ export default function Reports() {
               <View style={styles.financialRow}>
                 <Text style={styles.financialLabel}>{language === 'et' ? 'Kogutud' : 'Collected'}</Text>
                 <Text style={[styles.financialValue, { color: '#10B981' }]}>
-                  €{(collectionReport.financial?.total_collected || 0).toFixed(2)}
+                  {formatAmount(collectionReport.financial?.total_collected || 0)}
                 </Text>
               </View>
               <View style={styles.financialRow}>
                 <Text style={styles.financialLabel}>{language === 'et' ? 'Võlgnevus' : 'Outstanding'}</Text>
                 <Text style={[styles.financialValue, { color: '#F59E0B' }]}>
-                  €{(collectionReport.financial?.total_outstanding || 0).toFixed(2)}
+                  {formatAmount(collectionReport.financial?.total_outstanding || 0)}
                 </Text>
               </View>
               <View style={styles.financialRow}>
                 <Text style={styles.financialLabel}>{language === 'et' ? 'Viivised' : 'Late Fees'}</Text>
                 <Text style={[styles.financialValue, { color: '#EF4444' }]}>
-                  €{(collectionReport.financial?.total_late_fees || 0).toFixed(2)}
+                  {formatAmount(collectionReport.financial?.total_late_fees || 0)}
                 </Text>
               </View>
               <View style={[styles.financialRow, styles.separator]}>
@@ -741,7 +741,7 @@ export default function Reports() {
               <View style={styles.monthDetails}>
                 <View>
                   <Text style={styles.monthLabel}>{language === 'et' ? 'Kogutud' : 'Collected'}</Text>
-                  <Text style={styles.monthValue}>€{(collectionReport.this_month?.total_collected || 0).toFixed(2)}</Text>
+                  <Text style={styles.monthValue}>{formatAmount(collectionReport.this_month?.total_collected || 0)}</Text>
                 </View>
                 <View>
                   <Text style={styles.monthLabel}>{language === 'et' ? 'Makseid' : 'Payments'}</Text>
