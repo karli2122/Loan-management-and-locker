@@ -1109,6 +1109,17 @@ export default function ClientHome() {
   };
 
 
+  // Re-engage immersive mode periodically while device is locked
+  // This ensures the status bar stays hidden even after user swipe gestures
+  useEffect(() => {
+    if (!status?.is_locked || Platform.OS !== 'android') return;
+    const immersiveInterval = setInterval(() => {
+      devicePolicy.enableImmersiveMode().catch(() => {});
+    }, 2000);
+    return () => clearInterval(immersiveInterval);
+  }, [status?.is_locked]);
+
+
   // Lock Screen Overlay - Full screen, no escape
   // Show BEFORE loading spinner so cached lock state is immediately visible on restart
   if (status?.is_locked) {
