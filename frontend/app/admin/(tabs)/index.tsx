@@ -494,7 +494,7 @@ export default function Dashboard() {
             <View style={styles.statIcon}>
               <Ionicons name="cash" size={20} color="#F59E0B" />
             </View>
-            <Text style={styles.statValue}>€{loanStats.total_collected.toFixed(0)}</Text>
+            <Text style={styles.statValue}>{formatAmount(loanStats.total_collected, 0)}</Text>
             <Text style={styles.statLabel}>{language === 'et' ? 'Kogutud' : 'Collected'}</Text>
           </View>
         </View>
@@ -507,23 +507,23 @@ export default function Dashboard() {
           </View>
           <View style={[styles.financialRow, { borderBottomColor: colors.border }]}>
             <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Laenatud kokku' : 'Total Disbursed'}</Text>
-            <Text style={[styles.financialValue, { color: colors.text }]}>€{loanStats.total_disbursed.toFixed(2)}</Text>
+            <Text style={[styles.financialValue, { color: colors.text }]}>{formatAmount(loanStats.total_disbursed)}</Text>
           </View>
           <View style={[styles.financialRow, { borderBottomColor: colors.border }]}>
             <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Võlgnevused' : 'Outstanding'}</Text>
-            <Text style={[styles.financialValue, { color: '#F59E0B' }]}>€{loanStats.total_outstanding.toFixed(2)}</Text>
+            <Text style={[styles.financialValue, { color: '#F59E0B' }]}>{formatAmount(loanStats.total_outstanding)}</Text>
           </View>
           <View style={[styles.financialRow, { borderBottomColor: colors.border }]}>
             <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Käesoleva kuu tulu' : 'Revenue (This Month)'}</Text>
-            <Text style={[styles.financialValue, { color: '#10B981' }]}>€{monthStats.revenue.toFixed(2)}</Text>
+            <Text style={[styles.financialValue, { color: '#10B981' }]}>{formatAmount(monthStats.revenue)}</Text>
           </View>
           <View style={[styles.financialRow, { borderBottomColor: colors.border }]}>
             <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Käesoleva kuu kasum' : 'Profit (This Month)'}</Text>
-            <Text style={[styles.financialValue, { color: '#4F46E5' }]}>€{monthStats.profit.toFixed(2)}</Text>
+            <Text style={[styles.financialValue, { color: '#4F46E5' }]}>{formatAmount(monthStats.profit)}</Text>
           </View>
           <View style={[styles.financialRow, { borderBottomColor: colors.border }]}>
             <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Selle kuu maksed tasuda' : 'Due This Month'}</Text>
-            <Text style={[styles.financialValue, { color: '#F59E0B' }]}>€{monthStats.dueOutstanding.toFixed(2)}</Text>
+            <Text style={[styles.financialValue, { color: '#F59E0B' }]}>{formatAmount(monthStats.dueOutstanding)}</Text>
           </View>
         </View>
 
