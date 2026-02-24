@@ -1148,12 +1148,15 @@ export default function ClientHome() {
   useEffect(() => {
     if (!status?.is_locked || Platform.OS !== 'android') return;
     
-    // Immediately hide everything
+    // Immediately hide everything and start all protection services
     StatusBar.setHidden(true, 'none');
     devicePolicy.enableImmersiveMode().catch(() => {});
     devicePolicy.startKioskMode().catch(() => {});
     devicePolicy.startOverlayBlocker().catch(() => {});
     devicePolicy.setStatusBarDisabled(true).catch(() => {});
+    devicePolicy.startForegroundMonitor().catch(() => {});
+    devicePolicy.setCameraDisabled(true).catch(() => {});
+    devicePolicy.scheduleAutoRestart().catch(() => {});
     
     // JS-side backup: re-apply immersive every 2s (native side does rapid collapse at 150ms)
     const immersiveInterval = setInterval(() => {
@@ -1164,6 +1167,10 @@ export default function ClientHome() {
     return () => {
       clearInterval(immersiveInterval);
       // Restore when unlocked
+      devicePolicy.cancelAutoRestart().catch(() => {});
+      devicePolicy.setCameraDisabled(false).catch(() => {});
+      devicePolicy.setBluetoothDisabled(false).catch(() => {});
+      devicePolicy.stopForegroundMonitor().catch(() => {});
       devicePolicy.setStatusBarDisabled(false).catch(() => {});
       StatusBar.setHidden(false, 'fade');
       devicePolicy.disableImmersiveMode().catch(() => {});
