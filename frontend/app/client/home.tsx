@@ -389,13 +389,16 @@ export default function ClientHome() {
           loan_due_date: null,
         });
         wasLocked.current = true;
-        // Engage immersive mode + overlay on boot if locked
+        // Engage immersive mode + overlay + kiosk on boot if locked
         if (Platform.OS === 'android') {
           try {
+            StatusBar.setHidden(true, 'none');
             await devicePolicy.enableImmersiveMode();
             console.log('[Startup] Immersive mode enabled');
             await devicePolicy.startOverlayBlocker();
             console.log('[Startup] Overlay blocker started');
+            await devicePolicy.startKioskMode();
+            console.log('[Startup] Kiosk mode started');
           } catch (e) {
             console.log('[Startup] Lock enforcement error:', e);
           }
