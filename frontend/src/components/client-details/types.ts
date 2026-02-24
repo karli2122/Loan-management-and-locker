@@ -34,6 +34,12 @@ export interface Client {
   device_make: string;
   used_price_eur: number | null;
   price_fetched_at: string | null;
+  price_min_eur?: number | null;
+  price_max_eur?: number | null;
+  price_avg_eur?: number | null;
+  price_listing_count?: number | null;
+  price_source?: string | null;
+  price_search_query?: string | null;
   registration_code: string;
   emi_amount: number;
   emi_due_date: string | null;
