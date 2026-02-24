@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCurrency } from '../../src/context/CurrencyContext';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
 
@@ -36,6 +37,7 @@ interface PaymentHistoryData {
 export default function PaymentHistoryScreen() {
   const router = useRouter();
   const { language, t } = useLanguage();
+  const { formatAmount } = useCurrency();
   const [data, setData] = useState<PaymentHistoryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -159,7 +161,7 @@ export default function PaymentHistoryScreen() {
               <Text style={styles.summaryLabel}>
                 {language === 'et' ? 'Laenusumma' : 'Loan Amount'}
               </Text>
-              <Text style={styles.summaryValue}>€{data?.loan_amount?.toFixed(2) || '0.00'}</Text>
+              <Text style={styles.summaryValue}>{formatAmount(data?.loan_amount?.toFixed(2) || '0.00')}</Text>
             </View>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>
@@ -181,7 +183,7 @@ export default function PaymentHistoryScreen() {
               <Text style={styles.summaryLabel}>
                 {language === 'et' ? 'Kuumakse' : 'Monthly EMI'}
               </Text>
-              <Text style={styles.summaryValue}>€{data?.monthly_emi?.toFixed(2) || '0.00'}</Text>
+              <Text style={styles.summaryValue}>{formatAmount(data?.monthly_emi?.toFixed(2) || '0.00')}</Text>
             </View>
           </View>
 
@@ -224,7 +226,7 @@ export default function PaymentHistoryScreen() {
                     </View>
                     <Text style={styles.paymentDate}>{formatDate(payment.payment_date)}</Text>
                   </View>
-                  <Text style={styles.paymentAmount}>€{payment.amount.toFixed(2)}</Text>
+                  <Text style={styles.paymentAmount}>{formatAmount(payment.amount, 2)}</Text>
                   {payment.notes && (
                     <Text style={styles.paymentNotes}>{payment.notes}</Text>
                   )}
