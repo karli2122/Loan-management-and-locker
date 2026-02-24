@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { View, LogBox } from 'react-native';
 import { LanguageProvider } from '../src/context/LanguageContext';
+import { CurrencyProvider } from '../src/context/CurrencyContext';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 import { initializeDiagnostics } from '../src/utils/diagnostics';
 
@@ -42,9 +43,11 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <LanguageProvider>
-        <ThemeProvider>
-          <ThemedLayout />
-        </ThemeProvider>
+        <CurrencyProvider>
+          <ThemeProvider>
+            <ThemedLayout />
+          </ThemeProvider>
+        </CurrencyProvider>
       </LanguageProvider>
     </SafeAreaProvider>
   );
