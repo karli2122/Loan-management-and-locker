@@ -31,6 +31,7 @@ interface LoanStats {
 export default function Dashboard() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
+  const { formatAmount } = useCurrency();
   const [loanStats, setLoanStats] = useState<LoanStats>({
     total_clients: 0,
     active_loans: 0,
@@ -169,7 +170,7 @@ export default function Dashboard() {
             <View style={styles.statIcon}>
               <Ionicons name="cash" size={28} color="#F59E0B" />
             </View>
-            <Text style={styles.statValue}>€{loanStats.total_collected.toFixed(0)}</Text>
+            <Text style={styles.statValue}>{formatAmount(loanStats.total_collected, 0)}</Text>
             <Text style={styles.statLabel}>{language === 'et' ? 'Kogutud' : 'Collected'}</Text>
           </View>
         </View>
@@ -182,11 +183,11 @@ export default function Dashboard() {
           </View>
           <View style={styles.financialRow}>
             <Text style={styles.financialLabel}>{language === 'et' ? 'Laenatud kokku' : 'Total Disbursed'}</Text>
-            <Text style={styles.financialValue}>€{loanStats.total_disbursed.toFixed(2)}</Text>
+            <Text style={styles.financialValue}>{formatAmount(loanStats.total_disbursed)}</Text>
           </View>
           <View style={styles.financialRow}>
             <Text style={styles.financialLabel}>{language === 'et' ? 'Võlgnevused' : 'Outstanding'}</Text>
-            <Text style={[styles.financialValue, { color: '#F59E0B' }]}>€{loanStats.total_outstanding.toFixed(2)}</Text>
+            <Text style={[styles.financialValue, { color: '#F59E0B' }]}>{formatAmount(loanStats.total_outstanding)}</Text>
           </View>
         </View>
 
