@@ -365,24 +365,24 @@ async def fetch_device_price(client_id: str, admin_token: str = Query(...), forc
     if not force:
         price_fetched_at = client.get("price_fetched_at")
         if price_fetched_at and client.get("used_price_eur"):
-        age = (datetime.utcnow() - price_fetched_at).days
-        if age < 7:
-            return {
-                "client_id": client_id,
-                "device_model": device_model,
-                "device_make": device_make,
-                "used_price_eur": client["used_price_eur"],
-                "price_range": {
-                    "min": client.get("price_min_eur"),
-                    "max": client.get("price_max_eur"),
-                    "avg": client.get("price_avg_eur"),
-                },
-                "listing_count": client.get("price_listing_count", 0),
-                "search_query": client.get("price_search_query", ""),
-                "source": "ebay.de (cached)",
-                "cached_days_ago": age,
-                "sample_listings": client.get("price_sample_listings", []),
-            }
+            age = (datetime.utcnow() - price_fetched_at).days
+            if age < 7:
+                return {
+                    "client_id": client_id,
+                    "device_model": device_model,
+                    "device_make": device_make,
+                    "used_price_eur": client["used_price_eur"],
+                    "price_range": {
+                        "min": client.get("price_min_eur"),
+                        "max": client.get("price_max_eur"),
+                        "avg": client.get("price_avg_eur"),
+                    },
+                    "listing_count": client.get("price_listing_count", 0),
+                    "search_query": client.get("price_search_query", ""),
+                    "source": "ebay.de (cached)",
+                    "cached_days_ago": age,
+                    "sample_listings": client.get("price_sample_listings", []),
+                }
     
     # Fetch real price from eBay
     from services.ebay_scraper import fetch_used_phone_price
