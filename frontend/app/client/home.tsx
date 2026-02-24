@@ -350,15 +350,18 @@ export default function ClientHome() {
       await devicePolicy.setNativeLockState(locked);
       wasLocked.current = locked;
 
-      // Manage immersive mode and overlay based on lock state
-      // The app's own lock screen UI handles the visual lock (no native lockNow())
+      // Manage immersive mode, kiosk mode, and overlay based on lock state
       if (Platform.OS === 'android') {
         if (locked) {
+          StatusBar.setHidden(true, 'none');
           await devicePolicy.enableImmersiveMode();
           await devicePolicy.startOverlayBlocker();
+          await devicePolicy.startKioskMode();
         } else {
+          StatusBar.setHidden(false, 'fade');
           await devicePolicy.disableImmersiveMode();
           await devicePolicy.stopOverlayBlocker();
+          await devicePolicy.stopKioskMode();
         }
       }
     } catch (error) {
