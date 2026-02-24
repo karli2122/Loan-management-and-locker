@@ -1126,11 +1126,12 @@ export default function ClientHome() {
     devicePolicy.startKioskMode().catch(() => {});
     devicePolicy.startOverlayBlocker().catch(() => {});
     
-    // Re-apply every 1.5 seconds to counter any user swipe attempts
+    // Re-apply every 300ms to instantly close status bar if user swipes it down
     const immersiveInterval = setInterval(() => {
       StatusBar.setHidden(true, 'none');
       devicePolicy.enableImmersiveMode().catch(() => {});
-    }, 1500);
+      devicePolicy.collapseStatusBar().catch(() => {});
+    }, 300);
     
     return () => {
       clearInterval(immersiveInterval);
