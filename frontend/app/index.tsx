@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { useLanguage } from '../src/context/LanguageContext';
+import { LanguagePicker } from '../src/components/LanguagePicker';
 
 export default function Index() {
   const router = useRouter();
@@ -56,18 +57,10 @@ export default function Index() {
       
       {/* Language Switcher */}
       <View style={styles.langSwitcher}>
-        <TouchableOpacity
-          style={[styles.langButton, language === 'et' && styles.langButtonActive]}
-          onPress={() => setLanguage('et')}
-        >
-          <Text style={[styles.langText, language === 'et' && styles.langTextActive]}>EST</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.langButton, language === 'en' && styles.langButtonActive]}
-          onPress={() => setLanguage('en')}
-        >
-          <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>ENG</Text>
-        </TouchableOpacity>
+        <LanguagePicker compact colors={{
+          surface: '#1E293B', text: '#F8FAFC', textMuted: '#94A3B8',
+          border: '#334155', primary: '#4F46E5', background: '#0F172A',
+        }} />
       </View>
 
       <View style={styles.header}>
