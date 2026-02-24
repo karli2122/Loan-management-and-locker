@@ -197,15 +197,25 @@ Loan management application with admin dashboard and client-facing mobile app. D
 
 ### Credit Score Badge Feature
 - Added credit score badge next to client name in 3 locations:
-  1. **Loans tab - Active loans** (`loans.tsx`): Star icon + score (e.g., ★500) with color-coded background
+  1. **Loans tab - Active loans** (`loans.tsx`): Star icon + score with color-coded background
   2. **Loans tab - Archived loans** (`loans.tsx`): Star icon + final_credit_score next to archived client name
   3. **Client Details page** (`ClientInfoCard.tsx`): Star icon + score next to client name header
 - Color coding: 800+ green, 650+ blue, 500+ amber, 350+ orange, <350 red
-- New styles added: `clientNameRow`, `creditScoreBadge`, `creditScoreText` in loans.tsx; `clientNameWithScore`, `creditScoreBadge`, `creditScoreValue` in client-details styles
-- Admin APK build submitted: https://expo.dev/accounts/karli1987/projects/loans/builds/305a161d-da97-4d68-b30d-17b467cb54d5
+
+### Real Used Phone Price Scraping (Swappa.com)
+- Replaced mock price endpoint with real web scraper using Swappa.com
+- Created `/app/backend/services/ebay_scraper.py` with Swappa integration
+- Features: model code resolution (SM-A326B -> Samsung Galaxy A32), price range (min/max/avg), listing count, sample listings
+- Prices in USD converted to EUR (0.92 rate), cached for 7 days in MongoDB
+- Frontend updated: DeviceInfo shows price range, listing count, source, fetch date
+- `force=true` query param bypasses cache for fresh scrape
+- Samsung model map covers 20+ common models
+- Note: eBay blocks datacenter IPs (503), so Swappa is used as primary source
+- Admin APK build: https://expo.dev/accounts/karli1987/projects/loans/builds/12c6e311-7200-4681-a3ca-24efbff1affd
 
 ## Backlog
 - P1: Refactor home.tsx into smaller components
-- P1: eBay used phone price scraping integration (replace mock price)
+- P1: Add "address" field to client information form
+- P2: Diagnostic Report PDF export for superadmins
 - P2: Payment Reminders, Bulk Import, Credit Score PDF, P/L Dashboard
 - P3: AMAPI, FCM Push Notifications
