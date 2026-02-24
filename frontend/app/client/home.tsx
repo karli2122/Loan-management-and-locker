@@ -1213,7 +1213,7 @@ export default function ClientHome() {
           <View style={styles.lockLoanInfo}>
             <View style={styles.lockLoanItem}>
               <Text style={styles.lockLoanLabel}>{t('pendingAmount')}</Text>
-              <Text style={styles.lockLoanValue}>{'\u20AC'}{(status.outstanding_balance ?? status.loan_amount ?? 0).toLocaleString()}</Text>
+              <Text style={styles.lockLoanValue}>{formatAmount(status.outstanding_balance ?? status.loan_amount ?? 0)}</Text>
             </View>
             {status.loan_due_date && (
               <View style={styles.lockLoanItem}>
@@ -1571,7 +1571,7 @@ export default function ClientHome() {
           <View style={styles.loanDetails}>
             <View style={styles.loanDetailItem}>
               <Text style={styles.loanDetailLabel}>{language === 'et' ? 'Laenusumma' : 'Loan Amount'}</Text>
-              <Text style={styles.loanDetailValue}>€{(status?.loan_amount ?? 0).toLocaleString()}</Text>
+              <Text style={styles.loanDetailValue}>{formatAmount(status?.loan_amount ?? 0)}</Text>
             </View>
             <View style={styles.loanDetailDivider} />
             <View style={styles.loanDetailItem}>
