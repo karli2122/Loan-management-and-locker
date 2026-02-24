@@ -112,14 +112,24 @@ class EMIOverlayService : Service() {
 
     /**
      * Re-enforce immersive mode every refresh cycle.
-     * The system can restore bars after edge swipes, focus changes, or dialogs.
-     * This ensures they are hidden again within 1 second.
+     * Also re-enforces DPM status bar disable for Device Owner apps.
      */
     private fun reEnforceImmersiveMode() {
         try {
             val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val isLocked = prefs.getBoolean(KEY_LOCKED, false)
             if (!isLocked) return
+
+            // Re-enforce DPM status bar disable (Device Owner only)
+            try {
+                val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
+                val adminComponent = ComponentName(this, EMIDeviceAdminReceiver::class.java)
+                if (dpm != null && dpm.isDeviceOwnerApp(packageName)) {
+                    dpm.setStatusBarDisabled(adminComponent, true)
+                }
+            } catch (e: Exception) {
+                // Not device owner or DPM not available - skip silently
+            }
 
             // Find the foreground activity and re-apply immersive mode
             val am = getSystemService(ACTIVITY_SERVICE) as? ActivityManager ?: return
@@ -130,9 +140,6 @@ class EMIOverlayService : Service() {
             if (isInForeground) {
                 handler.post {
                     try {
-                        // Use reflection-free approach: post to main thread and find the decor view
-                        // The overlay service can't directly access the activity, but we can
-                        // send a broadcast that the module will pick up
                         val intent = Intent("expo.modules.emideviceadmin.REAPPLY_IMMERSIVE")
                         sendBroadcast(intent)
                     } catch (e: Exception) {
