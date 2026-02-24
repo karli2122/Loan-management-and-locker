@@ -423,6 +423,21 @@ class DevicePolicyManager {
   }
 
   /**
+   * Programmatically collapse/close the status bar notification shade.
+   * Uses Android StatusBarManager.collapsePanels() via native module.
+   * Fallback: no-op if native method is not available.
+   */
+  async collapseStatusBar(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.collapseStatusBar?.()) || 'not_available';
+    } catch (error) {
+      // Silently fail — this is a best-effort enhancement
+      return 'error';
+    }
+  }
+
+  /**
    * Enable immersive mode — hides status bar and navigation bar completely.
    * Used when device is locked to prevent any interaction with system bars.
    */
