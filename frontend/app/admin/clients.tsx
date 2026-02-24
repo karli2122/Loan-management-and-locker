@@ -264,10 +264,10 @@ export default function ClientsList() {
                   const loanAmt = item.loan_amount || 0;
                   const rate = (item as any).interest_rate || 0;
                   const totalDue = (item as any).total_amount_due || 0;
-                  if (totalDue > loanAmt) return totalDue.toLocaleString();
-                  if (loanAmt > 0 && rate > 0) return Math.round(loanAmt + loanAmt * rate / 100).toLocaleString();
-                  return (item.outstanding_balance || loanAmt).toLocaleString();
-                })()}
+                  if (totalDue > loanAmt) return totalDue;
+                  if (loanAmt > 0 && rate > 0) return Math.round(loanAmt + loanAmt * rate / 100);
+                  return (item.outstanding_balance || loanAmt);
+                })())}
               </Text>
             ) : (
               <Text style={[styles.emiAmount, { color: colors.textSecondary }]}>
