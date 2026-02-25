@@ -58,6 +58,7 @@ export default function AdminSettings() {
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string>('starter');
   
   // Form states
   const [newUsername, setNewUsername] = useState('');
