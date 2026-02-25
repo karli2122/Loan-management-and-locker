@@ -111,6 +111,16 @@ app.include_router(provisioning_router)
 app.include_router(plans_router)
 
 
+@app.get("/api/download/website")
+async def download_website():
+    """Download the PayLock Pro website ZIP file."""
+    zip_path = os.path.join(os.path.dirname(__file__), "paylockpro-website.zip")
+    if not os.path.exists(zip_path):
+        return JSONResponse(status_code=404, content={"error": "File not found"})
+    return FileResponse(zip_path, media_type="application/zip", filename="paylockpro-website.zip")
+
+
+
 # ===================== ROOT ENDPOINTS =====================
 
 @app.get("/api/")
