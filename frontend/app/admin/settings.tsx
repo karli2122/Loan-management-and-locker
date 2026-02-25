@@ -241,6 +241,76 @@ export default function AdminSettings() {
     }
   };
 
+  const fetchCurrentPlan = async (token: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/payments/current-plan?admin_token=${token}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentSubscription(data.plan_id || 'starter');
+        setSelectedPlan(data.plan_id || 'starter');
+      }
+    } catch (error) {
+      console.error('Error fetching current plan:', error);
+    }
+  };
+
+  const checkStripeReturn = async (token: string) => {
+    try {
+      // Check URL params for session_id (returning from Stripe checkout)
+      if (Platform.OS === 'web') {
+        const params = new URLSearchParams(window.location.search);
+        const sessionId = params.get('session_id');
+        const planId = params.get('plan');
+        if (sessionId) {
+          // Poll status
+          const statusRes = await fetch(`${API_URL}/api/payments/status/${sessionId}`);
+          if (statusRes.ok) {
+            const statusData = await statusRes.json();
+            if (statusData.payment_status === 'paid') {
+              setCurrentSubscription(statusData.plan_id);
+              setSelectedPlan(statusData.plan_id);
+              Alert.alert(t('success'), t('planUpgradeSuccess'));
+            }
+          }
+          // Clean URL
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking stripe return:', error);
+    }
+  };
+
+  const handleSubscribe = async (planId: string) => {
+    if (!adminToken || planId === currentSubscription) return;
+    setSubscribingPlan(planId);
+    try {
+      const origin = Platform.OS === 'web' ? window.location.origin : API_URL;
+      const res = await fetch(`${API_URL}/api/payments/subscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan_id: planId, origin_url: origin, admin_token: adminToken }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to create checkout');
+      }
+      const data = await res.json();
+      if (data.url) {
+        if (Platform.OS === 'web') {
+          window.location.href = data.url;
+        } else {
+          await Linking.openURL(data.url);
+        }
+      }
+    } catch (error: any) {
+      Alert.alert(t('error'), error.message);
+    } finally {
+      setSubscribingPlan(null);
+    }
+  };
+
+
   const handleSaveSettings = async () => {
     if (!adminToken) return;
     
