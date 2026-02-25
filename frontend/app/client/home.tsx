@@ -795,6 +795,19 @@ export default function ClientHome() {
           // Fetch status so the user sees their data instead of a blank screen
           try {
             await fetchStatus(id);
+            // If device is locked, enforce lock state immediately (save to native prefs for watchdog)
+            const cachedStatus = await OfflineSyncManager.getCachedStatus(id);
+            if (cachedStatus?.is_locked) {
+              await devicePolicy.cacheLockState(true, cachedStatus.lock_message || '');
+              // Start overlay blocker if permission is available
+              try {
+                const canOverlay = await devicePolicy.canDrawOverlays();
+                if (canOverlay) {
+                  await devicePolicy.startOverlayBlocker();
+                  await devicePolicy.enableImmersiveMode();
+                }
+              } catch (e) { console.log('Fresh reg overlay start error:', e); }
+            }
           } catch (e) {
             console.log('Fresh registration fetchStatus error (non-fatal):', e);
           }
