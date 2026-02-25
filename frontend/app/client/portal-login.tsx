@@ -77,18 +77,10 @@ export default function ClientPortalLogin() {
       >
         {/* Language Switcher */}
         <View style={styles.langSwitcher}>
-          <TouchableOpacity
-            style={[styles.langButton, language === 'et' && styles.langButtonActive]}
-            onPress={() => setLanguage('et')}
-          >
-            <Text style={[styles.langText, language === 'et' && styles.langTextActive]}>ET</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.langButton, language === 'en' && styles.langButtonActive]}
-            onPress={() => setLanguage('en')}
-          >
-            <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>EN</Text>
-          </TouchableOpacity>
+          <LanguagePicker compact colors={{
+            surface: '#1E293B', text: '#F8FAFC', textMuted: '#94A3B8',
+            border: '#334155', primary: '#10B981', background: '#0F172A',
+          }} />
         </View>
 
         <View style={styles.content}>
