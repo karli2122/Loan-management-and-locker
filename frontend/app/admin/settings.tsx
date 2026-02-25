@@ -159,6 +159,12 @@ export default function AdminSettings() {
       if (token && role === 'admin') {
         await fetchAdminsWithCredits(token);
       }
+      
+      // Fetch current subscription plan
+      await fetchCurrentPlan(token);
+      
+      // Check if returning from Stripe checkout
+      await checkStripeReturn(token);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
