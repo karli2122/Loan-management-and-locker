@@ -8,99 +8,108 @@ Build a loan management application with:
 
 ## Architecture
 - **Backend**: FastAPI + MongoDB
-- **Frontend**: React Native (Expo) - Admin app + Client app (web + Android)
+- **Frontend**: React Native (Expo) - Admin app + Client app
 - **Native Modules**: Kotlin-based device admin for kiosk mode
-- **Payments**: Stripe via emergentintegrations library
+- **Payments**: Stripe
+- **Email**: Resend (requires RESEND_API_KEY)
+- **Messaging**: Telegram Bot API (requires TELEGRAM_TOKEN)
 
-## What's Been Implemented
+## Subscription Plans
+| Feature | Starter (€29) | Business (€79) | Enterprise (€199) | Custom |
+|---|---|---|---|---|
+| Max Clients | 20 | 200 | 1000 | Unlimited |
+| Lock/Unlock | No | Yes | Yes | Yes |
+| Auto-lock | No | Yes | Yes | Yes |
+| Reminders | No | Yes | Yes | Yes |
+| Reports | No | Yes | Yes | Yes |
+| Bank Analyzer | No | Yes | Yes | Yes |
+| Business Mgmt | No | Yes | Yes | Yes |
+| Device Owner | No | No | Yes | Yes |
+| Backup | No | Yes | Yes | Yes |
 
-### Core Features
-- Admin dashboard with client management, loan tracking, payment recording
-- Client app with device registration, lock screen, payment status
-- Device locking/unlocking, warning messages, location tracking
-- Credit score system, payment reminders, auto-lock on overdue
+## What's Been Implemented (Current Session - Feb 25, 2026)
 
-### Device Owner Mode - COMPLETED (Feb 25, 2026)
-- **Backend**: Registration code generation supports `lock_mode` param (device_admin=8-digit, device_owner=9-digit)
-- **Backend**: Device registration detects code length to set lock_mode
-- **Backend**: Device status endpoint returns lock_mode, outstanding_balance, monthly_emi
-- **Client App**: Registration accepts up to 9-digit codes, stores lock_mode in AsyncStorage
-- **Client App**: Enhanced lock screen shows Device Owner badge, monthly EMI for device_owner mode
-- **Admin App**: Generate Key dialog lets admin choose Device Admin or Device Owner mode
-- **Admin App**: DeviceInfo section shows current lock_mode indicator
+### Bank Statement Analyzer - CSV/XML Support
+- Extended analyzer to accept .csv and .xml files alongside .pdf and .asice
 
-### Business Management UI - COMPLETED (Feb 25, 2026)
-- Added collapsible "Business Management" section under Device Management
-- Mode comparison cards (Device Admin vs Device Owner)
-- Selectable activation methods: ADB, QR Code, NFC
-- Detailed ADB activation instructions with copyable commands
-- Troubleshooting section for common Android issues ("Restricted settings unavailable", etc.)
+### Business Management - Separate Page
+- Moved from dropdown to dedicated `/admin/business-management` route
+- Restricted to Business/Enterprise/Custom plans + superadmin via /api/plans/limits
+- ADB, QR Code, and NFC activation methods with instructions
 
-### QR Code Provisioning - COMPLETED (Feb 25, 2026)
-- Backend endpoint generates Android Device Owner provisioning QR code
-- Supports WiFi configuration in the QR payload
-- Instructions in English and Estonian
-- Frontend "Generate QR Code" button in Business Management section
+### Plan Enforcement System
+- Backend: GET /api/plans/limits - Returns plan, limits, client count, can_add_client
+- Backend: GET /api/plans/features - Returns all 4 plans with features
+- Starter: 20 clients, basic only
+- Business: 200 clients, lock/unlock, reminders, reports, backup
+- Enterprise: 1000 clients, all features + Device Owner
+- Credit system disabled, replaced with plan-based limits
 
-### Custom Launcher (Kiosk Mode) - COMPLETED (Feb 25, 2026)
-- Native Kotlin module: `setAsDefaultLauncher`, `clearDefaultLauncher`, `setLockTaskPackages`
-- DevicePolicy.ts utility wrapper methods added
-- Client home.tsx activates custom launcher when lock_mode=device_owner
-- Automatically sets app as default launcher + lock task packages when locked in Device Owner mode
-- Clears custom launcher when device is unlocked
+### Contact Sales Email
+- All "Contact Sales" buttons open native email app with paylockpro@gmail.com
 
-### Google Drive Backup - COMPLETED (Feb 25, 2026)
-- Backend: POST /api/backup/create - Creates full backup (clients, loans, payments, loan_history)
-- Backend: GET /api/backup/list - Lists all backups for admin
-- Backend: GET /api/backup/{id} - Downloads specific backup
-- Backend: POST /api/backup/restore/{id} - Restores data from backup
-- Backend: DELETE /api/backup/{id} - Deletes backup
-- Frontend: Settings page connected to real backup API (previously mocked)
+### SMS/Email Reminders
+- POST /api/reminders/send-email/{client_id} - Email via Resend
+- POST /api/reminders/send-telegram/{client_id} - Telegram message
+- POST /api/reminders/send-bulk-email - Bulk email to all clients with balance
+- POST /api/reminders/send-bulk-telegram - Bulk Telegram to all clients
+- GET /api/reminders/config - Check which services are configured
 
-### Bug Fix: Client Details Crash - COMPLETED (Feb 25, 2026)
-- Fixed: `LoanHistory.tsx`, `LoanOverview.tsx`, `PaymentHistory.tsx` were using `t()` function without importing `useLanguage` hook
-- This caused crashes when using languages other than English/Estonian
+### NFC Provisioning
+- Uses same provisioning payload as QR, generates NFC-compatible data
+- Frontend button in Business Management page
 
-### Stripe Subscription Plans - COMPLETED
-- Starter: €29/month, Business: €79/month, Enterprise: €199/month, Custom: Contact sales
+### QR Code Provisioning
+- GET /api/provisioning/qr-code - Generates Android Device Owner QR code
+- Supports WiFi configuration in payload
 
-### PayLock Pro Branding - COMPLETED
-- Logo, colors (Royal blue #2563EB), PDF reports header/footer
+### Business Website (paylockpro.com)
+- Static HTML/CSS site at /app/paylockpro-website/
+- Sections: Hero, Features, How It Works, Security, Pricing, CTA, Footer
+- ZIP file at /app/paylockpro-website.zip ready for GitHub Pages / GoDaddy upload
+- All contact links go to paylockpro@gmail.com
 
-### Internationalization - COMPLETED
-- 16 languages, 8 currencies, 650+ translation keys
-
-### Soft-Delete Client - COMPLETED
-- Soft-delete with uninstall signal for client devices
+### Previous Session Features (Still Active)
+- Device Owner Mode (8/9-digit codes, enhanced lock screen)
+- Custom Launcher for kiosk mode
+- Google Drive Backup (create, list, restore, delete)
+- Stripe Subscription Plans
+- PayLock Pro Branding
+- 16 Languages, 8 Currencies
+- Soft-Delete Client
+- Bug fix: Client details crash with non-English/Estonian languages
 
 ## Credentials
 - Admin: username=admin, password=admin123
+- Contact email: paylockpro@gmail.com
 
-## APK Builds (Feb 25, 2026)
-- Admin: https://expo.dev/accounts/karli1987/projects/loans/builds/119d55c0-1a89-4357-a806-5f5c784639d1
-- Client: https://expo.dev/accounts/karli1987/projects/client/builds/7e0dfec7-b387-4936-a9c1-3982a9adfdd6
+## APK Builds (Feb 25, 2026 - Latest)
+- Admin: https://expo.dev/accounts/karli1987/projects/loans/builds/c6f39e77-c5a2-4cac-8f4d-cdbbd20f73da
+- Client: https://expo.dev/accounts/karli1987/projects/client/builds/d02a91fb-2af1-4060-8c19-0c6d370ffa59
 
-## Upcoming Tasks
-- Add "address" field to client info
-- Diagnostic Report PDF export for superadmins
-
-## Future/Backlog
-- iOS version, SMS/Email reminders, Bulk Import, Credit Score PDF
-- NFC provisioning for Device Owner mode (currently "coming soon")
-- Fix recurring: lock screen status bar accessible, lock state after app kill
-
-## Key DB Schema
-- **clients**: `{ ..., "is_deleted": bool, "uninstall_allowed": bool, "lock_mode": str, "total_due": float, "next_due_date": str }`
-- **backups**: `{ "backup_id": str, "admin_id": str, "google_email": str, "created_at": datetime, "size_bytes": int, "stats": dict, "data": dict }`
-- **subscriptions**: `{ "admin_id": str, "stripe_customer_id": str, "stripe_subscription_id": str, "plan": str, "status": str }`
+## Environment Variables Needed
+- RESEND_API_KEY - For email reminders (Resend)
+- SENDER_EMAIL - Sender email (default: paylockpro@gmail.com)
+- TELEGRAM_TOKEN - For Telegram bot reminders
 
 ## Key API Endpoints
-- `POST /api/clients/{id}/generate-code?admin_token=...&lock_mode=device_admin|device_owner`
-- `POST /api/device/register` (8-digit=admin, 9-digit=owner)
-- `GET /api/device/status/{client_id}` (returns lock_mode, outstanding_balance, monthly_emi)
-- `POST /api/backup/create?admin_token=...`
-- `GET /api/backup/list?admin_token=...`
-- `GET /api/backup/{backup_id}?admin_token=...`
-- `POST /api/backup/restore/{backup_id}?admin_token=...`
-- `DELETE /api/backup/{backup_id}?admin_token=...`
-- `GET /api/provisioning/qr-code?admin_token=...&wifi_ssid=...&wifi_password=...`
+- POST /api/plans/limits?admin_token=...
+- GET /api/plans/features
+- POST /api/reminders/send-email/{client_id}?admin_token=...
+- POST /api/reminders/send-telegram/{client_id}?admin_token=...
+- POST /api/reminders/send-bulk-email?admin_token=...
+- GET /api/reminders/config?admin_token=...
+- POST /api/backup/create?admin_token=...
+- GET /api/provisioning/qr-code?admin_token=...
+
+## Upcoming Tasks
+- Add Resend API key for email reminders
+- Create Telegram bot and add token for Telegram reminders  
+- Add "address" field to client info
+- Diagnostic Report PDF export for superadmins
+- Audit reports calculation accuracy
+
+## Future/Backlog
+- iOS version
+- Bulk Payment Import from CSV
+- Client Credit Score Report PDF
