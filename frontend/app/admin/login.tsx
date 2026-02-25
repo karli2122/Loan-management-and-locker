@@ -301,10 +301,12 @@ export default function AdminLogin() {
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="shield" size={50} color="#fff" />
-            </View>
-            <Text style={[styles.title, { color: colors.text }]}>{t('adminLogin')}</Text>
+            <Image 
+              source={require('../../assets/images/paylock-logo.png')} 
+              style={{ width: 80, height: 80, borderRadius: 16, marginBottom: 8 }}
+              data-testid="paylock-logo"
+            />
+            <Text style={[styles.title, { color: colors.text }]}>PayLock Pro</Text>
             <Text style={[styles.subtitle, { color: colors.textMuted }]}>
               {t('signInToManage')}
             </Text>
