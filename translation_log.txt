@@ -161,9 +161,9 @@ Extracted 616 translation keys
 --- Translating to French (fr) ---
   539 keys need translation
   Translating batch 1/6 (100 keys)
-anslating batch 4/6 (100 keys)
     Got 100 translations
-  Translating batch 5/6 (100 keys)
+  Translating batch 2/6 (100 keys)
+anslating batch 5/6 (100 keys)
     Got 100 translations
   Translating batch 6/6 (38 keys)
     Got 38 translations
