@@ -18,6 +18,7 @@ Build a loan management application with:
 - Surface (Dark): `#152035`
 - Surface Alt: `#1E3050`
 - Text Muted: `#7A9CC6`
+- Accent: `#06B6D4` (Cyan - used for Most Popular badge)
 
 ## What's Been Implemented
 
@@ -32,41 +33,34 @@ Build a loan management application with:
 
 ### PayLock Pro Branding - COMPLETED (Feb 25, 2026)
 - Logo integrated across admin login, app icon, and PDF reports
-- App names updated: PayLock Admin, PayLock Client
+- App names: PayLock Admin, PayLock Client
 - Color scheme: Royal blue (#2563EB) with navy dark theme (#0B1527)
-- PDF contracts include PayLock Pro header with logo and branded footer
-- All "EMI", "Loan Lock", "Loan Client/Admin" references replaced
+- PDF contracts: PayLock Pro header with logo + branded footer
+
+### Plans & Pricing - COMPLETED (Feb 25, 2026)
+- **Starter**: €29/month, 50 clients, basic features
+- **Business**: €79/month, 200 clients, auto-lock, reminders, reports (Most Popular)
+- **Enterprise**: €199/month, 1000 clients, all features
+- **Custom**: Contact sales, unlimited clients
+- **Add-ons**: €0.50/extra device/month, €0.03/SMS
+- All plans fully translated in 16 languages
+- Interactive plan selection with visual highlighting
+- Located in Settings > Plans & Pricing
 
 ### Internationalization (i18n) & Localization (l10n) - COMPLETED
 - **16 languages**: en, et, no, sv, da, fi, lv, lt, de_at, cs, pl, de_ch, es, de, fr, it
 - **8 currencies**: EUR, NOK, SEK, DKK, CZK, PLN, CHF, GBP
-- **622 translation keys** fully translated via LLM (GPT-4o-mini)
-- German variant fallback (de_at, de_ch -> de)
+- **650+ translation keys** fully translated
 
 ### Soft-Delete Client with Uninstall Signal - COMPLETED (Feb 25, 2026)
 - DELETE /api/clients/{id} soft-deletes (is_deleted=True, uninstall_allowed=True)
 - Device status endpoint returns data for soft-deleted clients
 - DELETE /api/clients/{id}/purge for permanent deletion
-- All listing/report queries exclude soft-deleted clients
-
-### Kiosk Mode (Device Admin)
-- Native Kotlin overlay service for status bar blocking
-- Lock state caching to SharedPreferences for background service persistence
-- Guided permission prompts for Usage Stats and Notification Listener
-
-## Key API Endpoints
-- POST /api/admin/login
-- GET/POST/DELETE /api/clients
-- DELETE /api/clients/{id}/purge
-- GET /api/device/status/{client_id}
-- POST /api/clients/{id}/lock|unlock
-- GET /api/contracts/{client_id}/preview?admin_token=TOKEN
 
 ## Credentials
 - Admin: username=admin, password=admin123
 
 ## P0 Issues (Critical)
-- [x] Incomplete translations for 14 languages - FIXED
 - [ ] Client app lock state not enforced after kill (needs device testing)
 - [ ] Status bar accessible on lock screen (needs device testing)
 
@@ -87,3 +81,4 @@ Build a loan management application with:
 - Bulk Payment Import from CSV
 - Client Credit Score Report (PDF)
 - Migrate portal-dashboard.tsx and portal-login.tsx to global LanguageContext
+- Stripe integration for actual plan purchases
