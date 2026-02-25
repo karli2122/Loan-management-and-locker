@@ -28,7 +28,8 @@
     "cs": "Správa zámku telefonu pro půjčky",
     "pl": "Zarządzanie blokadą telefonu dla pożyczek",
     "es": "Gestión de Bloqueo de Teléfono para Préstamos",
-    "it": "Gestione Blocco Telefono per Prestiti"
+    "it": "Gestione Blocco Telefono per Prestiti",
+    "lt": "Telefono užrakto valdymas paskoloms"
   },
   "selectMode": {
     "no": "Velg modus",
@@ -59,7 +60,8 @@
     "en": "Admin Panel",
     "lv": "Administratora panelis",
     "cs": "Admin Panel",
-    "pl": "Panel administratora"
+    "pl": "Panel administratora",
+    "lt": "Administratoriaus skyrius"
   },
   "adminDescription": {
     "et": "Halda kliente, lukusta/ava seadmeid, saada hoiatusi ja j\\u00E4lgi asukohti",
@@ -76,7 +78,8 @@
     "fr": "Gérez les clients, verrouillez/déverrouillez les appareils, envoyez des avertissements et suivez les emplacements",
     "it": "Gestisci i clienti, blocca/sblocca dispositivi, invia avvisi e tracca posizioni",
     "de_at": "Verwalten Sie Kunden, sperren/entsperren Sie Geräte, senden Sie Warnungen und verfolgen Sie Standorte",
-    "de_ch": "Verwalten Sie Kunden, sperren/entsperren Sie Geräte, senden Sie Warnungen und verfolgen Sie Standorte"
+    "de_ch": "Verwalten Sie Kunden, sperren/entsperren Sie Geräte, senden Sie Warnungen und verfolgen Sie Standorte",
+    "lt": "Valdykite klientus, užrakinkite/atrakinkite prietaisus, siųskite įspėjimus ir sekite vietas"
   },
   "clientDevice": {
     "no": "Klientenhet",
@@ -91,7 +94,8 @@
     "en": "Client Device",
     "lv": "Klienta ierīce",
     "cs": "Zařízení klienta",
-    "pl": "Urządzenie klienta"
+    "pl": "Urządzenie klienta",
+    "lt": "Kliento prietaisas"
   },
   "clientDescription": {
     "et": "Registreeri oma seade, vaata laenu staatust ja halda oma kontot",
@@ -108,7 +112,8 @@
     "fr": "Enregistrez votre appareil, vérifiez l'état du prêt et gérez votre compte",
     "it": "Registra il tuo dispositivo, visualizza lo stato del prestito e gestisci il tuo account",
     "de_at": "Registrieren Sie Ihr Gerät, sehen Sie den Kreditstatus ein und verwalten Sie Ihr Konto",
-    "de_ch": "Registrieren Sie Ihr Gerät, sehen Sie den Kreditstatus ein und verwalten Sie Ihr Konto"
+    "de_ch": "Registrieren Sie Ihr Gerät, sehen Sie den Kreditstatus ein und verwalten Sie Ihr Konto",
+    "lt": "Registruokite savo prietaisą, peržiūrėkite paskolos būseną ir valdykite savo paskyrą"
   },
   "secureSystem": {
     "et": "Turvaline laenuhalduss\\u00FCsteem",
@@ -125,7 +130,8 @@
     "fr": "Système de Gestion des Prêts Sécurisé",
     "it": "Sistema di Gestione Prestiti Sicuro",
     "de_at": "Sichere Kreditverwaltungssoftware",
-    "de_ch": "Sichere Kreditverwaltungssoftware"
+    "de_ch": "Sichere Kreditverwaltungssoftware",
+    "lt": "Saugus paskolų valdymo sistema"
   },
   "adminLogin": {
     "no": "Admin innlogging",
@@ -140,7 +146,8 @@
     "en": "Admin Login",
     "lv": "Administratora pieteikšanās",
     "cs": "Přihlášení správce",
-    "pl": "Logowanie administratora"
+    "pl": "Logowanie administratora",
+    "lt": "Administratoriaus prisijungimas"
   },
   "signInToManage": {
     "et": "Logi sisse, et hallata oma kliente",
@@ -157,7 +164,8 @@
     "fr": "Connectez-vous pour gérer vos clients",
     "it": "Accedi per gestire i tuoi clienti",
     "de_at": "Anmelden, um Ihre Kunden zu verwalten",
-    "de_ch": "Anmelden, um Ihre Kunden zu verwalten"
+    "de_ch": "Anmelden, um Ihre Kunden zu verwalten",
+    "lt": "Prisijunkite, kad valdytumėte savo klientus"
   },
   "username": {
     "no": "Brukernavn",
@@ -220,7 +228,8 @@
     "fi": "Kirjaudu sisään",
     "lv": "Pieteikties",
     "cs": "Přihlásit se",
-    "pl": "Zaloguj się"
+    "pl": "Zaloguj się",
+    "lt": "Prisijungti"
   },
   "error": {
     "no": "Feil",
@@ -251,7 +260,8 @@
     "cs": "Prosím vyplňte všechna pole",
     "pl": "Proszę wypełnić wszystkie pola",
     "es": "Por favor, completa todos los campos",
-    "it": "Si prega di compilare tutti i campi"
+    "it": "Si prega di compilare tutti i campi",
+    "lt": "Prašome užpildyti visus laukus"
   },
   "ok": {
     "es": "OK",
@@ -266,7 +276,8 @@
     "fi": "OK",
     "lv": "Labi",
     "cs": "OK",
-    "pl": "OK"
+    "pl": "OK",
+    "lt": "Gerai"
   },
   "retry": {
     "no": "Prøv igjen",
@@ -281,7 +292,8 @@
     "fi": "Uudelleen",
     "lv": "Mēģināt vēlreiz",
     "cs": "Zkusit znovu",
-    "pl": "Spróbuj ponownie"
+    "pl": "Spróbuj ponownie",
+    "lt": "Bandykite dar kartą"
   },
   "welcomeBack": {
     "no": "Velkommen tilbake,",
@@ -296,7 +308,8 @@
     "en": "Welcome back,",
     "lv": "Atgriezieties,",
     "cs": "Vítejte zpět,",
-    "pl": "Witamy z powrotem,"
+    "pl": "Witamy z powrotem,",
+    "lt": "Sveiki sugrįžę,"
   },
   "dashboardOverview": {
     "de": "Dashboard-Übersicht",
@@ -311,7 +324,8 @@
     "cs": "Přehled panelu",
     "pl": "Podsumowanie panelu",
     "es": "Resumen del Tablero",
-    "it": "Panoramica della Dashboard"
+    "it": "Panoramica della Dashboard",
+    "lt": "Valdymo skydelio apžvalga"
   },
   "totalClients": {
     "no": "Totalt klienter",
@@ -326,7 +340,8 @@
     "fi": "Yhteensä asiakkaita",
     "lv": "Kopā klienti",
     "cs": "Celkem klientů",
-    "pl": "Łączna liczba klientów"
+    "pl": "Łączna liczba klientów",
+    "lt": "Iš viso klientų"
   },
   "lockedDevices": {
     "de": "Gesperrte Geräte",
@@ -341,7 +356,8 @@
     "cs": "Zamknutá zařízení",
     "pl": "Zablokowane urządzenia",
     "es": "Dispositivos Bloqueados",
-    "it": "Dispositivi Bloccati"
+    "it": "Dispositivi Bloccati",
+    "lt": "Užrakinti prietaisai"
   },
   "registered": {
     "no": "Registrert",
@@ -356,7 +372,8 @@
     "fi": "Rekisteröity",
     "lv": "Reģistrēts",
     "cs": "Registrováno",
-    "pl": "Zarejestrowany"
+    "pl": "Zarejestrowany",
+    "lt": "Registruotas"
   },
   "unlocked": {
     "no": "Ulåst",
@@ -371,7 +388,8 @@
     "fi": "Aukaistu",
     "lv": "Atslēgts",
     "cs": "Odemknuto",
-    "pl": "Odblokowany"
+    "pl": "Odblokowany",
+    "lt": "Atrakintas"
   },
   "quickActions": {
     "de": "Schnellaktionen",
@@ -386,7 +404,8 @@
     "cs": "Rychlé akce",
     "pl": "Szybkie akcje",
     "es": "Acciones Rápidas",
-    "it": "Azioni Veloci"
+    "it": "Azioni Veloci",
+    "lt": "Greiti veiksmai"
   },
   "copy": {
     "no": "Kopier",
@@ -401,7 +420,8 @@
     "fi": "Kopioi",
     "lv": "Kopēt",
     "cs": "Kopírovat",
-    "pl": "Kopiuj"
+    "pl": "Kopiuj",
+    "lt": "Kopijuoti"
   },
   "copied": {
     "de": "Code kopiert",
@@ -416,7 +436,8 @@
     "cs": "Kód zkopírován",
     "pl": "Kod skopiowany",
     "es": "Código copiado",
-    "it": "Codice copiato"
+    "it": "Codice copiato",
+    "lt": "Kodas nukopijuotas"
   },
   "viewClients": {
     "de": "Kunden anzeigen",
@@ -431,7 +452,8 @@
     "cs": "Zobrazit klienty",
     "pl": "Zobacz klientów",
     "es": "Ver Clientes",
-    "it": "Visualizza Clienti"
+    "it": "Visualizza Clienti",
+    "lt": "Peržiūrėti klientus"
   },
   "manageClients": {
     "et": "Halda k\\u00F5iki registreeritud kliente",
@@ -448,7 +470,8 @@
     "fr": "Gérez tous les clients enregistrés",
     "it": "Gestisci tutti i clienti registrati",
     "de_at": "Alle registrierten Kunden verwalten",
-    "de_ch": "Alle registrierten Kunden verwalten"
+    "de_ch": "Alle registrierten Kunden verwalten",
+    "lt": "Valdyti visus užregistruotus klientus"
   },
   "addNewClient": {
     "no": "Legg til ny klient",
@@ -463,7 +486,8 @@
     "fi": "Lisää uusi asiakas",
     "lv": "Pievienot jaunu klientu",
     "cs": "Přidat nového klienta",
-    "pl": "Dodaj nowego klienta"
+    "pl": "Dodaj nowego klienta",
+    "lt": "Pridėti naują klientą"
   },
   "registerNewClient": {
     "et": "Registreeri uus klient",
@@ -480,7 +504,8 @@
     "fr": "Enregistrer un nouveau client",
     "it": "Registrati un nuovo cliente",
     "de_at": "Neuen Kunden registrieren",
-    "de_ch": "Neuen Kunden registrieren"
+    "de_ch": "Neuen Kunden registrieren",
+    "lt": "Registruoti naują klientą"
   },
   "logout": {
     "no": "Logg ut",
@@ -495,7 +520,8 @@
     "en": "Logout",
     "lv": "Iziet",
     "cs": "Odhlásit se",
-    "pl": "Wyloguj się"
+    "pl": "Wyloguj się",
+    "lt": "Atsijungti"
   },
   "logoutConfirm": {
     "de": "Möchten Sie sich wirklich abmelden?",
@@ -510,7 +536,8 @@
     "pl": "Czy na pewno chcesz się wylogować?",
     "es": "¿Estás seguro de que deseas cerrar sesión?",
     "fr": "Êtes-vous sûr de vouloir vous déconnecter ?",
-    "it": "Sei sicuro di voler disconnetterti?"
+    "it": "Sei sicuro di voler disconnetterti?",
+    "lt": "Ar tikrai norite atsijungti?"
   },
   "cancel": {
     "no": "Avbryt",
@@ -541,7 +568,8 @@
     "en": "Clients",
     "lv": "Klienti",
     "cs": "Klienti",
-    "pl": "Klienci"
+    "pl": "Klienci",
+    "lt": "Klientai"
   },
   "searchPlaceholder": {
     "et": "Otsi nime, telefoni v\\u00F5i e-posti j\\u00E4rgi",
@@ -558,7 +586,8 @@
     "fr": "Recherchez par nom, téléphone ou email",
     "it": "Cerca per nome, telefono o email",
     "de_at": "Nach Namen, Telefon oder E-Mail suchen",
-    "de_ch": "Nach Namen, Telefon oder E-Mail suchen"
+    "de_ch": "Nach Namen, Telefon oder E-Mail suchen",
+    "lt": "Ieškoti pagal vardą, telefoną arba el. paštą"
   },
   "all": {
     "no": "Alle",
@@ -573,7 +602,8 @@
     "en": "All",
     "lv": "Visi",
     "cs": "Vše",
-    "pl": "Wszystkie"
+    "pl": "Wszystkie",
+    "lt": "Visi"
   },
   "locked": {
     "no": "Låst",
@@ -588,7 +618,8 @@
     "fi": "Lukittu",
     "lv": "Bloķēts",
     "cs": "Zamknuto",
-    "pl": "Zablokowane"
+    "pl": "Zablokowane",
+    "lt": "Užrakintas"
   },
   "emi": {
     "no": "Lån",
@@ -603,7 +634,8 @@
     "en": "Loan",
     "lv": "Aizdevums",
     "cs": "Půjčka",
-    "pl": "Pożyczka"
+    "pl": "Pożyczka",
+    "lt": "Paskola"
   },
   "pending": {
     "no": "Ventende",
@@ -618,7 +650,8 @@
     "fi": "Odottaa",
     "lv": "Gaida",
     "cs": "Čeká",
-    "pl": "W toku"
+    "pl": "W toku",
+    "lt": "Laukia"
   },
   "code": {
     "no": "Kode",
@@ -633,7 +666,8 @@
     "fi": "Koodi",
     "lv": "Kods",
     "cs": "Kód",
-    "pl": "Kod"
+    "pl": "Kod",
+    "lt": "Kodas"
   },
   "noClientsFound": {
     "de": "Keine Kunden gefunden",
@@ -648,7 +682,8 @@
     "cs": "Žádní klienti nebyli nalezeni",
     "pl": "Nie znaleziono klientów",
     "es": "No se encontraron clientes",
-    "it": "Nessun cliente trovato"
+    "it": "Nessun cliente trovato",
+    "lt": "Nerasta klientų"
   },
   "fullName": {
     "no": "Fullt navn",
@@ -663,7 +698,8 @@
     "fi": "Koko nimi",
     "lv": "Vārds, uzvārds",
     "cs": "Celé jméno",
-    "pl": "Pełne imię i nazwisko"
+    "pl": "Pełne imię i nazwisko",
+    "lt": "Visas vardas"
   },
   "enterClientName": {
     "et": "Sisesta kliendi nimi",
@@ -680,7 +716,8 @@
     "fr": "Entrez le nom du client",
     "it": "Inserisci il nome del cliente",
     "de_at": "Namen des Kunden eingeben",
-    "de_ch": "Namen des Kunden eingeben"
+    "de_ch": "Namen des Kunden eingeben",
+    "lt": "Įveskite kliento vardą"
   },
   "phoneNumber": {
     "no": "Telefonnummer",
@@ -695,7 +732,8 @@
     "fi": "Puhelinnumero",
     "lv": "Telefona numurs",
     "cs": "Telefonní číslo",
-    "pl": "Numer telefonu"
+    "pl": "Numer telefonu",
+    "lt": "Telefono numeris"
   },
   "enterPhone": {
     "et": "Sisesta telefoninumber",
@@ -712,7 +750,8 @@
     "fr": "Entrez le numéro de téléphone",
     "it": "Inserisci il numero di telefono",
     "de_at": "Telefonnummer eingeben",
-    "de_ch": "Telefonnummer eingeben"
+    "de_ch": "Telefonnummer eingeben",
+    "lt": "Įveskite telefono numerį"
   },
   "emailAddress": {
     "de": "E-Mail-Adresse",
@@ -727,7 +766,8 @@
     "cs": "E-mailová adresa",
     "pl": "Adres email",
     "es": "Correo Electrónico",
-    "it": "Indirizzo Email"
+    "it": "Indirizzo Email",
+    "lt": "El. pašto adresas"
   },
   "enterEmail": {
     "et": "Sisesta e-posti aadress",
@@ -744,7 +784,8 @@
     "fr": "Entrez l'adresse email",
     "it": "Inserisci l'indirizzo email",
     "de_at": "E-Mail-Adresse eingeben",
-    "de_ch": "E-Mail-Adresse eingeben"
+    "de_ch": "E-Mail-Adresse eingeben",
+    "lt": "Įveskite el. pašto adresą"
   },
   "emiAmount": {
     "no": "Lånebeløp",
@@ -759,7 +800,8 @@
     "fi": "Lainan määrä",
     "lv": "Aizdevuma summa",
     "cs": "Částka půjčky",
-    "pl": "Kwota pożyczki"
+    "pl": "Kwota pożyczki",
+    "lt": "Paskolos suma"
   },
   "enterEmiAmount": {
     "et": "Sisesta laenusumma",
@@ -776,7 +818,8 @@
     "fr": "Entrez le montant du prêt",
     "it": "Inserisci l'importo del prestito",
     "de_at": "Kreditsumme eingeben",
-    "de_ch": "Kreditsumme eingeben"
+    "de_ch": "Kreditsumme eingeben",
+    "lt": "Įveskite paskolos sumą"
   },
   "emiDueDate": {
     "de": "Kreditfälligkeitsdatum",
@@ -791,7 +834,8 @@
     "cs": "Termín půjčky",
     "pl": "Termin spłaty pożyczki",
     "es": "Fecha de Vencimiento del Préstamo",
-    "it": "Data di Scadenza del Prestito"
+    "it": "Data di Scadenza del Prestito",
+    "lt": "Paskolos grąžinimo data"
   },
   "createClient": {
     "de": "Kunden erstellen",
@@ -806,7 +850,8 @@
     "cs": "Vytvořit klienta",
     "pl": "Utwórz klienta",
     "es": "Crear Cliente",
-    "it": "Crea Cliente"
+    "it": "Crea Cliente",
+    "lt": "Sukurti klientą"
   },
   "registrationCodeInfo": {
     "et": "Genereeritakse unikaalne registreerimiskood. Jaga seda koodi kliendiga, et ta saaks oma seadme registreerida.",
@@ -823,7 +868,8 @@
     "fr": "Un code d'enregistrement unique sera généré. Partagez ce code avec le client pour enregistrer son appareil.",
     "it": "Verrà generato un codice di registrazione unico. Condividi questo codice con il cliente per registrare il suo dispositivo.",
     "de_at": "Ein eindeutiger Registrierungscode wird generiert. Teilen Sie diesen Code mit dem Kunden, um sein Gerät zu registrieren.",
-    "de_ch": "Ein eindeutiger Registrierungscode wird generiert. Teilen Sie diesen Code mit dem Kunden, um sein Gerät zu registrieren."
+    "de_ch": "Ein eindeutiger Registrierungscode wird generiert. Teilen Sie diesen Code mit dem Kunden, um sein Gerät zu registrieren.",
+    "lt": "Bus sugeneruotas unikalus registracijos kodas. Pasidalykite šiuo kodu su klientu, kad užregistruotų jo prietaisą."
   },
   "success": {
     "no": "Suksess",
@@ -838,7 +884,8 @@
     "fi": "Onnistui",
     "lv": "Veiksmīgi",
     "cs": "Úspěch",
-    "pl": "Sukces"
+    "pl": "Sukces",
+    "lt": "Sėkmingai"
   },
   "clientCreated": {
     "et": "Klient loodud!",
@@ -855,7 +902,8 @@
     "fr": "Client créé !",
     "it": "Cliente creato!",
     "de_at": "Kunde erstellt!",
-    "de_ch": "Kunde erstellt!"
+    "de_ch": "Kunde erstellt!",
+    "lt": "Klientas sukurtas!"
   },
   "registrationCode": {
     "de": "Registrierungscode",
@@ -870,7 +918,8 @@
     "cs": "Registrační kód",
     "pl": "Kod rejestracji",
     "es": "Código de Registro",
-    "it": "Codice di Registrazione"
+    "it": "Codice di Registrazione",
+    "lt": "Registracijos kodas"
   },
   "shareCodeMessage": {
     "et": "Jaga seda koodi kliendiga, et ta saaks oma seadme registreerida.",
@@ -887,7 +936,8 @@
     "fr": "Partagez ce code avec le client pour enregistrer son appareil.",
     "it": "Condividi questo codice con il cliente per registrare il suo dispositivo.",
     "de_at": "Teilen Sie diesen Code mit dem Kunden, um sein Gerät zu registrieren.",
-    "de_ch": "Teilen Sie diesen Code mit dem Kunden, um sein Gerät zu registrieren."
+    "de_ch": "Teilen Sie diesen Code mit dem Kunden, um sein Gerät zu registrieren.",
+    "lt": "Pasidalykite šiuo kodu su klientu, kad užregistruotų jo prietaisą."
   },
   "clientDetails": {
     "de": "Kundendetails",
@@ -902,7 +952,8 @@
     "cs": "Detaily klienta",
     "pl": "Szczegóły klienta",
     "es": "Detalles del Cliente",
-    "it": "Dettagli Cliente"
+    "it": "Dettagli Cliente",
+    "lt": "Kliento informacija"
   },
   "contactInfo": {
     "de": "Kontaktinformationen",
@@ -917,7 +968,8 @@
     "cs": "Kontaktní informace",
     "pl": "Informacje kontaktowe",
     "es": "Información de Contacto",
-    "it": "Informazioni di Contatto"
+    "it": "Informazioni di Contatto",
+    "lt": "Kontaktinė informacija"
   },
   "emiDetails": {
     "de": "Kreditdetails",
@@ -932,7 +984,8 @@
     "cs": "Detaily půjčky",
     "pl": "Szczegóły pożyczki",
     "es": "Detalles del Préstamo",
-    "it": "Dettagli del Prestito"
+    "it": "Dettagli del Prestito",
+    "lt": "Paskolos informacija"
   },
   "amount": {
     "no": "Beløp",
@@ -947,7 +1000,8 @@
     "fi": "Määrä",
     "lv": "Summa",
     "cs": "Částka",
-    "pl": "Kwota"
+    "pl": "Kwota",
+    "lt": "Suma"
   },
   "dueDate": {
     "de": "Fälligkeitsdatum",
@@ -962,7 +1016,8 @@
     "cs": "Termín",
     "pl": "Termin",
     "es": "Fecha de Vencimiento",
-    "it": "Data di Scadenza"
+    "it": "Data di Scadenza",
+    "lt": "Terminas"
   },
   "notSet": {
     "de": "Nicht festgelegt",
@@ -977,7 +1032,8 @@
     "cs": "Nastaveno není",
     "pl": "Nie ustawiono",
     "es": "No establecido",
-    "it": "Non impostato"
+    "it": "Non impostato",
+    "lt": "Nustatyta nebuvo"
   },
   "deviceInfo": {
     "de": "Geräteinfo",
@@ -992,7 +1048,8 @@
     "cs": "Informace o zařízení",
     "pl": "Informacje o urządzeniu",
     "es": "Información del Dispositivo",
-    "it": "Informazioni sul Dispositivo"
+    "it": "Informazioni sul Dispositivo",
+    "lt": "Prietaise informacija"
   },
   "viewLocationOnMap": {
     "et": "Vaata asukohta kaardil",
@@ -1009,7 +1066,8 @@
     "fr": "Voir l'emplacement sur la carte",
     "it": "Visualizza Posizione sulla Mappa",
     "de_at": "Standort auf der Karte anzeigen",
-    "de_ch": "Standort auf der Karte anzeigen"
+    "de_ch": "Standort auf der Karte anzeigen",
+    "lt": "Peržiūrėti vietą žemėlapyje"
   },
   "locationNotAvailable": {
     "et": "Asukoht pole saadaval",
@@ -1026,7 +1084,8 @@
     "fr": "Emplacement non disponible",
     "it": "Posizione non disponibile",
     "de_at": "Standort nicht verfügbar",
-    "de_ch": "Standort nicht verfügbar"
+    "de_ch": "Standort nicht verfügbar",
+    "lt": "Vieta nėra prieinama"
   },
   "deviceNotRegistered": {
     "et": "Seade pole veel registreeritud",
@@ -1043,7 +1102,8 @@
     "fr": "Appareil non encore enregistré",
     "it": "Dispositivo non registrato ancora",
     "de_at": "Gerät noch nicht registriert",
-    "de_ch": "Gerät noch nicht registriert"
+    "de_ch": "Gerät noch nicht registriert",
+    "lt": "Prietaise dar nėra užregistruotas"
   },
   "lockDevice": {
     "no": "Lås enhet",
@@ -1058,7 +1118,8 @@
     "fi": "Lukitse laite",
     "lv": "Bloķēt ierīci",
     "cs": "Zamknout zařízení",
-    "pl": "Zablokuj urządzenie"
+    "pl": "Zablokuj urządzenie",
+    "lt": "Užrakinti prietaisą"
   },
   "unlockDevice": {
     "no": "Lås opp enhet",
@@ -1073,7 +1134,8 @@
     "fi": "Avaa laite",
     "lv": "Atslēgt ierīci",
     "cs": "Odemknout zařízení",
-    "pl": "Odblokuj urządzenie"
+    "pl": "Odblokuj urządzenie",
+    "lt": "Atrakinti prietaisą"
   },
   "sendWarning": {
     "de": "Warnung senden",
@@ -1088,7 +1150,8 @@
     "cs": "Poslat upozornění",
     "pl": "Wyślij ostrzeżenie",
     "es": "Enviar Advertencia",
-    "it": "Invia Avviso"
+    "it": "Invia Avviso",
+    "lt": "Siųsti įspėjimą"
   },
   "enterWarningMessage": {
     "et": "Sisesta hoiatusteade",
@@ -1105,7 +1168,8 @@
     "fr": "Entrez le message d'avertissement",
     "it": "Inserisci il messaggio di avviso",
     "de_at": "Warnmeldung eingeben",
-    "de_ch": "Warnmeldung eingeben"
+    "de_ch": "Warnmeldung eingeben",
+    "lt": "Įveskite įspėjimo žinutę"
   },
   "send": {
     "no": "Send",
@@ -1120,7 +1184,8 @@
     "fi": "Lähetä",
     "lv": "Sūtīt",
     "cs": "Odeslat",
-    "pl": "Wyślij"
+    "pl": "Wyślij",
+    "lt": "Siųsti"
   },
   "customizeLockMessage": {
     "et": "Kohanda lukustusteadet, mis kuvatakse kliendile",
@@ -1137,7 +1202,8 @@
     "fr": "Personnalisez le message de verrouillage affiché au client",
     "it": "Personalizza il messaggio di blocco mostrato al cliente",
     "de_at": "Anpassen der Sperrmeldung, die dem Kunden angezeigt wird",
-    "de_ch": "Anpassen der Sperrmeldung, die dem Kunden angezeigt wird"
+    "de_ch": "Anpassen der Sperrmeldung, die dem Kunden angezeigt wird",
+    "lt": "Pritaikykite užrakto žinutę, kurią matys klientas"
   },
   "enterLockMessage": {
     "et": "Sisesta lukustusteade",
@@ -1154,7 +1220,8 @@
     "fr": "Entrez le message de verrouillage",
     "it": "Inserisci il messaggio di blocco",
     "de_at": "Sperrmeldung eingeben",
-    "de_ch": "Sperrmeldung eingeben"
+    "de_ch": "Sperrmeldung eingeben",
+    "lt": "Įveskite užrakto žinutę"
   },
   "lock": {
     "es": "Bloquear",
@@ -1169,7 +1236,8 @@
     "fi": "Lukitse",
     "lv": "Bloķēt",
     "cs": "Zamknout",
-    "pl": "Zablokuj"
+    "pl": "Zablokuj",
+    "lt": "Užrakinti"
   },
   "deleteClient": {
     "de": "Kunden löschen",
@@ -1184,7 +1252,8 @@
     "cs": "Smazat klienta",
     "pl": "Usuń klienta",
     "es": "Eliminar Cliente",
-    "it": "Elimina Cliente"
+    "it": "Elimina Cliente",
+    "lt": "Ištrinti klientą"
   },
   "deleteConfirm": {
     "et": "Kas oled kindel, et soovid selle kliendi kustutada? Seda toimingut ei saa tagasi v\\u00F5tta.",
@@ -1201,7 +1270,8 @@
     "fr": "Êtes-vous sûr de vouloir supprimer ce client ? Cette action ne peut pas être annulée.",
     "it": "Sei sicuro di voler eliminare questo cliente? Questa azione non può essere annullata.",
     "de_at": "Sind Sie sicher, dass Sie diesen Kunden löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
-    "de_ch": "Sind Sie sicher, dass Sie diesen Kunden löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden."
+    "de_ch": "Sind Sie sicher, dass Sie diesen Kunden löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+    "lt": "Ar tikrai norite ištrinti šį klientą? Šio veiksmo negalima atšaukti."
   },
   "delete": {
     "no": "Slett",
@@ -1216,7 +1286,8 @@
     "fi": "Poista",
     "lv": "Dzēst",
     "cs": "Smazat",
-    "pl": "Usuń"
+    "pl": "Usuń",
+    "lt": "Ištrinti"
   },
   "deviceLockedSuccess": {
     "et": "Seade lukustatud edukalt",
@@ -1233,7 +1304,8 @@
     "fr": "Appareil verrouillé avec succès",
     "it": "Dispositivo bloccato con successo",
     "de_at": "Gerät erfolgreich gesperrt",
-    "de_ch": "Gerät erfolgreich gesperrt"
+    "de_ch": "Gerät erfolgreich gesperrt",
+    "lt": "Prietaise sėkmingai užrakintas"
   },
   "deviceUnlockedSuccess": {
     "et": "Seade avatud edukalt",
@@ -1250,7 +1322,8 @@
     "fr": "Appareil déverrouillé avec succès",
     "it": "Dispositivo sbloccato con successo",
     "de_at": "Gerät erfolgreich entsperrt",
-    "de_ch": "Gerät erfolgreich entsperrt"
+    "de_ch": "Gerät erfolgreich entsperrt",
+    "lt": "Prietaise sėkmingai atrakintas"
   },
   "warningSentSuccess": {
     "et": "Hoiatus saadetud edukalt",
@@ -1267,7 +1340,8 @@
     "fr": "Avertissement envoyé avec succès",
     "it": "Avviso inviato con successo",
     "de_at": "Warnung erfolgreich gesendet",
-    "de_ch": "Warnung erfolgreich gesendet"
+    "de_ch": "Warnung erfolgreich gesendet",
+    "lt": "Įspėjimas sėkmingai išsiųstas"
   },
   "clientDeletedSuccess": {
     "et": "Klient kustutatud edukalt",
@@ -1284,7 +1358,8 @@
     "fr": "Client supprimé avec succès",
     "it": "Cliente eliminato con successo",
     "de_at": "Kunde erfolgreich gelöscht",
-    "de_ch": "Kunde erfolgreich gelöscht"
+    "de_ch": "Kunde erfolgreich gelöscht",
+    "lt": "Klientas sėkmingai ištrintas"
   },
   "unlockConfirm": {
     "et": "Kas oled kindel, et soovid selle seadme avada?",
@@ -1301,7 +1376,8 @@
     "fr": "Êtes-vous sûr de vouloir déverrouiller cet appareil ?",
     "it": "Sei sicuro di voler sbloccare questo dispositivo?",
     "de_at": "Sind Sie sicher, dass Sie dieses Gerät entsperren möchten?",
-    "de_ch": "Sind Sie sicher, dass Sie dieses Gerät entsperren möchten?"
+    "de_ch": "Sind Sie sicher, dass Sie dieses Gerät entsperren möchten?",
+    "lt": "Ar tikrai norite atrakinti šį prietaisą?"
   },
   "registerDevice": {
     "de": "Gerät registrieren",
@@ -1316,7 +1392,8 @@
     "cs": "Registrovat zařízení",
     "pl": "Zarejestruj urządzenie",
     "es": "Registrar Dispositivo",
-    "it": "Registra Dispositivo"
+    "it": "Registra Dispositivo",
+    "lt": "Registruoti prietaisą"
   },
   "enterRegistrationCode": {
     "et": "Sisesta oma laenu pakkuja antud registreerimiskood, et siduda oma seade",
@@ -1333,7 +1410,8 @@
     "fr": "Entrez le code d'enregistrement fourni par votre prêteur pour lier votre appareil",
     "it": "Inserisci il codice di registrazione fornito dal tuo prestatore per collegare il tuo dispositivo",
     "de_at": "Geben Sie den Registrierungscode ein, den Ihr Kreditgeber bereitgestellt hat, um Ihr Gerät zu verknüpfen",
-    "de_ch": "Geben Sie den Registrierungscode ein, den Ihr Kreditgeber bereitgestellt hat, um Ihr Gerät zu verknüpfen"
+    "de_ch": "Geben Sie den Registrierungscode ein, den Ihr Kreditgeber bereitgestellt hat, um Ihr Gerät zu verknüpfen",
+    "lt": "Įveskite registracijos kodą, pateiktą jūsų paskolos teikėjo, kad susietumėte savo prietaisą"
   },
   "enterCode": {
     "de": "Code eingeben",
@@ -1348,7 +1426,8 @@
     "cs": "Zadejte kód",
     "pl": "Wprowadź kod",
     "es": "Ingresa Código",
-    "it": "Inserisci Codice"
+    "it": "Inserisci Codice",
+    "lt": "Įveskite kodą"
   },
   "deviceInformation": {
     "et": "Seadme informatsioon",
@@ -1365,7 +1444,8 @@
     "fr": "Informations sur l'appareil",
     "it": "Informazioni sul Dispositivo",
     "de_at": "Geräteinformationen",
-    "de_ch": "Geräteinformationen"
+    "de_ch": "Geräteinformationen",
+    "lt": "Prietaise informacija"
   },
   "noCodeHelp": {
     "et": "Pole koodi? V\\u00F5ta \\u00FChendust oma laenu pakkujaga, et saada oma unikaalne registreerimiskood.",
@@ -1382,7 +1462,8 @@
     "fr": "Vous n'avez pas de code ? Contactez votre prêteur pour obtenir votre code d'enregistrement unique.",
     "it": "Non hai un codice? Contatta il tuo prestatore per ottenere il tuo codice di registrazione unico.",
     "de_at": "Haben Sie keinen Code? Kontaktieren Sie Ihren Kreditgeber, um Ihren eindeutigen Registrierungscode zu erhalten.",
-    "de_ch": "Haben Sie keinen Code? Kontaktieren Sie Ihren Kreditgeber, um Ihren eindeutigen Registrierungscode zu erhalten."
+    "de_ch": "Haben Sie keinen Code? Kontaktieren Sie Ihren Kreditgeber, um Ihren eindeutigen Registrierungscode zu erhalten.",
+    "lt": "Nėra kodo pagalbos"
   },
   "deviceRegisteredSuccess": {
     "et": "Seade registreeritud edukalt!",
@@ -1399,7 +1480,8 @@
     "fr": "Appareil enregistré avec succès !",
     "it": "Dispositivo registrato con successo!",
     "de_at": "Gerät erfolgreich registriert!",
-    "de_ch": "Gerät erfolgreich registriert!"
+    "de_ch": "Gerät erfolgreich registriert!",
+    "lt": "Prietaise sėkmingai užregistruotas!"
   },
   "deviceAdminPermissionPrompt": {
     "et": "Seade registreeritud! Palun anna j\\u00E4rgmises vaates Device Admin \\u00F5igused, et seadistus l\\u00F5pule viia.",
@@ -1416,7 +1498,8 @@
     "fr": "Appareil enregistré ! Veuillez accorder l'autorisation d'administration de l'appareil à l'écran suivant pour compléter la configuration.",
     "it": "Dispositivo registrato! Si prega di concedere il permesso di Amministratore Dispositivo nella schermata successiva per completare la configurazione.",
     "de_at": "Gerät registriert! Bitte gewähren Sie im nächsten Bildschirm die Berechtigung für Geräteadministratoren, um die Einrichtung abzuschließen.",
-    "de_ch": "Gerät registriert! Bitte gewähren Sie im nächsten Bildschirm die Berechtigung für Geräteadministratoren, um die Einrichtung abzuschließen."
+    "de_ch": "Gerät registriert! Bitte gewähren Sie im nächsten Bildschirm die Berechtigung für Geräteadministratoren, um die Einrichtung abzuschließen.",
+    "lt": "Prietaise registruotas! Prašome suteikti prietaiso administratoriaus leidimą kitame ekrane, kad užbaigtumėte nustatymą."
   },
   "checkingRegistration": {
     "et": "Kontrollin registreerimist...",
@@ -1433,7 +1516,8 @@
     "fr": "Vérification de l'enregistrement...",
     "it": "Controllando la registrazione...",
     "de_at": "Überprüfe die Registrierung...",
-    "de_ch": "Überprüfe die Registrierung..."
+    "de_ch": "Überprüfe die Registrierung...",
+    "lt": "Tikrinama registracija..."
   },
   "welcome": {
     "no": "Velkommen,",
@@ -1448,7 +1532,8 @@
     "fi": "Tervetuloa,",
     "lv": "Sveicināti,",
     "cs": "Vítejte,",
-    "pl": "Witamy,"
+    "pl": "Witamy,",
+    "lt": "Sveiki atvykę,"
   },
   "deviceStatus": {
     "de": "Gerätestatus",
@@ -1463,7 +1548,8 @@
     "cs": "Stav zařízení",
     "pl": "Status urządzenia",
     "es": "Estado del Dispositivo",
-    "it": "Stato del Dispositivo"
+    "it": "Stato del Dispositivo",
+    "lt": "Prietaise būsena"
   },
   "deviceActiveNormal": {
     "et": "Sinu seade on aktiivne ja t\\u00F6\\u00F6tab normaalselt",
@@ -1480,7 +1566,8 @@
     "fr": "Votre appareil est actif et fonctionne normalement",
     "it": "Il tuo dispositivo è attivo e funziona normalmente",
     "de_at": "Ihr Gerät ist aktiv und funktioniert normal",
-    "de_ch": "Ihr Gerät ist aktiv und funktioniert normal"
+    "de_ch": "Ihr Gerät ist aktiv und funktioniert normal",
+    "lt": "Jūsų prietaisas veikia normaliai"
   },
   "monthlyEmi": {
     "de": "Monatliche Rate",
@@ -1495,7 +1582,8 @@
     "cs": "Měsíční EMI",
     "pl": "Miesięczna pożyczka",
     "es": "EMI Mensual",
-    "it": "EMI Mensile"
+    "it": "EMI Mensile",
+    "lt": "Mėnesinė paskolos įmoka"
   },
   "contactSupport": {
     "de": "Support kontaktieren",
@@ -1510,7 +1598,8 @@
     "cs": "Kontaktujte podporu",
     "pl": "Skontaktuj się z pomocą",
     "es": "Contactar Soporte",
-    "it": "Contatta il Supporto"
+    "it": "Contatta il Supporto",
+    "lt": "Kreiptis į pagalbą"
   },
   "getHelp": {
     "et": "Saa abi oma kontoga",
@@ -1527,7 +1616,8 @@
     "fr": "Obtenez de l'aide pour votre compte",
     "it": "Ottieni aiuto con il tuo account",
     "de_at": "Hilfe zu Ihrem Konto erhalten",
-    "de_ch": "Hilfe zu Ihrem Konto erhalten"
+    "de_ch": "Hilfe zu Ihrem Konto erhalten",
+    "lt": "Gauti pagalbos su savo paskyra"
   },
   "refreshStatus": {
     "de": "Status aktualisieren",
@@ -1542,7 +1632,8 @@
     "cs": "Obnovit stav",
     "pl": "Odśwież status",
     "es": "Actualizar Estado",
-    "it": "Aggiorna Stato"
+    "it": "Aggiorna Stato",
+    "lt": "Atnaujinti būseną"
   },
   "checkForUpdates": {
     "et": "Kontrolli uuendusi",
@@ -1559,7 +1650,8 @@
     "fr": "Vérifier les mises à jour",
     "it": "Controlla aggiornamenti",
     "de_at": "Auf Updates prüfen",
-    "de_ch": "Auf Updates prüfen"
+    "de_ch": "Auf Updates prüfen",
+    "lt": "Patikrinti atnaujinimus"
   },
   "warning": {
     "no": "Advarsel",
@@ -1574,7 +1666,8 @@
     "fi": "Varoitus",
     "lv": "Brīdinājums",
     "cs": "Upozornění",
-    "pl": "Ostrzeżenie"
+    "pl": "Ostrzeżenie",
+    "lt": "Įspėjimas"
   },
   "loadingAccount": {
     "et": "Laadin sinu kontot...",
@@ -1591,7 +1684,8 @@
     "fr": "Chargement de votre compte...",
     "it": "Caricamento del tuo account...",
     "de_at": "Lade Ihr Konto...",
-    "de_ch": "Lade Ihr Konto..."
+    "de_ch": "Lade Ihr Konto...",
+    "lt": "Kraunama jūsų paskyra..."
   },
   "deviceLocked": {
     "no": "Enhet låst",
@@ -1606,7 +1700,8 @@
     "fi": "Laite lukittu",
     "lv": "Ierīce bloķēta",
     "cs": "Zařízení zamčeno",
-    "pl": "Urządzenie zablokowane"
+    "pl": "Urządzenie zablokowane",
+    "lt": "Prietaisas užrakintas"
   },
   "pendingAmount": {
     "de": "Ausstehender Betrag",
@@ -1621,7 +1716,8 @@
     "cs": "Čekající částka",
     "pl": "Kwota w toku",
     "es": "Monto Pendiente",
-    "it": "Importo in Sospeso"
+    "it": "Importo in Sospeso",
+    "lt": "Laukiama suma"
   },
   "clearEmiToUnlock": {
     "et": "Palun tasu oma laenu v\\u00F5lgnevus, et avada oma seade",
@@ -1638,7 +1734,8 @@
     "fr": "Veuillez régler votre solde de prêt en attente pour déverrouiller votre appareil",
     "it": "Si prega di saldare il saldo del prestito in sospeso per sbloccare il dispositivo",
     "de_at": "Bitte begleichen Sie Ihren offenen Kreditbetrag, um Ihr Gerät zu entsperren",
-    "de_ch": "Bitte begleichen Sie Ihren offenen Kreditbetrag, um Ihr Gerät zu entsperren"
+    "de_ch": "Bitte begleichen Sie Ihren offenen Kreditbetrag, um Ihr Gerät zu entsperren",
+    "lt": "Prašome sumokėti laukiančią paskolos likutį, kad atrakintumėte savo prietaisą"
   },
   "howToContact": {
     "et": "Kuidas soovid \\u00FChendust v\\u00F5tta?",
@@ -1655,7 +1752,8 @@
     "fr": "Comment souhaitez-vous contacter le support ?",
     "it": "Come desideri contattare il supporto?",
     "de_at": "Wie möchten Sie den Support kontaktieren?",
-    "de_ch": "Wie möchten Sie den Support kontaktieren?"
+    "de_ch": "Wie möchten Sie den Support kontaktieren?",
+    "lt": "Kaip norėtumėte susisiekti su pagalba?"
   },
   "call": {
     "no": "Ring",
@@ -1670,7 +1768,8 @@
     "fi": "Soita",
     "lv": "Zvanīt",
     "cs": "Zavolat",
-    "pl": "Zadzwoń"
+    "pl": "Zadzwoń",
+    "lt": "Skambinti"
   },
   "email": {
     "no": "E-post",
@@ -1685,7 +1784,8 @@
     "fi": "Sähköpostiviesti",
     "lv": "E-pasts",
     "cs": "E-mail",
-    "pl": "Email"
+    "pl": "Email",
+    "lt": "El. paštas"
   },
   "settings": {
     "no": "Innstillinger",
