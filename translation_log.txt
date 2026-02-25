@@ -184,13 +184,13 @@ Extracted 616 translation keys
   Translating batch 4/6 (100 keys)
     Got 100 translations
   Translating batch 5/6 (100 keys)
-
     Got 100 translations
   Translating batch 6/6 (70 keys)
     Got 70 translations
 
 === Done! Written 616 keys to /app/translations_output.json ===
-Translation coverage: 9700/8624 (112.5%)
+Translation coverage: 9698/8624 (112.5%)
+
 ng batch 4/6 (100 keys)
     Got 100 translations
   Translating batch 5/6 (100 keys)

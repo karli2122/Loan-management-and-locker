@@ -1,57 +1,80 @@
-# EMI Device Admin - Product Requirements Document
+# EMI Device Admin - Loan Management App
 
 ## Original Problem Statement
-Loan management application with client-facing Android app (kiosk/lock mode) and admin-facing app for management. Requires multi-language support (16 languages), currency selection (8 currencies), device locking, and comprehensive loan management.
+Build a loan management application with:
+- A client-facing Android app with device-locking (kiosk) mode
+- An admin-facing app for managing clients, loans, payments and device controls
 
 ## Architecture
-- **Backend**: FastAPI (Python) on port 8001
-- **Frontend**: React Native (Expo) on port 3000
-- **Database**: MongoDB (DB: test_database)
-- **Build System**: EAS Build for Android APKs
-- **Native Module**: emi-device-admin (Kotlin) for Device Admin kiosk mode
+- **Backend**: FastAPI + MongoDB
+- **Frontend**: React Native (Expo) - Admin app + Client app (web + Android)
+- **Native Modules**: Kotlin-based device admin for kiosk mode
 
 ## What's Been Implemented
 
 ### Core Features
-- Full loan management system (CRUD clients, loans, payments)
-- Admin app with dashboard, client details, reports, calculator
-- Client app with registration, home screen, kiosk lock mode
-- Device Admin native module (Kotlin) for Android lock screen
-- Credit score display, Used phone price scraper (Swappa)
-- Maximum security features: Foreground Monitor, Notification Blocker, Auto-Restart, Camera/Bluetooth disable
+- Admin dashboard with client management, loan tracking, payment recording
+- Client app with device registration, lock screen, payment status
+- Device locking/unlocking, warning messages, location tracking
+- Credit score system, payment reminders, auto-lock on overdue
+- Device price lookup (Swappa integration)
+- Bank statement OCR analysis
+- Audit logging, notifications system
 
-### Session 20 (Feb 24-25, 2026)
-- **i18n Complete**: 16 languages via LanguagePicker dropdowns (replaced all ET/EN toggles)
-- **Currency System**: 8 currencies (EUR, NOK, SEK, DKK, PLN, CHF, GBP, USD) with CurrencyPicker dropdown and formatAmount() conversion
-- **Translation Migration**: 822 inline patterns → t() calls across 40 files, 489 new keys, 1080 total t() calls
-- **Guided Permission Setup**: Usage Stats + Notification Listener permission cards with device-specific instructions
-- **Auto-Fetch Fix**: Removed freshRegistration guard, 5s polling interval
-- **Backend**: Admin seeding, client reassignment, KEEPALIVE_URL fix
-- **Zero hardcoded €** in codebase
+### Internationalization (i18n) & Localization (l10n) - COMPLETED
+- **16 languages**: en, et, no, sv, da, fi, lv, lt, de_at, cs, pl, de_ch, es, de, fr, it
+- **8 currencies**: EUR, NOK, SEK, DKK, CZK, PLN, CHF, GBP
+- **622 translation keys** fully translated via LLM (GPT-4o-mini)
+- LanguageContext and CurrencyContext for global state management
+- LanguagePicker and CurrencyPicker dropdown components
+- German variant fallback (de_at, de_ch → de)
 
-## Current Environment
-- Backend URL: https://secure-loan-app.preview.emergentagent.com
-- Admin login: username=admin, password=admin123
-- DB_NAME: test_database
+### Soft-Delete Client with Uninstall Signal - COMPLETED (Feb 25, 2026)
+- DELETE /api/clients/{id} now soft-deletes (is_deleted=True, uninstall_allowed=True)
+- Device status endpoint still returns data for soft-deleted clients
+- Client app detects is_deleted and triggers uninstall flow
+- DELETE /api/clients/{id}/purge for permanent deletion
+- All listing/report queries exclude soft-deleted clients
 
-## Prioritized Backlog
+### Kiosk Mode (Device Admin)
+- Native Kotlin overlay service for status bar blocking
+- Lock state caching to SharedPreferences for background service persistence
+- Guided permission prompts for Usage Stats and Notification Listener
 
-### P0
-- Add full translations for 14 non-English/Estonian languages (currently falls back to English)
-- Verify permissions and auto-fetch on device
+## Key API Endpoints
+- POST /api/admin/login - Admin authentication
+- GET/POST/DELETE /api/clients - Client CRUD
+- DELETE /api/clients/{id}/purge - Hard delete
+- GET /api/device/status/{client_id} - Device status (supports soft-deleted)
+- POST /api/clients/{id}/lock|unlock - Lock/unlock device
+- POST /api/clients/{id}/allow-uninstall - Allow uninstall
+- POST /api/clients/{id}/send-warning - Send warning
 
-### P1
-- Custom Launcher (Default Home App) for client app
+## Credentials
+- Admin: username=admin, password=admin123
+
+## P0 Issues (Critical)
+- [x] Incomplete translations for 14 languages - FIXED
+- [ ] Client app lock state not enforced after kill (needs device testing)
+- [ ] Status bar accessible on lock screen (needs device testing)
+
+## P1 Issues
+- [ ] Client app status auto-refresh consistency
+- [ ] "Restricted settings unavailable" on modern Android
+- [ ] Client app offline mode incorrect data
+- [ ] Client app crashes post-registration
+
+## P2 Issues
+- [x] Allow Uninstall for deleted client - FIXED (soft-delete)
+
+## Upcoming Tasks
+- Custom Launcher (Default Home App) for strongest kiosk lock-in
 - Add "address" field to client information form
-- Offline mode data accuracy fix
-
-### P2
 - Diagnostic Report PDF export for superadmins
-- Allow Uninstall for Deleted Client
-- Credit Score PDF Report
 
-### P3
-- iOS client app (soft lock)
-- Automated Payment Reminders (SMS/Email)
-- Bulk Payment Import (CSV)
-- AMAPI integration, FCM Push Notifications
+## Future/Backlog
+- iOS version with "soft lock" features
+- Automated Payment Reminders via SMS/Email
+- Bulk Payment Import from CSV
+- Client Credit Score Report (PDF)
+- Migrate portal-dashboard.tsx and portal-login.tsx to global LanguageContext
