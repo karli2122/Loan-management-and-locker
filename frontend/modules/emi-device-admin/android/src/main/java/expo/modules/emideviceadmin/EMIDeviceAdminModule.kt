@@ -1258,6 +1258,71 @@ class EMIDeviceAdminModule : Module() {
                 promise.resolve("error: ${e.message}")
             }
         }
+
+        // ===================== CUSTOM LAUNCHER (Device Owner only) =====================
+        
+        AsyncFunction("setAsDefaultLauncher") { promise: Promise ->
+            try {
+                val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+                val adminComponent = ComponentName(context, EMIDeviceAdminReceiver::class.java)
+                
+                if (!dpm.isDeviceOwnerApp(context.packageName)) {
+                    promise.resolve("not_device_owner")
+                    return@AsyncFunction
+                }
+                
+                // Add home intent filter to make this app the default launcher
+                val filter = IntentFilter(Intent.ACTION_MAIN)
+                filter.addCategory(Intent.CATEGORY_HOME)
+                filter.addCategory(Intent.CATEGORY_DEFAULT)
+                
+                val activity = ComponentName(context.packageName, "${context.packageName}.MainActivity")
+                dpm.addPersistentPreferredActivity(adminComponent, filter, activity)
+                Log.d(TAG, "setAsDefaultLauncher: Set as default launcher")
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "setAsDefaultLauncher error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+        
+        AsyncFunction("clearDefaultLauncher") { promise: Promise ->
+            try {
+                val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+                val adminComponent = ComponentName(context, EMIDeviceAdminReceiver::class.java)
+                
+                if (!dpm.isDeviceOwnerApp(context.packageName)) {
+                    promise.resolve("not_device_owner")
+                    return@AsyncFunction
+                }
+                
+                dpm.clearPackagePersistentPreferredActivities(adminComponent, context.packageName)
+                Log.d(TAG, "clearDefaultLauncher: Cleared default launcher")
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "clearDefaultLauncher error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+        
+        AsyncFunction("setLockTaskPackages") { packages: List<String>, promise: Promise ->
+            try {
+                val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+                val adminComponent = ComponentName(context, EMIDeviceAdminReceiver::class.java)
+                
+                if (!dpm.isDeviceOwnerApp(context.packageName)) {
+                    promise.resolve("not_device_owner")
+                    return@AsyncFunction
+                }
+                
+                dpm.setLockTaskPackages(adminComponent, packages.toTypedArray())
+                Log.d(TAG, "setLockTaskPackages: Set packages: ${packages.joinToString()}")
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "setLockTaskPackages error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
     }
 
     // ===================== IMMERSIVE MODE HELPERS =====================
