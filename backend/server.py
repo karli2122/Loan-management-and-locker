@@ -37,6 +37,7 @@ from routes import (
     payments_router,
 )
 from routes.backup import router as backup_router
+from routes.provisioning import router as provisioning_router
 
 # Configure logging
 logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT)
@@ -105,6 +106,7 @@ app.include_router(paid_loans_router, prefix="/api")
 app.include_router(bank_statements_router, prefix="/api")
 app.include_router(payments_router, prefix="/api")
 app.include_router(backup_router)
+app.include_router(provisioning_router)
 
 
 # ===================== ROOT ENDPOINTS =====================
