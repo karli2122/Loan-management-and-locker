@@ -82,9 +82,8 @@ export const LoanHistory = ({
       </View>
     )}
   </View>
-);
-
-const LoanHistoryList = ({
+  );
+}; = ({
   loanHistory, loanHistorySearch, language, colors,
 }: {
   loanHistory: LoanHistoryItem[];
