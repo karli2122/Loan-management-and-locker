@@ -1,16 +1,31 @@
-"""Reminders routes - payment reminders, push notifications."""
-from fastapi import APIRouter, Query, HTTPException
+"""Reminders routes - payment reminders, push notifications, email, telegram."""
+import os
+import asyncio
+from fastapi import APIRouter, Query, HTTPException, Body
 from datetime import datetime, timedelta
 from typing import Optional
 import logging
 import httpx
+import resend
 
 from database import db
 from models.schemas import Reminder
 from utils.auth import get_admin_id_from_token
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Reminders"])
+
+# Resend setup
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
+SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
+
+# Telegram setup
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 
 
 async def send_expo_push_notification(push_token: str, title: str, body: str, data: Optional[dict] = None) -> bool:
