@@ -155,18 +155,35 @@ class TestEmailReminder:
     
     def test_send_email_reminder_no_email(self):
         """Test email reminder for client without email"""
-        # Create client without email
+        # Create client with phone but without email (email is optional)
         client_data = {
             "name": f"{TEST_PREFIX}no_email_{uuid.uuid4().hex[:8]}",
             "phone": "+3725559999",
+            "email": "",  # Empty email
         }
         resp = requests.post(
             f"{BASE_URL}/api/clients",
             json=client_data,
             params={"admin_token": TestAdminAuth.admin_token}
         )
-        assert resp.status_code == 200
-        client_id = resp.json()["id"]
+        if resp.status_code != 200:
+            # If empty email not allowed, try with minimal data and then clear email
+            client_data["email"] = "temp@example.com"
+            resp = requests.post(
+                f"{BASE_URL}/api/clients",
+                json=client_data,
+                params={"admin_token": TestAdminAuth.admin_token}
+            )
+            assert resp.status_code == 200, f"Client creation failed: {resp.text}"
+            client_id = resp.json()["id"]
+            # Update to remove email
+            requests.put(
+                f"{BASE_URL}/api/clients/{client_id}",
+                json={"email": ""},
+                params={"admin_token": TestAdminAuth.admin_token}
+            )
+        else:
+            client_id = resp.json()["id"]
         
         try:
             response = requests.post(
@@ -268,9 +285,10 @@ class TestWhatsAppLink:
     
     def test_whatsapp_link_no_phone(self):
         """Test WhatsApp link for client without phone"""
-        # Create client without phone
+        # Phone is required for client creation, so create with phone then clear it
         client_data = {
             "name": f"{TEST_PREFIX}no_phone_{uuid.uuid4().hex[:8]}",
+            "phone": "+3725551111",  # Required for creation
             "email": "no-phone@example.com",
         }
         resp = requests.post(
@@ -278,8 +296,15 @@ class TestWhatsAppLink:
             json=client_data,
             params={"admin_token": TestAdminAuth.admin_token}
         )
-        assert resp.status_code == 200
+        assert resp.status_code == 200, f"Client creation failed: {resp.text}"
         client_id = resp.json()["id"]
+        
+        # Update to remove phone
+        requests.put(
+            f"{BASE_URL}/api/clients/{client_id}",
+            json={"phone": ""},
+            params={"admin_token": TestAdminAuth.admin_token}
+        )
         
         try:
             response = requests.get(
@@ -374,9 +399,10 @@ class TestWhatsAppSend:
     
     def test_send_whatsapp_no_phone(self):
         """Test WhatsApp send for client without phone"""
-        # Create client without phone
+        # Phone is required for client creation, so create with phone then clear it
         client_data = {
             "name": f"{TEST_PREFIX}wa_no_phone_{uuid.uuid4().hex[:8]}",
+            "phone": "+3725552222",  # Required for creation
             "email": "wa-no-phone@example.com",
         }
         resp = requests.post(
@@ -384,8 +410,15 @@ class TestWhatsAppSend:
             json=client_data,
             params={"admin_token": TestAdminAuth.admin_token}
         )
-        assert resp.status_code == 200
+        assert resp.status_code == 200, f"Client creation failed: {resp.text}"
         client_id = resp.json()["id"]
+        
+        # Update to remove phone
+        requests.put(
+            f"{BASE_URL}/api/clients/{client_id}",
+            json={"phone": ""},
+            params={"admin_token": TestAdminAuth.admin_token}
+        )
         
         try:
             response = requests.post(
