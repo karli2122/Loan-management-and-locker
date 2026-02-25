@@ -207,77 +207,17 @@ const translations: Record<string, Partial<Record<Language, string>>> = {
   saveChanges: { en: 'Save Changes', et: 'Salvesta muudatused', de: 'Änderungen speichern', fr: 'Enregistrer' },
   deviceInfoUpdated: { en: 'Device info updated!', et: 'Seadme info uuendatud!' },
   edit: { en: 'Edit', et: 'Muuda', de: 'Bearbeiten', fr: 'Modifier', es: 'Editar', it: 'Modifica', no: 'Rediger', sv: 'Redigera' },
-};
-
-// German-based fallback languages
-const germanFallbacks: Language[] = ['de_at', 'de_ch'];
-
-interface LanguageContextType {
-  language: Language;
-  setLanguage: (lang: Language) => void;
-  t: (key: string) => string;
-}
-
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
-
-export const LanguageProvider = ({ children }: { children: ReactNode }) => {
-  const [language, setLanguageState] = useState<Language>('en');
-
-  useEffect(() => {
-    loadLanguage();
-  }, []);
-
-  const loadLanguage = async () => {
-    try {
-      const saved = await AsyncStorage.getItem('app_language');
-      if (saved && LANGUAGES.some(l => l.code === saved)) {
-        setLanguageState(saved as Language);
-      }
-    } catch (error) {
-      console.error('Error loading language:', error);
-    }
-  };
-
-  const setLanguage = async (lang: Language) => {
-    try {
-      await AsyncStorage.setItem('app_language', lang);
-      setLanguageState(lang);
-    } catch (error) {
-      console.error('Error saving language:', error);
-    }
-  };
-
-  const t = (key: string): string => {
-    const entry = translations[key];
-    if (!entry) return key;
-
-    // Try exact language match
-    if (entry[language]) return entry[language]!;
-
-    // Fallback for German variants -> German
-    if (germanFallbacks.includes(language) && entry['de']) return entry['de']!;
-
-    // Final fallback: English
-    return entry['en'] || key;
-  };
-
-  return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
-      {children}
-    </LanguageContext.Provider>
-  );
-
   // ============ AUTO-GENERATED TRANSLATIONS ============
-  1AllowRestrictedSettings: { en: '1. Allow Restricted Settings', et: '1. Luba piiratud seaded' },
-  1OpenAccessibility: { en: '1. Open Accessibility', et: '1. Ava juurdepääs' },
-  1OpenAppInfo: { en: '1. Open App Info', et: '1. Ava rak. info' },
-  1SelectOrCreateClient: { en: '1. Select or Create Client', et: '1. Vali või loo klient' },
-  2LoanDetails: { en: '2. Loan Details', et: '2. Laenu detailid' },
-  2OpenAccessibility: { en: '2. Open Accessibility', et: '2. Ava juurdepääs' },
-  2OpenAppInfo: { en: '2. Open App Info', et: '2. Ava rakenduse info' },
-  2OpenSettings: { en: '2. Open Settings', et: '2. Ava seaded' },
-  3OpenAccessibility: { en: '3. Open Accessibility', et: '3. Ava juurdepääs' },
-  6monthRevenueTrend: { en: '6-Month Revenue Trend', et: '6-kuu tulude trend' },
+  step1AllowRestrictedSettings: { en: '1. Allow Restricted Settings', et: '1. Luba piiratud seaded' },
+  step1OpenAccessibility: { en: '1. Open Accessibility', et: '1. Ava juurdepääs' },
+  step1OpenAppInfo: { en: '1. Open App Info', et: '1. Ava rak. info' },
+  step1SelectOrCreateClient: { en: '1. Select or Create Client', et: '1. Vali või loo klient' },
+  step2LoanDetails: { en: '2. Loan Details', et: '2. Laenu detailid' },
+  step2OpenAccessibility: { en: '2. Open Accessibility', et: '2. Ava juurdepääs' },
+  step2OpenAppInfo: { en: '2. Open App Info', et: '2. Ava rakenduse info' },
+  step2OpenSettings: { en: '2. Open Settings', et: '2. Ava seaded' },
+  step3OpenAccessibility: { en: '3. Open Accessibility', et: '3. Ava juurdepääs' },
+  step6monthRevenueTrend: { en: '6-Month Revenue Trend', et: '6-kuu tulude trend' },
   accessibility: { en: 'Accessibility', et: 'Juurdepääs' },
   accountRemoved: { en: 'Account Removed', et: 'Konto eemaldatud' },
   actions: { en: 'Actions', et: 'Tegevusi' },
@@ -758,7 +698,67 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   yourAccount: { en: 'Your Account', et: 'Sinu konto' },
   yourAccountHasBeenRemovedBy: { en: 'Your account has been removed by the administrator. You can now uninstall this app.', et: 'Teie konto on administraatori poolt eemaldatud. Saate nüüd rakenduse desinstallida.' },
 
+
 };
+
+// German-based fallback languages
+const germanFallbacks: Language[] = ['de_at', 'de_ch'];
+
+interface LanguageContextType {
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  t: (key: string) => string;
+}
+
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+
+export const LanguageProvider = ({ children }: { children: ReactNode }) => {
+  const [language, setLanguageState] = useState<Language>('en');
+
+  useEffect(() => {
+    loadLanguage();
+  }, []);
+
+  const loadLanguage = async () => {
+    try {
+      const saved = await AsyncStorage.getItem('app_language');
+      if (saved && LANGUAGES.some(l => l.code === saved)) {
+        setLanguageState(saved as Language);
+      }
+    } catch (error) {
+      console.error('Error loading language:', error);
+    }
+  };
+
+  const setLanguage = async (lang: Language) => {
+    try {
+      await AsyncStorage.setItem('app_language', lang);
+      setLanguageState(lang);
+    } catch (error) {
+      console.error('Error saving language:', error);
+    }
+  };
+
+  const t = (key: string): string => {
+    const entry = translations[key];
+    if (!entry) return key;
+
+    // Try exact language match
+    if (entry[language]) return entry[language]!;
+
+    // Fallback for German variants -> German
+    if (germanFallbacks.includes(language) && entry['de']) return entry['de']!;
+
+    // Final fallback: English
+    return entry['en'] || key;
+  };
+
+  return (
+    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+
 
 export const useLanguage = () => {
   const context = useContext(LanguageContext);
