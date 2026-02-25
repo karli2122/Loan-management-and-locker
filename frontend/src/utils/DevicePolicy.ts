@@ -569,6 +569,47 @@ class DevicePolicyManager {
   }
 
   /**
+   * Set app as default launcher (Device Owner only).
+   * This makes the app the home screen, preventing the user from leaving it.
+   */
+  async setAsDefaultLauncher(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.setAsDefaultLauncher?.()) || 'not_available';
+    } catch (error) {
+      console.log('setAsDefaultLauncher error:', error);
+      return 'error';
+    }
+  }
+
+  /**
+   * Clear default launcher setting (Device Owner only).
+   */
+  async clearDefaultLauncher(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.clearDefaultLauncher?.()) || 'not_available';
+    } catch (error) {
+      console.log('clearDefaultLauncher error:', error);
+      return 'error';
+    }
+  }
+
+  /**
+   * Set lock task packages (Device Owner only).
+   * These packages are allowed to enter lock task mode (full kiosk).
+   */
+  async setLockTaskPackages(packages: string[]): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.setLockTaskPackages?.(packages)) || 'not_available';
+    } catch (error) {
+      console.log('setLockTaskPackages error:', error);
+      return 'error';
+    }
+  }
+
+  /**
    * Disable immersive mode — restores status bar and navigation bar.
    */
   async disableImmersiveMode(): Promise<string> {
