@@ -1465,10 +1465,24 @@ export default function AdminSettings() {
                     </View>
                   ))}
                 </View>
-                {isActive && (
+                {isActive && currentSubscription === plan.id && (
                   <View style={{ marginTop: 10, backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 10, alignItems: 'center' }}>
                     <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{t('currentPlan')}</Text>
                   </View>
+                )}
+                {currentSubscription !== plan.id && (
+                  <TouchableOpacity 
+                    style={{ marginTop: 10, backgroundColor: isPopular ? '#06B6D4' : colors.primary, borderRadius: 10, paddingVertical: 10, alignItems: 'center', opacity: subscribingPlan === plan.id ? 0.6 : 1 }}
+                    onPress={() => handleSubscribe(plan.id)}
+                    disabled={subscribingPlan !== null}
+                    data-testid={`subscribe-${plan.id}-btn`}
+                  >
+                    {subscribingPlan === plan.id ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{t('upgrade')}</Text>
+                    )}
+                  </TouchableOpacity>
                 )}
               </TouchableOpacity>
             );
