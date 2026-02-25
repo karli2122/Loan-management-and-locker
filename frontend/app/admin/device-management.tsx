@@ -50,6 +50,18 @@ export default function DeviceManagement() {
       const response = await fetch(url);
       const data = await response.json();
       setStats(data);
+      
+      // Check plan limits for Business Management visibility
+      const token = await AsyncStorage.getItem('admin_token');
+      if (token) {
+        try {
+          const planResp = await fetch(`${API_URL}/api/plans/limits?admin_token=${token}`);
+          if (planResp.ok) {
+            const planData = await planResp.json();
+            setPlanAllowsBusinessMgmt(planData.limits?.business_management || planData.is_super_admin || false);
+          }
+        } catch (e) {}
+      }
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     }
