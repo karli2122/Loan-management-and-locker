@@ -233,7 +233,7 @@ async def get_paid_loans_summary(admin_token: str = Query(...)):
     total_payments = sum(pl.get("payment_count", 0) for pl in paid_loans)
 
     # Interest calculations from payments (active + archived)
-    clients = await db.clients.find({"admin_id": admin_id}, {"_id": 0}).to_list(1000)
+    clients = await db.clients.find({"admin_id": admin_id, "is_deleted": {"$ne": True}}, {"_id": 0}).to_list(1000)
     client_ids = [c.get("id") for c in clients]
     payments_all = await db.payments.find({"client_id": {"$in": client_ids}}, {"_id": 0}).to_list(10000)
 
