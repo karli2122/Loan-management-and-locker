@@ -3,7 +3,7 @@ const IS_ADMIN_APP = process.env.APP_MODE === 'admin';
 export default {
   expo: {
     name: IS_ADMIN_APP ? "PayLock Admin" : "PayLock Client",
-    slug: IS_ADMIN_APP ? "paylock-admin" : "paylock-client",
+    slug: IS_ADMIN_APP ? "loans" : "client",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
