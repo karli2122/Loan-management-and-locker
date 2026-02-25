@@ -212,11 +212,33 @@ export default function ClientDetails() {
       );
       return;
     }
+    // Step 1: Ask which lock mode
     Alert.alert(
       t('generateNewKey'),
       language === 'et'
-        ? `See kulutab 1 krediiti. Teie saldo: ${isSuperAdmin ? '\u221E' : userCredits}. J\u00e4tkata?`
-        : `This will use 1 credit. Your balance: ${isSuperAdmin ? '\u221E' : userCredits}. Continue?`,
+        ? 'Valige lukurežiim:\n\nDevice Admin (8-kohaline) — Standardne lukustus\nDevice Owner (9-kohaline) — Täielik kioski režiim'
+        : 'Select lock mode:\n\nDevice Admin (8-digit) — Standard lock\nDevice Owner (9-digit) — Full kiosk mode',
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: 'Device Admin',
+          onPress: () => generateCodeWithMode('device_admin'),
+        },
+        {
+          text: 'Device Owner',
+          onPress: () => generateCodeWithMode('device_owner'),
+        },
+      ]
+    );
+  };
+
+  const generateCodeWithMode = async (lockMode: string) => {
+    const creditMsg = language === 'et'
+      ? `See kulutab 1 krediiti. Teie saldo: ${isSuperAdmin ? '\u221E' : userCredits}. J\u00e4tkata?`
+      : `This will use 1 credit. Your balance: ${isSuperAdmin ? '\u221E' : userCredits}. Continue?`;
+    Alert.alert(
+      t('confirm'),
+      creditMsg,
       [
         { text: t('cancel'), style: 'cancel' },
         {
@@ -226,14 +248,17 @@ export default function ClientDetails() {
             try {
               const token = await AsyncStorage.getItem('admin_token');
               if (!token) { Alert.alert(t('error'), 'Not authenticated'); return; }
-              const response = await fetch(`${API_URL}/api/clients/${id}/generate-code?admin_token=${token}`, { method: 'POST' });
+              const response = await fetch(`${API_URL}/api/clients/${id}/generate-code?admin_token=${token}&lock_mode=${lockMode}`, { method: 'POST' });
               if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error || errorData.detail || 'Failed to generate code'); }
               const data = await response.json();
-              if (client) setClient({ ...client, registration_code: data.registration_code });
+              if (client) setClient({ ...client, registration_code: data.registration_code, lock_mode: data.lock_mode });
               if (!isSuperAdmin) setUserCredits(prev => prev - 1);
+              const modeLabel = lockMode === 'device_owner' ? 'Device Owner (9-digit)' : 'Device Admin (8-digit)';
               Alert.alert(
                 t('success'),
-                language === 'et' ? `Uus registreerimiskood: ${data.registration_code}` : `New registration code: ${data.registration_code}`
+                language === 'et'
+                  ? `Uus registreerimiskood: ${data.registration_code}\nRežiim: ${modeLabel}`
+                  : `New registration code: ${data.registration_code}\nMode: ${modeLabel}`
               );
             } catch (error: any) { Alert.alert(t('error'), error.message); }
             finally { setGeneratingCode(false); }
