@@ -37,6 +37,7 @@ export default function DeviceManagement() {
     unlocked_devices: 0,
   });
   const [refreshing, setRefreshing] = useState(false);
+  const [planAllowsBusinessMgmt, setPlanAllowsBusinessMgmt] = useState(false);
   const [activationMethod, setActivationMethod] = useState<ActivationMethod>('adb');
   const [showBusinessMgmt, setShowBusinessMgmt] = useState(false);
 
