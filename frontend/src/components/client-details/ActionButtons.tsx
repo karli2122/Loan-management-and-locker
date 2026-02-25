@@ -1,8 +1,10 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Linking, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { styles } from './styles';
 import { Client, LoanHistoryItem } from './types';
+import API_URL from '../../constants/api';
 
 interface Props {
   client: Client;
@@ -23,9 +25,59 @@ export const ActionButtons = ({
 }: Props) => {
   if (!client.is_registered) return null;
 
+  const sendEmailReminder = async () => {
+    try {
+      const token = await AsyncStorage.getItem('admin_token');
+      if (!token) return;
+      const resp = await fetch(`${API_URL}/api/reminders/send-email/${client.id}?admin_token=${token}`, { method: 'POST' });
+      const data = await resp.json();
+      Alert.alert(data.success ? (language === 'et' ? 'Saadetud' : 'Sent') : (language === 'et' ? 'Viga' : 'Error'), data.message);
+    } catch (e: any) { Alert.alert('Error', e.message); }
+  };
+
+  const sendWhatsAppReminder = async () => {
+    try {
+      const token = await AsyncStorage.getItem('admin_token');
+      if (!token) return;
+      const resp = await fetch(`${API_URL}/api/reminders/whatsapp-link/${client.id}?admin_token=${token}`);
+      const data = await resp.json();
+      if (data.deep_link) {
+        Linking.openURL(data.deep_link);
+      } else {
+        Alert.alert('Error', data.message || 'No phone number');
+      }
+    } catch (e: any) { Alert.alert('Error', e.message); }
+  };
+
   return (
     <View style={styles.actionsSection}>
       <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
+
+      {/* Reminder Buttons */}
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+        {client.email && (
+          <TouchableOpacity
+            style={[styles.actionButton, { flex: 1, backgroundColor: '#2563EB' }]}
+            onPress={sendEmailReminder}
+            disabled={actionLoading}
+            data-testid="send-email-reminder-btn"
+          >
+            <Ionicons name="mail" size={18} color="#fff" />
+            <Text style={styles.actionButtonText}>{language === 'et' ? 'E-post' : 'Email'}</Text>
+          </TouchableOpacity>
+        )}
+        {(client.phone || (client as any).phone_number) && (
+          <TouchableOpacity
+            style={[styles.actionButton, { flex: 1, backgroundColor: '#25D366' }]}
+            onPress={sendWhatsAppReminder}
+            disabled={actionLoading}
+            data-testid="send-whatsapp-reminder-btn"
+          >
+            <Ionicons name="logo-whatsapp" size={18} color="#fff" />
+            <Text style={styles.actionButtonText}>WhatsApp</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {!client.loan_start_date && (
         <>
