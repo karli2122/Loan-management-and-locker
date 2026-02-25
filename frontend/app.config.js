@@ -2,29 +2,29 @@ const IS_ADMIN_APP = process.env.APP_MODE === 'admin';
 
 export default {
   expo: {
-    name: IS_ADMIN_APP ? "Loan Admin" : "Loan Client",
-    slug: IS_ADMIN_APP ? "loans" : "client",
+    name: IS_ADMIN_APP ? "PayLock Admin" : "PayLock Client",
+    slug: IS_ADMIN_APP ? "paylock-admin" : "paylock-client",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
-    scheme: IS_ADMIN_APP ? "loanadmin" : "loanclient",
+    scheme: IS_ADMIN_APP ? "paylockadmin" : "paylockclient",
     userInterfaceStyle: "dark",
     newArchEnabled: true,
     splash: {
       image: "./assets/images/splash-image.png",
       resizeMode: "contain",
-      backgroundColor: "#0F172A"
+      backgroundColor: "#0B1527"
     },
     ios: {
       supportsTablet: true,
-      bundleIdentifier: IS_ADMIN_APP ? "com.emi.admin" : "com.emi.client"
+      bundleIdentifier: IS_ADMIN_APP ? "com.paylock.admin" : "com.paylock.client"
     },
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/images/adaptive-icon.png",
-        backgroundColor: "#0F172A"
+        backgroundColor: "#0B1527"
       },
-      package: IS_ADMIN_APP ? "com.emi.admin" : "com.emi.client",
+      package: IS_ADMIN_APP ? "com.paylock.admin" : "com.paylock.client",
       versionCode: 1,
       navigationBarColor: "#1E293B",
       navigationBarStyle: "dark",
