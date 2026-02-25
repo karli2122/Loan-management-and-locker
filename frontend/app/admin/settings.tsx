@@ -1334,8 +1334,91 @@ export default function AdminSettings() {
         )}
 
         {/* Plans & Pricing Section */}
-        <View style={[styles.section, {padding: 20, marginTop: 20}]} data-testid="plans-section">
-          <Text style={{color: '#ff0000', fontSize: 24, fontWeight: 'bold'}}>PLANS TEST</Text>
+        <View style={styles.section} data-testid="plans-section">
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginBottom: 0 }]}>
+              {t('plansAndPricing')}
+            </Text>
+            <View style={{ backgroundColor: colors.primary + '20', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>{t('currentPlan')}: {t('starter')}</Text>
+            </View>
+          </View>
+
+          {[
+            { id: 'starter', icon: 'rocket-outline' as const, price: 29, clients: 50, features: ['basicLoanMgmt', 'deviceLockUnlock', 'oneAdmin'] },
+            { id: 'business', icon: 'business-outline' as const, price: 79, clients: 200, features: ['autoLock', 'paymentReminders', 'reportsGps', 'threeAdmins'], popular: true },
+            { id: 'enterprise', icon: 'diamond-outline' as const, price: 199, clients: 1000, features: ['priceLookup', 'creditScoring', 'bankOcr', 'auditLog', 'unlimitedAdmins'] },
+          ].map((plan) => {
+            const isActive = selectedPlan === plan.id;
+            const isPopular = 'popular' in plan && plan.popular;
+            return (
+              <TouchableOpacity key={plan.id} data-testid={`plan-card-${plan.id}`}
+                style={{ borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: isActive ? 2 : 1,
+                  borderColor: isActive ? colors.primary : isPopular ? '#06B6D4' : colors.border,
+                  backgroundColor: isActive ? colors.primary + '10' : colors.surface }}
+                onPress={() => setSelectedPlan(plan.id)} activeOpacity={0.7}>
+                {isPopular && (
+                  <View style={{ position: 'absolute', top: -10, right: 16, backgroundColor: '#06B6D4', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 }}>
+                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{t('mostPopular')}</Text>
+                  </View>
+                )}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: isActive ? colors.primary + '25' : colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name={plan.icon} size={20} color={isActive ? colors.primary : colors.textMuted} />
+                  </View>
+                  <View style={{ marginLeft: 12, flex: 1 }}>
+                    <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>{t(plan.id)}</Text>
+                    <Text style={{ color: colors.textMuted, fontSize: 12 }}>{t('upTo')} {plan.clients} {t('clients').toLowerCase()}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ color: colors.text, fontSize: 28, fontWeight: '800' }}>{formatAmount(plan.price)}</Text>
+                    <Text style={{ color: colors.textMuted, fontSize: 11 }}>/{t('month')}</Text>
+                  </View>
+                </View>
+                <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 10 }}>
+                  {plan.features.map((feat, i) => (
+                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      <Ionicons name="checkmark-circle" size={15} color={isActive ? colors.primary : '#10B981'} />
+                      <Text style={{ color: colors.textSecondary, fontSize: 13, marginLeft: 6 }}>{t(feat)}</Text>
+                    </View>
+                  ))}
+                </View>
+                {isActive && (
+                  <View style={{ marginTop: 10, backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 10, alignItems: 'center' }}>
+                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{t('currentPlan')}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+
+          <View style={{ borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderStyle: 'dashed' }} data-testid="plan-card-custom">
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="settings-outline" size={20} color={colors.textMuted} />
+              </View>
+              <View style={{ marginLeft: 12, flex: 1 }}>
+                <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>{t('custom')}</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 12 }}>{t('unlimitedClients')}</Text>
+              </View>
+              <TouchableOpacity style={{ backgroundColor: colors.surfaceAlt, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 }}
+                onPress={() => Alert.alert(t('contactSales'), t('contactSalesDesc'))} data-testid="contact-sales-btn">
+                <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 13 }}>{t('contactSales')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={{ marginTop: 16, borderRadius: 12, padding: 14, backgroundColor: colors.surfaceAlt }}>
+            <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>{t('addOns')}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+              <Ionicons name="add-circle-outline" size={14} color={colors.textMuted} />
+              <Text style={{ color: colors.textSecondary, fontSize: 12, marginLeft: 6 }}>{t('extraDevicePricing')}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="chatbubble-outline" size={14} color={colors.textMuted} />
+              <Text style={{ color: colors.textSecondary, fontSize: 12, marginLeft: 6 }}>{t('smsReminderPricing')}</Text>
+            </View>
+          </View>
         </View>
 
         {/* Logout Button */}
