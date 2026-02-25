@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="0" skipped="0" tests="1" time="0.525" timestamp="2026-02-25T22:14:32.008446+00:00" hostname="agent-env-d0646c97-626e-4741-a4db-1ffe3b341191"><testcase classname="" name="backend.tests.test_plans_reminders_iteration54" time="0.000"><error message="collection failure">backend/tests/test_plans_reminders_iteration54.py:536: in &lt;module&gt;
+    TestAdminAuth.setup_class()
+backend/tests/test_plans_reminders_iteration54.py:38: in setup_class
+    assert response.status_code == 200, f"Admin login failed: {response.text}"
+E   AssertionError: Admin login failed: {"detail":"Not Found"}
+E   assert 404 == 200
+E    +  where 404 = &lt;Response [404]&gt;.status_code</error></testcase></testsuite></testsuites>
