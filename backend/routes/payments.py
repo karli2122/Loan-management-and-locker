@@ -221,7 +221,12 @@ async def stripe_webhook(request: Request):
 @router.get("/payments/current-plan")
 async def get_current_plan(admin_token: str):
     """Get the admin's current subscription plan."""
-    admin = await db.admins.find_one({"token": admin_token}, {"_id": 0})
+    # Look up token in admin_tokens collection first
+    token_doc = await db.admin_tokens.find_one({"token": admin_token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    admin = await db.admins.find_one({"id": token_doc["admin_id"]}, {"_id": 0})
     if not admin:
         raise HTTPException(status_code=401, detail="Invalid token")
 
