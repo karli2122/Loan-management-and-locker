@@ -136,6 +136,10 @@ export default function ClientRegister() {
       await AsyncStorage.setItem('client_id', clientId);
       await AsyncStorage.setItem('registration_code', code);
       
+      // Determine lock mode from code length: 8 = device_admin, 9 = device_owner
+      const lockMode = code.length === 9 ? 'device_owner' : 'device_admin';
+      await AsyncStorage.setItem('lock_mode', lockMode);
+      
       // Mark as fresh registration so home.tsx can delay admin prompt
       await AsyncStorage.setItem('fresh_registration', 'true');
       
