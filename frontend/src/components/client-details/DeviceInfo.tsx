@@ -40,6 +40,14 @@ export const DeviceInfo = ({
             <Ionicons name="finger-print" size={18} color="#64748B" />
             <Text style={styles.infoText}>{client.device_id || 'N/A'}</Text>
           </View>
+          {client.lock_mode && (
+            <View style={styles.infoRow}>
+              <Ionicons name="shield-checkmark" size={18} color={client.lock_mode === 'device_owner' ? '#F97316' : '#3B82F6'} />
+              <Text style={[styles.infoText, { color: client.lock_mode === 'device_owner' ? '#F97316' : '#94A3B8' }]}>
+                {client.lock_mode === 'device_owner' ? 'Device Owner Mode' : 'Device Admin Mode'}
+              </Text>
+            </View>
+          )}
           <TouchableOpacity style={styles.locationButton} onPress={onOpenMap}>
             <Ionicons name="location" size={18} color="#3B82F6" />
             <Text style={styles.locationText}>
