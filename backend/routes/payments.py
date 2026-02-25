@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from emergentintegrations.payments.stripe.checkout import (
     StripeCheckout, CheckoutSessionRequest, CheckoutSessionResponse, CheckoutStatusResponse
 )
-from config import db
+from database import db
 
 load_dotenv()
 logger = logging.getLogger(__name__)
