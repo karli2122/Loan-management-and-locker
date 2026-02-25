@@ -440,7 +440,7 @@ export default function AddLoan() {
         {/* Client Selection Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            {t('1SelectOrCreateClient')}
+            {t('step1SelectOrCreateClient')}
           </Text>
 
           <View style={styles.modeSelector}>
@@ -551,7 +551,7 @@ export default function AddLoan() {
         {/* Loan Details Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            {t('2LoanDetails')}
+            {t('step2LoanDetails')}
           </Text>
 
           {/* Loan Plan Selector (Optional) */}

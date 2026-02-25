@@ -858,7 +858,7 @@ export default function Reports() {
               </View>
             </View>
 
-            <Text style={styles.trendTitle}>{t('6monthRevenueTrend')}</Text>
+            <Text style={styles.trendTitle}>{t('step6monthRevenueTrend')}</Text>
             {/* Line chart - only render if there's trend data */}
             {(() => {
               const trendData = financialReport.monthly_trend || [];

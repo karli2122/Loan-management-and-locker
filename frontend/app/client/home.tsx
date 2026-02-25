@@ -1438,27 +1438,27 @@ export default function ClientHome() {
                   const buttons: any[] = [];
                   if (needsRestricted && isSamsung) {
                     buttons.push({
-                      text: t('1OpenAccessibility'),
+                      text: t('step1OpenAccessibility'),
                       onPress: async () => { await devicePolicy.openAccessibilitySettings(); },
                     });
                     buttons.push({
-                      text: t('2OpenAppInfo'),
+                      text: t('step2OpenAppInfo'),
                       onPress: async () => { await devicePolicy.openAppInfo(); },
                     });
                     buttons.push({
-                      text: t('3OpenAccessibility'),
+                      text: t('step3OpenAccessibility'),
                       onPress: async () => { await devicePolicy.openAccessibilitySettings(); },
                     });
                   } else {
                     if (needsRestricted) {
                       buttons.push({
-                        text: t('1AllowRestrictedSettings'),
+                        text: t('step1AllowRestrictedSettings'),
                         onPress: async () => { await devicePolicy.openAppInfo(); },
                       });
                     }
                     buttons.push({
                       text: needsRestricted
-                        ? (t('2OpenAccessibility'))
+                        ? (t('step2OpenAccessibility'))
                         : info.shortcut,
                       onPress: async () => { await devicePolicy.openAccessibilitySettings(); },
                     });
@@ -1566,11 +1566,11 @@ export default function ClientHome() {
                 ];
                 if (needsRestricted && isSamsung) {
                   buttons.push({
-                    text: t('1OpenAppInfo'),
+                    text: t('step1OpenAppInfo'),
                     onPress: async () => { await devicePolicy.openAppInfo(); },
                   });
                   buttons.push({
-                    text: t('2OpenSettings'),
+                    text: t('step2OpenSettings'),
                     onPress: async () => {
                       try {
                         await devicePolicy.requestNotificationListenerPermission();
