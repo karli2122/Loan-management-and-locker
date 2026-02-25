@@ -1334,7 +1334,7 @@ export default function AdminSettings() {
         )}
 
         {/* Plans & Pricing Section */}
-        <View style={[styles.section, { backgroundColor: colors.background }]} data-testid="plans-section">
+        <View style={styles.section} data-testid="plans-section">
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginBottom: 0 }]}>
               {t('plansAndPricing')}
