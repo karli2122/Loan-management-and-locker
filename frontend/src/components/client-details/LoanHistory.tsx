@@ -20,7 +20,9 @@ interface Props {
 export const LoanHistory = ({
   loanHistory, loanHistoryLoading, showLoanHistory,
   loanHistorySearch, language, colors, onToggle, onSearchChange,
-}: Props) => (
+}: Props) => {
+  const { t } = useLanguage();
+  return (
   <View style={[styles.section, { backgroundColor: colors.surface }]}>
     <TouchableOpacity
       style={styles.loanHistoryHeader}
