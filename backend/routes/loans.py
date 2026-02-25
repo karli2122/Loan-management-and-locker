@@ -773,7 +773,8 @@ async def process_auto_locks(admin_token: str = Query(...)):
         "is_late": True,
         "is_locked": False,
         "auto_lock_enabled": True,
-        "days_overdue": {"$gt": 0}
+        "days_overdue": {"$gt": 0},
+        "is_deleted": {"$ne": True}
     }).to_list(1000)
     
     locked_count = 0
@@ -830,7 +831,8 @@ async def get_pending_auto_locks(admin_token: str = Query(...)):
         "admin_id": admin_id,
         "is_late": True,
         "auto_lock_enabled": True,
-        "days_overdue": {"$gt": 0}
+        "days_overdue": {"$gt": 0},
+        "is_deleted": {"$ne": True}
     }, {"_id": 0}).to_list(1000)
     
     pending_locks = []
@@ -886,7 +888,8 @@ async def get_late_fees_summary(admin_token: str = Query(...)):
     late_clients = await db.clients.find({
         "admin_id": admin_id,
         "is_late": True,
-        "days_overdue": {"$gt": 0}
+        "days_overdue": {"$gt": 0},
+        "is_deleted": {"$ne": True}
     }, {"_id": 0}).to_list(1000)
     
     # Calculate summary
