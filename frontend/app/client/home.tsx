@@ -40,6 +40,7 @@ interface ClientStatus {
   loan_amount: number;
   loan_due_date: string | null;
   uninstall_allowed?: boolean;
+  is_deleted?: boolean;
 }
 
 export default function ClientHome() {
