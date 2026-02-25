@@ -918,14 +918,13 @@ export default function ClientHome() {
 
   useEffect(() => {
     if (!clientId) return;
-    if (freshRegistration) return; // Don't poll or check state during fresh registration
 
-    // Poll status every 10 seconds — skip if refresh is in progress
+    // Poll status every 5 seconds — skip if refresh is in progress
     intervalRef.current = setInterval(() => {
       if (!isRefreshingRef.current) {
         fetchStatus(clientId).catch(() => {});
       }
-    }, 10000);
+    }, 5000);
 
     // Listen for push notifications — immediately refresh status on lock/unlock/warning
     const notifReceivedSub = Notifications.addNotificationReceivedListener((notification) => {
