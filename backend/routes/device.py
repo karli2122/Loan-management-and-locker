@@ -16,13 +16,19 @@ router = APIRouter(tags=["Device"])
 
 @router.post("/device/register")
 async def register_device(registration: DeviceRegistration):
-    """Register a device with a registration code."""
+    """Register a device with a registration code.
+    8-digit code = Device Admin mode, 9-digit code = Device Owner mode.
+    """
     client = await db.clients.find_one({"registration_code": registration.registration_code})
     if not client:
         raise ValidationException("Invalid registration code")
     
     if client.get("is_registered"):
         raise ValidationException("This device is already registered")
+    
+    # Determine lock mode from code length: 8 = device_admin, 9 = device_owner
+    code = registration.registration_code.strip()
+    lock_mode = "device_owner" if len(code) == 9 else "device_admin"
     
     await db.clients.update_one(
         {"id": client["id"]},
@@ -35,6 +41,7 @@ async def register_device(registration: DeviceRegistration):
             "uninstall_allowed": False,
             "admin_mode_active": False,
             "tamper_attempts": 0,
+            "lock_mode": lock_mode,
         }}
     )
     
