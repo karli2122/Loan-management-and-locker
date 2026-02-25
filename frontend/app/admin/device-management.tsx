@@ -181,7 +181,8 @@ export default function DeviceManagement() {
           </TouchableOpacity>
         </View>
 
-        {/* Business Management - Navigate to separate page */}
+        {/* Business Management - only visible to Business/Enterprise/Custom + superadmin */}
+        {planAllowsBusinessMgmt && (
         <TouchableOpacity
           style={styles.businessMgmtHeader}
           onPress={() => router.push('/admin/business-management')}
@@ -202,6 +203,7 @@ export default function DeviceManagement() {
           </View>
           <Ionicons name="chevron-forward" size={20} color="#64748B" />
         </TouchableOpacity>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
