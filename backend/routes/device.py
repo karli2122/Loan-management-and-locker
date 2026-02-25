@@ -95,8 +95,11 @@ async def get_device_status(client_id: str):
         warning_message=client.get("warning_message", ""),
         loan_amount=round(amount_due, 2),
         loan_due_date=due_date_str,
+        outstanding_balance=round(client.get("outstanding_balance", 0), 2),
+        monthly_emi=round(client.get("monthly_emi", 0), 2),
         uninstall_allowed=client.get("uninstall_allowed", False),
-        is_deleted=client.get("is_deleted", False)
+        is_deleted=client.get("is_deleted", False),
+        lock_mode=client.get("lock_mode", "device_admin"),
     )
 
 

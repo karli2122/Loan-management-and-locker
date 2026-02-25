@@ -183,8 +183,14 @@ async def update_client(client_id: str, client_data: ClientUpdate, admin_token: 
 
 
 @router.post("/clients/{client_id}/generate-code")
-async def generate_registration_code(client_id: str, admin_token: str = Query(...)):
-    """Generate new registration code for a client (uses 1 credit for non-superadmins)."""
+async def generate_registration_code(
+    client_id: str,
+    admin_token: str = Query(...),
+    lock_mode: str = Query("device_admin", regex="^(device_admin|device_owner)$"),
+):
+    """Generate new registration code for a client (uses 1 credit for non-superadmins).
+    8-char code = device_admin, 9-char code = device_owner.
+    """
     admin_id = await get_admin_id_from_token(admin_token)
     
     admin = await db.admins.find_one({"id": admin_id})
@@ -203,12 +209,17 @@ async def generate_registration_code(client_id: str, admin_token: str = Query(..
     if not is_super_admin and credits < 1:
         raise ValidationException("Insufficient credits. Please contact super admin to get more credits.")
     
-    new_code = secrets.token_hex(4).upper()
+    # 8-char hex for device_admin, 9-char for device_owner (extra nibble)
+    if lock_mode == "device_owner":
+        new_code = (secrets.token_hex(4) + secrets.token_hex(1)[0]).upper()[:9]
+    else:
+        new_code = secrets.token_hex(4).upper()
     
     await db.clients.update_one(
         {"id": client_id},
         {"$set": {
             "registration_code": new_code,
+            "lock_mode": lock_mode,
             "is_registered": False,
             "registered_at": None,
             "uninstall_allowed": False,
@@ -223,6 +234,7 @@ async def generate_registration_code(client_id: str, admin_token: str = Query(..
     
     return {
         "registration_code": new_code,
+        "lock_mode": lock_mode,
         "credits_remaining": credits - 1 if not is_super_admin else "unlimited"
     }
 
