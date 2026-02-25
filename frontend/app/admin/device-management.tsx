@@ -23,6 +23,8 @@ interface DeviceStats {
   unlocked_devices: number;
 }
 
+type ActivationMethod = 'adb' | 'qr' | 'nfc';
+
 export default function DeviceManagement() {
   const router = useRouter();
   const { language, t } = useLanguage();
@@ -33,6 +35,8 @@ export default function DeviceManagement() {
     unlocked_devices: 0,
   });
   const [refreshing, setRefreshing] = useState(false);
+  const [activationMethod, setActivationMethod] = useState<ActivationMethod>('adb');
+  const [showBusinessMgmt, setShowBusinessMgmt] = useState(false);
 
   const fetchStats = async () => {
     try {
