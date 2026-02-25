@@ -184,7 +184,7 @@ async def get_clients_report(admin_token: str = Query(...)):
     """Get detailed clients report with summary and details."""
     admin_id = await get_admin_id_from_token(admin_token)
     clients = await db.clients.find(
-        {"admin_id": admin_id},
+        {"admin_id": admin_id, "is_deleted": {"$ne": True}},
         {"_id": 0, "registration_code": 0}
     ).to_list(1000)
 
