@@ -1,22 +1,48 @@
 """Build the updated LanguageContext.tsx with all translations."""
 import json
+import re
 
 with open('/app/translations_output.json') as f:
     data = json.load(f)
 
-# Order of languages in each entry
 LANG_ORDER = ['en', 'et', 'no', 'sv', 'da', 'fi', 'lv', 'lt', 'de_at', 'cs', 'pl', 'de_ch', 'es', 'de', 'fr', 'it']
 
-def escape_ts_string(s):
-    """Escape a string for use in TypeScript single-quoted strings."""
+def decode_unicode_escapes(s):
+    """Decode \\uXXXX sequences to actual Unicode characters."""
     if not isinstance(s, str):
         return str(s)
-    # Escape single quotes and backslashes
-    s = s.replace('\\', '\\\\')
-    s = s.replace("'", "\\'")
-    # Keep \n as literal newline representation
-    s = s.replace('\n', '\\n')
-    return s
+    def replacer(m):
+        return chr(int(m.group(1), 16))
+    return re.sub(r'\\u([0-9a-fA-F]{4})', replacer, s)
+
+def escape_for_ts(s):
+    """Escape a string for TypeScript single-quoted string, keeping Unicode chars as-is."""
+    if not isinstance(s, str):
+        return str(s)
+    # First decode any \uXXXX sequences to actual chars
+    s = decode_unicode_escapes(s)
+    # Escape backslashes (but not ones we want to keep like \n)
+    # Replace actual backslashes with \\, except \n and \t
+    result = []
+    i = 0
+    while i < len(s):
+        ch = s[i]
+        if ch == '\\' and i + 1 < len(s) and s[i+1] == 'n':
+            result.append('\\n')
+            i += 2
+        elif ch == '\\' and i + 1 < len(s) and s[i+1] == 't':
+            result.append('\\t')
+            i += 2
+        elif ch == '\\':
+            result.append('\\\\')
+            i += 1
+        elif ch == "'":
+            result.append("\\'")
+            i += 1
+        else:
+            result.append(ch)
+            i += 1
+    return ''.join(result)
 
 lines = []
 lines.append("import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';")
@@ -37,26 +63,25 @@ lines.append("  { code: 'sv', name: 'Svenska', flag: 'SE' },")
 lines.append("  { code: 'da', name: 'Dansk', flag: 'DK' },")
 lines.append("  { code: 'fi', name: 'Suomi', flag: 'FI' },")
 lines.append("  { code: 'et', name: 'Eesti', flag: 'EE' },")
-lines.append("  { code: 'lv', name: 'Latvie\\u0161u', flag: 'LV' },")
-lines.append("  { code: 'lt', name: 'Lietuvi\\u0173', flag: 'LT' },")
-lines.append("  { code: 'de_at', name: '\\u00D6sterreichisch', flag: 'AT' },")
-lines.append("  { code: 'cs', name: '\\u010Ce\\u0161tina', flag: 'CZ' },")
+lines.append("  { code: 'lv', name: 'Latviešu', flag: 'LV' },")
+lines.append("  { code: 'lt', name: 'Lietuvių', flag: 'LT' },")
+lines.append("  { code: 'de_at', name: 'Österreichisch', flag: 'AT' },")
+lines.append("  { code: 'cs', name: 'Čeština', flag: 'CZ' },")
 lines.append("  { code: 'pl', name: 'Polski', flag: 'PL' },")
 lines.append("  { code: 'de_ch', name: 'Schweizerdeutsch', flag: 'CH' },")
-lines.append("  { code: 'es', name: 'Espa\\u00F1ol', flag: 'ES' },")
+lines.append("  { code: 'es', name: 'Español', flag: 'ES' },")
 lines.append("  { code: 'de', name: 'Deutsch', flag: 'DE' },")
-lines.append("  { code: 'fr', name: 'Fran\\u00E7ais', flag: 'FR' },")
+lines.append("  { code: 'fr', name: 'Français', flag: 'FR' },")
 lines.append("  { code: 'it', name: 'Italiano', flag: 'IT' },")
 lines.append("];")
 lines.append("")
 lines.append("const translations: Record<string, Partial<Record<Language, string>>> = {")
 
-# Write each translation key
 for key, translations_dict in data.items():
     parts = []
     for lang in LANG_ORDER:
         if lang in translations_dict:
-            val = escape_ts_string(translations_dict[lang])
+            val = escape_for_ts(translations_dict[lang])
             parts.append(f"{lang}: '{val}'")
     
     entry = ', '.join(parts)
@@ -135,8 +160,13 @@ lines.append("")
 
 content = '\n'.join(lines)
 
-with open('/app/frontend/src/context/LanguageContext.tsx', 'w') as f:
+with open('/app/frontend/src/context/LanguageContext.tsx', 'w', encoding='utf-8') as f:
     f.write(content)
 
 print(f"Written {len(lines)} lines to LanguageContext.tsx")
-print(f"File size: {len(content)} bytes")
+print(f"File size: {len(content.encode('utf-8'))} bytes")
+
+# Verify some entries
+test_lines = [l for l in content.split('\n') if 'appTitle' in l]
+if test_lines:
+    print(f"Sample entry: {test_lines[0][:200]}")
