@@ -62,7 +62,7 @@ async def list_clients(admin_token: str = Query(...)):
     admin_id = await get_admin_id_from_token(admin_token)
     
     clients = await db.clients.find(
-        {"admin_id": admin_id},
+        {"admin_id": admin_id, "is_deleted": {"$ne": True}},
         {"_id": 0}
     ).to_list(1000)
     
@@ -85,6 +85,7 @@ async def list_silent_clients(admin_token: str = Query(...), minutes: int = Quer
     clients = await db.clients.find({
         "admin_id": admin_id,
         "is_registered": True,
+        "is_deleted": {"$ne": True},
         "$or": [
             {"last_heartbeat": {"$lt": cutoff}},
             {"last_heartbeat": {"$exists": False}}
@@ -100,7 +101,7 @@ async def export_clients(admin_token: str = Query(...), format: str = Query(defa
     admin_id = await get_admin_id_from_token(admin_token)
     
     clients = await db.clients.find(
-        {"admin_id": admin_id},
+        {"admin_id": admin_id, "is_deleted": {"$ne": True}},
         {"_id": 0, "registration_code": 0}
     ).to_list(1000)
     
@@ -129,6 +130,7 @@ async def get_client_locations(admin_token: str = Query(...)):
     clients = await db.clients.find(
         {
             "admin_id": admin_id,
+            "is_deleted": {"$ne": True},
             "latitude": {"$exists": True, "$ne": None},
             "longitude": {"$exists": True, "$ne": None}
         },
