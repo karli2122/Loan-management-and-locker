@@ -31,14 +31,14 @@ class TestAdminAuth:
     @classmethod
     def setup_class(cls):
         """Login as admin to get token"""
-        response = requests.post(f"{BASE_URL}/api/auth/login", json={
+        response = requests.post(f"{BASE_URL}/api/admin/login", json={
             "username": "admin",
             "password": "admin123"
         })
         assert response.status_code == 200, f"Admin login failed: {response.text}"
         data = response.json()
         cls.admin_token = data.get("token")
-        cls.admin_id = data.get("admin", {}).get("id")
+        cls.admin_id = data.get("id")
         assert cls.admin_token, "No admin token received"
         print(f"Admin login successful, token: {cls.admin_token[:20]}...")
 
