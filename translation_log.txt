@@ -1,0 +1,35 @@
+Extracted 616 translation keys
+
+--- Translating to Norwegian (Bokmål) (no) ---
+  571 keys need translation
+  Translating batch 1/6 (100 keys)
+    Got 100 translations
+  Translating batch 2/6 (100 keys)
+    Got 100 translations
+  Translating batch 3/6 (100 keys)
+    Got 100 translations
+  Translating batch 4/6 (100 keys)
+    Got 100 translations
+  Translating batch 5/6 (100 keys)
+    Got 100 translations
+  Translating batch 6/6 (71 keys)
+    Got 71 translations
+
+--- Translating to Swedish (sv) ---
+  571 keys need translation
+  Translating batch 1/6 (100 keys)
+    Got 100 translations
+  Translating batch 2/6 (100 keys)
+    Got 100 translations
+  Translating batch 3/6 (100 keys)
+    Got 100 translations
+  Translating batch 4/6 (100 keys)
+    Got 100 translations
+  Translating batch 5/6 (100 keys)
+    Got 100 translations
+  Translating batch 6/6 (71 keys)
+    Got 71 translations
+
+--- Translating to Danish (da) ---
+  598 keys need translation
+  Translating batch 1/6 (100 keys)
