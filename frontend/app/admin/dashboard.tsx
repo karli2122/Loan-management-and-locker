@@ -139,7 +139,7 @@ export default function Dashboard() {
         style={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />}
       >
-        <Text style={styles.sectionTitle}>{language === 'et' ? 'Laenude ülevaade' : 'Loan Overview'}</Text>
+        <Text style={styles.sectionTitle}>{t('loanOverview')}</Text>
 
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, { backgroundColor: '#1E3A5F' }]}>
@@ -147,7 +147,7 @@ export default function Dashboard() {
               <Ionicons name="trending-up" size={28} color="#3B82F6" />
             </View>
             <Text style={styles.statValue}>{loanStats.active_loans}</Text>
-            <Text style={styles.statLabel}>{language === 'et' ? 'Aktiivsed laenud' : 'Active Loans'}</Text>
+            <Text style={styles.statLabel}>{t('activeLoans')}</Text>
           </View>
 
           <View style={[styles.statCard, { backgroundColor: '#3D1F1F' }]}>
@@ -155,7 +155,7 @@ export default function Dashboard() {
               <Ionicons name="alert-circle" size={28} color="#EF4444" />
             </View>
             <Text style={styles.statValue}>{loanStats.overdue_clients}</Text>
-            <Text style={styles.statLabel}>{language === 'et' ? 'Võlglased' : 'Overdue'}</Text>
+            <Text style={styles.statLabel}>{t('overdue')}</Text>
           </View>
 
           <View style={[styles.statCard, { backgroundColor: '#1F3D2E' }]}>
@@ -163,7 +163,7 @@ export default function Dashboard() {
               <Ionicons name="checkmark-circle" size={28} color="#10B981" />
             </View>
             <Text style={styles.statValue}>{loanStats.completed_loans}</Text>
-            <Text style={styles.statLabel}>{language === 'et' ? 'Lõpetatud' : 'Completed'}</Text>
+            <Text style={styles.statLabel}>{t('completed')}</Text>
           </View>
 
           <View style={[styles.statCard, { backgroundColor: '#3D3D1F' }]}>
@@ -171,22 +171,22 @@ export default function Dashboard() {
               <Ionicons name="cash" size={28} color="#F59E0B" />
             </View>
             <Text style={styles.statValue}>{formatAmount(loanStats.total_collected, 0)}</Text>
-            <Text style={styles.statLabel}>{language === 'et' ? 'Kogutud' : 'Collected'}</Text>
+            <Text style={styles.statLabel}>{t('collected')}</Text>
           </View>
         </View>
 
         {/* Financial Summary */}
         <View style={styles.financialSummary}>
           <View style={styles.financialRow}>
-            <Text style={styles.financialLabel}>{language === 'et' ? 'Laekumismäär' : 'Collection Rate'}</Text>
+            <Text style={styles.financialLabel}>{t('collectionRate')}</Text>
             <Text style={[styles.financialValue, { color: '#10B981' }]}>{loanStats.collection_rate.toFixed(1)}%</Text>
           </View>
           <View style={styles.financialRow}>
-            <Text style={styles.financialLabel}>{language === 'et' ? 'Laenatud kokku' : 'Total Disbursed'}</Text>
+            <Text style={styles.financialLabel}>{t('totalDisbursed')}</Text>
             <Text style={styles.financialValue}>{formatAmount(loanStats.total_disbursed)}</Text>
           </View>
           <View style={styles.financialRow}>
-            <Text style={styles.financialLabel}>{language === 'et' ? 'Võlgnevused' : 'Outstanding'}</Text>
+            <Text style={styles.financialLabel}>{t('outstanding')}</Text>
             <Text style={[styles.financialValue, { color: '#F59E0B' }]}>{formatAmount(loanStats.total_outstanding)}</Text>
           </View>
         </View>
@@ -202,7 +202,7 @@ export default function Dashboard() {
               <Ionicons name="people" size={24} color="#fff" />
             </View>
             <Text style={styles.actionTitle}>{t('viewClients')}</Text>
-            <Text style={styles.actionDescription}>{language === 'et' ? 'Vaata ja halda kliente' : 'View and manage clients'}</Text>
+            <Text style={styles.actionDescription}>{t('viewAndManageClients')}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
 
@@ -213,8 +213,8 @@ export default function Dashboard() {
             <View style={[styles.actionIcon, { backgroundColor: '#F59E0B' }]}>
               <Ionicons name="phone-portrait" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>{language === 'et' ? 'Seadmehaldus' : 'Device Management'}</Text>
-            <Text style={styles.actionDescription}>{language === 'et' ? 'Lukusta/vabasta seadmeid' : 'Lock/unlock devices'}</Text>
+            <Text style={styles.actionTitle}>{t('deviceManagement')}</Text>
+            <Text style={styles.actionDescription}>{t('lockunlockDevices')}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
 
@@ -239,8 +239,8 @@ export default function Dashboard() {
             <View style={[styles.actionIcon, { backgroundColor: '#06B6D4' }]}>
               <Ionicons name="bar-chart" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>{language === 'et' ? 'Aruanded' : 'Reports'}</Text>
-            <Text style={styles.actionDescription}>{language === 'et' ? 'Finantsanalüütika ja aruanded' : 'Financial analytics & reports'}</Text>
+            <Text style={styles.actionTitle}>{t('reports')}</Text>
+            <Text style={styles.actionDescription}>{t('financialAnalyticsReports')}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
 
@@ -251,8 +251,8 @@ export default function Dashboard() {
             <View style={[styles.actionIcon, { backgroundColor: '#EC4899' }]}>
               <Ionicons name="pricetag" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>{language === 'et' ? 'Laenuplaanid' : 'Loan Plans'}</Text>
-            <Text style={styles.actionDescription}>{language === 'et' ? 'Halda laenuplaane' : 'Manage loan plans'}</Text>
+            <Text style={styles.actionTitle}>{t('loanPlans')}</Text>
+            <Text style={styles.actionDescription}>{t('manageLoanPlans')}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
 
@@ -263,8 +263,8 @@ export default function Dashboard() {
             <View style={[styles.actionIcon, { backgroundColor: '#14B8A6' }]}>
               <Ionicons name="calculator" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>{language === 'et' ? 'Laenukalkulaator' : 'Loan Calculator'}</Text>
-            <Text style={styles.actionDescription}>{language === 'et' ? 'Arvuta laenumaksed' : 'Calculate loan payments'}</Text>
+            <Text style={styles.actionTitle}>{t('loanCalculator')}</Text>
+            <Text style={styles.actionDescription}>{t('calculateLoanPayments')}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
 
@@ -275,8 +275,8 @@ export default function Dashboard() {
             <View style={[styles.actionIcon, { backgroundColor: '#EF4444' }]}>
               <Ionicons name="notifications" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>{language === 'et' ? 'Maksemuljatused' : 'Payment Reminders'}</Text>
-            <Text style={styles.actionDescription}>{language === 'et' ? 'Saada maksemuljatusi' : 'Send payment reminders'}</Text>
+            <Text style={styles.actionTitle}>{t('paymentReminders')}</Text>
+            <Text style={styles.actionDescription}>{t('sendPaymentReminders')}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
 
@@ -287,8 +287,8 @@ export default function Dashboard() {
             <View style={[styles.actionIcon, { backgroundColor: '#6366F1' }]}>
               <Ionicons name="mail" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>{language === 'et' ? 'Teatised' : 'Notifications'}</Text>
-            <Text style={styles.actionDescription}>{language === 'et' ? 'Vaata teavitusi' : 'View notifications'}</Text>
+            <Text style={styles.actionTitle}>{t('notifications')}</Text>
+            <Text style={styles.actionDescription}>{t('viewNotifications')}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
 
@@ -299,8 +299,8 @@ export default function Dashboard() {
             <View style={[styles.actionIcon, { backgroundColor: '#059669' }]}>
               <Ionicons name="map" size={24} color="#fff" />
             </View>
-            <Text style={styles.actionTitle}>{language === 'et' ? 'Kliendi kaart' : 'Client Map'}</Text>
-            <Text style={styles.actionDescription}>{language === 'et' ? 'Vaata klientide asukohti' : 'View client locations'}</Text>
+            <Text style={styles.actionTitle}>{t('clientMap')}</Text>
+            <Text style={styles.actionDescription}>{t('viewClientLocations')}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
         </View>

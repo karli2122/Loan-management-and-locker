@@ -83,7 +83,7 @@ export const DeviceInfo = ({
             </View>
             <View style={styles.priceInfo}>
               <Text style={styles.priceLabel}>
-                {language === 'et' ? 'Turuhind (mediaan)' : 'Market Price (median)'}
+                {t('marketPriceMedian')}
               </Text>
               <Text style={styles.priceValue} data-testid="device-price-value">
                 {'\u20AC'}{client.used_price_eur.toFixed(2)}
@@ -98,7 +98,7 @@ export const DeviceInfo = ({
                   <View style={styles.priceMetaBadge}>
                     <Ionicons name="list" size={11} color="#64748B" />
                     <Text style={styles.priceMetaText}>
-                      {client.price_listing_count} {language === 'et' ? 'kuulutust' : 'listings'}
+                      {client.price_listing_count} {t('listings')}
                     </Text>
                   </View>
                 )}

@@ -59,7 +59,7 @@ interface AnalysisResult {
 
 export default function BankAnalyzer() {
   const router = useRouter();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const { formatAmount, currencySymbol } = useCurrency();
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
@@ -107,7 +107,7 @@ export default function BankAnalyzer() {
       setSelectedFileName(asset.name || '');
       const ext = (asset.name || '').toLowerCase().split('.').pop();
       if (ext !== 'pdf' && ext !== 'asice') {
-        setError(language === 'et' ? 'Ainult .pdf ja .asice failid' : 'Only .pdf and .asice files supported');
+        setError(t('onlyPdfAndAsiceFilesSupported'));
         setSebLikely(false);
         return;
       }
@@ -127,7 +127,7 @@ export default function BankAnalyzer() {
     try {
       const adminToken = await AsyncStorage.getItem('admin_token');
       if (!adminToken) {
-        setError(language === 'et' ? 'Pole sisse logitud' : 'Not logged in');
+        setError(t('notLoggedIn'));
         return;
       }
       const formData = new FormData();
@@ -166,7 +166,7 @@ export default function BankAnalyzer() {
     try {
       const adminToken = await AsyncStorage.getItem('admin_token');
       if (!adminToken) {
-        setError(language === 'et' ? 'Pole sisse logitud' : 'Not logged in');
+        setError(t('notLoggedIn'));
         return;
       }
       const formData = new FormData();
@@ -204,7 +204,7 @@ export default function BankAnalyzer() {
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.title}>
-          {language === 'et' ? 'Pangaväljavõtte analüüs' : 'Bank Statement Analyzer'}
+          {t('bankStatementAnalyzer')}
         </Text>
         <View style={{ width: 40 }} />
       </View>
@@ -219,10 +219,10 @@ export default function BankAnalyzer() {
           >
             <Ionicons name="cloud-upload" size={48} color="#4F46E5" />
             <Text style={styles.uploadTitle}>
-              {language === 'et' ? 'Lae üles pangaväljavõte' : 'Upload Bank Statement'}
+              {t('uploadBankStatement')}
             </Text>
             <Text style={styles.uploadSubtext}>
-              {language === 'et' ? '.pdf või .asice failid' : '.pdf or .asice files'}
+              {t('pdfOrAsiceFiles')}
             </Text>
             <View style={styles.supportedBanks}>
               {['Swedbank', 'SEB', 'LHV', 'Coop', 'Revolut', 'Wise', 'N26'].map((b) => (
@@ -256,20 +256,18 @@ export default function BankAnalyzer() {
           <View style={styles.loadingContainer} data-testid="analyzing-indicator">
             <ActivityIndicator size="large" color="#4F46E5" />
             <Text style={styles.loadingTitle}>
-              {language === 'et' ? 'Analüüsin...' : 'Analyzing...'}
+              {t('analyzing')}
             </Text>
             <Text style={styles.loadingSubtext}>
-              {language === 'et'
-                ? 'AI analüüsib teie pangaväljavõtet'
-                : 'AI is analyzing your bank statement'}
+              {t('aiIsAnalyzingYourBankStatement')}
             </Text>
             {showSebOcrHint && (
               <>
                 <Text style={styles.sebLoadingText} data-testid="seb-ocr-loading">
-                  {language === 'et' ? 'SEB OCR töötleb faili...' : 'Processing SEB OCR...'}
+                  {t('processingSebOcr')}
                 </Text>
                 <Text style={styles.sebLoadingEta} data-testid="seb-ocr-eta">
-                  {language === 'et' ? 'OCR võib võtta ~30s' : 'OCR may take up to ~30s'}
+                  {t('ocrMayTakeUpTo30s')}
                 </Text>
               </>
             )}
@@ -283,7 +281,7 @@ export default function BankAnalyzer() {
             <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity style={styles.retryButton} onPress={pickAndUploadFile}>
               <Text style={styles.retryText}>
-                {language === 'et' ? 'Proovi uuesti' : 'Try Again'}
+                {t('tryAgain')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -296,7 +294,7 @@ export default function BankAnalyzer() {
               <View style={styles.resultHeaderLeft}>
                 <Ionicons name="checkmark-circle" size={24} color="#10B981" />
                 <Text style={styles.resultHeaderTitle}>
-                  {language === 'et' ? 'Analüüs valmis' : 'Analysis Complete'}
+                  {t('analysisComplete')}
                 </Text>
               </View>
               <TouchableOpacity
@@ -313,21 +311,21 @@ export default function BankAnalyzer() {
 
             <View style={styles.card}>
               <View style={styles.cardRow}>
-                <Text style={styles.cardLabel}>{language === 'et' ? 'Pank' : 'Bank'}</Text>
+                <Text style={styles.cardLabel}>{t('bank')}</Text>
                 <Text style={styles.cardValue}>{a.bank_name || '-'}</Text>
               </View>
               {a.account_holder && (
                 <View style={styles.cardRow}>
-                  <Text style={styles.cardLabel}>{language === 'et' ? 'Omanik' : 'Holder'}</Text>
+                  <Text style={styles.cardLabel}>{t('holder')}</Text>
                   <Text style={styles.cardValue}>{a.account_holder}</Text>
                 </View>
               )}
               <View style={styles.cardRow}>
-                <Text style={styles.cardLabel}>{language === 'et' ? 'Periood' : 'Period'}</Text>
+                <Text style={styles.cardLabel}>{t('period')}</Text>
                 <Text style={styles.cardValue}>{a.period || '-'}</Text>
               </View>
               <View style={styles.cardRow}>
-                <Text style={styles.cardLabel}>{language === 'et' ? 'Fail' : 'File'}</Text>
+                <Text style={styles.cardLabel}>{t('file')}</Text>
                 <Text style={styles.cardValue}>{result.filename}</Text>
               </View>
             </View>
@@ -336,12 +334,12 @@ export default function BankAnalyzer() {
               <View style={styles.summaryRow}>
                 <View style={[styles.summaryCard, styles.incomeCard]}>
                   <Ionicons name="trending-up" size={20} color="#10B981" />
-                  <Text style={styles.summaryLabel}>{language === 'et' ? 'Tulud' : 'Income'}</Text>
+                  <Text style={styles.summaryLabel}>{t('income')}</Text>
                   <Text style={[styles.summaryAmount, { color: '#10B981' }]}>{fmt(s.total_income)}</Text>
                 </View>
                 <View style={[styles.summaryCard, styles.expenseCard]}>
                   <Ionicons name="trending-down" size={20} color="#EF4444" />
-                  <Text style={styles.summaryLabel}>{language === 'et' ? 'Kulud' : 'Expenses'}</Text>
+                  <Text style={styles.summaryLabel}>{t('expenses')}</Text>
                   <Text style={[styles.summaryAmount, { color: '#EF4444' }]}>{fmt(s.total_expenses)}</Text>
                 </View>
               </View>
@@ -349,22 +347,22 @@ export default function BankAnalyzer() {
 
             {s && (
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>{language === 'et' ? 'Saldo' : 'Balance'}</Text>
+                <Text style={styles.cardTitle}>{t('balance')}</Text>
                 <View style={styles.cardRow}>
-                  <Text style={styles.cardLabel}>{language === 'et' ? 'Netomuutus' : 'Net Change'}</Text>
+                  <Text style={styles.cardLabel}>{t('netChange')}</Text>
                   <Text style={[styles.cardValue, { color: (s.net_balance ?? 0) >= 0 ? '#10B981' : '#EF4444' }]}>
                     {fmt(s.net_balance)}
                   </Text>
                 </View>
                 {s.opening_balance != null && (
                   <View style={styles.cardRow}>
-                    <Text style={styles.cardLabel}>{language === 'et' ? 'Algsaldo' : 'Opening'}</Text>
+                    <Text style={styles.cardLabel}>{t('opening')}</Text>
                     <Text style={styles.cardValue}>{fmt(s.opening_balance)}</Text>
                   </View>
                 )}
                 {s.closing_balance != null && (
                   <View style={styles.cardRow}>
-                    <Text style={styles.cardLabel}>{language === 'et' ? 'Lõppsaldo' : 'Closing'}</Text>
+                    <Text style={styles.cardLabel}>{t('closing')}</Text>
                     <Text style={styles.cardValue}>{fmt(s.closing_balance)}</Text>
                   </View>
                 )}
@@ -373,7 +371,7 @@ export default function BankAnalyzer() {
 
             {a.income_categories && a.income_categories.filter(c => c.total > 0).length > 0 && (
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>{language === 'et' ? 'Tulu kategooriad' : 'Income Categories'}</Text>
+                <Text style={styles.cardTitle}>{t('incomeCategories')}</Text>
                 {a.income_categories.filter(c => c.total > 0).map((cat, i) => (
                   <View key={i} style={styles.categoryRow}>
                     <View style={styles.categoryLeft}>
@@ -391,7 +389,7 @@ export default function BankAnalyzer() {
 
             {a.expense_categories && a.expense_categories.filter(c => c.total > 0).length > 0 && (
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>{language === 'et' ? 'Kulu kategooriad' : 'Expense Categories'}</Text>
+                <Text style={styles.cardTitle}>{t('expenseCategories')}</Text>
                 {a.expense_categories.filter(c => c.total > 0).map((cat, i) => (
                   <View key={i} style={styles.categoryRow}>
                     <View style={styles.categoryLeft}>
@@ -409,7 +407,7 @@ export default function BankAnalyzer() {
 
             {a.risk_indicators && (
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>{language === 'et' ? 'Riskianalüüs' : 'Risk Analysis'}</Text>
+                <Text style={styles.cardTitle}>{t('riskAnalysis')}</Text>
                 <View style={styles.riskRow}>
                   <Ionicons
                     name={a.risk_indicators.has_regular_income ? 'checkmark-circle' : 'close-circle'}
@@ -417,7 +415,7 @@ export default function BankAnalyzer() {
                     color={a.risk_indicators.has_regular_income ? '#10B981' : '#EF4444'}
                   />
                   <Text style={styles.riskLabel}>
-                    {language === 'et' ? 'Regulaarne sissetulek' : 'Regular income'}
+                    {t('regularIncome')}
                   </Text>
                 </View>
                 <View style={styles.riskRow}>
@@ -427,14 +425,14 @@ export default function BankAnalyzer() {
                     color={a.risk_indicators.income_stability === 'stable' ? '#10B981' : '#F59E0B'}
                   />
                   <Text style={styles.riskLabel}>
-                    {language === 'et' ? 'Sissetuleku stabiilsus' : 'Income stability'}: {a.risk_indicators.income_stability || '-'}
+                    {t('incomeStability')}: {a.risk_indicators.income_stability || '-'}
                   </Text>
                 </View>
                 {a.risk_indicators.gambling_detected && (
                   <View style={styles.riskRow}>
                     <Ionicons name="warning" size={18} color="#EF4444" />
                     <Text style={[styles.riskLabel, { color: '#EF4444' }]}>
-                      {language === 'et' ? 'Hasartmängu tehingud tuvastatud' : 'Gambling transactions detected'}
+                      {t('gamblingTransactionsDetected')}
                     </Text>
                   </View>
                 )}
@@ -442,7 +440,7 @@ export default function BankAnalyzer() {
                   <View style={styles.riskRow}>
                     <Ionicons name="information-circle" size={18} color="#F59E0B" />
                     <Text style={styles.riskLabel}>
-                      {language === 'et' ? 'Laenumaksed tuvastatud' : 'Loan payments detected'}
+                      {t('loanPaymentsDetected')}
                     </Text>
                   </View>
                 )}
@@ -457,14 +455,14 @@ export default function BankAnalyzer() {
                 <View style={styles.creditHeader}>
                   <Ionicons name="cash" size={22} color="#8B5CF6" />
                   <Text style={styles.creditTitle}>
-                    {language === 'et' ? 'Krediidisoovitus' : 'Credit Recommendation'}
+                    {t('creditRecommendation')}
                   </Text>
                 </View>
 
                 <View style={styles.creditAmountRow}>
                   <View style={styles.creditAmountCard}>
                     <Text style={styles.creditAmountLabel}>
-                      {language === 'et' ? 'Kuus' : 'Monthly'}
+                      {t('monthly')}
                     </Text>
                     <Text style={styles.creditAmountValue}>
                       {fmt(a.credit_recommendation.monthly_credit_amount)}
@@ -472,7 +470,7 @@ export default function BankAnalyzer() {
                   </View>
                   <View style={styles.creditAmountCard}>
                     <Text style={styles.creditAmountLabel}>
-                      {language === 'et' ? 'Aastas' : 'Yearly'}
+                      {t('yearly')}
                     </Text>
                     <Text style={styles.creditAmountValue}>
                       {fmt(a.credit_recommendation.yearly_credit_amount)}
@@ -483,7 +481,7 @@ export default function BankAnalyzer() {
                 {a.credit_recommendation.disposable_income != null && (
                   <View style={styles.cardRow}>
                     <Text style={styles.cardLabel}>
-                      {language === 'et' ? 'Vaba sissetulek' : 'Disposable Income'}
+                      {t('disposableIncome')}
                     </Text>
                     <Text style={styles.cardValue}>{fmt(a.credit_recommendation.disposable_income)}</Text>
                   </View>
@@ -491,7 +489,7 @@ export default function BankAnalyzer() {
                 {a.credit_recommendation.debt_to_income_ratio != null && (
                   <View style={styles.cardRow}>
                     <Text style={styles.cardLabel}>
-                      {language === 'et' ? 'Võla/tulu suhe' : 'Debt-to-Income Ratio'}
+                      {t('debttoincomeRatio')}
                     </Text>
                     <Text style={styles.cardValue}>
                       {(a.credit_recommendation.debt_to_income_ratio * 100).toFixed(1)}%
@@ -501,7 +499,7 @@ export default function BankAnalyzer() {
                 {a.credit_recommendation.risk_level && (
                   <View style={styles.cardRow}>
                     <Text style={styles.cardLabel}>
-                      {language === 'et' ? 'Riskitase' : 'Risk Level'}
+                      {t('riskLevel')}
                     </Text>
                     <View style={[
                       styles.riskBadge,
@@ -516,10 +514,10 @@ export default function BankAnalyzer() {
                         a.credit_recommendation.risk_level === 'high' && { color: '#EF4444' },
                       ]}>
                         {a.credit_recommendation.risk_level === 'low'
-                          ? (language === 'et' ? 'Madal' : 'Low')
+                          ? (t('low'))
                           : a.credit_recommendation.risk_level === 'medium'
-                          ? (language === 'et' ? 'Keskmine' : 'Medium')
-                          : (language === 'et' ? 'Kõrge' : 'High')}
+                          ? (t('medium'))
+                          : (t('high'))}
                       </Text>
                     </View>
                   </View>

@@ -107,9 +107,7 @@ export default function AddClient() {
       console.log('Client created successfully:', client.id);
       Alert.alert(
         t('success'),
-        language === 'et' 
-          ? 'Klient lisatud! Minge kliendi detailide juurde, et genereerida registreerimiskood.'
-          : 'Client created! Go to client details to generate registration key.',
+        t('clientCreatedGoToClientDetails'),
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error: any) {
@@ -187,24 +185,24 @@ export default function AddClient() {
               />
             </View>
 
-            <Text style={styles.label}>{language === 'et' ? 'Aadress' : 'Address'}</Text>
+            <Text style={styles.label}>{t('address')}</Text>
             <View style={styles.inputContainer}>
               <Ionicons name="location" size={20} color="#64748B" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'Sisesta aadress' : 'Enter address'}
+                placeholder={t('enterAddress')}
                 placeholderTextColor="#64748B"
                 value={form.address}
                 onChangeText={(text) => setForm({ ...form, address: text })}
               />
             </View>
 
-            <Text style={styles.label}>{language === 'et' ? 'Isikukood' : 'Birth Number'}</Text>
+            <Text style={styles.label}>{t('birthNumber')}</Text>
             <View style={styles.inputContainer}>
               <Ionicons name="card" size={20} color="#64748B" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'Sisesta isikukood' : 'Enter birth number'}
+                placeholder={t('enterBirthNumber')}
                 placeholderTextColor="#64748B"
                 value={form.birth_number}
                 onChangeText={(text) => setForm({ ...form, birth_number: text })}
@@ -213,16 +211,16 @@ export default function AddClient() {
 
             <View style={styles.sectionDivider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.sectionTitle}>{language === 'et' ? 'Laenu andmed' : 'Loan Details'}</Text>
+              <Text style={styles.sectionTitle}>{t('emiDetails')}</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            <Text style={styles.label}>{language === 'et' ? 'Laenusumma' : 'Loan Amount'}</Text>
+            <Text style={styles.label}>{t('emiAmount')}</Text>
             <View style={styles.inputContainer}>
               <Text style={styles.currencySymbol}>{currencySymbol}</Text>
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'Sisesta laenusumma' : 'Enter loan amount'}
+                placeholder={t('enterEmiAmount')}
                 placeholderTextColor="#64748B"
                 value={form.loan_amount}
                 onChangeText={(text) => setForm({ ...form, loan_amount: text })}
@@ -230,12 +228,12 @@ export default function AddClient() {
               />
             </View>
 
-            <Text style={styles.label}>{language === 'et' ? 'Igakuine intressimäär (%)' : 'Interest Rate Monthly (%)'}</Text>
+            <Text style={styles.label}>{t('interestRateMonthly')}</Text>
             <View style={styles.inputContainer}>
               <Ionicons name="trending-up" size={20} color="#64748B" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'Sisesta intressimäär' : 'Enter monthly interest rate'}
+                placeholder={t('enterMonthlyInterestRate')}
                 placeholderTextColor="#64748B"
                 value={form.interest_rate}
                 onChangeText={(text) => setForm({ ...form, interest_rate: text })}
@@ -243,11 +241,11 @@ export default function AddClient() {
               />
             </View>
 
-            <Text style={styles.label}>{language === 'et' ? 'Laenu antud kuupäev' : 'Loan Given Date'}</Text>
+            <Text style={styles.label}>{t('loanGivenDate')}</Text>
             <DatePicker
               value={form.loan_given_date}
               onChange={(date) => setForm({ ...form, loan_given_date: date })}
-              placeholder={language === 'et' ? 'Vali kuupäev' : 'Select date'}
+              placeholder={t('selectDate')}
               testID="loan-given-date-input"
             />
 
@@ -255,7 +253,7 @@ export default function AddClient() {
             <DatePicker
               value={form.emi_due_date}
               onChange={(date) => setForm({ ...form, emi_due_date: date })}
-              placeholder={language === 'et' ? 'Vali kuupäev' : 'Select date'}
+              placeholder={t('selectDate')}
               minDate={new Date(Date.now() + 86400000)}
               testID="emi-due-date-input"
             />

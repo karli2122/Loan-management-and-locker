@@ -23,7 +23,7 @@ interface DeviceStats {
 
 export default function DeviceManagement() {
   const router = useRouter();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [stats, setStats] = useState<DeviceStats>({
     total_clients: 0,
     locked_devices: 0,
@@ -64,7 +64,7 @@ export default function DeviceManagement() {
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {language === 'et' ? 'Seadmehaldus' : 'Device Management'}
+          {t('deviceManagement')}
         </Text>
         <View style={{ width: 40 }} />
       </View>
@@ -74,7 +74,7 @@ export default function DeviceManagement() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />}
       >
         <Text style={styles.sectionTitle}>
-          {language === 'et' ? 'Seadmete ülevaade' : 'Device Overview'}
+          {t('deviceOverview')}
         </Text>
 
         <View style={styles.statsGrid}>
@@ -84,7 +84,7 @@ export default function DeviceManagement() {
             </View>
             <Text style={styles.statValue}>{stats.total_clients}</Text>
             <Text style={styles.statLabel}>
-              {language === 'et' ? 'Seadmeid kokku' : 'Total Devices'}
+              {t('totalDevices')}
             </Text>
           </View>
 
@@ -94,7 +94,7 @@ export default function DeviceManagement() {
             </View>
             <Text style={styles.statValue}>{stats.locked_devices}</Text>
             <Text style={styles.statLabel}>
-              {language === 'et' ? 'Lukustatud' : 'Locked'}
+              {t('locked')}
             </Text>
           </View>
 
@@ -104,7 +104,7 @@ export default function DeviceManagement() {
             </View>
             <Text style={styles.statValue}>{stats.registered_devices}</Text>
             <Text style={styles.statLabel}>
-              {language === 'et' ? 'Registreeritud' : 'Registered'}
+              {t('registered')}
             </Text>
           </View>
 
@@ -114,13 +114,13 @@ export default function DeviceManagement() {
             </View>
             <Text style={styles.statValue}>{stats.unlocked_devices}</Text>
             <Text style={styles.statLabel}>
-              {language === 'et' ? 'Vabastatud' : 'Unlocked'}
+              {t('unlocked')}
             </Text>
           </View>
         </View>
 
         <Text style={styles.sectionTitle}>
-          {language === 'et' ? 'Kiired toimingud' : 'Quick Actions'}
+          {t('quickActions')}
         </Text>
 
         <View style={styles.actionsContainer}>
@@ -133,10 +133,10 @@ export default function DeviceManagement() {
             </View>
             <View style={styles.actionContent}>
               <Text style={styles.actionTitle}>
-                {language === 'et' ? 'Vaata seadmeid' : 'View Devices'}
+                {t('viewDevices')}
               </Text>
               <Text style={styles.actionDescription}>
-                {language === 'et' ? 'Halda kõiki kliente ja seadmeid' : 'Manage all clients and devices'}
+                {t('manageAllClientsAndDevices')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
@@ -151,10 +151,10 @@ export default function DeviceManagement() {
             </View>
             <View style={styles.actionContent}>
               <Text style={styles.actionTitle}>
-                {language === 'et' ? 'Lisa uus klient' : 'Add New Client'}
+                {t('addNewClient')}
               </Text>
               <Text style={styles.actionDescription}>
-                {language === 'et' ? 'Registreeri uus seade' : 'Register a new device'}
+                {t('registerANewDevice')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />

@@ -7,7 +7,7 @@ import * as NavigationBar from 'expo-navigation-bar';
 import { useLanguage } from '../../../src/context/LanguageContext';
 
 export default function TabLayout() {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const insets = useSafeAreaInsets();
 
   // Set Android navigation bar to match tab bar color so it blends seamlessly
@@ -45,7 +45,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: language === 'et' ? 'Avaleht' : 'Dashboard',
+          title: t('dashboard'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
@@ -54,7 +54,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="loans"
         options={{
-          title: language === 'et' ? 'Laenud' : 'Loans',
+          title: t('loans'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="wallet" size={size} color={color} />
           ),
@@ -63,7 +63,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="transactions"
         options={{
-          title: language === 'et' ? 'Tehingud' : 'Transactions',
+          title: t('transactions'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="receipt" size={size} color={color} />
           ),
@@ -72,7 +72,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="features"
         options={{
-          title: language === 'et' ? 'Funktsioonid' : 'Features',
+          title: t('features'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="grid" size={size} color={color} />
           ),

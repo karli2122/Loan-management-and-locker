@@ -26,8 +26,8 @@ export default function ClientPortalLogin() {
   const handleLogin = async () => {
     if (!phone.trim() || !registrationCode.trim()) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Palun sisestage telefon ja registreerimiskood' : 'Please enter phone and registration code'
+        t('error'),
+        t('pleaseEnterPhoneAndRegistrationCode')
       );
       return;
     }
@@ -43,8 +43,8 @@ export default function ClientPortalLogin() {
 
       if (!response.ok) {
         Alert.alert(
-          language === 'et' ? 'Sisselogimine ebaõnnestus' : 'Login Failed',
-          data.message || (language === 'et' ? 'Vale telefon või registreerimiskood' : 'Invalid phone or registration code')
+          t('loginFailed'),
+          data.message || (t('invalidPhoneOrRegistrationCode'))
         );
         return;
       }
@@ -59,8 +59,8 @@ export default function ClientPortalLogin() {
     } catch (error) {
       console.error('Login error:', error);
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Võrguühenduse viga' : 'Network connection error'
+        t('error'),
+        t('networkConnectionError')
       );
     } finally {
       setLoading(false);
@@ -98,10 +98,10 @@ export default function ClientPortalLogin() {
           </View>
 
           <Text style={styles.title}>
-            {language === 'et' ? 'Kliendi portaal' : 'Client Portal'}
+            {t('clientPortal')}
           </Text>
           <Text style={styles.subtitle}>
-            {language === 'et' ? 'Vaadake oma laenu staatust' : 'View your loan status'}
+            {t('viewYourLoanStatus')}
           </Text>
 
           {/* Phone Input */}
@@ -111,7 +111,7 @@ export default function ClientPortalLogin() {
             </View>
             <TextInput
               style={styles.input}
-              placeholder={language === 'et' ? 'Telefon' : 'Phone Number'}
+              placeholder={t('phoneNumber')}
               placeholderTextColor="#64748B"
               value={phone}
               onChangeText={setPhone}
@@ -128,7 +128,7 @@ export default function ClientPortalLogin() {
             </View>
             <TextInput
               style={styles.input}
-              placeholder={language === 'et' ? 'Registreerimiskood' : 'Registration Code'}
+              placeholder={t('registrationCode')}
               placeholderTextColor="#64748B"
               value={registrationCode}
               onChangeText={setRegistrationCode}
@@ -149,7 +149,7 @@ export default function ClientPortalLogin() {
             ) : (
               <>
                 <Text style={styles.loginButtonText}>
-                  {language === 'et' ? 'Sisene' : 'Login'}
+                  {t('login')}
                 </Text>
                 <Ionicons name="arrow-forward" size={20} color="#fff" />
               </>
@@ -158,9 +158,7 @@ export default function ClientPortalLogin() {
 
           {/* Help Text */}
           <Text style={styles.helpText}>
-            {language === 'et'
-              ? 'Kasutage registreerimisel saadud telefoni ja koodi'
-              : 'Use the phone number and code you received during registration'}
+            {t('useThePhoneNumberAndCode')}
           </Text>
 
           {/* Back to Home */}
@@ -170,7 +168,7 @@ export default function ClientPortalLogin() {
           >
             <Ionicons name="arrow-back" size={18} color="#94A3B8" />
             <Text style={styles.backButtonText}>
-              {language === 'et' ? 'Tagasi' : 'Back'}
+              {t('back')}
             </Text>
           </TouchableOpacity>
         </View>

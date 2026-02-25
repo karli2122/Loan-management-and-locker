@@ -41,7 +41,7 @@ export default function AddLoan() {
   const params = useLocalSearchParams();
   const clientId = params.clientId;
   const renew = params.renew;
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const { formatAmount, currencySymbol } = useCurrency();
   const [loading, setLoading] = useState(false);
   const [loadingClients, setLoadingClients] = useState(true);
@@ -228,8 +228,8 @@ export default function AddLoan() {
     // Validate inputs
     if (clientMode === 'existing' && !selectedClient) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Palun vali klient' : 'Please select a client'
+        t('error'),
+        t('pleaseSelectAClient')
       );
       return;
     }
@@ -237,8 +237,8 @@ export default function AddLoan() {
     if (clientMode === 'new') {
       if (!newClientName.trim() || !newClientPhone.trim() || !newClientEmail.trim()) {
         Alert.alert(
-          language === 'et' ? 'Viga' : 'Error',
-          language === 'et' ? 'Palun täida kõik kliendi väljad' : 'Please fill all client fields'
+          t('error'),
+          t('pleaseFillAllClientFields')
         );
         return;
       }
@@ -249,24 +249,24 @@ export default function AddLoan() {
 
     if (!loanAmount.trim() || isNaN(loanAmountNum) || loanAmountNum <= 0) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Palun sisesta kehtiv laenusumma' : 'Please enter a valid loan amount'
+        t('error'),
+        t('pleaseEnterAValidLoanAmount')
       );
       return;
     }
 
     if (!interestRate.trim() || isNaN(interestRateNum) || interestRateNum < 0) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Palun sisesta kehtiv intressimäär' : 'Please enter a valid interest rate'
+        t('error'),
+        t('pleaseEnterAValidInterestRate')
       );
       return;
     }
 
     if (!dueDate) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Palun vali tähtaeg' : 'Please select a due date'
+        t('error'),
+        t('pleaseSelectADueDate')
       );
       return;
     }
@@ -280,8 +280,8 @@ export default function AddLoan() {
     
     if (selectedDate < tomorrow) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Tähtaeg peab olema vähemalt homme' : 'Due date must be at least tomorrow'
+        t('error'),
+        t('dueDateMustBeAtLeast')
       );
       return;
     }
@@ -392,10 +392,10 @@ export default function AddLoan() {
       const emiText = (typeof monthlyEmi === 'number' && !isNaN(monthlyEmi)) 
         ? `${formatAmount(monthlyEmi, 2)}` 
         : 'N/A';
-      const tenureText = tenureMonths ? `${tenureMonths} ${language === 'et' ? 'kuud' : 'months'}` : '';
+      const tenureText = tenureMonths ? `${tenureMonths} ${t('months')}` : '';
       
       Alert.alert(
-        language === 'et' ? 'Õnnestus' : 'Success',
+        t('success'),
         language === 'et' 
           ? `Laen loodud!\nIgakuine makse: ${emiText}${tenureText ? `\nPeriood: ${tenureText}` : ''}`
           : `Loan created successfully!\nMonthly payment: ${emiText}${tenureText ? `\nTenure: ${tenureText}` : ''}`,
@@ -406,7 +406,7 @@ export default function AddLoan() {
       console.error('Add loan error:', error);
       
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
+        t('error'),
         errorMessage
       );
     } finally {
@@ -422,8 +422,8 @@ export default function AddLoan() {
         </TouchableOpacity>
         <Text style={styles.title}>
           {isRenewal
-            ? (language === 'et' ? 'Uuenda laenu' : 'Renew Loan')
-            : (language === 'et' ? 'Lisa laen' : 'Add Loan')}
+            ? (t('renewLoan'))
+            : (t('addLoan'))}
         </Text>
         <View style={styles.placeholder} />
       </View>
@@ -433,16 +433,14 @@ export default function AddLoan() {
           <View style={styles.renewalBanner} data-testid="renewal-banner">
             <Ionicons name="refresh-circle" size={20} color="#10B981" />
             <Text style={styles.renewalBannerText}>
-              {language === 'et'
-                ? 'Eelmise laenu andmed on eeltäidetud. Muutke vajadusel.'
-                : 'Pre-filled from previous loan. Adjust as needed.'}
+              {t('prefilledFromPreviousLoanAdjustAs')}
             </Text>
           </View>
         )}
         {/* Client Selection Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            {language === 'et' ? '1. Vali või loo klient' : '1. Select or Create Client'}
+            {t('1SelectOrCreateClient')}
           </Text>
 
           <View style={styles.modeSelector}>
@@ -456,7 +454,7 @@ export default function AddLoan() {
                 color={clientMode === 'existing' ? '#fff' : '#94A3B8'}
               />
               <Text style={[styles.modeButtonText, clientMode === 'existing' && styles.modeButtonTextActive]}>
-                {language === 'et' ? 'Olemasolev' : 'Existing'}
+                {t('existing')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -469,7 +467,7 @@ export default function AddLoan() {
                 color={clientMode === 'new' ? '#fff' : '#94A3B8'}
               />
               <Text style={[styles.modeButtonText, clientMode === 'new' && styles.modeButtonTextActive]}>
-                {language === 'et' ? 'Uus' : 'New'}
+                {t('new')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -486,8 +484,8 @@ export default function AddLoan() {
                 {selectedClient
                   ? `${selectedClient.name} (${selectedClient.phone})`
                   : loadingClients
-                  ? (language === 'et' ? 'Laadimine...' : 'Loading...')
-                  : (language === 'et' ? 'Vali klient' : 'Select Client')}
+                  ? (t('loading'))
+                  : (t('selectClient'))}
               </Text>
               <Ionicons name="chevron-down" size={20} color="#94A3B8" />
             </TouchableOpacity>
@@ -497,7 +495,7 @@ export default function AddLoan() {
                 <Ionicons name="person" size={20} color="#64748B" />
                 <TextInput
                   style={styles.input}
-                  placeholder={language === 'et' ? 'Nimi' : 'Name'}
+                  placeholder={t('name')}
                   placeholderTextColor="#64748B"
                   value={newClientName}
                   onChangeText={setNewClientName}
@@ -507,7 +505,7 @@ export default function AddLoan() {
                 <Ionicons name="call" size={20} color="#64748B" />
                 <TextInput
                   style={styles.input}
-                  placeholder={language === 'et' ? 'Telefon' : 'Phone'}
+                  placeholder={t('phone')}
                   placeholderTextColor="#64748B"
                   value={newClientPhone}
                   onChangeText={setNewClientPhone}
@@ -518,7 +516,7 @@ export default function AddLoan() {
                 <Ionicons name="mail" size={20} color="#64748B" />
                 <TextInput
                   style={styles.input}
-                  placeholder={language === 'et' ? 'E-post' : 'Email'}
+                  placeholder={t('email')}
                   placeholderTextColor="#64748B"
                   value={newClientEmail}
                   onChangeText={setNewClientEmail}
@@ -530,7 +528,7 @@ export default function AddLoan() {
                 <Ionicons name="location" size={20} color="#64748B" />
                 <TextInput
                   style={styles.input}
-                  placeholder={language === 'et' ? 'Aadress' : 'Address'}
+                  placeholder={t('address')}
                   placeholderTextColor="#64748B"
                   value={newClientAddress}
                   onChangeText={setNewClientAddress}
@@ -540,7 +538,7 @@ export default function AddLoan() {
                 <Ionicons name="card" size={20} color="#64748B" />
                 <TextInput
                   style={styles.input}
-                  placeholder={language === 'et' ? 'Isikukood' : 'Birth Number'}
+                  placeholder={t('birthNumber')}
                   placeholderTextColor="#64748B"
                   value={newClientBirthNumber}
                   onChangeText={setNewClientBirthNumber}
@@ -553,12 +551,12 @@ export default function AddLoan() {
         {/* Loan Details Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            {language === 'et' ? '2. Laenu detailid' : '2. Loan Details'}
+            {t('2LoanDetails')}
           </Text>
 
           {/* Loan Plan Selector (Optional) */}
           <Text style={styles.label}>
-            {language === 'et' ? 'Laenuplaan (valikuline)' : 'Loan Plan (Optional)'}
+            {t('loanPlanOptional')}
           </Text>
           <TouchableOpacity
             style={[styles.pickerButton, { marginBottom: 16 }]}
@@ -571,8 +569,8 @@ export default function AddLoan() {
               {selectedPlan
                 ? selectedPlan.name
                 : loadingPlans
-                ? (language === 'et' ? 'Laadimine...' : 'Loading...')
-                : (language === 'et' ? 'Vali plaan' : 'Select Plan')}
+                ? (t('loading'))
+                : (t('selectPlan'))}
             </Text>
             <Ionicons name="chevron-down" size={20} color="#94A3B8" />
           </TouchableOpacity>
@@ -593,7 +591,7 @@ export default function AddLoan() {
           </View>
 
           <Text style={styles.label}>
-            {language === 'et' ? 'Intressimäär (% kuus)' : 'Interest Rate (% per month)'}
+            {t('interestRatePerMonth')}
           </Text>
           <View style={styles.inputContainer}>
             <Ionicons name="trending-up" size={20} color="#64748B" />
@@ -608,22 +606,22 @@ export default function AddLoan() {
           </View>
 
           <Text style={styles.label}>
-            {language === 'et' ? 'Laenu alguskuupäev' : 'Loan Given Date'}
+            {t('loanGivenDate')}
           </Text>
           <DatePicker
             value={givenDate}
             onChange={setGivenDate}
-            placeholder={language === 'et' ? 'Vali kuupäev' : 'Select date'}
+            placeholder={t('selectDate')}
             testID="given-date-input"
           />
 
           <Text style={styles.label}>
-            {language === 'et' ? 'Tähtaeg' : 'Due Date'}
+            {t('dueDate')}
           </Text>
           <DatePicker
             value={dueDate}
             onChange={setDueDate}
-            placeholder={language === 'et' ? 'Vali kuupäev' : 'Select date'}
+            placeholder={t('selectDate')}
             minDate={new Date(Date.now() + 86400000)}
             testID="due-date-input"
           />
@@ -647,13 +645,13 @@ export default function AddLoan() {
             <View style={styles.emiPreviewHeader}>
               <Ionicons name="calculator" size={20} color="#10B981" />
               <Text style={styles.emiPreviewTitle}>
-                {language === 'et' ? 'Laenu kalkulaator' : 'Loan Calculator'}
+                {t('loanCalculator')}
               </Text>
             </View>
             <View style={styles.emiPreviewGrid}>
               <View style={styles.emiPreviewItem}>
                 <Text style={styles.emiPreviewLabel}>
-                  {language === 'et' ? 'Kuumakse' : 'Monthly EMI'}
+                  {t('monthlyEmi')}
                 </Text>
                 <Text style={styles.emiPreviewValue}>
                   {formatAmount(emiPreview.monthlyEmi)}
@@ -661,15 +659,15 @@ export default function AddLoan() {
               </View>
               <View style={styles.emiPreviewItem}>
                 <Text style={styles.emiPreviewLabel}>
-                  {language === 'et' ? 'Periood' : 'Tenure'}
+                  {t('tenure')}
                 </Text>
                 <Text style={styles.emiPreviewValueSmall}>
-                  {emiPreview.months} {language === 'et' ? 'kuud' : 'months'}
+                  {emiPreview.months} {t('months')}
                 </Text>
               </View>
               <View style={styles.emiPreviewItem}>
                 <Text style={styles.emiPreviewLabel}>
-                  {language === 'et' ? 'Intress kokku' : 'Total Interest'}
+                  {t('totalInterest')}
                 </Text>
                 <Text style={[styles.emiPreviewValueSmall, { color: '#F59E0B' }]}>
                   {formatAmount(emiPreview.totalInterest)}
@@ -677,7 +675,7 @@ export default function AddLoan() {
               </View>
               <View style={styles.emiPreviewItem}>
                 <Text style={styles.emiPreviewLabel}>
-                  {language === 'et' ? 'Kokku tagasi' : 'Total Payable'}
+                  {t('totalPayable')}
                 </Text>
                 <Text style={styles.emiPreviewValueSmall}>
                   {formatAmount(emiPreview.totalAmount)}
@@ -698,7 +696,7 @@ export default function AddLoan() {
             <>
               <Ionicons name="checkmark-circle" size={20} color="#fff" />
               <Text style={styles.submitButtonText}>
-                {language === 'et' ? 'Loo laen' : 'Create Loan'}
+                {t('createLoan')}
               </Text>
             </>
           )}
@@ -711,7 +709,7 @@ export default function AddLoan() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {language === 'et' ? 'Vali klient' : 'Select Client'}
+                {t('selectClient')}
               </Text>
               <TouchableOpacity onPress={() => setShowClientPicker(false)}>
                 <Ionicons name="close" size={24} color="#fff" />
@@ -720,7 +718,7 @@ export default function AddLoan() {
 
             <TextInput
               style={styles.searchInput}
-              placeholder={language === 'et' ? 'Otsi...' : 'Search...'}
+              placeholder={t('search')}
               placeholderTextColor="#64748B"
               value={clientSearchQuery}
               onChangeText={setClientSearchQuery}
@@ -762,7 +760,7 @@ export default function AddLoan() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {language === 'et' ? 'Vali laenuplaan' : 'Select Loan Plan'}
+                {t('selectLoanPlan')}
               </Text>
               <TouchableOpacity onPress={() => setShowPlanPicker(false)}>
                 <Ionicons name="close" size={24} color="#fff" />
@@ -779,7 +777,7 @@ export default function AddLoan() {
                   <View style={styles.pickerItemInfo}>
                     <Text style={styles.pickerItemName}>{plan.name}</Text>
                     <Text style={styles.pickerItemSubtext}>
-                      {plan.interest_rate}% | {plan.min_tenure_months}-{plan.max_tenure_months} {language === 'et' ? 'kuud' : 'months'}
+                      {plan.interest_rate}% | {plan.min_tenure_months}-{plan.max_tenure_months} {t('months')}
                     </Text>
                     {plan.description && (
                       <Text style={styles.pickerItemDesc}>{plan.description}</Text>

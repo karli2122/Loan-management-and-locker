@@ -45,7 +45,7 @@ export const ContactDeviceSection = ({
         <View style={styles.infoRow}>
           <Ionicons name="home" size={18} color="#64748B" />
           <Text style={styles.infoText} data-testid="client-address-text">
-            {client.address || (language === 'et' ? 'Aadress puudub' : 'No address')}
+            {client.address || (t('noAddress'))}
           </Text>
         </View>
       </View>

@@ -24,7 +24,7 @@ export const LoanHistory = ({
       <View style={styles.loanHistoryHeaderLeft}>
         <Ionicons name="time" size={20} color={colors.primary} />
         <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>
-          {language === 'et' ? 'Laenu ajalugu' : 'Loan History'}
+          {t('loanHistory')}
         </Text>
       </View>
       <Ionicons name={showLoanHistory ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textMuted} />
@@ -37,7 +37,7 @@ export const LoanHistory = ({
             <Ionicons name="search" size={16} color={colors.textMuted} />
             <TextInput
               style={[styles.loanHistorySearchInput, { color: colors.text }]}
-              placeholder={language === 'et' ? 'Otsi summa, kuupäeva, intressi järgi...' : 'Search by amount, date, interest...'}
+              placeholder={t('searchByAmountDateInterest')}
               placeholderTextColor={colors.textMuted}
               value={loanHistorySearch}
               onChangeText={onSearchChange}
@@ -57,7 +57,7 @@ export const LoanHistory = ({
           <View style={styles.emptyLoanHistory}>
             <Ionicons name="document-outline" size={32} color={colors.textMuted} />
             <Text style={[styles.emptyLoanHistoryText, { color: colors.textMuted }]}>
-              {language === 'et' ? 'Arhiveeritud laene pole' : 'No archived loans'}
+              {t('noArchivedLoans')}
             </Text>
           </View>
         ) : (
@@ -75,7 +75,7 @@ export const LoanHistory = ({
                 <View style={styles.emptyLoanHistory}>
                   <Ionicons name="search-outline" size={32} color={colors.textMuted} />
                   <Text style={[styles.emptyLoanHistoryText, { color: colors.textMuted }]}>
-                    {language === 'et' ? 'Tulemusi ei leitud' : 'No results found'}
+                    {t('noResultsFound')}
                   </Text>
                 </View>
               );
@@ -94,7 +94,7 @@ export const LoanHistory = ({
                   <View style={styles.loanHistoryBadge}>
                     <Ionicons name="checkmark-circle" size={14} color={colors.success} />
                     <Text style={[styles.loanHistoryBadgeText, { color: colors.success }]}>
-                      {language === 'et' ? 'Tasutud' : 'Paid'}
+                      {t('paid')}
                     </Text>
                   </View>
                   <Text style={[styles.loanHistoryDate, { color: colors.textMuted }]}>
@@ -103,11 +103,11 @@ export const LoanHistory = ({
                 </View>
                 <View style={styles.loanHistoryDetails}>
                   {[
-                    { label: language === 'et' ? 'Laenusumma' : 'Loan Amount', value: `\u20AC${loan.loan_amount?.toFixed(2) || '0.00'}`, color: colors.text },
-                    { label: language === 'et' ? 'Intress (kuus)' : 'Interest (Monthly)', value: `${loan.interest_rate?.toFixed(1) || '0'}%`, color: colors.text },
-                    { label: language === 'et' ? 'Makstud kokku' : 'Total Paid', value: `\u20AC${loan.total_paid?.toFixed(2) || '0.00'}`, color: colors.success },
-                    { label: language === 'et' ? 'Intressitulu' : 'Interest Earned', value: `\u20AC${loan.total_interest?.toFixed(2) || '0.00'}`, color: colors.primary },
-                    { label: language === 'et' ? 'Makseid' : 'Payments', value: `${loan.payment_count || 0}`, color: colors.text },
+                    { label: t('emiAmount'), value: `\u20AC${loan.loan_amount?.toFixed(2) || '0.00'}`, color: colors.text },
+                    { label: t('interestMonthly'), value: `${loan.interest_rate?.toFixed(1) || '0'}%`, color: colors.text },
+                    { label: t('totalPaid'), value: `\u20AC${loan.total_paid?.toFixed(2) || '0.00'}`, color: colors.success },
+                    { label: t('interestEarned'), value: `\u20AC${loan.total_interest?.toFixed(2) || '0.00'}`, color: colors.primary },
+                    { label: t('payments'), value: `${loan.payment_count || 0}`, color: colors.text },
                   ].map((row) => (
                     <View key={row.label} style={styles.loanHistoryDetailRow}>
                       <Text style={[styles.loanHistoryLabel, { color: colors.textMuted }]}>{row.label}</Text>

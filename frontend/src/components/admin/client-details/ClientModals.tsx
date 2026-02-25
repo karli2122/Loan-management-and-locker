@@ -30,9 +30,9 @@ export const PaymentModal = ({
   <Modal visible={visible} transparent animationType="slide">
     <View style={styles.modalOverlay}>
       <View style={styles.modalContent}>
-        <Text style={styles.modalTitle}>{language === 'et' ? 'Salvesta makse' : 'Record Payment'}</Text>
+        <Text style={styles.modalTitle}>{t('recordPayment')}</Text>
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>{language === 'et' ? 'Summa (\u20AC)' : 'Amount (\u20AC)'}</Text>
+          <Text style={styles.inputLabel}>{t('amountU20ac')}</Text>
           <TextInput
             style={styles.paymentInput}
             value={paymentAmount}
@@ -43,7 +43,7 @@ export const PaymentModal = ({
           />
         </View>
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>{language === 'et' ? 'Makseviis' : 'Payment Method'}</Text>
+          <Text style={styles.inputLabel}>{t('paymentMethod')}</Text>
           <View style={styles.methodButtons}>
             {['cash', 'bank_transfer', 'card'].map((method) => (
               <TouchableOpacity
@@ -52,21 +52,21 @@ export const PaymentModal = ({
                 onPress={() => onChangeMethod(method)}
               >
                 <Text style={[styles.methodButtonText, paymentMethod === method && styles.methodButtonTextActive]}>
-                  {method === 'cash' ? (language === 'et' ? 'Sularaha' : 'Cash') :
-                   method === 'bank_transfer' ? (language === 'et' ? '\u00DClekanne' : 'Transfer') :
-                   (language === 'et' ? 'Kaart' : 'Card')}
+                  {method === 'cash' ? (t('cash')) :
+                   method === 'bank_transfer' ? (t('transfer')) :
+                   (t('card'))}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>{language === 'et' ? 'M\u00E4rkmed (valikuline)' : 'Notes (Optional)'}</Text>
+          <Text style={styles.inputLabel}>{t('notesOptional')}</Text>
           <TextInput
             style={[styles.paymentInput, styles.textArea]}
             value={paymentNotes}
             onChangeText={onChangeNotes}
-            placeholder={language === 'et' ? 'Makse m\u00E4rkmed...' : 'Payment notes...'}
+            placeholder={t('paymentNotes')}
             placeholderTextColor="#64748B"
             multiline
             numberOfLines={3}
@@ -83,7 +83,7 @@ export const PaymentModal = ({
             data-testid="confirm-payment-btn"
           >
             {actionLoading ? <ActivityIndicator color="#fff" size="small" /> : (
-              <Text style={styles.modalConfirmText}>{language === 'et' ? 'Salvesta' : 'Record'}</Text>
+              <Text style={styles.modalConfirmText}>{t('record')}</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -268,13 +268,13 @@ export const EditClientModal = ({
     <View style={styles.modalOverlay}>
       <View style={styles.modalContent}>
         <Text style={styles.modalTitle}>
-          {language === 'et' ? 'Muuda kliendi andmeid' : 'Edit Client Info'}
+          {t('editClientInfo')}
         </Text>
         {[
-          { label: language === 'et' ? 'Nimi' : 'Name', value: name, onChange: onChangeName, placeholder: language === 'et' ? 'Kliendi nimi' : 'Client name' },
-          { label: language === 'et' ? 'Telefon' : 'Phone', value: phone, onChange: onChangePhone, placeholder: language === 'et' ? 'Telefoninumber' : 'Phone number', keyboard: 'phone-pad' as const },
-          { label: language === 'et' ? 'E-post' : 'Email', value: email, onChange: onChangeEmail, placeholder: language === 'et' ? 'E-posti aadress' : 'Email address', keyboard: 'email-address' as const },
-          { label: language === 'et' ? 'Aadress' : 'Address', value: address, onChange: onChangeAddress, placeholder: language === 'et' ? 'Aadress' : 'Address', testId: 'client-address-input' },
+          { label: t('name'), value: name, onChange: onChangeName, placeholder: t('clientName') },
+          { label: t('phone'), value: phone, onChange: onChangePhone, placeholder: t('phoneNumber2'), keyboard: 'phone-pad' as const },
+          { label: t('email'), value: email, onChange: onChangeEmail, placeholder: t('emailAddress2'), keyboard: 'email-address' as const },
+          { label: t('address'), value: address, onChange: onChangeAddress, placeholder: t('address'), testId: 'client-address-input' },
         ].map((field) => (
           <View key={field.label} style={styles.inputGroup}>
             <Text style={styles.inputLabel}>{field.label}</Text>
@@ -344,11 +344,11 @@ export const EditLoanModal = ({
         <ScrollView contentContainerStyle={styles.modalScrollContent}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
-              {language === 'et' ? 'Muuda laenu tingimusi' : 'Edit Loan Terms'}
+              {t('editLoanTerms')}
             </Text>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>{language === 'et' ? 'Laenusumma (\u20AC)' : 'Loan Amount (\u20AC)'}</Text>
+              <Text style={styles.inputLabel}>{t('loanAmountU20ac')}</Text>
               <TextInput
                 style={styles.modalInput}
                 value={loanAmount}
@@ -361,7 +361,7 @@ export const EditLoanModal = ({
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>{language === 'et' ? 'Intressim\u00E4\u00E4r kuus (%)' : 'Monthly Interest Rate (%)'}</Text>
+              <Text style={styles.inputLabel}>{t('monthlyInterestRate')}</Text>
               <TextInput
                 style={styles.modalInput}
                 value={interestRate}
@@ -374,21 +374,21 @@ export const EditLoanModal = ({
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>{language === 'et' ? 'Laenu alguskuup\u00E4ev' : 'Loan Start Date'}</Text>
+              <Text style={styles.inputLabel}>{t('loanStartDate')}</Text>
               <DatePicker
                 value={startDate}
                 onChange={onChangeStartDate}
-                placeholder={language === 'et' ? 'Vali kuup\u00E4ev' : 'Select date'}
+                placeholder={t('selectDate')}
                 testID="edit-loan-start-date-input"
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>{language === 'et' ? 'Laenu t\u00E4htaeg' : 'Due Date'}</Text>
+              <Text style={styles.inputLabel}>{t('dueDate')}</Text>
               <DatePicker
                 value={dueDate}
                 onChange={onChangeDueDate}
-                placeholder={language === 'et' ? 'Vali kuup\u00E4ev' : 'Select date'}
+                placeholder={t('selectDate')}
                 minDate={new Date()}
                 testID="edit-loan-due-date-input"
               />
@@ -404,7 +404,7 @@ export const EditLoanModal = ({
                 <>
                   <Ionicons name="calculator-outline" size={18} color="#4F46E5" />
                   <Text style={styles.previewButtonText}>
-                    {language === 'et' ? 'Arvuta eelvaade' : 'Calculate Preview'}
+                    {t('calculatePreview')}
                   </Text>
                 </>
               )}
@@ -413,14 +413,14 @@ export const EditLoanModal = ({
             {loanPreview && (
               <View style={styles.loanPreviewCard}>
                 <Text style={styles.loanPreviewTitle}>
-                  {language === 'et' ? 'Arvutatud tulemused' : 'Calculated Results'}
+                  {t('calculatedResults')}
                 </Text>
                 <View style={styles.loanPreviewGrid}>
                   {[
-                    { label: language === 'et' ? 'Kuumakse' : 'Monthly EMI', value: `\u20AC${loanPreview.monthly_emi.toFixed(2)}` },
-                    { label: language === 'et' ? 'Kokku tagasimakse' : 'Total Amount', value: `\u20AC${loanPreview.total_amount_due.toFixed(2)}` },
-                    { label: language === 'et' ? 'Intress kokku' : 'Total Interest', value: `\u20AC${loanPreview.total_interest.toFixed(2)}`, color: '#F59E0B' },
-                    { label: language === 'et' ? 'Periood' : 'Tenure', value: `${loanPreview.tenure_months} ${language === 'et' ? 'kuud' : 'months'}` },
+                    { label: t('monthlyEmi'), value: `\u20AC${loanPreview.monthly_emi.toFixed(2)}` },
+                    { label: t('totalAmount'), value: `\u20AC${loanPreview.total_amount_due.toFixed(2)}` },
+                    { label: t('totalInterest'), value: `\u20AC${loanPreview.total_interest.toFixed(2)}`, color: '#F59E0B' },
+                    { label: t('tenure'), value: `${loanPreview.tenure_months} ${t('months')}` },
                   ].map((item) => (
                     <View key={item.label} style={styles.loanPreviewItem}>
                       <Text style={styles.loanPreviewLabel}>{item.label}</Text>

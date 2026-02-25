@@ -101,8 +101,8 @@ export default function AdminSettings() {
   const handleAuthError = async () => {
     await AsyncStorage.multiRemove(['admin_token', 'admin_stay_signed_in']);
     Alert.alert(
-      language === 'et' ? 'Seanss aegunud' : 'Session Expired',
-      language === 'et' ? 'Palun logige uuesti sisse' : 'Please log in again',
+      t('sessionExpired'),
+      t('pleaseLogInAgain'),
       [{ text: 'OK', onPress: () => router.replace('/admin/login') }]
     );
   };
@@ -236,16 +236,16 @@ export default function AdminSettings() {
     
     if (isNaN(feePercent) || feePercent < 0 || feePercent > 100) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Viivise protsent peab olema 0-100' : 'Late fee percent must be 0-100'
+        t('error'),
+        t('lateFeePercentMustBe0100')
       );
       return;
     }
     
     if (isNaN(graceDays) || graceDays < 1 || graceDays > 365) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Ooteaeg peab olema 1-365 päeva' : 'Grace period must be 1-365 days'
+        t('error'),
+        t('gracePeriodMustBe1365Days')
       );
       return;
     }
@@ -259,8 +259,8 @@ export default function AdminSettings() {
       
       if (response.ok) {
         Alert.alert(
-          language === 'et' ? 'Õnnestus' : 'Success',
-          language === 'et' ? 'Seaded salvestatud' : 'Settings saved successfully'
+          t('success'),
+          t('settingsSavedSuccessfully')
         );
       } else {
         throw new Error('Failed to save settings');
@@ -268,8 +268,8 @@ export default function AdminSettings() {
     } catch (error) {
       console.error('Error saving settings:', error);
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Seadete salvestamine ebaõnnestus' : 'Failed to save settings'
+        t('error'),
+        t('failedToSaveSettings')
       );
     } finally {
       setSettingsSaving(false);
@@ -280,14 +280,12 @@ export default function AdminSettings() {
     if (!adminToken) return;
     
     Alert.alert(
-      language === 'et' ? 'Kinnita' : 'Confirm',
-      language === 'et' 
-        ? 'Kas rakendada need seaded kõikidele olemasolevatele klientidele?' 
-        : 'Apply these settings to all existing clients?',
+      t('confirm'),
+      t('applyTheseSettingsToAllExisting'),
       [
-        { text: language === 'et' ? 'Tühista' : 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: language === 'et' ? 'Rakenda' : 'Apply',
+          text: t('apply'),
           onPress: async () => {
             setSettingsSaving(true);
             try {
@@ -299,7 +297,7 @@ export default function AdminSettings() {
               if (response.ok) {
                 const data = await response.json();
                 Alert.alert(
-                  language === 'et' ? 'Õnnestus' : 'Success',
+                  t('success'),
                   language === 'et' 
                     ? `Seaded rakendatud ${data.clients_updated} kliendile` 
                     : `Settings applied to ${data.clients_updated} clients`
@@ -310,8 +308,8 @@ export default function AdminSettings() {
             } catch (error) {
               console.error('Error applying settings:', error);
               Alert.alert(
-                language === 'et' ? 'Viga' : 'Error',
-                language === 'et' ? 'Seadete rakendamine ebaõnnestus' : 'Failed to apply settings'
+                t('error'),
+                t('failedToApplySettings')
               );
             } finally {
               setSettingsSaving(false);
@@ -422,12 +420,12 @@ export default function AdminSettings() {
         });
       } else {
         Alert.alert(
-          language === 'et' ? 'Jagamine pole saadaval' : 'Sharing not available',
-          language === 'et' ? 'Seade ei toeta jagamist.' : 'This device does not support sharing.'
+          t('sharingNotAvailable'),
+          t('thisDeviceDoesNotSupportSharing')
         );
       }
     } catch (error: any) {
-      Alert.alert(language === 'et' ? 'Viga' : 'Error', error?.message || 'Failed to export report');
+      Alert.alert(t('error'), error?.message || 'Failed to export report');
     } finally {
       setDiagnosticExporting(false);
     }
@@ -436,16 +434,16 @@ export default function AdminSettings() {
   const handleAddAdmin = async () => {
     if (!newUsername.trim() || !newPassword.trim() || !newFirstName.trim() || !newLastName.trim()) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Palun täida kõik väljad' : 'Please fill all fields'
+        t('error'),
+        t('pleaseFillAllFields')
       );
       return;
     }
 
     if (newPassword.length < 6) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Parool peab olema vähemalt 6 tähemärki' : 'Password must be at least 6 characters'
+        t('error'),
+        t('passwordMinLength')
       );
       return;
     }
@@ -477,9 +475,9 @@ export default function AdminSettings() {
         }
       }
 
-      const roleText = newUserRole === 'admin' ? (language === 'et' ? 'administraator' : 'admin') : (language === 'et' ? 'kasutaja' : 'user');
+      const roleText = newUserRole === 'admin' ? (t('admin')) : (t('user'));
       Alert.alert(
-        language === 'et' ? 'Õnnestus' : 'Success',
+        t('success'),
         language === 'et' ? `Uus ${roleText} loodud` : `New ${roleText} created successfully`
       );
       
@@ -492,7 +490,7 @@ export default function AdminSettings() {
       await fetchAdmins(adminToken!);
     } catch (error: any) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
+        t('error'),
         error.message
       );
     } finally {
@@ -503,24 +501,24 @@ export default function AdminSettings() {
   const handleChangePassword = async () => {
     if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Palun täida kõik väljad' : 'Please fill all fields'
+        t('error'),
+        t('pleaseFillAllFields')
       );
       return;
     }
 
     if (newPassword !== confirmPassword) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Paroolid ei kattu' : 'Passwords do not match'
+        t('error'),
+        t('passwordsDoNotMatch')
       );
       return;
     }
 
     if (newPassword.length < 6) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Uus parool peab olema vähemalt 6 tähemärki' : 'New password must be at least 6 characters'
+        t('error'),
+        t('newPasswordMustBeAtLeast')
       );
       return;
     }
@@ -543,8 +541,8 @@ export default function AdminSettings() {
       }
 
       Alert.alert(
-        language === 'et' ? 'Õnnestus' : 'Success',
-        language === 'et' ? 'Parool muudetud' : 'Password changed successfully'
+        t('success'),
+        t('passwordChangedSuccessfully')
       );
       
       setShowChangePassword(false);
@@ -553,7 +551,7 @@ export default function AdminSettings() {
       setConfirmPassword('');
     } catch (error: any) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
+        t('error'),
         error.message
       );
     } finally {
@@ -564,21 +562,21 @@ export default function AdminSettings() {
   const handleDeleteAdmin = (admin: Admin) => {
     if (admin.id === currentAdminId) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Ei saa kustutada enda kontot' : 'Cannot delete your own account'
+        t('error'),
+        t('cannotDeleteYourOwnAccount')
       );
       return;
     }
 
     Alert.alert(
-      language === 'et' ? 'Kustuta administraator' : 'Delete Admin',
+      t('deleteAdmin'),
       language === 'et' 
         ? `Kas oled kindel, et soovid kustutada kasutaja "${admin.username}"?`
         : `Are you sure you want to delete "${admin.username}"?`,
       [
-        { text: language === 'et' ? 'Tühista' : 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: language === 'et' ? 'Kustuta' : 'Delete',
+          text: t('delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -595,7 +593,7 @@ export default function AdminSettings() {
               await fetchAdmins(adminToken!);
             } catch (error: any) {
               Alert.alert(
-                language === 'et' ? 'Viga' : 'Error',
+                t('error'),
                 error.message
               );
             }
@@ -608,8 +606,8 @@ export default function AdminSettings() {
   const handleUpdateProfile = async () => {
     if (!editFirstName.trim() || !editLastName.trim()) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Palun sisesta nimi' : 'Please enter your name'
+        t('error'),
+        t('pleaseEnterYourName')
       );
       return;
     }
@@ -645,14 +643,14 @@ export default function AdminSettings() {
       await AsyncStorage.setItem('admin_last_name', editLastName.trim());
 
       Alert.alert(
-        language === 'et' ? 'Õnnestus' : 'Success',
-        language === 'et' ? 'Profiil uuendatud' : 'Profile updated successfully'
+        t('success'),
+        t('profileUpdatedSuccessfully')
       );
       
       setShowEditProfile(false);
     } catch (error: any) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
+        t('error'),
         error.message
       );
     } finally {
@@ -662,12 +660,12 @@ export default function AdminSettings() {
 
   const handleLogout = async () => {
     Alert.alert(
-      language === 'et' ? 'Logi välja' : 'Logout',
-      language === 'et' ? 'Kas oled kindel?' : 'Are you sure?',
+      t('logout'),
+      t('areYouSure'),
       [
-        { text: language === 'et' ? 'Tühista' : 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: language === 'et' ? 'Logi välja' : 'Logout',
+          text: t('logout'),
           style: 'destructive',
           onPress: async () => {
             await AsyncStorage.multiRemove(['admin_token', 'admin_id', 'admin_username']);
@@ -687,14 +685,12 @@ export default function AdminSettings() {
     // 3. Backend endpoint to securely store OAuth tokens
     // 4. Actual file upload to Google Drive using the API
     Alert.alert(
-      language === 'et' ? 'Ühenda Google Drive' : 'Connect Google Drive',
-      language === 'et' 
-        ? 'Kas soovid ühendada Google Drive varundamiseks?\n\n⚠️ See on praegu demo versioon' 
-        : 'Do you want to connect Google Drive for backup?\n\n⚠️ This is currently a demo version',
+      t('connectGoogleDrive'),
+      t('doYouWantToConnectGoogle'),
       [
-        { text: language === 'et' ? 'Tühista' : 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: language === 'et' ? 'Ühenda' : 'Connect',
+          text: t('connect'),
           onPress: async () => {
             // Simulate connection success
             const mockEmail = `${currentUsername}@gmail.com`;
@@ -704,10 +700,8 @@ export default function AdminSettings() {
             setGoogleAccount(mockEmail);
             
             Alert.alert(
-              language === 'et' ? 'Ühendatud (Demo)' : 'Connected (Demo)',
-              language === 'et' 
-                ? 'Google Drive on edukalt ühendatud (simulatsioon)' 
-                : 'Google Drive connected successfully (simulation)'
+              t('connectedDemo'),
+              t('googleDriveConnectedSuccessfullySimulation')
             );
           },
         },
@@ -717,14 +711,12 @@ export default function AdminSettings() {
 
   const handleDisconnectGoogleDrive = async () => {
     Alert.alert(
-      language === 'et' ? 'Katkesta ühendus' : 'Disconnect',
-      language === 'et' 
-        ? 'Kas oled kindel, et soovid Google Drive ühenduse katkestada?' 
-        : 'Are you sure you want to disconnect Google Drive?',
+      t('disconnect'),
+      t('areYouSureYouWantTo2'),
       [
-        { text: language === 'et' ? 'Tühista' : 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: language === 'et' ? 'Katkesta' : 'Disconnect',
+          text: t('disconnect'),
           style: 'destructive',
           onPress: async () => {
             await AsyncStorage.multiRemove([
@@ -744,10 +736,8 @@ export default function AdminSettings() {
   const handleBackupNow = async () => {
     if (!googleConnected) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' 
-          ? 'Palun ühenda esmalt Google Drive' 
-          : 'Please connect Google Drive first'
+        t('error'),
+        t('pleaseConnectGoogleDriveFirst')
       );
       return;
     }
@@ -768,17 +758,15 @@ export default function AdminSettings() {
       setLastBackupDate(now);
       
       Alert.alert(
-        language === 'et' ? 'Varundamine õnnestus (Demo)' : 'Backup Successful (Demo)',
+        t('backupSuccessfulDemo'),
         language === 'et' 
           ? 'Andmed on varundatud Google Drive\'i (simulatsioon)' 
           : 'Data has been backed up to Google Drive (simulation)'
       );
     } catch (error) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' 
-          ? 'Varundamine ebaõnnestus' 
-          : 'Backup failed'
+        t('error'),
+        t('backupFailed')
       );
     } finally {
       setBackupInProgress(false);
@@ -788,8 +776,8 @@ export default function AdminSettings() {
   const handleAssignCredits = async () => {
     if (!selectedAdmin || !newCreditValue) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Palun sisesta krediitide arv' : 'Please enter credits amount'
+        t('error'),
+        t('pleaseEnterCreditsAmount')
       );
       return;
     }
@@ -797,8 +785,8 @@ export default function AdminSettings() {
     const credits = parseInt(newCreditValue, 10);
     if (isNaN(credits) || credits < 0) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Krediitide arv peab olema positiivne number' : 'Credits must be a positive number'
+        t('error'),
+        t('creditsMustBeAPositiveNumber')
       );
       return;
     }
@@ -820,7 +808,7 @@ export default function AdminSettings() {
       }
 
       Alert.alert(
-        language === 'et' ? 'Õnnestus' : 'Success',
+        t('success'),
         language === 'et' 
           ? `${credits} krediiti määratud kasutajale ${selectedAdmin.username}` 
           : `${credits} credits assigned to ${selectedAdmin.username}`
@@ -832,7 +820,7 @@ export default function AdminSettings() {
       await fetchAdminsWithCredits(adminToken!);
     } catch (error: any) {
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
+        t('error'),
         error.message
       );
     } finally {
@@ -841,9 +829,9 @@ export default function AdminSettings() {
   };
 
   const formatBackupDate = (dateStr: string | null) => {
-    if (!dateStr) return language === 'et' ? 'Pole varundatud' : 'Never';
+    if (!dateStr) return t('never');
     const date = new Date(dateStr);
-    return date.toLocaleString(language === 'et' ? 'et-EE' : 'en-US', {
+    return date.toLocaleString(t('enus'), {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -869,7 +857,7 @@ export default function AdminSettings() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.text }]}>
-          {language === 'et' ? 'Seaded' : 'Settings'}
+          {t('settings')}
         </Text>
         <View style={styles.placeholder} />
       </View>
@@ -878,7 +866,7 @@ export default function AdminSettings() {
         {/* Current User Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            {language === 'et' ? 'Sinu konto' : 'Your Account'}
+            {t('yourAccount')}
           </Text>
           <View style={[styles.userCard, { backgroundColor: colors.surface }]}>
             <View style={styles.avatarContainer}>
@@ -888,8 +876,8 @@ export default function AdminSettings() {
               <Text style={[styles.userName, { color: colors.text }]}>{editFirstName} {editLastName}</Text>
               <Text style={[styles.userRole, { color: colors.textMuted }]}>
                 {currentUserRole === 'admin' 
-                  ? (language === 'et' ? 'Administraator' : 'Administrator') 
-                  : (language === 'et' ? 'Kasutaja' : 'User')}
+                  ? (t('administrator')) 
+                  : (t('user2'))}
               </Text>
             </View>
           </View>
@@ -901,7 +889,7 @@ export default function AdminSettings() {
             </View>
             <View style={styles.creditInfo}>
               <Text style={[styles.creditLabel, { color: colors.textMuted }]}>
-                {language === 'et' ? 'Krediidi saldo' : 'Credit Balance'}
+                {t('creditBalance')}
               </Text>
               <Text style={[styles.creditValue, { color: colors.text }]}>
                 {isSuperAdmin ? '∞' : userCredits}
@@ -911,7 +899,7 @@ export default function AdminSettings() {
               <View style={styles.superAdminTag}>
                 <Ionicons name="shield-checkmark" size={14} color={colors.success} />
                 <Text style={[styles.superAdminText, { color: colors.success }]}>
-                  {language === 'et' ? 'Peaadmin' : 'Superadmin'}
+                  {t('superadmin')}
                 </Text>
               </View>
             )}
@@ -920,9 +908,7 @@ export default function AdminSettings() {
             <View style={styles.lowCreditWarning}>
               <Ionicons name="warning" size={16} color={colors.warning} />
               <Text style={[styles.lowCreditText, { color: colors.warning }]}>
-                {language === 'et' 
-                  ? 'Krediit hakkab lõppema. Pöördu peaadmini poole.' 
-                  : 'Low credits. Contact superadmin for more.'}
+                {t('lowCreditsContactSuperadminForMore')}
               </Text>
             </View>
           )}
@@ -933,7 +919,7 @@ export default function AdminSettings() {
           >
             <Ionicons name="person" size={20} color={colors.primary} />
             <Text style={[styles.actionButtonText, { color: colors.text }]}>
-              {language === 'et' ? 'Muuda profiili' : 'Edit Profile'}
+              {t('editProfile')}
             </Text>
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
@@ -944,7 +930,7 @@ export default function AdminSettings() {
           >
             <Ionicons name="key" size={20} color={colors.primary} />
             <Text style={[styles.actionButtonText, { color: colors.text }]}>
-              {language === 'et' ? 'Muuda parooli' : 'Change Password'}
+              {t('changePassword')}
             </Text>
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
@@ -958,7 +944,7 @@ export default function AdminSettings() {
             >
               <Ionicons name="document-text" size={20} color={colors.success} />
               <Text style={[styles.actionButtonText, { color: colors.text }]}>
-                {language === 'et' ? 'Tegevuste logi' : 'Audit Log'}
+                {t('auditLog')}
               </Text>
               <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
             </TouchableOpacity>
@@ -984,7 +970,7 @@ export default function AdminSettings() {
         {/* Theme Section */}
         <View style={[styles.section, { backgroundColor: colors.background }]}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            {language === 'et' ? 'Teema' : 'Theme'}
+            {t('theme')}
           </Text>
           <View style={styles.themeContainer} data-testid="theme-toggle-section">
             <TouchableOpacity
@@ -998,7 +984,7 @@ export default function AdminSettings() {
             >
               <Ionicons name="moon" size={22} color={isDark ? colors.primary : colors.textMuted} />
               <Text style={[styles.themeText, { color: isDark ? colors.primary : colors.textMuted }]}>
-                {language === 'et' ? 'Tume' : 'Dark'}
+                {t('dark')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -1012,7 +998,7 @@ export default function AdminSettings() {
             >
               <Ionicons name="sunny" size={22} color={!isDark ? colors.primary : colors.textMuted} />
               <Text style={[styles.themeText, { color: !isDark ? colors.primary : colors.textMuted }]}>
-                {language === 'et' ? 'Hele' : 'Light'}
+                {t('light')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -1021,7 +1007,7 @@ export default function AdminSettings() {
         {/* Google Drive Backup Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            {language === 'et' ? 'Google Drive varundus' : 'Google Drive Backup'}
+            {t('googleDriveBackup')}
           </Text>
           
           <View style={styles.backupCard}>
@@ -1034,8 +1020,8 @@ export default function AdminSettings() {
               <View style={styles.backupStatusInfo}>
                 <Text style={styles.backupStatusText}>
                   {googleConnected 
-                    ? (language === 'et' ? 'Ühendatud' : 'Connected') 
-                    : (language === 'et' ? 'Ühendamata' : 'Not Connected')}
+                    ? (t('connected')) 
+                    : (t('notConnected'))}
                 </Text>
                 {googleConnected && googleAccount && (
                   <Text style={styles.backupAccountText}>{googleAccount}</Text>
@@ -1047,7 +1033,7 @@ export default function AdminSettings() {
               <View style={styles.lastBackupRow}>
                 <Ionicons name="time-outline" size={16} color="#64748B" />
                 <Text style={styles.lastBackupText}>
-                  {language === 'et' ? 'Viimane varundus: ' : 'Last backup: '}
+                  {t('lastBackup')}
                   {formatBackupDate(lastBackupDate)}
                 </Text>
               </View>
@@ -1067,7 +1053,7 @@ export default function AdminSettings() {
                       <>
                         <Ionicons name="cloud-upload" size={18} color="#fff" />
                         <Text style={styles.backupButtonText}>
-                          {language === 'et' ? 'Varunda kohe' : 'Backup Now'}
+                          {t('backupNow')}
                         </Text>
                       </>
                     )}
@@ -1078,7 +1064,7 @@ export default function AdminSettings() {
                   >
                     <Ionicons name="unlink" size={18} color="#EF4444" />
                     <Text style={[styles.backupButtonText, { color: '#EF4444' }]}>
-                      {language === 'et' ? 'Katkesta' : 'Disconnect'}
+                      {t('disconnect')}
                     </Text>
                   </TouchableOpacity>
                 </>
@@ -1089,7 +1075,7 @@ export default function AdminSettings() {
                 >
                   <Ionicons name="logo-google" size={18} color="#fff" />
                   <Text style={styles.backupButtonText}>
-                    {language === 'et' ? 'Ühenda Google Drive' : 'Connect Google Drive'}
+                    {t('connectGoogleDrive')}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -1100,7 +1086,7 @@ export default function AdminSettings() {
         {/* Late Fee & Auto-Lock Settings Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            {language === 'et' ? 'Viivis ja automaatne lukustus' : 'Late Fee & Auto-Lock'}
+            {t('lateFeeAutolock')}
           </Text>
           
           <View style={styles.settingsCard} data-testid="late-fee-settings-card">
@@ -1110,10 +1096,10 @@ export default function AdminSettings() {
                 <Ionicons name="cash-outline" size={20} color="#F59E0B" />
                 <View>
                   <Text style={styles.settingLabel}>
-                    {language === 'et' ? 'Viivise protsent' : 'Late Fee Percent'}
+                    {t('lateFeePercent')}
                   </Text>
                   <Text style={styles.settingHint}>
-                    {language === 'et' ? 'Protsent igakuisest maksest' : 'Percent of monthly payment'}
+                    {t('percentOfMonthlyPayment')}
                   </Text>
                 </View>
               </View>
@@ -1137,10 +1123,10 @@ export default function AdminSettings() {
                 <Ionicons name="time-outline" size={20} color="#EF4444" />
                 <View>
                   <Text style={styles.settingLabel}>
-                    {language === 'et' ? 'Ooteaeg (päevad)' : 'Grace Period (days)'}
+                    {t('gracePeriodDays')}
                   </Text>
                   <Text style={styles.settingHint}>
-                    {language === 'et' ? 'Päevi enne automaatset lukustust' : 'Days before auto-lock'}
+                    {t('daysBeforeAutolock')}
                   </Text>
                 </View>
               </View>
@@ -1154,7 +1140,7 @@ export default function AdminSettings() {
                   placeholderTextColor="#64748B"
                   data-testid="auto-lock-grace-days-input"
                 />
-                <Text style={styles.settingUnit}>{language === 'et' ? 'p' : 'd'}</Text>
+                <Text style={styles.settingUnit}>{t('d')}</Text>
               </View>
             </View>
 
@@ -1164,10 +1150,10 @@ export default function AdminSettings() {
                 <Ionicons name="lock-closed" size={20} color="#4F46E5" />
                 <View>
                   <Text style={styles.settingLabel}>
-                    {language === 'et' ? 'Automaatne lukustus' : 'Auto-Lock Enabled'}
+                    {t('autolockEnabled')}
                   </Text>
                   <Text style={styles.settingHint}>
-                    {language === 'et' ? 'Lukusta seade automaatselt' : 'Lock device automatically'}
+                    {t('lockDeviceAutomatically')}
                   </Text>
                 </View>
               </View>
@@ -1193,7 +1179,7 @@ export default function AdminSettings() {
                 <>
                   <Ionicons name="checkmark" size={18} color="#fff" />
                   <Text style={styles.saveSettingsButtonText}>
-                    {language === 'et' ? 'Salvesta seaded' : 'Save Settings'}
+                    {t('saveSettings')}
                   </Text>
                 </>
               )}
@@ -1208,7 +1194,7 @@ export default function AdminSettings() {
             >
               <Ionicons name="people" size={18} color="#4F46E5" />
               <Text style={styles.applyToAllButtonText}>
-                {language === 'et' ? 'Rakenda kõikidele klientidele' : 'Apply to All Clients'}
+                {t('applyToAllClients')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -1217,19 +1203,17 @@ export default function AdminSettings() {
         {isSuperAdmin && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
-              {language === 'et' ? 'Diagnostika aruanne' : 'Diagnostic Report'}
+              {t('diagnosticReport')}
             </Text>
             <View style={styles.diagnosticCard} data-testid="diagnostic-card">
               <View style={styles.diagnosticHeader}>
                 <Ionicons name="shield-checkmark" size={24} color="#10B981" />
                 <Text style={styles.diagnosticTitle}>
-                  {language === 'et' ? 'Ekspordi diagnostika' : 'Export Diagnostics'}
+                  {t('exportDiagnostics')}
                 </Text>
               </View>
               <Text style={styles.diagnosticText}>
-                {language === 'et'
-                  ? 'Koosta PDF raport seadme info, õiguste, logide ja API vigadega.'
-                  : 'Generate a PDF report with device info, permission status, logs, and API errors.'}
+                {t('generateAPdfReportWithDevice')}
               </Text>
               <TouchableOpacity
                 style={[styles.diagnosticButton, diagnosticExporting && styles.buttonDisabled]}
@@ -1243,7 +1227,7 @@ export default function AdminSettings() {
                   <>
                     <Ionicons name="download" size={18} color="#fff" />
                     <Text style={styles.diagnosticButtonText}>
-                      {language === 'et' ? 'Ekspordi PDF' : 'Export PDF'}
+                      {t('exportPdf')}
                     </Text>
                   </>
                 )}
@@ -1257,7 +1241,7 @@ export default function AdminSettings() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>
-                {language === 'et' ? 'Kasutajahaldus' : 'User Management'}
+                {t('userManagement')}
               </Text>
               <TouchableOpacity
                 style={styles.addButton}
@@ -1272,7 +1256,7 @@ export default function AdminSettings() {
               <Ionicons name="search" size={18} color="#64748B" />
               <TextInput
                 style={styles.userSearchInput}
-                placeholder={language === 'et' ? 'Otsi kasutajaid...' : 'Search users...'}
+                placeholder={t('searchUsers')}
                 placeholderTextColor="#64748B"
                 value={userSearchQuery}
                 onChangeText={setUserSearchQuery}
@@ -1299,7 +1283,7 @@ export default function AdminSettings() {
                   <Text style={styles.adminName}>{admin.username}</Text>
                   <View style={[styles.roleBadge, admin.role === 'admin' && styles.roleBadgeAdmin]}>
                     <Text style={styles.roleBadgeText}>
-                      {admin.role === 'admin' ? (language === 'et' ? 'Admin' : 'Admin') : (language === 'et' ? 'Kasutaja' : 'User')}
+                      {admin.role === 'admin' ? (t('admin2')) : (t('user2'))}
                     </Text>
                   </View>
                   {admin.is_super_admin && (
@@ -1316,7 +1300,7 @@ export default function AdminSettings() {
                   )}
                 </View>
                 {admin.id === currentAdminId && (
-                  <Text style={styles.youBadge}>{language === 'et' ? '(sina)' : '(you)'}</Text>
+                  <Text style={styles.youBadge}>{t('you')}</Text>
                 )}
               </View>
               <View style={styles.adminActions}>
@@ -1352,7 +1336,7 @@ export default function AdminSettings() {
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color="#EF4444" />
           <Text style={styles.logoutText}>
-            {language === 'et' ? 'Logi välja' : 'Logout'}
+            {t('logout')}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -1362,14 +1346,14 @@ export default function AdminSettings() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
-              {language === 'et' ? 'Lisa kasutaja' : 'Add User'}
+              {t('addUser')}
             </Text>
             
             <View style={styles.inputContainer}>
               <Ionicons name="person" size={20} color="#64748B" />
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'Eesnimi' : 'First name'}
+                placeholder={t('firstName')}
                 placeholderTextColor="#64748B"
                 value={newFirstName}
                 onChangeText={setNewFirstName}
@@ -1380,7 +1364,7 @@ export default function AdminSettings() {
               <Ionicons name="person" size={20} color="#64748B" />
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'Perekonnanimi' : 'Last name'}
+                placeholder={t('lastName')}
                 placeholderTextColor="#64748B"
                 value={newLastName}
                 onChangeText={setNewLastName}
@@ -1391,7 +1375,7 @@ export default function AdminSettings() {
               <Ionicons name="person" size={20} color="#64748B" />
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'Kasutajanimi' : 'Username'}
+                placeholder={t('username')}
                 placeholderTextColor="#64748B"
                 value={newUsername}
                 onChangeText={setNewUsername}
@@ -1403,7 +1387,7 @@ export default function AdminSettings() {
               <Ionicons name="lock-closed" size={20} color="#64748B" />
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'Parool' : 'Password'}
+                placeholder={t('password')}
                 placeholderTextColor="#64748B"
                 value={newPassword}
                 onChangeText={setNewPassword}
@@ -1413,7 +1397,7 @@ export default function AdminSettings() {
 
             <View style={styles.roleSelector}>
               <Text style={styles.roleLabel}>
-                {language === 'et' ? 'Roll' : 'Role'}
+                {t('role')}
               </Text>
               <View style={styles.roleButtons}>
                 <TouchableOpacity
@@ -1426,7 +1410,7 @@ export default function AdminSettings() {
                     color={newUserRole === 'user' ? '#fff' : '#64748B'} 
                   />
                   <Text style={[styles.roleButtonText, newUserRole === 'user' && styles.roleButtonTextActive]}>
-                    {language === 'et' ? 'Kasutaja' : 'User'}
+                    {t('user2')}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -1439,7 +1423,7 @@ export default function AdminSettings() {
                     color={newUserRole === 'admin' ? '#fff' : '#64748B'} 
                   />
                   <Text style={[styles.roleButtonText, newUserRole === 'admin' && styles.roleButtonTextActive]}>
-                    {language === 'et' ? 'Administraator' : 'Admin'}
+                    {t('admin2')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -1458,7 +1442,7 @@ export default function AdminSettings() {
                 }}
               >
                 <Text style={styles.cancelButtonText}>
-                  {language === 'et' ? 'Tühista' : 'Cancel'}
+                  {t('cancel')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -1470,7 +1454,7 @@ export default function AdminSettings() {
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <Text style={styles.confirmButtonText}>
-                    {language === 'et' ? 'Lisa' : 'Add'}
+                    {t('add')}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -1484,14 +1468,14 @@ export default function AdminSettings() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
-              {language === 'et' ? 'Muuda parooli' : 'Change Password'}
+              {t('changePassword')}
             </Text>
             
             <View style={styles.inputContainer}>
               <Ionicons name="lock-closed" size={20} color="#64748B" />
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'Praegune parool' : 'Current password'}
+                placeholder={t('currentPassword2')}
                 placeholderTextColor="#64748B"
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
@@ -1503,7 +1487,7 @@ export default function AdminSettings() {
               <Ionicons name="key" size={20} color="#64748B" />
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'Uus parool' : 'New password'}
+                placeholder={t('newPassword2')}
                 placeholderTextColor="#64748B"
                 value={newPassword}
                 onChangeText={setNewPassword}
@@ -1515,7 +1499,7 @@ export default function AdminSettings() {
               <Ionicons name="checkmark-circle" size={20} color="#64748B" />
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'Kinnita uus parool' : 'Confirm new password'}
+                placeholder={t('confirmNewPassword')}
                 placeholderTextColor="#64748B"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
@@ -1534,7 +1518,7 @@ export default function AdminSettings() {
                 }}
               >
                 <Text style={styles.cancelButtonText}>
-                  {language === 'et' ? 'Tühista' : 'Cancel'}
+                  {t('cancel')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -1546,7 +1530,7 @@ export default function AdminSettings() {
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <Text style={styles.confirmButtonText}>
-                    {language === 'et' ? 'Muuda' : 'Change'}
+                    {t('change')}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -1560,14 +1544,14 @@ export default function AdminSettings() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
-              {language === 'et' ? 'Muuda profiili' : 'Edit Profile'}
+              {t('editProfile')}
             </Text>
             
             <View style={styles.inputContainer}>
               <Ionicons name="person" size={20} color="#64748B" />
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'Eesnimi' : 'First name'}
+                placeholder={t('firstName')}
                 placeholderTextColor="#64748B"
                 value={editFirstName}
                 onChangeText={setEditFirstName}
@@ -1578,7 +1562,7 @@ export default function AdminSettings() {
               <Ionicons name="person" size={20} color="#64748B" />
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'Perekonnanimi' : 'Last name'}
+                placeholder={t('lastName')}
                 placeholderTextColor="#64748B"
                 value={editLastName}
                 onChangeText={setEditLastName}
@@ -1589,7 +1573,7 @@ export default function AdminSettings() {
               <Ionicons name="mail" size={20} color="#64748B" />
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'E-posti aadress' : 'Email address'}
+                placeholder={t('emailAddress2')}
                 placeholderTextColor="#64748B"
                 value={editEmail}
                 onChangeText={setEditEmail}
@@ -1602,7 +1586,7 @@ export default function AdminSettings() {
               <Ionicons name="call" size={20} color="#64748B" />
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'Telefoninumber' : 'Phone number'}
+                placeholder={t('phoneNumber2')}
                 placeholderTextColor="#64748B"
                 value={editPhone}
                 onChangeText={setEditPhone}
@@ -1614,7 +1598,7 @@ export default function AdminSettings() {
               <Ionicons name="location" size={20} color="#64748B" />
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'Aadress' : 'Address'}
+                placeholder={t('address')}
                 placeholderTextColor="#64748B"
                 value={editAddress}
                 onChangeText={setEditAddress}
@@ -1627,7 +1611,7 @@ export default function AdminSettings() {
                 onPress={() => setShowEditProfile(false)}
               >
                 <Text style={styles.cancelButtonText}>
-                  {language === 'et' ? 'Tühista' : 'Cancel'}
+                  {t('cancel')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -1639,7 +1623,7 @@ export default function AdminSettings() {
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <Text style={styles.confirmButtonText}>
-                    {language === 'et' ? 'Salvesta' : 'Save'}
+                    {t('save')}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -1653,7 +1637,7 @@ export default function AdminSettings() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
-              {language === 'et' ? 'Määra krediite' : 'Assign Credits'}
+              {t('assignCredits')}
             </Text>
             
             {selectedAdmin && (
@@ -1664,7 +1648,7 @@ export default function AdminSettings() {
                 <View>
                   <Text style={styles.adminName}>{selectedAdmin.username}</Text>
                   <Text style={styles.currentCreditsText}>
-                    {language === 'et' ? 'Praegused krediidid: ' : 'Current credits: '}
+                    {t('currentCredits')}
                     {selectedAdmin.credits}
                   </Text>
                 </View>
@@ -1675,7 +1659,7 @@ export default function AdminSettings() {
               <Ionicons name="ticket" size={20} color="#F59E0B" />
               <TextInput
                 style={styles.input}
-                placeholder={language === 'et' ? 'Uued krediidid' : 'New credits'}
+                placeholder={t('newCredits')}
                 placeholderTextColor="#64748B"
                 value={newCreditValue}
                 onChangeText={setNewCreditValue}
@@ -1706,7 +1690,7 @@ export default function AdminSettings() {
                 }}
               >
                 <Text style={styles.cancelButtonText}>
-                  {language === 'et' ? 'Tühista' : 'Cancel'}
+                  {t('cancel')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -1719,7 +1703,7 @@ export default function AdminSettings() {
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <Text style={styles.confirmButtonText}>
-                    {language === 'et' ? 'Määra' : 'Assign'}
+                    {t('assign')}
                   </Text>
                 )}
               </TouchableOpacity>

@@ -103,7 +103,7 @@ export default function NotificationsScreen() {
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
 
-    if (minutes < 1) return language === 'et' ? 'Just nüüd' : 'Just now';
+    if (minutes < 1) return t('justNow2');
     if (minutes < 60) return `${minutes}m`;
     if (hours < 24) return `${hours}h`;
     return `${days}d`;
@@ -126,12 +126,12 @@ export default function NotificationsScreen() {
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {language === 'et' ? 'Teavitused' : 'Notifications'}
+          {t('notifications')}
         </Text>
         {unreadCount > 0 && (
           <TouchableOpacity onPress={markAllRead} style={styles.markAllButton}>
             <Text style={styles.markAllText}>
-              {language === 'et' ? 'Märgi loetuks' : 'Mark all read'}
+              {t('markAllRead')}
             </Text>
           </TouchableOpacity>
         )}
@@ -141,7 +141,7 @@ export default function NotificationsScreen() {
         <View style={styles.unreadBanner}>
           <Ionicons name="mail-unread" size={20} color="#3B82F6" />
           <Text style={styles.unreadText}>
-            {unreadCount} {language === 'et' ? 'lugemata' : 'unread'}
+            {unreadCount} {t('unread')}
           </Text>
         </View>
       )}
@@ -156,7 +156,7 @@ export default function NotificationsScreen() {
           <View style={styles.emptyContainer}>
             <Ionicons name="notifications-off" size={64} color="#334155" />
             <Text style={styles.emptyText}>
-              {language === 'et' ? 'Teavitusi pole' : 'No notifications'}
+              {t('noNotifications')}
             </Text>
           </View>
         ) : (

@@ -29,7 +29,7 @@ export const LoanOverview = ({
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{language === 'et' ? 'Laenu ülevaade' : 'Loan Overview'}</Text>
+        <Text style={styles.sectionTitle}>{t('loanOverview')}</Text>
         <View style={styles.loanHeaderButtons}>
           {(client.outstanding_balance || 0) <= 0 ? (
             <TouchableOpacity
@@ -38,17 +38,17 @@ export const LoanOverview = ({
               data-testid="add-new-loan-btn"
             >
               <Ionicons name="add-circle" size={16} color="#10B981" />
-              <Text style={styles.addNewLoanBtnText}>{language === 'et' ? 'Lisa uus laen' : 'Add New Loan'}</Text>
+              <Text style={styles.addNewLoanBtnText}>{t('addNewLoan')}</Text>
             </TouchableOpacity>
           ) : (
             <>
               <TouchableOpacity style={styles.editLoanBtn} onPress={onEditLoan} data-testid="edit-loan-btn">
                 <Ionicons name="create-outline" size={16} color="#4F46E5" />
-                <Text style={styles.editLoanBtnText}>{language === 'et' ? 'Muuda' : 'Edit'}</Text>
+                <Text style={styles.editLoanBtnText}>{t('edit')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.recordPaymentBtn} onPress={onRecordPayment}>
                 <Ionicons name="card" size={16} color="#10B981" />
-                <Text style={styles.recordPaymentBtnText}>{language === 'et' ? 'Lisa makse' : 'Record Payment'}</Text>
+                <Text style={styles.recordPaymentBtnText}>{t('recordPayment')}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -60,16 +60,16 @@ export const LoanOverview = ({
         <View style={styles.loanProgressBar}>
           <View style={[styles.loanProgressFill, { width: `${paidPercent}%` }]} />
         </View>
-        <Text style={styles.loanProgressText}>{paidPercent.toFixed(1)}% {language === 'et' ? 'makstud' : 'paid'}</Text>
+        <Text style={styles.loanProgressText}>{paidPercent.toFixed(1)}% {t('paid2')}</Text>
       </View>
 
       <View style={styles.loanStatsGrid}>
         <View style={styles.loanStatItem}>
-          <Text style={styles.loanStatLabel}>{language === 'et' ? 'Laen antud' : 'Amount Given'}</Text>
+          <Text style={styles.loanStatLabel}>{t('amountGiven')}</Text>
           <Text style={styles.loanStatValue}>{'\u20AC'}{(client.loan_amount || 0).toFixed(2)}</Text>
         </View>
         <View style={styles.loanStatItem}>
-          <Text style={styles.loanStatLabel}>{language === 'et' ? 'Tagasimakse intressiga' : 'Amount Due (with Interest)'}</Text>
+          <Text style={styles.loanStatLabel}>{t('amountDueWithInterest')}</Text>
           <Text style={[styles.loanStatValue, { color: '#EF4444' }]}>{'\u20AC'}{(() => {
             const loanAmt = client.loan_amount || 0;
             const rate = client.interest_rate || 0;
@@ -80,12 +80,12 @@ export const LoanOverview = ({
           })()}</Text>
         </View>
         <View style={styles.loanStatItem}>
-          <Text style={styles.loanStatLabel}>{language === 'et' ? 'Makstud' : 'Paid'}</Text>
+          <Text style={styles.loanStatLabel}>{t('paid')}</Text>
           <Text style={[styles.loanStatValue, { color: '#10B981' }]}>{'\u20AC'}{(client.total_paid || 0).toFixed(2)}</Text>
         </View>
         <View style={styles.loanStatItem}>
-          <Text style={styles.loanStatLabel}>{language === 'et' ? 'Tähtaeg' : 'Due Date'}</Text>
-          <Text style={styles.loanStatValue}>{client.next_payment_due || client.loan_due_date || (language === 'et' ? 'Määramata' : 'Not set')}</Text>
+          <Text style={styles.loanStatLabel}>{t('dueDate')}</Text>
+          <Text style={styles.loanStatValue}>{client.next_payment_due || client.loan_due_date || (t('notSet'))}</Text>
         </View>
       </View>
 
@@ -93,7 +93,7 @@ export const LoanOverview = ({
         <View style={styles.overdueAlert}>
           <Ionicons name="warning" size={20} color="#EF4444" />
           <Text style={styles.overdueAlertText}>
-            {client.days_overdue} {language === 'et' ? 'päeva üle tähtaja' : 'days overdue'}
+            {client.days_overdue} {t('daysOverdue')}
           </Text>
         </View>
       )}
@@ -103,15 +103,15 @@ export const LoanOverview = ({
         <View style={styles.lateFeeCard}>
           <View style={styles.lateFeeHeader}>
             <Ionicons name="cash-outline" size={20} color="#DC2626" />
-            <Text style={styles.lateFeeTitle}>{language === 'et' ? 'Viivis' : 'Late Fee'}</Text>
+            <Text style={styles.lateFeeTitle}>{t('lateFee')}</Text>
           </View>
           <View style={styles.lateFeeDetails}>
             <View style={styles.lateFeeDetailItem}>
-              <Text style={styles.lateFeeLabel}>{language === 'et' ? 'Viivise summa' : 'Late Fee Amount'}</Text>
+              <Text style={styles.lateFeeLabel}>{t('lateFeeAmount')}</Text>
               <Text style={styles.lateFeeValue}>{'\u20AC'}{(client.late_fees_accumulated || 0).toFixed(2)}</Text>
             </View>
             <View style={styles.lateFeeDetailItem}>
-              <Text style={styles.lateFeeLabel}>{language === 'et' ? 'Kokku maksta' : 'Total Due'}</Text>
+              <Text style={styles.lateFeeLabel}>{t('totalDue')}</Text>
               <Text style={styles.lateFeeValueTotal}>
                 {'\u20AC'}{((client.outstanding_balance || 0) + (client.late_fees_accumulated || 0)).toFixed(2)}
               </Text>
@@ -140,7 +140,7 @@ export const LoanOverview = ({
         >
           <Ionicons name="download" size={16} color="#3B82F6" />
           <Text style={[styles.contractButtonText, styles.downloadButtonText]}>
-            {language === 'et' ? 'Laadi alla' : 'Download'}
+            {t('download')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -151,7 +151,7 @@ export const LoanOverview = ({
         >
           <Ionicons name="share-social" size={16} color="#10B981" />
           <Text style={[styles.contractButtonText, styles.shareButtonText]}>
-            {language === 'et' ? 'Jaga' : 'Share'}
+            {t('share')}
           </Text>
         </TouchableOpacity>
       </View>

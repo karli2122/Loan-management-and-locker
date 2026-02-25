@@ -39,7 +39,7 @@ interface Summary {
 
 export default function AuditLogPage() {
   const router = useRouter();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const { colors } = useTheme();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -115,7 +115,7 @@ export default function AuditLogPage() {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleString(language === 'et' ? 'et-EE' : 'en-US', {
+    return date.toLocaleString(t('enus'), {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -166,7 +166,7 @@ export default function AuditLogPage() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {language === 'et' ? 'Tegevuste logi' : 'Audit Log'}
+          {t('auditLog')}
         </Text>
         <View style={{ width: 40 }} />
       </View>
@@ -180,25 +180,25 @@ export default function AuditLogPage() {
         {summary && (
           <View style={[styles.summaryCard, { backgroundColor: colors.surface }]} data-testid="audit-summary-card">
             <Text style={[styles.summaryTitle, { color: colors.text }]}>
-              {language === 'et' ? 'Viimased 7 päeva' : 'Last 7 Days'}
+              {t('last7Days')}
             </Text>
             <View style={styles.summaryStats}>
               <View style={styles.summaryStat}>
                 <Text style={[styles.summaryStatValue, { color: colors.text }]}>{summary.total_actions}</Text>
                 <Text style={[styles.summaryStatLabel, { color: colors.textMuted }]}>
-                  {language === 'et' ? 'Tegevusi' : 'Actions'}
+                  {t('actions')}
                 </Text>
               </View>
               <View style={styles.summaryStat}>
                 <Text style={[styles.summaryStatValue, { color: colors.text }]}>{Object.keys(summary.action_counts).length}</Text>
                 <Text style={[styles.summaryStatLabel, { color: colors.textMuted }]}>
-                  {language === 'et' ? 'Tüüpe' : 'Types'}
+                  {t('types')}
                 </Text>
               </View>
               <View style={styles.summaryStat}>
                 <Text style={[styles.summaryStatValue, { color: colors.text }]}>{summary.top_admins.length}</Text>
                 <Text style={[styles.summaryStatLabel, { color: colors.textMuted }]}>
-                  {language === 'et' ? 'Adminid' : 'Admins'}
+                  {t('admins')}
                 </Text>
               </View>
             </View>
@@ -212,7 +212,7 @@ export default function AuditLogPage() {
             onPress={() => setFilter(null)}
           >
             <Text style={[styles.filterChipText, { color: colors.textMuted }, !filter && styles.filterChipTextActive]}>
-              {language === 'et' ? 'Kõik' : 'All'}
+              {t('all')}
             </Text>
           </TouchableOpacity>
           {actionTypes.slice(0, 6).map((type) => (
@@ -234,7 +234,7 @@ export default function AuditLogPage() {
             <View style={styles.emptyState}>
               <Ionicons name="document-text-outline" size={48} color={colors.textMuted} />
               <Text style={[styles.emptyText, { color: colors.text }]}>
-                {language === 'et' ? 'Tegevusi ei leitud' : 'No logs found'}
+                {t('noLogsFound')}
               </Text>
             </View>
           ) : (

@@ -31,7 +31,7 @@ interface ClientLocation {
 
 export default function ClientMapScreen() {
   const router = useRouter();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const { formatAmount, currencySymbol } = useCurrency();
   const [locations, setLocations] = useState<ClientLocation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +73,7 @@ export default function ClientMapScreen() {
   };
 
   const formatLastUpdate = (dateString: string) => {
-    if (!dateString) return language === 'et' ? 'Pole teada' : 'Unknown';
+    if (!dateString) return t('unknown');
     const date = new Date(dateString);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
@@ -81,10 +81,10 @@ export default function ClientMapScreen() {
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
 
-    if (minutes < 1) return language === 'et' ? 'Just nüüd' : 'Just now';
-    if (minutes < 60) return `${minutes}m ${language === 'et' ? 'tagasi' : 'ago'}`;
-    if (hours < 24) return `${hours}h ${language === 'et' ? 'tagasi' : 'ago'}`;
-    return `${days}d ${language === 'et' ? 'tagasi' : 'ago'}`;
+    if (minutes < 1) return t('justNow2');
+    if (minutes < 60) return `${minutes}m ${t('ago')}`;
+    if (hours < 24) return `${hours}h ${t('ago')}`;
+    return `${days}d ${t('ago')}`;
   };
 
   if (loading) {
@@ -104,7 +104,7 @@ export default function ClientMapScreen() {
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {language === 'et' ? 'Klientide asukohad' : 'Client Locations'}
+          {t('clientLocations')}
         </Text>
         <View style={styles.countBadge}>
           <Text style={styles.countText}>{locations.length}</Text>
@@ -115,13 +115,13 @@ export default function ClientMapScreen() {
         <View style={styles.summaryItem}>
           <Ionicons name="location" size={18} color="#10B981" />
           <Text style={styles.summaryText}>
-            {locations.filter(l => !l.is_locked).length} {language === 'et' ? 'aktiivne' : 'active'}
+            {locations.filter(l => !l.is_locked).length} {t('active')}
           </Text>
         </View>
         <View style={styles.summaryItem}>
           <Ionicons name="lock-closed" size={18} color="#EF4444" />
           <Text style={styles.summaryText}>
-            {locations.filter(l => l.is_locked).length} {language === 'et' ? 'lukustatud' : 'locked'}
+            {locations.filter(l => l.is_locked).length} {t('locked2')}
           </Text>
         </View>
       </View>
@@ -136,12 +136,10 @@ export default function ClientMapScreen() {
           <View style={styles.emptyContainer}>
             <Ionicons name="location-outline" size={64} color="#334155" />
             <Text style={styles.emptyText}>
-              {language === 'et' ? 'Asukohti pole' : 'No locations found'}
+              {t('noLocationsFound')}
             </Text>
             <Text style={styles.emptySubtext}>
-              {language === 'et' 
-                ? 'Registreeritud seadmed ilmuvad siia'
-                : 'Registered devices will appear here'}
+              {t('registeredDevicesWillAppearHere')}
             </Text>
           </View>
         ) : (
@@ -176,14 +174,14 @@ export default function ClientMapScreen() {
               <View style={styles.locationDetails}>
                 <View style={styles.coordsContainer}>
                   <Text style={styles.coordsLabel}>
-                    {language === 'et' ? 'Koordinaadid' : 'Coordinates'}
+                    {t('coordinates')}
                   </Text>
                   <Text style={styles.coordsText}>
                     {client.latitude.toFixed(6)}, {client.longitude.toFixed(6)}
                   </Text>
                 </View>
                 <Text style={styles.lastUpdate}>
-                  {language === 'et' ? 'Uuendatud' : 'Updated'}: {formatLastUpdate(client.last_location_update)}
+                  {t('updated')}: {formatLastUpdate(client.last_location_update)}
                 </Text>
               </View>
 
@@ -193,7 +191,7 @@ export default function ClientMapScreen() {
               >
                 <Ionicons name="map" size={18} color="#fff" />
                 <Text style={styles.mapButtonText}>
-                  {language === 'et' ? 'Ava kaardil' : 'Open in Maps'}
+                  {t('openInMaps')}
                 </Text>
               </TouchableOpacity>
             </TouchableOpacity>

@@ -167,13 +167,13 @@ export default function ClientsList() {
       case 'all': return t('all');
       case 'locked': return t('locked');
       case 'unlocked': return t('unlocked');
-      case 'silent': return language === 'et' ? 'Kadunud' : 'Silent';
+      case 'silent': return t('silent');
       default: return f;
     }
   };
 
   const formatLastSeen = (dateStr: string | null) => {
-    if (!dateStr) return language === 'et' ? 'Kunagi pole ühendunud' : 'Never connected';
+    if (!dateStr) return t('neverConnected');
     const date = new Date(dateStr);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -205,7 +205,7 @@ export default function ClientsList() {
             <View style={styles.silentBadge}>
               <Ionicons name="alert-circle" size={12} color="#F97316" />
               <Text style={styles.silentBadgeText}>
-                {language === 'et' ? 'Kadunud' : 'Silent'}
+                {t('silent')}
               </Text>
             </View>
           </View>
@@ -213,7 +213,7 @@ export default function ClientsList() {
           <View style={styles.silentMeta}>
             <Ionicons name="time-outline" size={14} color={colors.textMuted} />
             <Text style={[styles.lastSeenText, { color: colors.textMuted }]}>
-              {language === 'et' ? 'Viimati nähtud: ' : 'Last seen: '}
+              {t('lastSeen')}
               {formatLastSeen(item.last_heartbeat)}
             </Text>
           </View>
@@ -260,7 +260,7 @@ export default function ClientsList() {
           <View style={styles.clientMeta}>
             {(item.outstanding_balance || item.loan_amount || 0) > 0 ? (
               <Text style={[styles.emiAmount, { color: '#EF4444' }]}>
-                {language === 'et' ? 'Tagasimakse' : 'Due'}: {formatAmount((() => {
+                {t('due')}: {formatAmount((() => {
                   const loanAmt = item.loan_amount || 0;
                   const rate = (item as any).interest_rate || 0;
                   const totalDue = (item as any).total_amount_due || 0;
@@ -271,7 +271,7 @@ export default function ClientsList() {
               </Text>
             ) : (
               <Text style={[styles.emiAmount, { color: colors.textSecondary }]}>
-                {language === 'et' ? 'Laen' : 'Loan'}: {currencySymbol}0
+                {t('emi')}: {currencySymbol}0
               </Text>
             )}
             {item.is_registered ? (
@@ -288,20 +288,20 @@ export default function ClientsList() {
           </View>
           {item.last_heartbeat ? (
             <Text style={[styles.regCode, { color: colors.textMuted }]}>
-              {language === 'et' ? 'Viimane ühendus' : 'Last seen'}: {(() => {
+              {t('lastSeen2')}: {(() => {
                 const mins = Math.floor((Date.now() - new Date(item.last_heartbeat).getTime()) / 60000);
-                if (mins < 1) return language === 'et' ? 'just nüüd' : 'just now';
-                if (mins < 60) return `${mins}m ${language === 'et' ? 'tagasi' : 'ago'}`;
+                if (mins < 1) return t('justNow');
+                if (mins < 60) return `${mins}m ${t('ago')}`;
                 const hours = Math.floor(mins / 60);
-                if (hours < 24) return `${hours}h ${language === 'et' ? 'tagasi' : 'ago'}`;
-                return `${Math.floor(hours / 24)}d ${language === 'et' ? 'tagasi' : 'ago'}`;
+                if (hours < 24) return `${hours}h ${t('ago')}`;
+                return `${Math.floor(hours / 24)}d ${t('ago')}`;
               })()}
             </Text>
           ) : item.registration_code ? (
             <Text style={[styles.regCode, { color: colors.textMuted }]}>{t('code')}: {item.registration_code}</Text>
           ) : (
             <Text style={[styles.regCodeNotGenerated, { color: colors.textMuted }]}>
-              {language === 'et' ? 'Võti: pole genereeritud' : 'Key: not generated'}
+              {t('keyNotGenerated')}
             </Text>
           )}
         </View>
@@ -358,7 +358,7 @@ export default function ClientsList() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#F97316" />
           <Text style={[styles.loadingText, { color: colors.textMuted }]}>
-            {language === 'et' ? 'Laadin kadunud kliente...' : 'Loading silent clients...'}
+            {t('loadingSilentClients')}
           </Text>
         </View>
       ) : filter === 'silent' ? (
@@ -374,10 +374,10 @@ export default function ClientsList() {
             <View style={styles.emptyContainer}>
               <Ionicons name="checkmark-circle" size={64} color={colors.success} />
               <Text style={[styles.emptyText, { color: colors.text }]}>
-                {language === 'et' ? 'Kadunud kliente pole!' : 'No silent clients!'}
+                {t('noSilentClients')}
               </Text>
               <Text style={[styles.emptySubText, { color: colors.textMuted }]}>
-                {language === 'et' ? 'Kõik seadmed on ühendatud' : 'All devices are connected'}
+                {t('allDevicesAreConnected')}
               </Text>
             </View>
           }
@@ -409,7 +409,7 @@ export default function ClientsList() {
         >
           <View style={[styles.filterModalContent, { backgroundColor: colors.surface }]}>
             <Text style={[styles.filterModalTitle, { color: colors.text }]}>
-              {language === 'et' ? 'Filtreeri kliendid' : 'Filter Clients'}
+              {t('filterClients')}
             </Text>
             {(['all', 'locked', 'unlocked', 'silent'] as const).map((f) => (
               <TouchableOpacity

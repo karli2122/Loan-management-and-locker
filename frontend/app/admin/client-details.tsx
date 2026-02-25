@@ -97,8 +97,8 @@ export default function ClientDetails() {
   const handleAuthFailure = async () => {
     await AsyncStorage.multiRemove(['admin_token', 'admin_id', 'admin_username', 'admin_stay_signed_in']);
     Alert.alert(
-      language === 'et' ? 'Seanss aegunud' : 'Session Expired',
-      language === 'et' ? 'Palun logige uuesti sisse' : 'Please log in again',
+      t('sessionExpired'),
+      t('pleaseLogInAgain'),
       [{ text: 'OK', onPress: () => router.replace('/admin/login') }]
     );
   };
@@ -206,21 +206,21 @@ export default function ClientDetails() {
   const handleGenerateCode = async () => {
     if (!isSuperAdmin && userCredits <= 0) {
       Alert.alert(
-        language === 'et' ? 'Krediidid puuduvad' : 'No Credits',
-        language === 'et' ? 'Teil pole krediite v\u00f5tme genereerimiseks. Palun p\u00f6\u00f6rduge peaadmini poole.' : 'You have no credits to generate a key. Please contact the superadmin.',
+        t('noCredits'),
+        t('youHaveNoCreditsToGenerate'),
         [{ text: 'OK' }]
       );
       return;
     }
     Alert.alert(
-      language === 'et' ? 'Genereeri uus v\u00f5ti' : 'Generate New Key',
+      t('generateNewKey'),
       language === 'et'
         ? `See kulutab 1 krediiti. Teie saldo: ${isSuperAdmin ? '\u221E' : userCredits}. J\u00e4tkata?`
         : `This will use 1 credit. Your balance: ${isSuperAdmin ? '\u221E' : userCredits}. Continue?`,
       [
-        { text: language === 'et' ? 'T\u00fchista' : 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: language === 'et' ? 'Genereeri' : 'Generate',
+          text: t('generate'),
           onPress: async () => {
             setGeneratingCode(true);
             try {
@@ -232,7 +232,7 @@ export default function ClientDetails() {
               if (client) setClient({ ...client, registration_code: data.registration_code });
               if (!isSuperAdmin) setUserCredits(prev => prev - 1);
               Alert.alert(
-                language === 'et' ? '\u00d5nnestus' : 'Success',
+                t('success'),
                 language === 'et' ? `Uus registreerimiskood: ${data.registration_code}` : `New registration code: ${data.registration_code}`
               );
             } catch (error: any) { Alert.alert(t('error'), error.message); }
@@ -314,12 +314,12 @@ export default function ClientDetails() {
 
   const handleDelete = async () => {
     Alert.alert(
-      language === 'et' ? 'Kustuta klient' : 'Delete Client',
-      language === 'et' ? 'Kas olete kindel? See lubab ka rakenduse desinstallimise.' : 'Are you sure? This will also allow app uninstall on the device.',
+      t('deleteClient'),
+      t('areYouSureThisWillAlso'),
       [
         { text: t('cancel'), style: 'cancel' },
         {
-          text: language === 'et' ? 'Jah, kustuta' : 'Yes, Delete', style: 'destructive',
+          text: t('yesDelete'), style: 'destructive',
           onPress: async () => {
             setActionLoading(true);
             try {
@@ -347,9 +347,9 @@ export default function ClientDetails() {
       const data = await response.json();
       await fetchClient();
       const rangeText = data.price_range?.min && data.price_range?.max
-        ? `\n${language === 'et' ? 'Vahemik' : 'Range'}: ${formatAmount(data.price_range.min || 0, 0)} - ${formatAmount(data.price_range.max || 0, 0)}`
+        ? `\n${t('range')}: ${formatAmount(data.price_range.min || 0, 0)} - ${formatAmount(data.price_range.max || 0, 0)}`
         : '';
-      const countText = data.listing_count ? `\n${data.listing_count} ${language === 'et' ? 'kuulutust' : 'listings'} (${data.source || 'ebay.de'})` : '';
+      const countText = data.listing_count ? `\n${data.listing_count} ${t('listings')} (${data.source || 'ebay.de'})` : '';
       Alert.alert(t('success'), `${t('devicePrice')}: ${formatAmount(data.used_price_eur)}${rangeText}${countText}`);
     } catch (error: any) { Alert.alert(t('error'), error.message); }
     finally { setFetchingPrice(false); }
@@ -398,7 +398,7 @@ export default function ClientDetails() {
 
   const handleSaveClientInfo = async () => {
     if (!editClientName.trim()) {
-      Alert.alert(t('error'), language === 'et' ? 'Nimi on kohustuslik' : 'Name is required');
+      Alert.alert(t('error'), t('nameIsRequired'));
       return;
     }
     setActionLoading(true);
@@ -415,14 +415,14 @@ export default function ClientDetails() {
       if (!response.ok) { const errorData = await response.json().catch(() => ({})); throw new Error(errorData.detail || 'Failed to update client info'); }
       await fetchClient();
       setEditClientModal(false);
-      Alert.alert(t('success'), language === 'et' ? 'Kliendi andmed uuendatud' : 'Client info updated');
+      Alert.alert(t('success'), t('clientInfoUpdated'));
     } catch (error: any) { Alert.alert(t('error'), error.message); }
     finally { setActionLoading(false); }
   };
 
   const handleRecordPayment = async () => {
     if (!paymentAmount) {
-      Alert.alert(t('error'), language === 'et' ? 'Palun sisesta summa' : 'Please enter payment amount');
+      Alert.alert(t('error'), t('pleaseEnterPaymentAmount'));
       return;
     }
     setActionLoading(true);
@@ -487,7 +487,7 @@ export default function ClientDetails() {
 
   const handleSaveLoan = async () => {
     if (!editLoanAmount || !editInterestRate) {
-      Alert.alert(t('error'), language === 'et' ? 'Palun t\u00e4ida k\u00f5ik v\u00e4ljad' : 'Please fill all required fields');
+      Alert.alert(t('error'), t('pleaseFillAllRequiredFields'));
       return;
     }
     setActionLoading(true);
@@ -543,11 +543,11 @@ export default function ClientDetails() {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(downloadResult.uri, {
           mimeType: 'application/pdf',
-          dialogTitle: language === 'et' ? 'Jaga laenulepingut' : 'Share Loan Contract',
+          dialogTitle: t('shareLoanContract'),
           UTI: 'com.adobe.pdf',
         });
       } else {
-        Alert.alert(t('error'), language === 'et' ? 'Jagamine pole saadaval' : 'Sharing not available on this device');
+        Alert.alert(t('error'), t('sharingNotAvailableOnThisDevice'));
       }
     } catch (error: any) {
       if (error.message !== 'User did not share') Alert.alert(t('error'), error.message);
@@ -634,7 +634,7 @@ export default function ClientDetails() {
           >
             <Ionicons name="wallet" size={16} color={activeTab === 'loan' ? '#4F46E5' : '#94A3B8'} />
             <Text style={[styles.tabButtonText, activeTab === 'loan' && styles.tabButtonTextActive]}>
-              {language === 'et' ? 'Aktiivne laen' : 'Active Loan'}
+              {t('activeLoan')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -644,7 +644,7 @@ export default function ClientDetails() {
           >
             <Ionicons name="receipt" size={16} color={activeTab === 'payments' ? '#4F46E5' : '#94A3B8'} />
             <Text style={[styles.tabButtonText, activeTab === 'payments' && styles.tabButtonTextActive]}>
-              {language === 'et' ? 'Makseajalugu' : 'Payment History'}
+              {t('paymentHistory')}
             </Text>
           </TouchableOpacity>
         </View>

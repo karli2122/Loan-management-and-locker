@@ -40,7 +40,7 @@ interface ReminderSummary {
 
 export default function PaymentReminders() {
   const router = useRouter();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const { formatAmount, currencySymbol } = useCurrency();
   const [reminders, setReminders] = useState<PendingReminder[]>([]);
   const [summary, setSummary] = useState<ReminderSummary | null>(null);
@@ -86,14 +86,12 @@ export default function PaymentReminders() {
 
   const sendAllReminders = async () => {
     Alert.alert(
-      language === 'et' ? 'Saada meeldetuletused' : 'Send Reminders',
-      language === 'et' 
-        ? 'Kas olete kindel, et soovite saata meeldetuletused kõigile klientidele?' 
-        : 'Are you sure you want to send reminders to all clients with push tokens?',
+      t('sendReminders'),
+      t('areYouSureYouWantTo'),
       [
-        { text: language === 'et' ? 'Tühista' : 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: language === 'et' ? 'Saada' : 'Send',
+          text: t('send'),
           onPress: async () => {
             setSending(true);
             try {
@@ -105,7 +103,7 @@ export default function PaymentReminders() {
 
               if (response.ok) {
                 Alert.alert(
-                  language === 'et' ? 'Õnnestus' : 'Success',
+                  t('success'),
                   language === 'et'
                     ? `Saadetud: ${data.notifications_sent}, Ebaõnnestunud: ${data.notifications_failed}`
                     : `Sent: ${data.notifications_sent}, Failed: ${data.notifications_failed}`
@@ -136,7 +134,7 @@ export default function PaymentReminders() {
 
       if (response.ok) {
         Alert.alert(
-          language === 'et' ? 'Õnnestus' : 'Success',
+          t('success'),
           language === 'et'
             ? `Meeldetuletus saadetud: ${clientName}`
             : `Reminder sent to: ${clientName}`
@@ -173,7 +171,7 @@ export default function PaymentReminders() {
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
-    return date.toLocaleDateString(language === 'et' ? 'et-EE' : 'en-US', {
+    return date.toLocaleDateString(t('enus'), {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
@@ -197,7 +195,7 @@ export default function PaymentReminders() {
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {language === 'et' ? 'Maksemuljatused' : 'Payment Reminders'}
+          {t('paymentReminders')}
         </Text>
         <TouchableOpacity
           style={[styles.sendAllButton, sending && styles.sendingButton]}
@@ -210,7 +208,7 @@ export default function PaymentReminders() {
             <>
               <Ionicons name="send" size={18} color="#fff" />
               <Text style={styles.sendAllText}>
-                {language === 'et' ? 'Saada kõik' : 'Send All'}
+                {t('sendAll')}
               </Text>
             </>
           )}
@@ -223,32 +221,32 @@ export default function PaymentReminders() {
             <View style={[styles.summaryCard, { backgroundColor: '#7F1D1D' }]}>
               <Text style={styles.summaryValue}>{summary.overdue}</Text>
               <Text style={styles.summaryLabel}>
-                {language === 'et' ? 'Tähtajast üle' : 'Overdue'}
+                {t('overdue')}
               </Text>
             </View>
             <View style={[styles.summaryCard, { backgroundColor: '#78350F' }]}>
               <Text style={styles.summaryValue}>{summary.due_today}</Text>
               <Text style={styles.summaryLabel}>
-                {language === 'et' ? 'Täna' : 'Today'}
+                {t('today')}
               </Text>
             </View>
             <View style={[styles.summaryCard, { backgroundColor: '#713F12' }]}>
               <Text style={styles.summaryValue}>{summary.due_soon}</Text>
               <Text style={styles.summaryLabel}>
-                {language === 'et' ? 'Peagi' : 'Soon'}
+                {t('soon')}
               </Text>
             </View>
             <View style={[styles.summaryCard, { backgroundColor: '#14532D' }]}>
               <Text style={styles.summaryValue}>{summary.upcoming}</Text>
               <Text style={styles.summaryLabel}>
-                {language === 'et' ? 'Tulemas' : 'Upcoming'}
+                {t('upcoming')}
               </Text>
             </View>
           </View>
           <View style={styles.pushTokenInfo}>
             <Ionicons name="phone-portrait" size={16} color="#64748B" />
             <Text style={styles.pushTokenText}>
-              {summary.with_push_token} / {summary.total} {language === 'et' ? 'teavitustega' : 'with push'}
+              {summary.with_push_token} / {summary.total} {t('withPush')}
             </Text>
           </View>
         </View>
@@ -262,7 +260,7 @@ export default function PaymentReminders() {
           <View style={styles.emptyContainer}>
             <Ionicons name="checkmark-circle" size={64} color="#10B981" />
             <Text style={styles.emptyText}>
-              {language === 'et' ? 'Ootavaid meeldetuletusi pole' : 'No pending reminders'}
+              {t('noPendingReminders')}
             </Text>
           </View>
         ) : (
@@ -280,23 +278,23 @@ export default function PaymentReminders() {
 
               <View style={styles.reminderDetails}>
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>{language === 'et' ? 'Kuumakse' : 'Monthly EMI'}</Text>
+                  <Text style={styles.detailLabel}>{t('monthlyEmi')}</Text>
                   <Text style={styles.detailValue}>{formatAmount(reminder.monthly_emi, 2)}</Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>{language === 'et' ? 'Võlgnevus' : 'Outstanding'}</Text>
+                  <Text style={styles.detailLabel}>{t('outstanding')}</Text>
                   <Text style={styles.detailValue}>{formatAmount(reminder.outstanding_balance, 2)}</Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>{language === 'et' ? 'Tähtaeg' : 'Due Date'}</Text>
+                  <Text style={styles.detailLabel}>{t('dueDate')}</Text>
                   <Text style={styles.detailValue}>{formatDate(reminder.next_payment_due)}</Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>{language === 'et' ? 'Päevi' : 'Days'}</Text>
+                  <Text style={styles.detailLabel}>{t('days')}</Text>
                   <Text style={[styles.detailValue, { color: getReminderTypeColor(reminder.reminder_type) }]}>
                     {reminder.days_until_due < 0 
-                      ? `${Math.abs(reminder.days_until_due)} ${language === 'et' ? 'päeva üle' : 'overdue'}`
-                      : `${reminder.days_until_due} ${language === 'et' ? 'päeva' : 'days'}`
+                      ? `${Math.abs(reminder.days_until_due)} ${t('overdue2')}`
+                      : `${reminder.days_until_due} ${t('days2')}`
                     }
                   </Text>
                 </View>
@@ -322,8 +320,8 @@ export default function PaymentReminders() {
                     />
                     <Text style={styles.sendButtonText}>
                       {reminder.has_push_token
-                        ? (language === 'et' ? 'Saada meeldetuletus' : 'Send Reminder')
-                        : (language === 'et' ? 'Pole push tokenit' : 'No Push Token')
+                        ? (t('sendReminder'))
+                        : (t('noPushToken'))
                       }
                     </Text>
                   </>

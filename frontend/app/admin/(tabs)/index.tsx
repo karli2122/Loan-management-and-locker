@@ -320,8 +320,8 @@ export default function Dashboard() {
   }, [selectedAdminId]);
 
   const getSelectedAdminName = () => {
-    if (!selectedAdminId) return language === 'et' ? 'Minu andmed' : 'My Data';
-    if (selectedAdminId === 'all') return language === 'et' ? 'Kõik adminid' : 'All Admins';
+    if (!selectedAdminId) return t('myData');
+    if (selectedAdminId === 'all') return t('allAdmins');
     const admin = adminList.find(a => a.id === selectedAdminId);
     return admin ? (admin.first_name || admin.username) : '';
   };
@@ -332,7 +332,7 @@ export default function Dashboard() {
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#4F46E5" />
           <Text style={{ color: colors.textMuted, marginTop: 12, fontSize: 14 }}>
-            {language === 'et' ? 'Laen andmeid...' : 'Loading data...'}
+            {t('loadingData')}
           </Text>
         </View>
       </SafeAreaView>
@@ -376,7 +376,7 @@ export default function Dashboard() {
             <View style={styles.adminFilterContent}>
               <Ionicons name="funnel" size={18} color="#4F46E5" />
               <Text style={[styles.adminFilterLabel, { color: colors.textMuted }]}>
-                {language === 'et' ? 'Filtreeri admini järgi:' : 'Filter by Admin:'}
+                {t('filterByAdmin')}
               </Text>
               <Text style={styles.adminFilterValue}>{getSelectedAdminName()}</Text>
             </View>
@@ -398,7 +398,7 @@ export default function Dashboard() {
           >
             <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>
-                {language === 'et' ? 'Vali admin' : 'Select Admin'}
+                {t('selectAdmin')}
               </Text>
               
               <TouchableOpacity
@@ -410,7 +410,7 @@ export default function Dashboard() {
               >
                 <Ionicons name="person" size={18} color={!selectedAdminId ? '#4F46E5' : colors.textMuted} />
                 <Text style={[styles.modalOptionText, { color: colors.textMuted }, !selectedAdminId && styles.modalOptionTextActive]}>
-                  {language === 'et' ? 'Minu andmed' : 'My Data'}
+                  {t('myData')}
                 </Text>
                 {!selectedAdminId && <Ionicons name="checkmark" size={18} color="#4F46E5" />}
               </TouchableOpacity>
@@ -424,7 +424,7 @@ export default function Dashboard() {
               >
                 <Ionicons name="people" size={18} color={selectedAdminId === 'all' ? '#4F46E5' : colors.textMuted} />
                 <Text style={[styles.modalOptionText, { color: colors.textMuted }, selectedAdminId === 'all' && styles.modalOptionTextActive]}>
-                  {language === 'et' ? 'Kõik adminid' : 'All Admins'}
+                  {t('allAdmins')}
                 </Text>
                 {selectedAdminId === 'all' && <Ionicons name="checkmark" size={18} color="#4F46E5" />}
               </TouchableOpacity>
@@ -451,7 +451,7 @@ export default function Dashboard() {
           </TouchableOpacity>
         </Modal>
 
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>{language === 'et' ? 'Laenude ülevaade' : 'Loan Overview'}</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('loanOverview')}</Text>
 
         <View style={styles.statsGrid}>
           <TouchableOpacity
@@ -463,7 +463,7 @@ export default function Dashboard() {
               <Ionicons name="trending-up" size={20} color="#3B82F6" />
             </View>
             <Text style={styles.statValue}>{loanStats.active_loans}</Text>
-            <Text style={styles.statLabel}>{language === 'et' ? 'Aktiivsed laenud' : 'Active Loans'}</Text>
+            <Text style={styles.statLabel}>{t('activeLoans')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -475,7 +475,7 @@ export default function Dashboard() {
               <Ionicons name="alert-circle" size={20} color="#EF4444" />
             </View>
             <Text style={styles.statValue}>{loanStats.overdue_clients}</Text>
-            <Text style={styles.statLabel}>{language === 'et' ? 'Võlglased' : 'Overdue'}</Text>
+            <Text style={styles.statLabel}>{t('overdue')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -487,7 +487,7 @@ export default function Dashboard() {
               <Ionicons name="checkmark-circle" size={20} color="#10B981" />
             </View>
             <Text style={styles.statValue}>{loanStats.completed_loans}</Text>
-            <Text style={styles.statLabel}>{language === 'et' ? 'Lõpetatud' : 'Completed'}</Text>
+            <Text style={styles.statLabel}>{t('completed')}</Text>
           </TouchableOpacity>
 
           <View style={[styles.statCard, { backgroundColor: '#3D3D1F' }]}>
@@ -495,34 +495,34 @@ export default function Dashboard() {
               <Ionicons name="cash" size={20} color="#F59E0B" />
             </View>
             <Text style={styles.statValue}>{formatAmount(loanStats.total_collected, 0)}</Text>
-            <Text style={styles.statLabel}>{language === 'et' ? 'Kogutud' : 'Collected'}</Text>
+            <Text style={styles.statLabel}>{t('collected')}</Text>
           </View>
         </View>
 
         {/* Financial Summary */}
         <View style={[styles.financialSummary, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={[styles.financialRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Laekumismäär' : 'Collection Rate'}</Text>
+            <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{t('collectionRate')}</Text>
             <Text style={[styles.financialValue, { color: '#10B981' }]}>{loanStats.collection_rate.toFixed(1)}%</Text>
           </View>
           <View style={[styles.financialRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Laenatud kokku' : 'Total Disbursed'}</Text>
+            <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{t('totalDisbursed')}</Text>
             <Text style={[styles.financialValue, { color: colors.text }]}>{formatAmount(loanStats.total_disbursed)}</Text>
           </View>
           <View style={[styles.financialRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Võlgnevused' : 'Outstanding'}</Text>
+            <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{t('outstanding')}</Text>
             <Text style={[styles.financialValue, { color: '#F59E0B' }]}>{formatAmount(loanStats.total_outstanding)}</Text>
           </View>
           <View style={[styles.financialRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Käesoleva kuu tulu' : 'Revenue (This Month)'}</Text>
+            <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{t('revenueThisMonth')}</Text>
             <Text style={[styles.financialValue, { color: '#10B981' }]}>{formatAmount(monthStats.revenue)}</Text>
           </View>
           <View style={[styles.financialRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Käesoleva kuu kasum' : 'Profit (This Month)'}</Text>
+            <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{t('profitThisMonth')}</Text>
             <Text style={[styles.financialValue, { color: '#4F46E5' }]}>{formatAmount(monthStats.profit)}</Text>
           </View>
           <View style={[styles.financialRow, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Selle kuu maksed tasuda' : 'Due This Month'}</Text>
+            <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{t('dueThisMonth')}</Text>
             <Text style={[styles.financialValue, { color: '#F59E0B' }]}>{formatAmount(monthStats.dueOutstanding)}</Text>
           </View>
         </View>
@@ -532,7 +532,7 @@ export default function Dashboard() {
           <View style={styles.interestCardHeader}>
             <Ionicons name="trending-up" size={20} color="#10B981" />
             <Text style={[styles.interestCardTitle, { color: colors.text }]}>
-              {language === 'et' ? 'Intressitulu' : 'Interest Earned'}
+              {t('interestEarned')}
             </Text>
           </View>
           <View style={styles.interestCardBody}>
@@ -541,7 +541,7 @@ export default function Dashboard() {
                 {formatAmount(interestSummary.total_interest_earned)}
               </Text>
               <Text style={[styles.interestMainLabel, { color: colors.textMuted }]}>
-                {language === 'et' ? 'Kokku intressitulu' : 'Total Interest Earned'}
+                {t('totalInterestEarned')}
               </Text>
             </View>
             <View style={[styles.interestDivider, { backgroundColor: colors.border }]} />
@@ -551,7 +551,7 @@ export default function Dashboard() {
                   {formatAmount(interestSummary.current_month_interest)}
                 </Text>
                 <Text style={[styles.interestSubLabel, { color: colors.textMuted }]}>
-                  {language === 'et' ? 'Jooksev kuu' : 'This Month'}
+                  {t('thisMonth2')}
                 </Text>
               </View>
               <View style={styles.interestSubStat}>
@@ -559,7 +559,7 @@ export default function Dashboard() {
                   {interestSummary.total_loans_archived}
                 </Text>
                 <Text style={[styles.interestSubLabel, { color: colors.textMuted }]}>
-                  {language === 'et' ? 'Arhiveeritud laene' : 'Loans Archived'}
+                  {t('loansArchived')}
                 </Text>
               </View>
               <View style={styles.interestSubStat}>
@@ -567,7 +567,7 @@ export default function Dashboard() {
                   {interestSummary.current_month_loans_archived}
                 </Text>
                 <Text style={[styles.interestSubLabel, { color: colors.textMuted }]}>
-                  {language === 'et' ? 'Sel kuul' : 'This Month'}
+                  {t('thisMonth2')}
                 </Text>
               </View>
             </View>
@@ -578,7 +578,7 @@ export default function Dashboard() {
         {interestTrend.labels.length > 0 && (
           <View style={[styles.chartContainer, { backgroundColor: colors.surface, borderColor: colors.border }]} data-testid="interest-trend-chart">
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {language === 'et' ? 'Igakuine intressitulu' : 'Monthly Interest Income'}
+              {t('monthlyInterestIncome')}
             </Text>
             <LineChart
               data={{
@@ -625,35 +625,35 @@ export default function Dashboard() {
             <View style={styles.heartbeatTitleRow}>
               <Ionicons name="pulse" size={20} color="#10B981" />
               <Text style={[styles.heartbeatTitle, { color: colors.text }]}>
-                {language === 'et' ? 'Seadmete olek' : 'Device Heartbeat'}
+                {t('deviceHeartbeat')}
               </Text>
             </View>
             <Text style={[styles.heartbeatSubtitle, { color: colors.textMuted }]}>
-              {heartbeat.total_registered} {language === 'et' ? 'registreeritud' : 'registered'}
+              {heartbeat.total_registered} {t('registered2')}
             </Text>
           </View>
           <View style={styles.heartbeatGrid}>
             <View style={styles.heartbeatItem}>
               <View style={[styles.heartbeatDot, { backgroundColor: '#10B981' }]} />
               <Text style={[styles.heartbeatCount, { color: colors.text }]}>{heartbeat.online_count}</Text>
-              <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Aktiivne' : 'Online'}</Text>
+              <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{t('online')}</Text>
             </View>
             <View style={styles.heartbeatItem}>
               <View style={[styles.heartbeatDot, { backgroundColor: '#F59E0B' }]} />
               <Text style={[styles.heartbeatCount, { color: colors.text }]}>{heartbeat.warning_count}</Text>
-              <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Hoiatus' : 'Warning'}</Text>
+              <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{t('warning')}</Text>
             </View>
             <View style={styles.heartbeatItem}>
               <View style={[styles.heartbeatDot, { backgroundColor: '#EF4444' }]} />
               <Text style={[styles.heartbeatCount, { color: colors.text }]}>{heartbeat.critical_count}</Text>
-              <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{language === 'et' ? 'Kriitiline' : 'Critical'}</Text>
+              <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{t('critical')}</Text>
             </View>
           </View>
           {heartbeat.critical_count > 0 && (
             <View style={[styles.heartbeatAlert, { borderTopColor: colors.border }]}>
               <Ionicons name="warning" size={14} color="#EF4444" />
               <Text style={styles.heartbeatAlertText}>
-                {heartbeat.critical_count} {language === 'et' ? 'seadet pole vastanud >2h' : 'device(s) unresponsive >2h'}
+                {heartbeat.critical_count} {t('devicesUnresponsive2h')}
               </Text>
             </View>
           )}
@@ -663,7 +663,7 @@ export default function Dashboard() {
         {revenueChart.labels.length > 0 && (
           <View style={[styles.chartContainer, { backgroundColor: colors.surface, borderColor: colors.border }]} data-testid="revenue-chart">
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {language === 'et' ? 'Igakuine tulu' : 'Monthly Revenue'}
+              {t('monthlyRevenue')}
             </Text>
             <LineChart
               data={{

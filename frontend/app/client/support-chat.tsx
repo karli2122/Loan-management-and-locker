@@ -96,7 +96,7 @@ export default function SupportChatScreen() {
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString(language === 'et' ? 'et-EE' : 'en-GB', {
+    return date.toLocaleTimeString(t('engb'), {
       hour: '2-digit',
       minute: '2-digit',
     });
@@ -109,12 +109,12 @@ export default function SupportChatScreen() {
     yesterday.setDate(yesterday.getDate() - 1);
 
     if (date.toDateString() === today.toDateString()) {
-      return language === 'et' ? 'Täna' : 'Today';
+      return t('today');
     }
     if (date.toDateString() === yesterday.toDateString()) {
-      return language === 'et' ? 'Eile' : 'Yesterday';
+      return t('yesterday');
     }
-    return date.toLocaleDateString(language === 'et' ? 'et-EE' : 'en-GB', {
+    return date.toLocaleDateString(t('engb'), {
       day: 'numeric',
       month: 'short',
     });
@@ -159,10 +159,10 @@ export default function SupportChatScreen() {
         </TouchableOpacity>
         <View style={styles.headerInfo}>
           <Text style={styles.headerTitle}>
-            {language === 'et' ? 'Tugi' : 'Support'}
+            {t('support')}
           </Text>
           <Text style={styles.headerSubtitle}>
-            {language === 'et' ? 'Vastame 24h jooksul' : 'We reply within 24h'}
+            {t('weReplyWithin24h')}
           </Text>
         </View>
         <View style={styles.onlineIndicator}>
@@ -179,12 +179,10 @@ export default function SupportChatScreen() {
           <View style={styles.emptyContainer}>
             <Ionicons name="chatbubbles-outline" size={64} color="#334155" />
             <Text style={styles.emptyText}>
-              {language === 'et' ? 'Vestlus on tühi' : 'No messages yet'}
+              {t('noMessagesYet')}
             </Text>
             <Text style={styles.emptySubtext}>
-              {language === 'et'
-                ? 'Kirjutage meile oma küsimuse'
-                : 'Send us a message with your question'}
+              {t('sendUsAMessageWithYour')}
             </Text>
           </View>
         ) : (
@@ -201,7 +199,7 @@ export default function SupportChatScreen() {
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.textInput}
-            placeholder={language === 'et' ? 'Kirjuta sõnum...' : 'Type a message...'}
+            placeholder={t('typeAMessage')}
             placeholderTextColor="#64748B"
             value={newMessage}
             onChangeText={setNewMessage}

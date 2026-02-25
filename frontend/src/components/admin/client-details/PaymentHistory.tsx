@@ -13,7 +13,7 @@ interface Props {
 export const PaymentHistory = ({ colors, language, paymentHistory, paymentHistoryLoading }: Props) => (
   <View style={[styles.section, { backgroundColor: colors.surface }]} data-testid="payment-history-section">
     <Text style={[styles.sectionTitle, { color: colors.text }]}>
-      {language === 'et' ? 'Makseajalugu' : 'Payment History'}
+      {t('paymentHistory')}
     </Text>
     {paymentHistoryLoading ? (
       <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 20 }} />
@@ -21,7 +21,7 @@ export const PaymentHistory = ({ colors, language, paymentHistory, paymentHistor
       <View style={styles.emptyLoanHistory}>
         <Ionicons name="receipt-outline" size={32} color={colors.textMuted} />
         <Text style={[styles.emptyLoanHistoryText, { color: colors.textMuted }]}>
-          {language === 'et' ? 'Makseid pole' : 'No payments yet'}
+          {t('noPaymentsYet')}
         </Text>
       </View>
     ) : (
@@ -54,10 +54,10 @@ export const PaymentHistory = ({ colors, language, paymentHistory, paymentHistor
               />
               <Text style={[styles.paymentMethodLabel, { color: colors.textMuted }]}>
                 {payment.payment_method === 'cash'
-                  ? (language === 'et' ? 'Sularaha' : 'Cash')
+                  ? (t('cash'))
                   : payment.payment_method === 'bank_transfer'
-                  ? (language === 'et' ? 'Ülekanne' : 'Transfer')
-                  : (language === 'et' ? 'Kaart' : 'Card')}
+                  ? (t('transfer'))
+                  : (t('card'))}
               </Text>
             </View>
             {payment.notes ? (

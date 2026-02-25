@@ -90,8 +90,8 @@ export default function ClientPortalDashboard() {
     } catch (error) {
       console.error('Error fetching status:', error);
       Alert.alert(
-        language === 'et' ? 'Viga' : 'Error',
-        language === 'et' ? 'Staatuse laadimine ebaõnnestus' : 'Failed to load status'
+        t('error'),
+        t('failedToLoadStatus')
       );
     } finally {
       setLoading(false);
@@ -137,7 +137,7 @@ export default function ClientPortalDashboard() {
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
-    return date.toLocaleDateString(language === 'et' ? 'et-EE' : 'en-US', {
+    return date.toLocaleDateString(t('enus'), {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
@@ -154,7 +154,7 @@ export default function ClientPortalDashboard() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#4F46E5" />
           <Text style={styles.loadingText}>
-            {language === 'et' ? 'Laadimine...' : 'Loading...'}
+            {t('loading')}
           </Text>
         </View>
       </SafeAreaView>
@@ -167,7 +167,7 @@ export default function ClientPortalDashboard() {
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>
-            {language === 'et' ? 'Tere tulemast' : 'Welcome'}
+            {t('welcome2')}
           </Text>
           <Text style={styles.clientName}>{clientName}</Text>
         </View>
@@ -202,7 +202,7 @@ export default function ClientPortalDashboard() {
           <>
           <View style={styles.progressCard} data-testid="loan-progress-card">
             <Text style={styles.cardTitle}>
-              {language === 'et' ? 'Laenu progress' : 'Loan Progress'}
+              {t('loanProgress')}
             </Text>
             
             <View style={styles.progressBarContainer}>
@@ -215,7 +215,7 @@ export default function ClientPortalDashboard() {
             <View style={styles.progressStats}>
               <View style={styles.progressStat}>
                 <Text style={styles.progressStatLabel}>
-                  {language === 'et' ? 'Makstud' : 'Paid'}
+                  {t('paid')}
                 </Text>
                 <Text style={[styles.progressStatValue, { color: '#10B981' }]}>
                   {formatCurrency(loanSummary.total_paid)}
@@ -223,7 +223,7 @@ export default function ClientPortalDashboard() {
               </View>
               <View style={styles.progressStat}>
                 <Text style={styles.progressStatLabel}>
-                  {language === 'et' ? 'Jääk' : 'Remaining'}
+                  {t('remaining')}
                 </Text>
                 <Text style={[styles.progressStatValue, { color: '#F59E0B' }]}>
                   {formatCurrency(loanSummary.outstanding_balance)}
@@ -246,8 +246,8 @@ export default function ClientPortalDashboard() {
               />
               <Text style={styles.paymentStatusTitle}>
                 {paymentStatus.is_overdue 
-                  ? (language === 'et' ? 'Makse on hilinenud!' : 'Payment Overdue!')
-                  : (language === 'et' ? 'Järgmine makse' : 'Next Payment')
+                  ? (t('paymentOverdue'))
+                  : (t('nextPayment'))
                 }
               </Text>
             </View>
@@ -255,7 +255,7 @@ export default function ClientPortalDashboard() {
             <View style={styles.paymentStatusContent}>
               <View style={styles.paymentStatusRow}>
                 <Text style={styles.paymentStatusLabel}>
-                  {language === 'et' ? 'Kuumakse' : 'Monthly EMI'}
+                  {t('monthlyEmi')}
                 </Text>
                 <Text style={styles.paymentStatusValue}>
                   {formatCurrency(loanSummary?.monthly_emi || 0)}
@@ -264,7 +264,7 @@ export default function ClientPortalDashboard() {
               
               <View style={styles.paymentStatusRow}>
                 <Text style={styles.paymentStatusLabel}>
-                  {language === 'et' ? 'Tähtaeg' : 'Due Date'}
+                  {t('dueDate')}
                 </Text>
                 <Text style={styles.paymentStatusValue}>
                   {formatDate(paymentStatus.next_payment_due)}
@@ -274,14 +274,14 @@ export default function ClientPortalDashboard() {
               {paymentStatus.is_overdue ? (
                 <View style={styles.overdueInfo}>
                   <Text style={styles.overdueLabel}>
-                    {language === 'et' ? 'Hilinenud päevi' : 'Days Overdue'}
+                    {t('daysOverdue2')}
                   </Text>
                   <Text style={styles.overdueValue}>{paymentStatus.days_overdue}</Text>
                 </View>
               ) : paymentStatus.days_until_due !== null && (
                 <View style={styles.daysUntilDue}>
                   <Text style={styles.daysUntilDueLabel}>
-                    {language === 'et' ? 'Päevi tähtajani' : 'Days Until Due'}
+                    {t('daysUntilDue')}
                   </Text>
                   <Text style={styles.daysUntilDueValue}>{paymentStatus.days_until_due}</Text>
                 </View>
@@ -291,7 +291,7 @@ export default function ClientPortalDashboard() {
                 <View style={styles.lateFeeRow}>
                   <Ionicons name="alert-circle" size={16} color="#EF4444" />
                   <Text style={styles.lateFeeLabel}>
-                    {language === 'et' ? 'Viivised' : 'Late Fees'}
+                    {t('lateFees')}
                   </Text>
                   <Text style={styles.lateFeeValue}>
                     {formatCurrency(paymentStatus.late_fees_accumulated)}
@@ -306,35 +306,35 @@ export default function ClientPortalDashboard() {
         {loanSummary && (
           <View style={styles.detailsCard} data-testid="loan-details-card">
             <Text style={styles.cardTitle}>
-              {language === 'et' ? 'Laenu andmed' : 'Loan Details'}
+              {t('emiDetails')}
             </Text>
             
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>
-                {language === 'et' ? 'Laenu summa' : 'Loan Amount'}
+                {t('emiAmount')}
               </Text>
               <Text style={styles.detailValue}>{formatCurrency(loanSummary.loan_amount)}</Text>
             </View>
             
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>
-                {language === 'et' ? 'Intressimäär' : 'Interest Rate'}
+                {t('interestRate')}
               </Text>
               <Text style={styles.detailValue}>{loanSummary.interest_rate}%</Text>
             </View>
             
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>
-                {language === 'et' ? 'Periood' : 'Tenure'}
+                {t('tenure')}
               </Text>
               <Text style={styles.detailValue}>
-                {loanSummary.loan_tenure_months} {language === 'et' ? 'kuud' : 'months'}
+                {loanSummary.loan_tenure_months} {t('months')}
               </Text>
             </View>
             
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>
-                {language === 'et' ? 'Alguskuupäev' : 'Start Date'}
+                {t('startDate')}
               </Text>
               <Text style={styles.detailValue}>{formatDate(loanSummary.loan_start_date)}</Text>
             </View>
@@ -345,10 +345,10 @@ export default function ClientPortalDashboard() {
           <View style={styles.allPaidCard} data-testid="all-paid-card">
             <Ionicons name="checkmark-circle" size={48} color="#10B981" />
             <Text style={styles.allPaidTitle}>
-              {language === 'et' ? 'Kõik makstud' : 'All Paid'}
+              {t('allPaid')}
             </Text>
             <Text style={styles.allPaidSubtext}>
-              {language === 'et' ? 'Teil pole aktiivseid laene' : 'You have no active loans'}
+              {t('youHaveNoActiveLoans')}
             </Text>
           </View>
         )}
@@ -363,20 +363,20 @@ export default function ClientPortalDashboard() {
                 color={deviceStatus.is_locked ? '#EF4444' : '#10B981'} 
               />
               <Text style={styles.cardTitle}>
-                {language === 'et' ? 'Seadme olek' : 'Device Status'}
+                {t('deviceStatus')}
               </Text>
             </View>
             
             <View style={styles.deviceStatusRow}>
               <Text style={styles.deviceLabel}>
-                {language === 'et' ? 'Mudel' : 'Model'}
+                {t('deviceModel')}
               </Text>
               <Text style={styles.deviceValue}>{deviceStatus.device_model || '-'}</Text>
             </View>
             
             <View style={styles.deviceStatusRow}>
               <Text style={styles.deviceLabel}>
-                {language === 'et' ? 'Olek' : 'Status'}
+                {t('status')}
               </Text>
               <View style={[
                 styles.statusBadge,
@@ -384,8 +384,8 @@ export default function ClientPortalDashboard() {
               ]}>
                 <Text style={styles.statusBadgeText}>
                   {deviceStatus.is_locked 
-                    ? (language === 'et' ? 'Lukustatud' : 'Locked')
-                    : (language === 'et' ? 'Aktiivne' : 'Active')
+                    ? (t('locked'))
+                    : (t('active2'))
                   }
                 </Text>
               </View>

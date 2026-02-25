@@ -112,7 +112,7 @@ export default function ClientRegister() {
       if (response.status === 404 || response.status === 400) {
         Alert.alert(
           t('error'),
-          language === 'et' ? 'Vale kood' : 'Incorrect code'
+          t('incorrectCode')
         );
         return;
       }
@@ -127,7 +127,7 @@ export default function ClientRegister() {
       if (!clientId) {
         Alert.alert(
           t('error'),
-          language === 'et' ? 'Vale kood' : 'Incorrect code'
+          t('incorrectCode')
         );
         return;
       }

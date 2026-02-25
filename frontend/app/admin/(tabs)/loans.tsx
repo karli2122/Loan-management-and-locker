@@ -55,7 +55,7 @@ interface PaidLoan {
 export default function LoansTab() {
   const router = useRouter();
   const params = useLocalSearchParams<{ filter?: string }>();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const { formatAmount, currencySymbol } = useCurrency();
   const { colors } = useTheme();
   const [clients, setClients] = useState<Client[]>([]);
@@ -221,10 +221,10 @@ export default function LoansTab() {
       paymentDate.setHours(0, 0, 0, 0);
       const diffDays = Math.ceil((paymentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       
-      if (diffDays === 0) return language === 'et' ? 'Täna' : 'Today';
-      if (diffDays === 1) return language === 'et' ? 'Homme' : 'Tomorrow';
-      if (diffDays < 0) return `${Math.abs(diffDays)} ${language === 'et' ? 'päeva üle tähtaja' : 'days overdue'}`;
-      return date.toLocaleDateString(language === 'et' ? 'et-EE' : 'en-US', { 
+      if (diffDays === 0) return t('today');
+      if (diffDays === 1) return t('tomorrow');
+      if (diffDays < 0) return `${Math.abs(diffDays)} ${t('daysOverdue')}`;
+      return date.toLocaleDateString(t('enus'), { 
         day: 'numeric', 
         month: 'short' 
       });
@@ -274,21 +274,21 @@ export default function LoansTab() {
             <View style={styles.loanDetailsGrid}>
               <View style={styles.loanDetailItem}>
                 <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
-                  {language === 'et' ? 'Laen' : 'Loan'}
+                  {t('emi')}
                 </Text>
                 <Text style={[styles.loanDetailValue, { color: colors.text }]}>{formatAmount(totalLoan, 0)}</Text>
               </View>
               
               <View style={styles.loanDetailItem}>
                 <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
-                  {language === 'et' ? 'Makstud' : 'Paid'}
+                  {t('paid')}
                 </Text>
                 <Text style={[styles.loanDetailValue, { color: colors.success }]}>{formatAmount(paid, 0)}</Text>
               </View>
               
               <View style={styles.loanDetailItem}>
                 <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
-                  {language === 'et' ? 'Võlg' : 'Due'}
+                  {t('due')}
                 </Text>
                 <Text style={[styles.loanDetailValue, { color: outstanding > 0 ? colors.warning : colors.success }]}>
                   {formatAmount(outstanding, 0)}
@@ -311,7 +311,7 @@ export default function LoansTab() {
                 <View style={styles.overdueBadge}>
                   <Ionicons name="alert-circle" size={12} color={colors.error} />
                   <Text style={[styles.overdueText, { color: colors.error }]}>
-                    {item.days_overdue} {language === 'et' ? 'päeva' : 'days'}
+                    {item.days_overdue} {t('days2')}
                   </Text>
                 </View>
               )}
@@ -320,7 +320,7 @@ export default function LoansTab() {
                 <View style={styles.lateFeeBadge}>
                   <Ionicons name="cash" size={12} color="#DC2626" />
                   <Text style={styles.lateFeeText}>
-                    {language === 'et' ? 'Viivis' : 'Late Fee'}: {formatAmount(item.late_fees_accumulated ?? 0)}
+                    {t('lateFee')}: {formatAmount(item.late_fees_accumulated ?? 0)}
                   </Text>
                 </View>
               )}
@@ -335,7 +335,7 @@ export default function LoansTab() {
   const renderPaidLoan = ({ item }: { item: PaidLoan }) => {
     const formatDate = (dateStr: string) => {
       const date = new Date(dateStr);
-      return date.toLocaleDateString(language === 'et' ? 'et-EE' : 'en-US', {
+      return date.toLocaleDateString(t('enus'), {
         day: 'numeric',
         month: 'short',
         year: 'numeric'
@@ -370,7 +370,7 @@ export default function LoansTab() {
           <View style={[styles.archivedDateBadge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Ionicons name="calendar-outline" size={12} color="#10B981" />
             <Text style={[styles.archivedDateText, { color: colors.textMuted }]}>
-              {language === 'et' ? 'Arhiveeritud' : 'Archived'}: {formatDate(item.archived_at)}
+              {t('archived')}: {formatDate(item.archived_at)}
             </Text>
           </View>
           
@@ -378,21 +378,21 @@ export default function LoansTab() {
           <View style={styles.loanDetailsGrid}>
             <View style={styles.loanDetailItem}>
               <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
-                {language === 'et' ? 'Laen' : 'Loan'}
+                {t('emi')}
               </Text>
               <Text style={[styles.loanDetailValue, { color: colors.text }]}>{formatAmount(item.loan_amount?.toFixed(0) || '0')}</Text>
             </View>
             
             <View style={styles.loanDetailItem}>
               <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
-                {language === 'et' ? 'Makstud' : 'Total Paid'}
+                {t('totalPaid')}
               </Text>
               <Text style={[styles.loanDetailValue, { color: '#10B981' }]}>{formatAmount(item.total_paid?.toFixed(0) || '0')}</Text>
             </View>
             
             <View style={styles.loanDetailItem}>
               <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
-                {language === 'et' ? 'Intress' : 'Interest'}
+                {t('interest')}
               </Text>
               <Text style={[styles.loanDetailValue, { color: '#F59E0B' }]}>{formatAmount(item.total_interest?.toFixed(0) || '0')}</Text>
             </View>
@@ -403,14 +403,14 @@ export default function LoansTab() {
             <View style={[styles.nextPaymentBadge, { backgroundColor: 'rgba(79, 70, 229, 0.1)' }]}>
               <Ionicons name="cash-outline" size={12} color="#4F46E5" />
               <Text style={[styles.nextPaymentText, { color: '#4F46E5' }]}>
-                {item.payment_count} {language === 'et' ? 'makset' : 'payments'}
+                {item.payment_count} {t('payments2')}
               </Text>
             </View>
             
             <View style={[styles.nextPaymentBadge, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
               <Ionicons name="star" size={12} color="#10B981" />
               <Text style={[styles.nextPaymentText, { color: '#10B981' }]}>
-                {language === 'et' ? 'Krediidiskoor' : 'Score'}: {item.final_credit_score || 'N/A'}
+                {t('score')}: {item.final_credit_score || 'N/A'}
               </Text>
             </View>
           </View>
@@ -433,7 +433,7 @@ export default function LoansTab() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {language === 'et' ? 'Laenud' : 'Loans'}
+          {t('loans')}
         </Text>
         <TouchableOpacity
           style={styles.addButton}
@@ -447,12 +447,8 @@ export default function LoansTab() {
         <View style={[styles.filterBanner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.filterText, { color: colors.textSecondary }]}>
             {filter === 'overdue'
-              ? language === 'et'
-                ? 'Filtreeritud: võlglased'
-                : 'Filter: Overdue'
-              : language === 'et'
-              ? 'Filtreeritud: tasutud'
-              : 'Filter: Paid'}
+              ? t('filterOverdue')
+              : t('filterPaid')}
           </Text>
           <TouchableOpacity onPress={() => setFilter(undefined)}>
             <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
@@ -467,7 +463,7 @@ export default function LoansTab() {
           data-testid="loans-tab-given"
         >
           <Text style={[styles.tabText, { color: colors.textMuted }, tab === 'given' && styles.tabTextActive]}>
-            {language === 'et' ? 'Antud' : 'Given'}
+            {t('given')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -479,7 +475,7 @@ export default function LoansTab() {
           data-testid="loans-tab-archived"
         >
           <Text style={[styles.tabText, { color: colors.textMuted }, tab === 'archived' && styles.tabTextActive]}>
-            {language === 'et' ? 'Arhiveeritud' : 'Archived'}
+            {t('archived')}
           </Text>
           {paidLoans.length > 0 && (
             <View style={styles.badgeSmall}>
@@ -503,7 +499,7 @@ export default function LoansTab() {
             data-testid="payment-filter-all"
           >
             <Text style={[styles.paymentFilterText, { color: colors.textMuted }, paymentFilter === 'all' && styles.paymentFilterTextActive]}>
-              {language === 'et' ? 'Kõik' : 'All'}
+              {t('all')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -518,7 +514,7 @@ export default function LoansTab() {
               style={{ marginRight: 4 }} 
             />
             <Text style={[styles.paymentFilterText, { color: colors.textMuted }, paymentFilter === 'today' && styles.paymentFilterTextActive]}>
-              {language === 'et' ? 'Täna' : 'Today'}
+              {t('today')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -533,7 +529,7 @@ export default function LoansTab() {
               style={{ marginRight: 4 }} 
             />
             <Text style={[styles.paymentFilterText, { color: colors.textMuted }, paymentFilter === 'tomorrow' && styles.paymentFilterTextActive]}>
-              {language === 'et' ? 'Homme' : 'Tomorrow'}
+              {t('tomorrow')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -548,7 +544,7 @@ export default function LoansTab() {
               style={{ marginRight: 4 }} 
             />
             <Text style={[styles.paymentFilterText, { color: colors.textMuted }, paymentFilter === 'next3days' && styles.paymentFilterTextActive]}>
-              {language === 'et' ? '3 päeva' : 'Next 3 days'}
+              {t('next3Days')}
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -559,8 +555,8 @@ export default function LoansTab() {
         <TextInput
           style={[styles.searchInput, { color: colors.text }]}
           placeholder={tab === 'archived' 
-            ? (language === 'et' ? 'Otsi arhiveeritud laene...' : 'Search archived loans...')
-            : (language === 'et' ? 'Otsi kliente...' : 'Search clients...')}
+            ? (t('searchArchivedLoans'))
+            : (t('searchClients'))}
           placeholderTextColor={colors.textMuted}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -580,12 +576,10 @@ export default function LoansTab() {
             <View style={styles.emptyContainer}>
               <Ionicons name="archive-outline" size={64} color={colors.textMuted} />
               <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                {language === 'et' ? 'Arhiveeritud laene ei leitud' : 'No archived loans found'}
+                {t('noArchivedLoansFound')}
               </Text>
               <Text style={[styles.emptySubText, { color: colors.textMuted }]}>
-                {language === 'et' 
-                  ? 'Laenud arhiveeritakse automaatselt, kui need on täielikult tasutud'
-                  : 'Loans are automatically archived when fully paid'}
+                {t('loansAreAutomaticallyArchivedWhenFully')}
               </Text>
             </View>
           }
@@ -603,7 +597,7 @@ export default function LoansTab() {
             <View style={styles.emptyContainer}>
               <Ionicons name="people-outline" size={64} color={colors.textMuted} />
               <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                {language === 'et' ? 'Kliente ei leitud' : 'No clients found'}
+                {t('noClientsFound')}
               </Text>
             </View>
           }

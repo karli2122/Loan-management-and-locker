@@ -15,7 +15,7 @@ import { useLanguage } from '../../../src/context/LanguageContext';
 
 export default function FeaturesTab() {
   const router = useRouter();
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const [displayName, setDisplayName] = useState('');
 
   const loadUserData = async () => {
@@ -35,12 +35,12 @@ export default function FeaturesTab() {
 
   const handleLogout = async () => {
     Alert.alert(
-      language === 'et' ? 'Logi välja' : 'Logout',
-      language === 'et' ? 'Kas oled kindel?' : 'Are you sure?',
+      t('logout'),
+      t('areYouSure'),
       [
-        { text: language === 'et' ? 'Tühista' : 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: language === 'et' ? 'Logi välja' : 'Logout',
+          text: t('logout'),
           style: 'destructive',
           onPress: async () => {
             await AsyncStorage.multiRemove(['admin_token', 'admin_id', 'admin_username', 'admin_role', 'is_super_admin', 'admin_first_name', 'admin_last_name']);
@@ -55,7 +55,7 @@ export default function FeaturesTab() {
     <SafeAreaView style={styles.container} edges={[]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
-          {language === 'et' ? 'Funktsioonid' : 'Features'}
+          {t('features')}
         </Text>
       </View>
 
@@ -84,7 +84,7 @@ export default function FeaturesTab() {
         </View>
 
         <Text style={styles.sectionTitle}>
-          {language === 'et' ? 'Analüütika' : 'Analytics'}
+          {t('analytics')}
         </Text>
 
         <TouchableOpacity
@@ -96,10 +96,10 @@ export default function FeaturesTab() {
           </View>
           <View style={styles.featureInfo}>
             <Text style={styles.featureTitle}>
-              {language === 'et' ? 'Aruanded' : 'Reports'}
+              {t('reports')}
             </Text>
             <Text style={styles.featureDescription}>
-              {language === 'et' ? 'Finantsanalüütika ja aruanded' : 'Financial analytics & reports'}
+              {t('financialAnalyticsReports')}
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="#64748B" />
@@ -115,17 +115,17 @@ export default function FeaturesTab() {
           </View>
           <View style={styles.featureInfo}>
             <Text style={styles.featureTitle}>
-              {language === 'et' ? 'Pangaväljavõtte analüüs' : 'Bank Statement Analyzer'}
+              {t('bankStatementAnalyzer')}
             </Text>
             <Text style={styles.featureDescription}>
-              {language === 'et' ? 'AI-põhine tulu/kulu analüüs' : 'AI-powered income/expense analysis'}
+              {t('aipoweredIncomeexpenseAnalysis')}
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="#64748B" />
         </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>
-          {language === 'et' ? 'Laenuhaldus' : 'Loan Management'}
+          {t('loanManagement')}
         </Text>
 
         <TouchableOpacity
@@ -137,10 +137,10 @@ export default function FeaturesTab() {
           </View>
           <View style={styles.featureInfo}>
             <Text style={styles.featureTitle}>
-              {language === 'et' ? 'Laenuplaanid' : 'Loan Plans'}
+              {t('loanPlans')}
             </Text>
             <Text style={styles.featureDescription}>
-              {language === 'et' ? 'Halda laenuplaane' : 'Manage loan plans'}
+              {t('manageLoanPlans')}
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="#64748B" />
@@ -155,17 +155,17 @@ export default function FeaturesTab() {
           </View>
           <View style={styles.featureInfo}>
             <Text style={styles.featureTitle}>
-              {language === 'et' ? 'Laenukalkulaator' : 'Loan Calculator'}
+              {t('loanCalculator')}
             </Text>
             <Text style={styles.featureDescription}>
-              {language === 'et' ? 'Arvuta laenumaksed' : 'Calculate loan payments'}
+              {t('calculateLoanPayments')}
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="#64748B" />
         </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>
-          {language === 'et' ? 'Seadmehaldus' : 'Device Management'}
+          {t('deviceManagement')}
         </Text>
 
         <TouchableOpacity
@@ -177,10 +177,10 @@ export default function FeaturesTab() {
           </View>
           <View style={styles.featureInfo}>
             <Text style={styles.featureTitle}>
-              {language === 'et' ? 'Seadmehaldus' : 'Device Management'}
+              {t('deviceManagement')}
             </Text>
             <Text style={styles.featureDescription}>
-              {language === 'et' ? 'Lukusta/vabasta seadmeid' : 'Lock/unlock devices'}
+              {t('lockunlockDevices')}
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="#64748B" />
@@ -188,7 +188,7 @@ export default function FeaturesTab() {
 
 
         <Text style={styles.sectionTitle}>
-          {language === 'et' ? 'Seaded' : 'Settings'}
+          {t('settings')}
         </Text>
 
         <TouchableOpacity
@@ -200,10 +200,10 @@ export default function FeaturesTab() {
           </View>
           <View style={styles.featureInfo}>
             <Text style={styles.featureTitle}>
-              {language === 'et' ? 'Seaded' : 'Settings'}
+              {t('settings')}
             </Text>
             <Text style={styles.featureDescription}>
-              {language === 'et' ? 'Kasutajahaldus ja seaded' : 'User management & settings'}
+              {t('userManagementSettings')}
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="#64748B" />
@@ -212,7 +212,7 @@ export default function FeaturesTab() {
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={24} color="#EF4444" />
           <Text style={styles.logoutText}>
-            {language === 'et' ? 'Logi välja' : 'Logout'}
+            {t('logout')}
           </Text>
         </TouchableOpacity>
 

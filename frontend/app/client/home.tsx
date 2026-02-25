@@ -179,23 +179,21 @@ export default function ClientHome() {
       if (!enabled) {
         console.log('Accessibility service not enabled — prompting user');
         
-        const title = language === 'et' ? 'Seadme kaitse' : 'Device Protection';
-        const message = language === 'et'
-          ? 'Seadme turvalisuse tagamiseks lubage juurdepääsetavuse teenus. See kaitseb rakendust eemaldamise eest.'
-          : 'To fully protect your device, please enable the accessibility service. This prevents unauthorized app removal.';
+        const title = t('deviceProtection');
+        const message = t('toFullyProtectYourDevicePlease');
         
         Alert.alert(
           title,
           message,
           [
             {
-              text: language === 'et' ? 'Luba' : 'OK',
+              text: t('ok'),
               onPress: async () => {
                 await devicePolicy.openAccessibilitySettings();
               },
             },
             {
-              text: language === 'et' ? 'Hiljem' : 'Later',
+              text: t('later'),
               style: 'cancel',
             },
           ]
@@ -259,14 +257,10 @@ export default function ClientHome() {
         setLastAdminPromptTime(now);
         
         // Use a non-dismissable alert for re-activation after tamper
-        const title = language === 'et' ? 'Seadme kaitse vajalik' : 'Device Protection Required';
+        const title = t('deviceProtectionRequired');
         const message = wasDisabled
-          ? (language === 'et' 
-              ? 'Seadme administraator keelati. See on turvarikkumine. Palun lubage uuesti.'
-              : 'Device admin was disabled. This is a security violation. Please re-enable immediately.')
-          : (language === 'et' 
-              ? 'Seadme turvaliseks kasutamiseks luba administraatori õigused.'
-              : 'To secure your device, please enable Device Admin permissions.');
+          ? (t('deviceAdminWasDisabledThisIs'))
+          : (t('toSecureYourDevicePleaseEnable'));
 
         // Show alert with both options - not blocking the main thread
         Alert.alert(
@@ -274,7 +268,7 @@ export default function ClientHome() {
           message,
           [
             {
-              text: language === 'et' ? 'Luba kohe' : 'Enable Now',
+              text: t('enableNow'),
               onPress: async () => {
                 try {
                   const result = await devicePolicy.requestAdmin();
@@ -309,7 +303,7 @@ export default function ClientHome() {
             },
             // Add a "Later" option for non-tamper cases to prevent blocking
             ...(wasDisabled ? [] : [{
-              text: language === 'et' ? 'Hiljem' : 'Later',
+              text: t('later'),
               style: 'cancel' as const,
               onPress: () => {
                 isRequestingAdmin.current = false;
@@ -480,7 +474,7 @@ export default function ClientHome() {
         try {
           await Notifications.scheduleNotificationAsync({
             content: {
-              title: language === 'et' ? 'Hoiatus administraatorilt' : 'Warning from Administrator',
+              title: t('warningFromAdministrator'),
               body: statusToSet.warning_message,
               sound: true,
               priority: Notifications.AndroidNotificationPriority.HIGH,
@@ -549,10 +543,8 @@ export default function ClientHome() {
       
       // Show alert to user
       Alert.alert(
-        language === 'et' ? 'Konto eemaldatud' : 'Account Removed',
-        language === 'et' 
-          ? 'Teie konto on administraatori poolt eemaldatud. Saate nüüd rakenduse desinstallida.'
-          : 'Your account has been removed by the administrator. You can now uninstall this app.',
+        t('accountRemoved'),
+        t('yourAccountHasBeenRemovedBy'),
         [{ text: t('ok') }]
       );
     } catch (error) {
@@ -733,13 +725,11 @@ export default function ClientHome() {
     if (allGranted && !showAdminDialog) {
       setShowAdminDialog(true);
       Alert.alert(
-        language === 'et' ? 'Luba seadme administraator' : 'Enable Device Admin',
-        language === 'et'
-          ? 'Kõik õigused on lubatud. Kas soovite aktiveerida seadme administraatori režiimi? See kaitseb seadet ja seda ei saa keelata ilma administraatori loata.'
-          : 'All permissions are granted. Do you want to activate Device Admin mode? This will protect the device and cannot be disabled without administrator permission.',
+        t('enableDeviceAdmin'),
+        t('allPermissionsAreGrantedDoYou'),
         [
           {
-            text: language === 'et' ? 'Jah, luba' : 'Yes, Enable',
+            text: t('yesEnable'),
             onPress: async () => {
               if (isRequestingAdmin.current) return;
               isRequestingAdmin.current = true;
@@ -1123,8 +1113,8 @@ export default function ClientHome() {
         if (status) {
           await updateLockState(true);
           Alert.alert(
-            language === 'et' ? 'Turvahoiatus' : 'Security Alert',
-            language === 'et' ? 'Tuvastati manipulatsioon. Seade on lukustatud.' : 'Tampering detected. Device has been locked.',
+            t('securityAlert'),
+            t('tamperingDetectedDeviceHasBeenLocked'),
             [{ text: t('ok') }]
           );
         }
@@ -1259,8 +1249,8 @@ export default function ClientHome() {
             />
             <Text style={styles.protectionText}>
               {isAdminActive 
-                ? (language === 'et' ? 'Seadme kaitse aktiivne' : 'Device protection active')
-                : (language === 'et' ? 'Kaitse pole aktiivne' : 'Protection not active')}
+                ? (t('deviceProtectionActive'))
+                : (t('protectionNotActive'))}
             </Text>
           </View>
         </View>
@@ -1305,7 +1295,7 @@ export default function ClientHome() {
           <View style={styles.protectionSetup} data-testid="protection-setup">
             <View style={styles.protectionSetupHeader}>
               <Text style={styles.protectionSetupTitle}>
-                {language === 'et' ? 'Seadme kaitse' : 'Device Protection'}
+                {t('deviceProtection')}
               </Text>
               <TouchableOpacity onPress={() => setShowProtectionSetup(false)}>
                 <Ionicons name="chevron-up" size={20} color="#94A3B8" />
@@ -1334,12 +1324,12 @@ export default function ClientHome() {
                 }
 
                 Alert.alert(
-                  language === 'et' ? 'Aku optimeerimine' : 'Battery Optimization',
+                  t('batteryOptimization'),
                   instructions,
                   [
-                    { text: language === 'et' ? 'Tühista' : 'Cancel', style: 'cancel' },
+                    { text: t('cancel'), style: 'cancel' },
                     {
-                      text: language === 'et' ? 'Ava seaded' : 'Open Settings',
+                      text: t('openSettings'),
                       onPress: async () => {
                         try {
                           await devicePolicy.requestBatteryOptimization();
@@ -1359,7 +1349,7 @@ export default function ClientHome() {
                 <View style={[styles.permCircle, permissionStates.batteryOptimization ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.batteryOptimization ? "checkmark" : "close"} size={28} color="#FFF" />
                 </View>
-                <Text style={styles.permLabel}>{language === 'et' ? 'Aku optim.' : 'Battery Optimization'}</Text>
+                <Text style={styles.permLabel}>{t('batteryOptimization')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1388,7 +1378,7 @@ export default function ClientHome() {
                 <View style={[styles.permCircle, permissionStates.overlay ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.overlay ? "checkmark" : "close"} size={28} color="#FFF" />
                 </View>
-                <Text style={styles.permLabel}>{language === 'et' ? 'Ülekate' : 'Overlay'}</Text>
+                <Text style={styles.permLabel}>{t('overlay')}</Text>
               </TouchableOpacity>
 
               {/* Row 2: Auto Start (device-specific) + Accessibility (device-specific) */}
@@ -1397,11 +1387,11 @@ export default function ClientHome() {
                 const info = getAutoStartInstructions(dev, language);
                 Alert.alert(info.title, info.steps, [
                   {
-                    text: language === 'et' ? 'Tühista' : 'Cancel',
+                    text: t('cancel'),
                     style: 'cancel',
                   },
                   {
-                    text: language === 'et' ? 'Ava seaded' : 'Open Settings',
+                    text: t('openSettings'),
                     onPress: async () => {
                       try {
                         await devicePolicy.openAutoStartSettings();
@@ -1411,7 +1401,7 @@ export default function ClientHome() {
                     },
                   },
                   {
-                    text: language === 'et' ? 'Juba tehtud' : 'Already Done',
+                    text: t('alreadyDone'),
                     onPress: async () => {
                       setPermissionStates(prev => ({ ...prev, autoStart: true }));
                       await AsyncStorage.setItem('autostart_enabled', 'true');
@@ -1424,7 +1414,7 @@ export default function ClientHome() {
                 <View style={[styles.permCircle, permissionStates.autoStart ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.autoStart ? "checkmark" : "close"} size={28} color="#FFF" />
                 </View>
-                <Text style={styles.permLabel}>{language === 'et' ? 'Autostart' : 'Auto Start'}</Text>
+                <Text style={styles.permLabel}>{t('autoStart')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1448,27 +1438,27 @@ export default function ClientHome() {
                   const buttons: any[] = [];
                   if (needsRestricted && isSamsung) {
                     buttons.push({
-                      text: language === 'et' ? '1. Ava juurdepääs' : '1. Open Accessibility',
+                      text: t('1OpenAccessibility'),
                       onPress: async () => { await devicePolicy.openAccessibilitySettings(); },
                     });
                     buttons.push({
-                      text: language === 'et' ? '2. Ava rakenduse info' : '2. Open App Info',
+                      text: t('2OpenAppInfo'),
                       onPress: async () => { await devicePolicy.openAppInfo(); },
                     });
                     buttons.push({
-                      text: language === 'et' ? '3. Ava juurdepääs' : '3. Open Accessibility',
+                      text: t('3OpenAccessibility'),
                       onPress: async () => { await devicePolicy.openAccessibilitySettings(); },
                     });
                   } else {
                     if (needsRestricted) {
                       buttons.push({
-                        text: language === 'et' ? '1. Luba piiratud seaded' : '1. Allow Restricted Settings',
+                        text: t('1AllowRestrictedSettings'),
                         onPress: async () => { await devicePolicy.openAppInfo(); },
                       });
                     }
                     buttons.push({
                       text: needsRestricted
-                        ? (language === 'et' ? '2. Ava juurdepääs' : '2. Open Accessibility')
+                        ? (t('2OpenAccessibility'))
                         : info.shortcut,
                       onPress: async () => { await devicePolicy.openAccessibilitySettings(); },
                     });
@@ -1480,7 +1470,7 @@ export default function ClientHome() {
                 <View style={[styles.permCircle, permissionStates.accessibility ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.accessibility ? "checkmark" : "close"} size={28} color="#FFF" />
                 </View>
-                <Text style={styles.permLabel}>{language === 'et' ? 'Juurdepääs' : 'Accessibility'}</Text>
+                <Text style={styles.permLabel}>{t('accessibility')}</Text>
               </TouchableOpacity>
 
               {/* Row 3: Location (auto) + Notification (auto) */}
@@ -1497,7 +1487,7 @@ export default function ClientHome() {
                 <View style={[styles.permCircle, permissionStates.location ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.location ? "checkmark" : "close"} size={28} color="#FFF" />
                 </View>
-                <Text style={styles.permLabel}>{language === 'et' ? 'Asukoht' : 'Location'}</Text>
+                <Text style={styles.permLabel}>{t('location')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.permCard} onPress={async () => {
@@ -1515,7 +1505,7 @@ export default function ClientHome() {
                 <View style={[styles.permCircle, permissionStates.notification ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.notification ? "checkmark" : "close"} size={28} color="#FFF" />
                 </View>
-                <Text style={styles.permLabel}>{language === 'et' ? 'Teavitused' : 'Notifications'}</Text>
+                <Text style={styles.permLabel}>{t('notifications')}</Text>
               </TouchableOpacity>
 
               {/* Row 4: Usage Stats + Notification Listener (new security permissions) */}
@@ -1528,12 +1518,12 @@ export default function ClientHome() {
                   ? `${model} (Android ${ver})\n\nSee luba on vajalik, et rakendus saaks tuvastada, milline rakendus on esiplaanile.\n\n1. Avaneb seadete leht\n2. Leidke "Loan Client"\n3. L\u00fclitage SISSE`
                   : `${model} (Android ${ver})\n\nThis permission is needed so the app can detect which app is in the foreground.\n\n1. Settings page will open\n2. Find "Loan Client"\n3. Toggle ON`;
                 Alert.alert(
-                  language === 'et' ? 'Kasutuse statistika' : 'Usage Stats Access',
+                  t('usageStatsAccess'),
                   instructions,
                   [
-                    { text: language === 'et' ? 'T\u00fchista' : 'Cancel', style: 'cancel' },
+                    { text: t('cancel'), style: 'cancel' },
                     {
-                      text: language === 'et' ? 'Ava seaded' : 'Open Settings',
+                      text: t('openSettings'),
                       onPress: async () => {
                         try {
                           await devicePolicy.requestUsageStatsPermission();
@@ -1553,7 +1543,7 @@ export default function ClientHome() {
                 <View style={[styles.permCircle, permissionStates.usageStats ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.usageStats ? "checkmark" : "close"} size={28} color="#FFF" />
                 </View>
-                <Text style={styles.permLabel}>{language === 'et' ? 'Kasutuse stat.' : 'Usage Stats'}</Text>
+                <Text style={styles.permLabel}>{t('usageStats')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.permCard} onPress={async () => {
@@ -1572,15 +1562,15 @@ export default function ClientHome() {
                     : '\n\nNote: Android 13+ requires "Allow restricted settings" from App Info page before this permission can be enabled.';
                 }
                 const buttons: any[] = [
-                  { text: language === 'et' ? 'T\u00fchista' : 'Cancel', style: 'cancel' },
+                  { text: t('cancel'), style: 'cancel' },
                 ];
                 if (needsRestricted && isSamsung) {
                   buttons.push({
-                    text: language === 'et' ? '1. Ava rak. info' : '1. Open App Info',
+                    text: t('1OpenAppInfo'),
                     onPress: async () => { await devicePolicy.openAppInfo(); },
                   });
                   buttons.push({
-                    text: language === 'et' ? '2. Ava seaded' : '2. Open Settings',
+                    text: t('2OpenSettings'),
                     onPress: async () => {
                       try {
                         await devicePolicy.requestNotificationListenerPermission();
@@ -1594,7 +1584,7 @@ export default function ClientHome() {
                   });
                 } else {
                   buttons.push({
-                    text: language === 'et' ? 'Ava seaded' : 'Open Settings',
+                    text: t('openSettings'),
                     onPress: async () => {
                       try {
                         await devicePolicy.requestNotificationListenerPermission();
@@ -1608,7 +1598,7 @@ export default function ClientHome() {
                   });
                 }
                 Alert.alert(
-                  language === 'et' ? 'Teavituste kuulaja' : 'Notification Listener',
+                  t('notificationListener'),
                   instructions,
                   buttons
                 );
@@ -1618,14 +1608,14 @@ export default function ClientHome() {
                 <View style={[styles.permCircle, permissionStates.notificationListener ? styles.permOk : styles.permBad]}>
                   <Ionicons name={permissionStates.notificationListener ? "checkmark" : "close"} size={28} color="#FFF" />
                 </View>
-                <Text style={styles.permLabel}>{language === 'et' ? 'Teavit. kuulaja' : 'Notif. Listener'}</Text>
+                <Text style={styles.permLabel}>{t('notifListener')}</Text>
               </TouchableOpacity>
             </View>
 
             {/* Summary bar */}
             <View style={styles.permSummary}>
               <Text style={styles.permSummaryText} data-testid="permission-summary-text">
-                {Object.values(permissionStates).filter(Boolean).length}/{Object.keys(permissionStates).length} {language === 'et' ? 'aktiivne' : 'active'}
+                {Object.values(permissionStates).filter(Boolean).length}/{Object.keys(permissionStates).length} {t('active')}
               </Text>
             </View>
           </View>
@@ -1646,11 +1636,11 @@ export default function ClientHome() {
             <View style={styles.protectionBannerContent}>
               <Text style={styles.protectionBannerTitle}>
                 {Object.values(permissionStates).every(Boolean)
-                  ? (language === 'et' ? 'Kaitse aktiivne' : 'Protection Active')
-                  : (language === 'et' ? 'Kaitse mittetäielik' : 'Protection Incomplete')}
+                  ? (t('protectionActive'))
+                  : (t('protectionIncomplete'))}
               </Text>
               <Text style={styles.protectionBannerText}>
-                {Object.values(permissionStates).filter(Boolean).length}/{Object.keys(permissionStates).length} {language === 'et' ? 'aktiivne' : 'active'}
+                {Object.values(permissionStates).filter(Boolean).length}/{Object.keys(permissionStates).length} {t('active')}
               </Text>
             </View>
             <Ionicons name="chevron-down" size={20} color="#94A3B8" />
@@ -1697,10 +1687,10 @@ export default function ClientHome() {
         {/* Loan Card */}
         {(status?.loan_amount ?? 0) > 0 ? (
         <View style={styles.loanCard}>
-          <Text style={styles.loanCardTitle}>{language === 'et' ? 'Laenu andmed' : 'Loan Details'}</Text>
+          <Text style={styles.loanCardTitle}>{t('emiDetails')}</Text>
           <View style={styles.loanDetails}>
             <View style={styles.loanDetailItem}>
-              <Text style={styles.loanDetailLabel}>{language === 'et' ? 'Laenusumma' : 'Loan Amount'}</Text>
+              <Text style={styles.loanDetailLabel}>{t('emiAmount')}</Text>
               <Text style={styles.loanDetailValue}>{formatAmount(status?.loan_amount ?? 0)}</Text>
             </View>
             <View style={styles.loanDetailDivider} />
@@ -1714,10 +1704,10 @@ export default function ClientHome() {
         <View style={styles.allPaidCard} data-testid="all-paid-card">
           <Ionicons name="checkmark-circle" size={48} color="#10B981" />
           <Text style={styles.allPaidTitle}>
-            {language === 'et' ? 'Kõik makstud' : 'All Paid'}
+            {t('allPaid')}
           </Text>
           <Text style={styles.allPaidSubtext}>
-            {language === 'et' ? 'Teil pole aktiivseid laene' : 'You have no active loans'}
+            {t('youHaveNoActiveLoans')}
           </Text>
         </View>
         )}

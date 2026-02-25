@@ -37,7 +37,7 @@ export const ActionButtons = ({
               data-testid="renew-loan-btn"
             >
               <Ionicons name="refresh-circle" size={20} color="#fff" />
-              <Text style={styles.actionButtonText}>{language === 'et' ? 'Uuenda laenu' : 'Renew Loan'}</Text>
+              <Text style={styles.actionButtonText}>{t('renewLoan')}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -47,7 +47,7 @@ export const ActionButtons = ({
               data-testid="setup-loan-btn"
             >
               <Ionicons name="wallet" size={20} color="#fff" />
-              <Text style={styles.actionButtonText}>{language === 'et' ? 'Seadista laen' : 'Setup Loan'}</Text>
+              <Text style={styles.actionButtonText}>{t('setupLoan')}</Text>
             </TouchableOpacity>
           )}
         </>

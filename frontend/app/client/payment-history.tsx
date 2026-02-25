@@ -75,7 +75,7 @@ export default function PaymentHistoryScreen() {
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleDateString(language === 'et' ? 'et-EE' : 'en-GB', {
+    return date.toLocaleDateString(t('engb'), {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
@@ -125,7 +125,7 @@ export default function PaymentHistoryScreen() {
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {language === 'et' ? 'Maksete ajalugu' : 'Payment History'}
+          {t('paymentHistory')}
         </Text>
       </View>
 
@@ -138,7 +138,7 @@ export default function PaymentHistoryScreen() {
         {/* Summary Card */}
         <View style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>
-            {language === 'et' ? 'Laenu ülevaade' : 'Loan Overview'}
+            {t('loanOverview')}
           </Text>
 
           {/* Progress Bar */}
@@ -152,20 +152,20 @@ export default function PaymentHistoryScreen() {
               />
             </View>
             <Text style={styles.progressText}>
-              {progressPercent.toFixed(1)}% {language === 'et' ? 'makstud' : 'paid'}
+              {progressPercent.toFixed(1)}% {t('paid2')}
             </Text>
           </View>
 
           <View style={styles.summaryGrid}>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>
-                {language === 'et' ? 'Laenusumma' : 'Loan Amount'}
+                {t('emiAmount')}
               </Text>
               <Text style={styles.summaryValue}>{formatAmount(data?.loan_amount?.toFixed(2) || '0.00')}</Text>
             </View>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>
-                {language === 'et' ? 'Makstud' : 'Total Paid'}
+                {t('totalPaid')}
               </Text>
               <Text style={[styles.summaryValue, { color: '#10B981' }]}>
                 {formatAmount(data?.total_paid || 0)}
@@ -173,7 +173,7 @@ export default function PaymentHistoryScreen() {
             </View>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>
-                {language === 'et' ? 'Jääk' : 'Outstanding'}
+                {t('outstanding')}
               </Text>
               <Text style={[styles.summaryValue, { color: '#F59E0B' }]}>
                 {formatAmount(data?.outstanding_balance || 0)}
@@ -181,7 +181,7 @@ export default function PaymentHistoryScreen() {
             </View>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>
-                {language === 'et' ? 'Kuumakse' : 'Monthly EMI'}
+                {t('monthlyEmi')}
               </Text>
               <Text style={styles.summaryValue}>{formatAmount(data?.monthly_emi?.toFixed(2) || '0.00')}</Text>
             </View>
@@ -191,7 +191,7 @@ export default function PaymentHistoryScreen() {
             <View style={styles.nextPaymentSection}>
               <Ionicons name="calendar" size={18} color="#3B82F6" />
               <Text style={styles.nextPaymentText}>
-                {language === 'et' ? 'Järgmine makse' : 'Next payment'}: {formatDate(data.next_payment_due)}
+                {t('nextPayment2')}: {formatDate(data.next_payment_due)}
               </Text>
             </View>
           )}
@@ -200,7 +200,7 @@ export default function PaymentHistoryScreen() {
         {/* Payment Timeline */}
         <View style={styles.timelineSection}>
           <Text style={styles.sectionTitle}>
-            {language === 'et' ? 'Maksete ajatelg' : 'Payment Timeline'}
+            {t('paymentTimeline')}
           </Text>
 
           {data?.payments && data.payments.length > 0 ? (
@@ -237,7 +237,7 @@ export default function PaymentHistoryScreen() {
             <View style={styles.emptyContainer}>
               <Ionicons name="receipt-outline" size={48} color="#334155" />
               <Text style={styles.emptyText}>
-                {language === 'et' ? 'Makseid pole veel' : 'No payments yet'}
+                {t('noPaymentsYet')}
               </Text>
             </View>
           )}

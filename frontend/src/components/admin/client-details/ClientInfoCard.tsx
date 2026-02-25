@@ -44,8 +44,8 @@ export const ClientInfoCard = ({
         />
         <Text style={[styles.statusText, client.admin_mode_active ? styles.adminModeText : styles.adminModeOffText]}>
           {client.admin_mode_active
-            ? (language === 'et' ? 'Admin režiim SEES' : 'Admin mode ON')
-            : (language === 'et' ? 'Admin režiim VÄLJAS' : 'Admin mode OFF')}
+            ? (t('adminModeOn'))
+            : (t('adminModeOff'))}
         </Text>
       </View>
     )}
@@ -64,7 +64,7 @@ export const ClientInfoCard = ({
         </>
       ) : (
         <Text style={[styles.regCodeHidden, { color: colors.textMuted }]}>
-          {language === 'et' ? 'Võtit pole veel genereeritud' : 'Key not generated yet'}
+          {t('keyNotGeneratedYet')}
         </Text>
       )}
     </View>
@@ -82,8 +82,8 @@ export const ClientInfoCard = ({
           <Ionicons name="key" size={16} color="#fff" />
           <Text style={styles.generateKeyButtonText}>
             {client.registration_code
-              ? (language === 'et' ? 'Regenereeri võti' : 'Regenerate key')
-              : (language === 'et' ? 'Genereeri võti' : 'Generate key')}
+              ? (t('regenerateKey'))
+              : (t('generateKey'))}
           </Text>
         </>
       )}

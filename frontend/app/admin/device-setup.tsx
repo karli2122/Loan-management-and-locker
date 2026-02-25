@@ -99,7 +99,7 @@ export default function DeviceSetup() {
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.title}>
-          {language === 'et' ? 'Seadme seadistus' : 'Device Setup'}
+          {t('deviceSetup')}
         </Text>
         <View style={styles.placeholder} />
       </View>
@@ -110,28 +110,24 @@ export default function DeviceSetup() {
           <Ionicons name="information-circle" size={24} color="#3B82F6" />
           <View style={styles.infoContent}>
             <Text style={styles.infoTitle}>
-              {language === 'et' ? 'Automaatne seadistus' : 'Automatic Setup'}
+              {t('automaticSetup')}
             </Text>
             <Text style={styles.infoText}>
-              {language === 'et' 
-                ? 'Skannige QR-kood uuel või tehaseseadetega telefonil, et seadistada laenu kaitse automaatselt.'
-                : 'Scan the QR code on a new or factory-reset phone to automatically set up loan protection.'}
+              {t('scanTheQrCodeOnA')}
             </Text>
           </View>
         </View>
 
         {/* Client Selection */}
         <Text style={styles.sectionTitle}>
-          {language === 'et' ? 'Vali klient' : 'Select Client'}
+          {t('selectClient')}
         </Text>
         
         {clients.length === 0 ? (
           <View style={styles.emptyCard}>
             <Ionicons name="checkmark-circle" size={48} color="#10B981" />
             <Text style={styles.emptyText}>
-              {language === 'et' 
-                ? 'Kõik kliendid on registreeritud'
-                : 'All clients are registered'}
+              {t('allClientsAreRegistered')}
             </Text>
           </View>
         ) : (
@@ -156,7 +152,7 @@ export default function DeviceSetup() {
         {selectedClient && (
           <>
             <Text style={styles.sectionTitle}>
-              {language === 'et' ? 'QR-koodi tüüp' : 'QR Code Type'}
+              {t('qrCodeType')}
             </Text>
             <View style={styles.qrTypeContainer}>
               <TouchableOpacity
@@ -165,7 +161,7 @@ export default function DeviceSetup() {
               >
                 <Ionicons name="qr-code" size={20} color={qrType === 'simple' ? '#fff' : '#94A3B8'} />
                 <Text style={[styles.qrTypeText, qrType === 'simple' && styles.qrTypeTextActive]}>
-                  {language === 'et' ? 'Lihtne' : 'Simple'}
+                  {t('simple')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -174,7 +170,7 @@ export default function DeviceSetup() {
               >
                 <Ionicons name="business" size={20} color={qrType === 'enterprise' ? '#fff' : '#94A3B8'} />
                 <Text style={[styles.qrTypeText, qrType === 'enterprise' && styles.qrTypeTextActive]}>
-                  {language === 'et' ? 'Ettevõte' : 'Enterprise'}
+                  {t('enterprise')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -200,22 +196,22 @@ export default function DeviceSetup() {
             {/* Instructions based on QR type */}
             <View style={styles.instructionsCard}>
               <Text style={styles.instructionsTitle}>
-                {language === 'et' ? 'Juhised' : 'Instructions'}
+                {t('instructions')}
               </Text>
               {qrType === 'simple' ? (
                 <View style={styles.instructionsList}>
-                  <Text style={styles.instructionItem}>1. {language === 'et' ? 'Installige Loan Client rakendus telefonile' : 'Install Loan Client app on the phone'}</Text>
-                  <Text style={styles.instructionItem}>2. {language === 'et' ? 'Avage rakendus ja sisestage registreerimiskood' : 'Open the app and enter the registration code'}</Text>
+                  <Text style={styles.instructionItem}>1. {t('installLoanClientAppOnThe')}</Text>
+                  <Text style={styles.instructionItem}>2. {t('openTheAppAndEnterThe')}</Text>
                   <Text style={styles.instructionItem}>3. {language === 'et' ? 'Vajutage "Registreeri seade"' : 'Press "Register Device"'}</Text>
-                  <Text style={styles.instructionItem}>4. {language === 'et' ? 'Lubage administraatori õigused järgmises dialoogis' : 'Grant admin permissions in the next dialog'}</Text>
-                  <Text style={styles.instructionItem}>5. {language === 'et' ? 'Seade on nüüd kaitstud ja lukustatav' : 'Device is now protected and can be locked'}</Text>
+                  <Text style={styles.instructionItem}>4. {t('grantAdminPermissionsInTheNext')}</Text>
+                  <Text style={styles.instructionItem}>5. {t('deviceIsNowProtectedAndCan')}</Text>
                 </View>
               ) : (
                 <View style={styles.instructionsList}>
-                  <Text style={styles.instructionItem}>1. {language === 'et' ? 'Tehke telefonil tehaseseaded' : 'Factory reset the phone'}</Text>
-                  <Text style={styles.instructionItem}>2. {language === 'et' ? 'Tervitusekraanil puudutage 6 korda' : 'On welcome screen, tap 6 times'}</Text>
-                  <Text style={styles.instructionItem}>3. {language === 'et' ? 'Skannige see QR-kood' : 'Scan this QR code'}</Text>
-                  <Text style={styles.instructionItem}>4. {language === 'et' ? 'Seade seadistatakse automaatselt' : 'Device will set up automatically'}</Text>
+                  <Text style={styles.instructionItem}>1. {t('factoryResetThePhone')}</Text>
+                  <Text style={styles.instructionItem}>2. {t('onWelcomeScreenTap6Times')}</Text>
+                  <Text style={styles.instructionItem}>3. {t('scanThisQrCode')}</Text>
+                  <Text style={styles.instructionItem}>4. {t('deviceWillSetUpAutomatically')}</Text>
                 </View>
               )}
             </View>
@@ -224,7 +220,7 @@ export default function DeviceSetup() {
             <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
               <Ionicons name="share-outline" size={20} color="#fff" />
               <Text style={styles.shareButtonText}>
-                {language === 'et' ? 'Jaga juhiseid' : 'Share Instructions'}
+                {t('shareInstructions')}
               </Text>
             </TouchableOpacity>
           </>

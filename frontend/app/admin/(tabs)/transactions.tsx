@@ -30,7 +30,7 @@ interface Transaction {
 
 export default function TransactionsTab() {
   const router = useRouter();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const { formatAmount, currencySymbol } = useCurrency();
   const { colors } = useTheme();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -70,7 +70,7 @@ export default function TransactionsTab() {
             amount: loanAmount,
             date: client.loan_start_date || client.created_at || new Date().toISOString(),
             type: 'disbursement',
-            notes: language === 'et' ? 'Laenu väljastamine' : 'Loan disbursement',
+            notes: t('loanDisbursement'),
           });
         }
 
@@ -127,7 +127,7 @@ export default function TransactionsTab() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString(language === 'et' ? 'et-EE' : 'en-US', {
+    return date.toLocaleDateString(t('enus'), {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -173,8 +173,8 @@ export default function TransactionsTab() {
               <View style={[styles.typeBadge, isDisbursement ? styles.disbursementBadge : styles.paymentBadge]}>
                 <Text style={styles.typeBadgeText}>
                   {isDisbursement 
-                    ? (language === 'et' ? 'Väljastus' : 'Disbursed') 
-                    : (language === 'et' ? 'Makse' : 'Payment')}
+                    ? (t('disbursed')) 
+                    : (t('payment'))}
                 </Text>
               </View>
             </View>
@@ -201,7 +201,7 @@ export default function TransactionsTab() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {language === 'et' ? 'Tehingud' : 'Transactions'}
+          {t('transactions')}
         </Text>
         <TouchableOpacity
           style={styles.filterButton}
@@ -218,7 +218,7 @@ export default function TransactionsTab() {
           onPress={() => setFilter('all')}
         >
           <Text style={[styles.filterTabText, { color: colors.textMuted }, filter === 'all' && styles.filterTabTextActive]}>
-            {language === 'et' ? 'Kõik' : 'All'}
+            {t('all')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -226,7 +226,7 @@ export default function TransactionsTab() {
           onPress={() => setFilter('disbursement')}
         >
           <Text style={[styles.filterTabText, { color: colors.textMuted }, filter === 'disbursement' && styles.filterTabTextActive]}>
-            {language === 'et' ? 'Väljastused' : 'Disbursements'}
+            {t('disbursements')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -234,7 +234,7 @@ export default function TransactionsTab() {
           onPress={() => setFilter('payment')}
         >
           <Text style={[styles.filterTabText, { color: colors.textMuted }, filter === 'payment' && styles.filterTabTextActive]}>
-            {language === 'et' ? 'Maksed' : 'Payments'}
+            {t('payments')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -287,7 +287,7 @@ export default function TransactionsTab() {
           <View style={styles.emptyContainer}>
             <Ionicons name="receipt-outline" size={64} color={colors.textMuted} />
             <Text style={[styles.emptyText, { color: colors.text }]}>
-              {language === 'et' ? 'Tehinguid ei leitud' : 'No transactions found'}
+              {t('noTransactionsFound')}
             </Text>
           </View>
         }
