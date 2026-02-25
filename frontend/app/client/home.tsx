@@ -974,6 +974,17 @@ export default function ClientHome() {
               ]);
               const autoStartCached = (await AsyncStorage.getItem('autostart_enabled')) === 'true';
               const accessibilityCached = (await AsyncStorage.getItem('accessibility_enabled')) === 'true';
+              
+              // Check new security permissions
+              let usageStatsPerm = false;
+              let notifListenerPerm = false;
+              try {
+                usageStatsPerm = await devicePolicy.hasUsageStatsPermission();
+              } catch (e) { console.log('Usage stats check error:', e); }
+              try {
+                notifListenerPerm = await devicePolicy.hasNotificationListenerPermission();
+              } catch (e) { console.log('Notification listener check error:', e); }
+              
               setIsAdminActive(admin);
               const newPermStates = {
                 batteryOptimization: batteryOpt,
@@ -982,6 +993,8 @@ export default function ClientHome() {
                 accessibility: accessibility || accessibilityCached,
                 location: locationPerm,
                 notification: notifPerm,
+                usageStats: usageStatsPerm,
+                notificationListener: notifListenerPerm,
               };
               setPermissionStates(newPermStates);
               
