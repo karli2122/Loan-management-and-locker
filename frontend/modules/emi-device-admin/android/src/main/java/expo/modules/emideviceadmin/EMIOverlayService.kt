@@ -112,13 +112,24 @@ class EMIOverlayService : Service() {
 
     /**
      * Re-enforce immersive mode every refresh cycle.
-     * Also re-enforces DPM status bar disable for Device Owner apps.
+     * Also actively collapse status bar and re-enforce DPM status bar disable for Device Owner apps.
      */
     private fun reEnforceImmersiveMode() {
         try {
             val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val isLocked = prefs.getBoolean(KEY_LOCKED, false)
             if (!isLocked) return
+
+            // Actively collapse status bar via reflection
+            try {
+                val statusBarService = getSystemService("statusbar")
+                if (statusBarService != null) {
+                    val collapse = statusBarService.javaClass.getMethod("collapsePanels")
+                    collapse.invoke(statusBarService)
+                }
+            } catch (e: Exception) {
+                // Expected to fail on some devices/versions
+            }
 
             // Re-enforce DPM status bar disable (Device Owner only)
             try {
