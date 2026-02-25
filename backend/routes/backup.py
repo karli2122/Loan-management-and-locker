@@ -3,7 +3,7 @@ import json
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Query
 from database import db
-from routes.auth import get_admin_id_from_token
+from utils.auth import get_admin_id_from_token
 
 router = APIRouter(prefix="/api/backup", tags=["backup"])
 
