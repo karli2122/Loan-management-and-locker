@@ -1439,9 +1439,9 @@ export default function AdminSettings() {
           </View>
 
           {[
-            { id: 'starter', icon: 'rocket-outline' as const, price: 29, clients: 50, features: ['basicLoanMgmt', 'deviceLockUnlock', 'oneAdmin'] },
-            { id: 'business', icon: 'business-outline' as const, price: 79, clients: 200, features: ['autoLock', 'paymentReminders', 'reportsGps', 'threeAdmins'], popular: true },
-            { id: 'enterprise', icon: 'diamond-outline' as const, price: 199, clients: 1000, features: ['priceLookup', 'creditScoring', 'bankOcr', 'auditLog', 'unlimitedAdmins'] },
+            { id: 'starter', icon: 'rocket-outline' as const, price: 29, clients: 20, features: ['basicLoanMgmt', 'oneAdmin', 'paymentTracking'] },
+            { id: 'business', icon: 'business-outline' as const, price: 79, clients: 200, features: ['deviceLockUnlock', 'autoLock', 'paymentReminders', 'reportsGps', 'bankOcr', 'businessManagement', 'threeAdmins'], popular: true },
+            { id: 'enterprise', icon: 'diamond-outline' as const, price: 199, clients: 1000, features: ['allBusinessFeatures', 'deviceOwnerMode', 'customLauncher', 'creditScoring', 'auditLog', 'unlimitedAdmins', 'prioritySupport'] },
           ].map((plan) => {
             const isActive = selectedPlan === plan.id;
             const isPopular = 'popular' in plan && plan.popular;
