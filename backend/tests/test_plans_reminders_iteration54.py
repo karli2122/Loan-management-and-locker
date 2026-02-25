@@ -360,6 +360,7 @@ class TestDeviceCodeGeneration:
         client_data = {
             "name": f"{TEST_PREFIX}code_gen_{uuid.uuid4().hex[:8]}",
             "phone": "+9876543210",
+            "email": "code-gen-test@example.com",  # Required field
         }
         response = requests.post(
             f"{BASE_URL}/api/clients",
@@ -369,6 +370,8 @@ class TestDeviceCodeGeneration:
         if response.status_code == 200:
             cls.test_client_id = response.json().get("id")
             print(f"Created test client for code gen: {cls.test_client_id}")
+        else:
+            print(f"Failed to create test client for code gen: {response.status_code} - {response.text}")
     
     @classmethod
     def teardown_class(cls):
