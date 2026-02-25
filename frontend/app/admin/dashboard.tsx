@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { useCurrency } from '../../src/context/CurrencyContext';
+import { LanguagePicker } from '../../src/components/LanguagePicker';
 import API_URL from '../../src/constants/api';
 
 
@@ -115,20 +116,7 @@ export default function Dashboard() {
           <Text style={styles.username}>{username || 'Admin'}</Text>
         </View>
         <View style={styles.headerRight}>
-          <View style={styles.langSwitcher}>
-            <TouchableOpacity
-              style={[styles.langButton, language === 'et' && styles.langButtonActive]}
-              onPress={() => setLanguage('et')}
-            >
-              <Text style={[styles.langText, language === 'et' && styles.langTextActive]}>ET</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.langButton, language === 'en' && styles.langButtonActive]}
-              onPress={() => setLanguage('en')}
-            >
-              <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>EN</Text>
-            </TouchableOpacity>
-          </View>
+          <LanguagePicker compact colors={colors} />
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={24} color="#EF4444" />
           </TouchableOpacity>
