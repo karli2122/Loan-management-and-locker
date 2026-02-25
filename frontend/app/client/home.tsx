@@ -1517,6 +1517,109 @@ export default function ClientHome() {
                 </View>
                 <Text style={styles.permLabel}>{language === 'et' ? 'Teavitused' : 'Notifications'}</Text>
               </TouchableOpacity>
+
+              {/* Row 4: Usage Stats + Notification Listener (new security permissions) */}
+              <TouchableOpacity style={styles.permCard} onPress={async () => {
+                if (permissionStates.usageStats) return;
+                const dev = devicePolicy.getDeviceInfo();
+                const model = dev?.model || 'Device';
+                const ver = dev?.androidVersion || '';
+                const instructions = language === 'et'
+                  ? `${model} (Android ${ver})\n\nSee luba on vajalik, et rakendus saaks tuvastada, milline rakendus on esiplaanile.\n\n1. Avaneb seadete leht\n2. Leidke "Loan Client"\n3. L\u00fclitage SISSE`
+                  : `${model} (Android ${ver})\n\nThis permission is needed so the app can detect which app is in the foreground.\n\n1. Settings page will open\n2. Find "Loan Client"\n3. Toggle ON`;
+                Alert.alert(
+                  language === 'et' ? 'Kasutuse statistika' : 'Usage Stats Access',
+                  instructions,
+                  [
+                    { text: language === 'et' ? 'T\u00fchista' : 'Cancel', style: 'cancel' },
+                    {
+                      text: language === 'et' ? 'Ava seaded' : 'Open Settings',
+                      onPress: async () => {
+                        try {
+                          await devicePolicy.requestUsageStatsPermission();
+                          await new Promise(r => setTimeout(r, 2000));
+                          const granted = await devicePolicy.hasUsageStatsPermission();
+                          if (granted) setPermissionStates(prev => ({ ...prev, usageStats: true }));
+                        } catch (e) {
+                          console.log('Usage stats permission error:', e);
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+              data-testid="perm-usage-stats-card"
+              >
+                <View style={[styles.permCircle, permissionStates.usageStats ? styles.permOk : styles.permBad]}>
+                  <Ionicons name={permissionStates.usageStats ? "checkmark" : "close"} size={28} color="#FFF" />
+                </View>
+                <Text style={styles.permLabel}>{language === 'et' ? 'Kasutuse stat.' : 'Usage Stats'}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.permCard} onPress={async () => {
+                if (permissionStates.notificationListener) return;
+                const dev = devicePolicy.getDeviceInfo();
+                const model = dev?.model || 'Device';
+                const ver = dev?.androidVersion || '';
+                const isSamsung = (dev?.manufacturer || '').toLowerCase().includes('samsung');
+                const needsRestricted = dev.sdkVersion >= 33;
+                let instructions = language === 'et'
+                  ? `${model} (Android ${ver})\n\nSee luba on vajalik, et rakendus saaks blokeerida t\u00f5kestusteatisi.\n\n1. Avaneb seadete leht\n2. Leidke "Loan Client"\n3. L\u00fclitage SISSE`
+                  : `${model} (Android ${ver})\n\nThis permission is needed so the app can block interruption notifications.\n\n1. Settings page will open\n2. Find "Loan Client"\n3. Toggle ON`;
+                if (needsRestricted) {
+                  instructions += language === 'et'
+                    ? '\n\nNB: Android 13+ n\u00f5uab "Piiratud seadete" lubamist rakenduse info lehel enne selle loa aktiveerimist.'
+                    : '\n\nNote: Android 13+ requires "Allow restricted settings" from App Info page before this permission can be enabled.';
+                }
+                const buttons: any[] = [
+                  { text: language === 'et' ? 'T\u00fchista' : 'Cancel', style: 'cancel' },
+                ];
+                if (needsRestricted && isSamsung) {
+                  buttons.push({
+                    text: language === 'et' ? '1. Ava rak. info' : '1. Open App Info',
+                    onPress: async () => { await devicePolicy.openAppInfo(); },
+                  });
+                  buttons.push({
+                    text: language === 'et' ? '2. Ava seaded' : '2. Open Settings',
+                    onPress: async () => {
+                      try {
+                        await devicePolicy.requestNotificationListenerPermission();
+                        await new Promise(r => setTimeout(r, 2000));
+                        const granted = await devicePolicy.hasNotificationListenerPermission();
+                        if (granted) setPermissionStates(prev => ({ ...prev, notificationListener: true }));
+                      } catch (e) {
+                        console.log('Notification listener permission error:', e);
+                      }
+                    },
+                  });
+                } else {
+                  buttons.push({
+                    text: language === 'et' ? 'Ava seaded' : 'Open Settings',
+                    onPress: async () => {
+                      try {
+                        await devicePolicy.requestNotificationListenerPermission();
+                        await new Promise(r => setTimeout(r, 2000));
+                        const granted = await devicePolicy.hasNotificationListenerPermission();
+                        if (granted) setPermissionStates(prev => ({ ...prev, notificationListener: true }));
+                      } catch (e) {
+                        console.log('Notification listener permission error:', e);
+                      }
+                    },
+                  });
+                }
+                Alert.alert(
+                  language === 'et' ? 'Teavituste kuulaja' : 'Notification Listener',
+                  instructions,
+                  buttons
+                );
+              }}
+              data-testid="perm-notif-listener-card"
+              >
+                <View style={[styles.permCircle, permissionStates.notificationListener ? styles.permOk : styles.permBad]}>
+                  <Ionicons name={permissionStates.notificationListener ? "checkmark" : "close"} size={28} color="#FFF" />
+                </View>
+                <Text style={styles.permLabel}>{language === 'et' ? 'Teavit. kuulaja' : 'Notif. Listener'}</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Summary bar */}
