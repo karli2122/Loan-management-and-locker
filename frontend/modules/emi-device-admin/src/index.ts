@@ -577,6 +577,38 @@ export async function cancelAutoRestart(): Promise<string> {
   }
 }
 
+// ===================== CUSTOM LAUNCHER (Device Owner only) =====================
+
+export async function setAsDefaultLauncher(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.setAsDefaultLauncher();
+  } catch (e) {
+    console.log('setAsDefaultLauncher error:', e);
+    return 'error';
+  }
+}
+
+export async function clearDefaultLauncher(): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.clearDefaultLauncher();
+  } catch (e) {
+    console.log('clearDefaultLauncher error:', e);
+    return 'error';
+  }
+}
+
+export async function setLockTaskPackages(packages: string[]): Promise<string> {
+  if (!isModuleAvailable()) return 'module_not_available';
+  try {
+    return await EMIDeviceAdminModule.setLockTaskPackages(packages);
+  } catch (e) {
+    console.log('setLockTaskPackages error:', e);
+    return 'error';
+  }
+}
+
 // ===================== ACCESSIBILITY (DIRECT) =====================
 
 export async function openAccessibilitySettingsDirect(): Promise<string> {
