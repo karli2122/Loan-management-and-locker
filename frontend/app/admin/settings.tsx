@@ -835,29 +835,33 @@ export default function AdminSettings() {
 
     setBackupInProgress(true);
     try {
-      // TODO: Implement actual backup to Google Drive
-      // Current implementation is a simulation for UI/UX testing
-      // Real implementation should:
-      // 1. Fetch all data from the backend (clients, loans, payments, etc.)
-      // 2. Format data as JSON or CSV
-      // 3. Upload to Google Drive using authenticated API calls
-      // 4. Handle errors and retry logic
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const token = await AsyncStorage.getItem('admin_token');
+      if (!token) { await handleAuthError(); return; }
       
+      const response = await fetch(`${API_URL}/api/backup/create?admin_token=${token}`, {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Backup failed');
+      }
+      
+      const data = await response.json();
       const now = new Date().toISOString();
       await AsyncStorage.setItem('last_backup_date', now);
       setLastBackupDate(now);
       
       Alert.alert(
-        t('backupSuccessfulDemo'),
+        t('success'),
         language === 'et' 
-          ? 'Andmed on varundatud Google Drive\'i (simulatsioon)' 
-          : 'Data has been backed up to Google Drive (simulation)'
+          ? `Varukoopia loodud!\nKliendid: ${data.stats.clients}\nLaenud: ${data.stats.loans}\nMaksed: ${data.stats.payments}` 
+          : `Backup created!\nClients: ${data.stats.clients}\nLoans: ${data.stats.loans}\nPayments: ${data.stats.payments}`
       );
-    } catch (error) {
+    } catch (error: any) {
       Alert.alert(
         t('error'),
-        t('backupFailed')
+        error.message || t('backupFailed')
       );
     } finally {
       setBackupInProgress(false);
