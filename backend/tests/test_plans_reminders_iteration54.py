@@ -434,13 +434,14 @@ class TestDeviceStatus:
         client_data = {
             "name": f"{TEST_PREFIX}device_status_{uuid.uuid4().hex[:8]}",
             "phone": "+1112223333",
+            "email": "device-status-test@example.com",  # Required field
         }
         create_resp = requests.post(
             f"{BASE_URL}/api/clients",
             json=client_data,
             params={"admin_token": TestAdminAuth.admin_token}
         )
-        assert create_resp.status_code == 200
+        assert create_resp.status_code == 200, f"Client creation failed: {create_resp.text}"
         client_id = create_resp.json()["id"]
         
         try:
