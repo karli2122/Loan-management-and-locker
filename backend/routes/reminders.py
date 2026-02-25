@@ -276,3 +276,237 @@ async def send_single_reminder(client_id: str, admin_token: str = Query(...)):
         await db.reminders.insert_one(reminder.dict())
     
     return {"success": success, "message": body if success else "Failed to send notification"}
+
+
+async def send_email_reminder(to_email: str, subject: str, html_content: str) -> bool:
+    """Send email reminder via Resend."""
+    if not RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY not configured, skipping email")
+        return False
+    try:
+        params = {
+            "from": SENDER_EMAIL,
+            "to": [to_email],
+            "subject": subject,
+            "html": html_content,
+        }
+        await asyncio.to_thread(resend.Emails.send, params)
+        return True
+    except Exception as e:
+        logger.error(f"Email send failed: {e}")
+        return False
+
+
+async def send_telegram_message(chat_id: str, message: str) -> bool:
+    """Send Telegram message via Bot API."""
+    if not TELEGRAM_TOKEN:
+        logger.warning("TELEGRAM_TOKEN not configured, skipping Telegram")
+        return False
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(url, json={
+                "chat_id": chat_id,
+                "text": message,
+                "parse_mode": "HTML",
+            })
+            return resp.status_code == 200
+    except Exception as e:
+        logger.error(f"Telegram send failed: {e}")
+        return False
+
+
+def build_reminder_email(client_name: str, amount: float, due_date: str, days_overdue: int = 0) -> str:
+    """Build HTML email for payment reminder."""
+    if days_overdue > 0:
+        subject_line = f"Payment Overdue - {days_overdue} days"
+        status_color = "#EF4444"
+        status_text = f"Your payment is <strong>{days_overdue} days overdue</strong>."
+    else:
+        subject_line = "Payment Reminder"
+        status_color = "#F59E0B"
+        status_text = f"Your payment is due on <strong>{due_date}</strong>."
+
+    return f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #1E3A5F, #2563EB); padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">PayLock Pro</h1>
+      </div>
+      <div style="background: #f8fafc; padding: 24px; border: 1px solid #e2e8f0;">
+        <p style="font-size: 16px; color: #334155;">Dear {client_name},</p>
+        <div style="background: white; border-left: 4px solid {status_color}; padding: 16px; border-radius: 8px; margin: 16px 0;">
+          <p style="margin: 0; color: #334155;">{status_text}</p>
+          <p style="margin: 8px 0 0; font-size: 24px; font-weight: bold; color: #1E3A5F;">Amount: €{amount:.2f}</p>
+        </div>
+        <p style="color: #64748b; font-size: 14px;">Please make your payment promptly to avoid service interruption.</p>
+      </div>
+      <div style="background: #1E3A5F; padding: 16px; border-radius: 0 0 12px 12px; text-align: center;">
+        <p style="color: #94a3b8; font-size: 12px; margin: 0;">PayLock Pro - Loan Management</p>
+      </div>
+    </div>
+    """
+
+
+@router.post("/reminders/send-email/{client_id}")
+async def send_email_to_client(
+    client_id: str,
+    admin_token: str = Query(...),
+    custom_message: str = Body(default=""),
+):
+    """Send email reminder to a specific client."""
+    admin_id = await get_admin_id_from_token(admin_token)
+
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    if client.get("admin_id") != admin_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    email = client.get("email")
+    if not email:
+        return {"success": False, "message": "Client has no email address"}
+
+    amount = client.get("monthly_emi", 0) or client.get("outstanding_balance", 0)
+    due_date = ""
+    npd = client.get("next_payment_due")
+    if isinstance(npd, datetime):
+        due_date = npd.strftime("%d.%m.%Y")
+    elif npd:
+        due_date = str(npd)
+
+    days_overdue = client.get("days_overdue", 0)
+    html = build_reminder_email(client.get("name", "Client"), amount, due_date, days_overdue)
+    subject = f"Payment {'Overdue' if days_overdue > 0 else 'Reminder'} - PayLock Pro"
+
+    success = await send_email_reminder(email, subject, html)
+
+    if success:
+        reminder = Reminder(
+            client_id=client_id,
+            reminder_type="email",
+            scheduled_date=datetime.utcnow(),
+            sent=True,
+            sent_at=datetime.utcnow(),
+            message=f"Email sent to {email}",
+            admin_id=admin_id,
+        )
+        await db.reminders.insert_one(reminder.dict())
+
+    return {"success": success, "message": f"Email {'sent to ' + email if success else 'failed'}"}
+
+
+@router.post("/reminders/send-telegram/{client_id}")
+async def send_telegram_to_client(
+    client_id: str,
+    admin_token: str = Query(...),
+):
+    """Send Telegram reminder to a specific client."""
+    admin_id = await get_admin_id_from_token(admin_token)
+
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    if client.get("admin_id") != admin_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    telegram_id = client.get("telegram_chat_id")
+    if not telegram_id:
+        return {"success": False, "message": "Client has no Telegram chat ID"}
+
+    amount = client.get("monthly_emi", 0) or client.get("outstanding_balance", 0)
+    days_overdue = client.get("days_overdue", 0)
+    name = client.get("name", "Client")
+
+    if days_overdue > 0:
+        msg = f"<b>Payment Overdue</b>\n\nDear {name}, your payment of <b>€{amount:.2f}</b> is {days_overdue} days overdue.\n\nPlease pay promptly to avoid service interruption.\n\n— PayLock Pro"
+    else:
+        msg = f"<b>Payment Reminder</b>\n\nDear {name}, your payment of <b>€{amount:.2f}</b> is due soon.\n\nPlease ensure timely payment.\n\n— PayLock Pro"
+
+    success = await send_telegram_message(telegram_id, msg)
+
+    if success:
+        reminder = Reminder(
+            client_id=client_id,
+            reminder_type="telegram",
+            scheduled_date=datetime.utcnow(),
+            sent=True,
+            sent_at=datetime.utcnow(),
+            message=f"Telegram sent to {telegram_id}",
+            admin_id=admin_id,
+        )
+        await db.reminders.insert_one(reminder.dict())
+
+    return {"success": success, "message": "Telegram message sent" if success else "Failed"}
+
+
+@router.post("/reminders/send-bulk-email")
+async def send_bulk_email_reminders(admin_token: str = Query(...)):
+    """Send email reminders to all clients with email and pending payments."""
+    admin_id = await get_admin_id_from_token(admin_token)
+
+    clients = await db.clients.find({
+        "admin_id": admin_id,
+        "outstanding_balance": {"$gt": 0},
+        "email": {"$exists": True, "$ne": None, "$ne": ""},
+        "is_deleted": {"$ne": True},
+    }, {"_id": 0}).to_list(1000)
+
+    sent = 0
+    failed = 0
+    for client in clients:
+        amount = client.get("monthly_emi", 0) or client.get("outstanding_balance", 0)
+        due_date = ""
+        npd = client.get("next_payment_due")
+        if isinstance(npd, datetime):
+            due_date = npd.strftime("%d.%m.%Y")
+        days_overdue = client.get("days_overdue", 0)
+        html = build_reminder_email(client.get("name", "Client"), amount, due_date, days_overdue)
+        subject = f"Payment {'Overdue' if days_overdue > 0 else 'Reminder'} - PayLock Pro"
+
+        ok = await send_email_reminder(client["email"], subject, html)
+        if ok:
+            sent += 1
+        else:
+            failed += 1
+
+    return {"sent": sent, "failed": failed, "total": len(clients)}
+
+
+@router.post("/reminders/send-bulk-telegram")
+async def send_bulk_telegram_reminders(admin_token: str = Query(...)):
+    """Send Telegram reminders to all clients with Telegram IDs and pending payments."""
+    admin_id = await get_admin_id_from_token(admin_token)
+
+    clients = await db.clients.find({
+        "admin_id": admin_id,
+        "outstanding_balance": {"$gt": 0},
+        "telegram_chat_id": {"$exists": True, "$ne": None, "$ne": ""},
+        "is_deleted": {"$ne": True},
+    }, {"_id": 0}).to_list(1000)
+
+    sent = 0
+    failed = 0
+    for client in clients:
+        amount = client.get("monthly_emi", 0) or client.get("outstanding_balance", 0)
+        days_overdue = client.get("days_overdue", 0)
+        name = client.get("name", "Client")
+        msg = f"<b>Payment {'Overdue' if days_overdue > 0 else 'Reminder'}</b>\n\nDear {name}, your payment of <b>€{amount:.2f}</b> is {'%d days overdue' % days_overdue if days_overdue > 0 else 'due soon'}.\n\n— PayLock Pro"
+        ok = await send_telegram_message(client["telegram_chat_id"], msg)
+        if ok:
+            sent += 1
+        else:
+            failed += 1
+
+    return {"sent": sent, "failed": failed, "total": len(clients)}
+
+
+@router.get("/reminders/config")
+async def get_reminder_config(admin_token: str = Query(...)):
+    """Get reminder configuration status."""
+    await get_admin_id_from_token(admin_token)
+    return {
+        "email_configured": bool(RESEND_API_KEY),
+        "telegram_configured": bool(TELEGRAM_TOKEN),
+        "push_configured": True,
+        "sender_email": SENDER_EMAIL if RESEND_API_KEY else None,
+    }
