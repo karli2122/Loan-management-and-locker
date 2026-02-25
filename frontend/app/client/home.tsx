@@ -1006,7 +1006,7 @@ export default function ClientHome() {
       notifResponseSub.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId, freshRegistration]);
+  }, [clientId]);
 
   // Initialize protection and check for reboot (tamper detection disabled to prevent crashes)
   // Waits for main initialization to complete before accessing native modules
