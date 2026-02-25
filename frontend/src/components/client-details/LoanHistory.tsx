@@ -83,7 +83,9 @@ export const LoanHistory = ({
     )}
   </View>
   );
-}; = ({
+};
+
+const LoanHistoryList = ({
   loanHistory, loanHistorySearch, language, colors,
 }: {
   loanHistory: LoanHistoryItem[];
@@ -92,6 +94,7 @@ export const LoanHistory = ({
   colors: any;
 }) => {
   const { formatAmount } = useCurrency();
+  const { t } = useLanguage();
   const query = loanHistorySearch.toLowerCase().trim();
   const filtered = query
     ? loanHistory.filter((loan) => {
