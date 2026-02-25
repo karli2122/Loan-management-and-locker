@@ -977,17 +977,17 @@ export default function AdminSettings() {
             </View>
           </View>
 
-          {/* Credit Balance Display */}
-          <View style={[styles.creditCard, { backgroundColor: colors.surface }]} data-testid="credit-balance-card">
+          {/* Subscription Plan Display */}
+          <View style={[styles.creditCard, { backgroundColor: colors.surface }]} data-testid="plan-status-card">
             <View style={styles.creditIconContainer}>
-              <Ionicons name="ticket" size={24} color={colors.warning} />
+              <Ionicons name="diamond" size={24} color={colors.primary} />
             </View>
             <View style={styles.creditInfo}>
               <Text style={[styles.creditLabel, { color: colors.textMuted }]}>
-                {t('creditBalance')}
+                {t('currentPlan')}
               </Text>
               <Text style={[styles.creditValue, { color: colors.text }]}>
-                {isSuperAdmin ? '∞' : userCredits}
+                {isSuperAdmin ? 'Custom' : (currentSubscription || 'starter').charAt(0).toUpperCase() + (currentSubscription || 'starter').slice(1)}
               </Text>
             </View>
             {isSuperAdmin && (
@@ -999,14 +999,6 @@ export default function AdminSettings() {
               </View>
             )}
           </View>
-          {!isSuperAdmin && userCredits <= 2 && (
-            <View style={styles.lowCreditWarning}>
-              <Ionicons name="warning" size={16} color={colors.warning} />
-              <Text style={[styles.lowCreditText, { color: colors.warning }]}>
-                {t('lowCreditsContactSuperadminForMore')}
-              </Text>
-            </View>
-          )}
 
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: colors.surface }]}
