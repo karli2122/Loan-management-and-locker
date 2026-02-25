@@ -324,8 +324,6 @@ export default function ClientDetails() {
             setActionLoading(true);
             try {
               const adminQuery = await buildAdminTokenQuery();
-              const uninstallRes = await fetch(`${API_URL}/api/clients/${id}/allow-uninstall${adminQuery}`, { method: 'POST' });
-              if (!uninstallRes.ok) { const err = await uninstallRes.json(); throw new Error(err.detail || 'Failed to allow uninstall'); }
               const deleteRes = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`, { method: 'DELETE' });
               if (!deleteRes.ok) { const err = await deleteRes.json(); throw new Error(err.detail || 'Failed to delete client'); }
               Alert.alert(t('success'), t('clientDeletedSuccess'));
