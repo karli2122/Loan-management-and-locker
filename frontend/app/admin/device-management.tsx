@@ -166,6 +166,203 @@ export default function DeviceManagement() {
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
         </View>
+
+        {/* Business Management Section */}
+        <TouchableOpacity
+          style={styles.businessMgmtHeader}
+          onPress={() => setShowBusinessMgmt(!showBusinessMgmt)}
+          data-testid="business-management-toggle"
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={[styles.actionIcon, { backgroundColor: '#F97316' }]}>
+              <Ionicons name="business" size={24} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sectionTitle} data-testid="business-management-title">
+                {language === 'et' ? 'Ärihaldus' : 'Business Management'}
+              </Text>
+              <Text style={{ fontSize: 12, color: '#64748B' }}>
+                {language === 'et' ? 'Device Owner kiosk-režiimi aktiveerimine' : 'Device Owner kiosk mode activation'}
+              </Text>
+            </View>
+          </View>
+          <Ionicons name={showBusinessMgmt ? "chevron-up" : "chevron-down"} size={20} color="#64748B" />
+        </TouchableOpacity>
+
+        {showBusinessMgmt && (
+          <View style={styles.businessMgmtContent} data-testid="business-management-content">
+            {/* Mode Comparison */}
+            <View style={styles.modeCompareContainer}>
+              <View style={styles.modeCard}>
+                <View style={[styles.modeBadge, { backgroundColor: '#2563EB20' }]}>
+                  <Ionicons name="shield-half" size={20} color="#2563EB" />
+                </View>
+                <Text style={styles.modeTitle}>Device Admin</Text>
+                <Text style={styles.modeDesc}>
+                  {language === 'et' ? '8-kohaline kood\nStandardne lukustus\nKasutaja saab keelata' : '8-digit code\nStandard lock\nUser can disable'}
+                </Text>
+              </View>
+              <View style={styles.modeCard}>
+                <View style={[styles.modeBadge, { backgroundColor: '#F9731620' }]}>
+                  <Ionicons name="shield-checkmark" size={20} color="#F97316" />
+                </View>
+                <Text style={[styles.modeTitle, { color: '#F97316' }]}>Device Owner</Text>
+                <Text style={styles.modeDesc}>
+                  {language === 'et' ? '9-kohaline kood\nTäielik kiosk-režiim\nEi saa keelata' : '9-digit code\nFull kiosk mode\nCannot be disabled'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Activation Method Selector */}
+            <Text style={[styles.sectionTitle, { marginTop: 16 }]}>
+              {language === 'et' ? 'Aktiveerimismeetod' : 'Activation Method'}
+            </Text>
+            <View style={styles.methodSelector}>
+              {(['adb', 'qr', 'nfc'] as ActivationMethod[]).map((method) => (
+                <TouchableOpacity
+                  key={method}
+                  style={[
+                    styles.methodButton,
+                    activationMethod === method && styles.methodButtonActive,
+                  ]}
+                  onPress={() => setActivationMethod(method)}
+                  data-testid={`method-${method}`}
+                >
+                  <Ionicons
+                    name={method === 'adb' ? 'terminal' : method === 'qr' ? 'qr-code' : 'bluetooth'}
+                    size={18}
+                    color={activationMethod === method ? '#fff' : '#94A3B8'}
+                  />
+                  <Text style={[
+                    styles.methodButtonText,
+                    activationMethod === method && styles.methodButtonTextActive,
+                  ]}>
+                    {method === 'adb' ? 'ADB' : method === 'qr' ? 'QR Code' : 'NFC'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Instructions based on selected method */}
+            {activationMethod === 'adb' && (
+              <View style={styles.instructionBox}>
+                <View style={styles.instructionHeader}>
+                  <Ionicons name="terminal" size={20} color="#F97316" />
+                  <Text style={styles.instructionTitle}>
+                    {language === 'et' ? 'ADB kaudu aktiveerimine' : 'ADB Activation'}
+                  </Text>
+                </View>
+                <Text style={styles.instructionSubtitle}>
+                  {language === 'et' ? 'Eeltingimused:' : 'Prerequisites:'}
+                </Text>
+                <Text style={styles.instructionStep}>
+                  {language === 'et'
+                    ? '1. Installige ADB (Android Debug Bridge) arvutisse\n2. Lubage seadmes USB silumine (Seaded > Arendaja valikud)\n3. Ühendage seade USB kaabli abil arvutiga'
+                    : '1. Install ADB (Android Debug Bridge) on your computer\n2. Enable USB Debugging on the device (Settings > Developer Options)\n3. Connect the device to your computer via USB cable'}
+                </Text>
+                <Text style={[styles.instructionSubtitle, { marginTop: 12 }]}>
+                  {language === 'et' ? 'Sammud:' : 'Steps:'}
+                </Text>
+                <Text style={styles.instructionStep}>
+                  {language === 'et'
+                    ? '1. Tehaseseadistage seade (Seaded > Üldine haldus > Lähtesta)\n2. Seadistuse ajal ärge lisage Google kontot\n3. Lubage uuesti USB silumine\n4. Käivitage terminal ja sisestage:'
+                    : '1. Factory reset the device (Settings > General Management > Reset)\n2. During setup, do NOT add a Google account\n3. Enable USB Debugging again\n4. Open terminal and run:'}
+                </Text>
+
+                <View style={styles.codeBlock}>
+                  <Text style={styles.codeText} selectable>
+                    adb shell dpm set-device-owner{'\n'}com.paylock.client/.DeviceAdminReceiver
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.copyButton}
+                    onPress={() => {
+                      try {
+                        Clipboard.setString('adb shell dpm set-device-owner com.paylock.client/.DeviceAdminReceiver');
+                      } catch (e) {}
+                    }}
+                    data-testid="copy-adb-command"
+                  >
+                    <Ionicons name="copy" size={16} color="#2563EB" />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.instructionStep}>
+                  {language === 'et'
+                    ? '5. Kui näete "Success", on Device Owner režiim aktiveeritud\n6. Installige PayLock Client rakendus ja registreerige 9-kohalise koodiga'
+                    : '5. If you see "Success", Device Owner mode is activated\n6. Install the PayLock Client app and register with a 9-digit code'}
+                </Text>
+
+                <View style={styles.warningBox}>
+                  <Ionicons name="warning" size={18} color="#F59E0B" />
+                  <Text style={styles.warningText}>
+                    {language === 'et'
+                      ? 'NB! Seadmel ei tohi olla teisi kontosid (Google, Samsung jne). Kõik kontod tuleb enne eemaldada.'
+                      : 'Important: The device must not have any accounts (Google, Samsung, etc). Remove all accounts first.'}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {activationMethod === 'qr' && (
+              <View style={styles.instructionBox}>
+                <View style={styles.instructionHeader}>
+                  <Ionicons name="qr-code" size={20} color="#F97316" />
+                  <Text style={styles.instructionTitle}>
+                    {language === 'et' ? 'QR-koodi aktiveerimine' : 'QR Code Activation'}
+                  </Text>
+                </View>
+                <Text style={styles.instructionStep}>
+                  {language === 'et'
+                    ? '1. Tehaseseadistage seade\n2. Seadistusekraanil puudutage 6 korda kiirelt ükskõik kuhu\n3. Seade palub QR-koodi skaneerida\n4. Skaneerige PayLock Pro QR-kood (genereeritakse peagi)\n5. Seade seadistab automaatselt Device Owner režiimi'
+                    : '1. Factory reset the device\n2. On the setup screen, tap 6 times rapidly anywhere\n3. The device will ask to scan a QR code\n4. Scan the PayLock Pro QR code (coming soon)\n5. The device will automatically configure Device Owner mode'}
+                </Text>
+                <View style={styles.comingSoonBadge}>
+                  <Ionicons name="time" size={16} color="#94A3B8" />
+                  <Text style={styles.comingSoonText}>
+                    {language === 'et' ? 'QR-koodi genereerimine tuleb peagi' : 'QR code generation coming soon'}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {activationMethod === 'nfc' && (
+              <View style={styles.instructionBox}>
+                <View style={styles.instructionHeader}>
+                  <Ionicons name="bluetooth" size={20} color="#F97316" />
+                  <Text style={styles.instructionTitle}>
+                    {language === 'et' ? 'NFC aktiveerimine' : 'NFC Activation'}
+                  </Text>
+                </View>
+                <Text style={styles.instructionStep}>
+                  {language === 'et'
+                    ? '1. Vaja on NFC-toega programmeerimisseadet\n2. Tehaseseadistage sihtseade\n3. Seadistusekraanil puudutage NFC-silt seadmele\n4. Seade seadistab automaatselt Device Owner režiimi'
+                    : '1. Requires an NFC-capable programming device\n2. Factory reset the target device\n3. On the setup screen, tap the NFC tag to the device\n4. The device will automatically configure Device Owner mode'}
+                </Text>
+                <View style={styles.comingSoonBadge}>
+                  <Ionicons name="time" size={16} color="#94A3B8" />
+                  <Text style={styles.comingSoonText}>
+                    {language === 'et' ? 'NFC programmeerimise tugi tuleb peagi' : 'NFC programming support coming soon'}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Troubleshooting */}
+            <View style={[styles.instructionBox, { marginTop: 12 }]}>
+              <View style={styles.instructionHeader}>
+                <Ionicons name="help-circle" size={20} color="#3B82F6" />
+                <Text style={styles.instructionTitle}>
+                  {language === 'et' ? 'Veaotsing' : 'Troubleshooting'}
+                </Text>
+              </View>
+              <Text style={styles.instructionStep}>
+                {language === 'et'
+                  ? '• "Restricted settings unavailable" — Android 13+ nõuab, et rakendus oleks süsteemirakendus või installitud enne seadme seadistamist\n\n• "Already several accounts on the device" — Eemaldage kõik kontod seadetest enne käsu käivitamist\n\n• "Not allowed to set the device owner" — Seade peab olema tehaseseadistatud ilma kontodeta'
+                  : '• "Restricted settings unavailable" — Android 13+ requires the app to be a system app or installed before device setup\n\n• "Already several accounts on the device" — Remove all accounts from Settings before running the command\n\n• "Not allowed to set the device owner" — Device must be factory reset without any accounts'}
+              </Text>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
