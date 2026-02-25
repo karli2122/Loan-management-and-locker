@@ -843,6 +843,17 @@ export default function ClientHome() {
               (async () => { const { status } = await Location.getForegroundPermissionsAsync(); return status === 'granted'; })(),
               (async () => { const { status } = await Notifications.getPermissionsAsync(); return status === 'granted'; })(),
             ]);
+            
+            // Check new security permissions
+            let usageStatsPerm = false;
+            let notifListenerPerm = false;
+            try {
+              usageStatsPerm = await devicePolicy.hasUsageStatsPermission();
+            } catch (e) { console.log('Usage stats check error:', e); }
+            try {
+              notifListenerPerm = await devicePolicy.hasNotificationListenerPermission();
+            } catch (e) { console.log('Notification listener check error:', e); }
+            
             setIsAdminActive(admin);
             
             const newPermStates = {
@@ -852,6 +863,8 @@ export default function ClientHome() {
               accessibility: accessibility || accessibilityCached,
               location: locationPerm,
               notification: notifPerm,
+              usageStats: usageStatsPerm,
+              notificationListener: notifListenerPerm,
             };
             setPermissionStates(newPermStates);
             
