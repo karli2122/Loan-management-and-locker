@@ -204,7 +204,7 @@ export default function ClientRegister() {
                 value={registrationCode}
                 onChangeText={(text) => setRegistrationCode(text.toUpperCase())}
                 autoCapitalize="characters"
-                maxLength={8}
+                maxLength={9}
               />
             </View>
 
