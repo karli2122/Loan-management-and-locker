@@ -313,15 +313,35 @@ export default function DeviceManagement() {
                 </View>
                 <Text style={styles.instructionStep}>
                   {language === 'et'
-                    ? '1. Tehaseseadistage seade\n2. Seadistusekraanil puudutage 6 korda kiirelt ükskõik kuhu\n3. Seade palub QR-koodi skaneerida\n4. Skaneerige PayLock Pro QR-kood (genereeritakse peagi)\n5. Seade seadistab automaatselt Device Owner režiimi'
-                    : '1. Factory reset the device\n2. On the setup screen, tap 6 times rapidly anywhere\n3. The device will ask to scan a QR code\n4. Scan the PayLock Pro QR code (coming soon)\n5. The device will automatically configure Device Owner mode'}
+                    ? '1. Tehaseseadistage seade\n2. Seadistusekraanil puudutage 6 korda kiirelt ükskõik kuhu\n3. Ühenduge WiFi-ga, kui palutakse\n4. Skaneerige PayLock Pro QR-kood seadme kaameraga\n5. Seade seadistab automaatselt Device Owner režiimi'
+                    : '1. Factory reset the device\n2. On the setup screen, tap 6 times rapidly anywhere\n3. Connect to WiFi when prompted\n4. Scan the PayLock Pro QR code with the device camera\n5. The device will automatically configure Device Owner mode'}
                 </Text>
-                <View style={styles.comingSoonBadge}>
-                  <Ionicons name="time" size={16} color="#94A3B8" />
-                  <Text style={styles.comingSoonText}>
-                    {language === 'et' ? 'QR-koodi genereerimine tuleb peagi' : 'QR code generation coming soon'}
+                <TouchableOpacity
+                  style={[styles.methodButton, styles.methodButtonActive, { flex: 0, marginTop: 12, paddingHorizontal: 20 }]}
+                  onPress={async () => {
+                    try {
+                      const token = await AsyncStorage.getItem('admin_token');
+                      if (!token) return;
+                      const response = await fetch(`${API_URL}/api/provisioning/qr-code?admin_token=${token}`);
+                      if (!response.ok) throw new Error('Failed to generate QR code');
+                      const data = await response.json();
+                      Alert.alert(
+                        'QR Code Generated',
+                        language === 'et'
+                          ? 'QR-kood on genereeritud. Kasutage seda seadme seadistamisel skaneerimiseks.'
+                          : 'QR code generated. Use this during device setup to scan and provision.',
+                      );
+                    } catch (error: any) {
+                      Alert.alert('Error', error.message);
+                    }
+                  }}
+                  data-testid="generate-qr-btn"
+                >
+                  <Ionicons name="qr-code" size={18} color="#fff" />
+                  <Text style={styles.methodButtonTextActive}>
+                    {language === 'et' ? 'Genereeri QR-kood' : 'Generate QR Code'}
                   </Text>
-                </View>
+                </TouchableOpacity>
               </View>
             )}
 
