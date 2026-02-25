@@ -135,6 +135,8 @@ class Client(BaseModel):
     admin_mode_active: bool = False
     last_heartbeat: Optional[datetime] = None
     uninstall_allowed: bool = False
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
     
     # Credit Score (0-1000, 500 = neutral)
     credit_score: int = 500
@@ -183,6 +185,7 @@ class ClientStatusResponse(BaseModel):
     loan_amount: float = 0.0
     loan_due_date: Optional[str] = None
     uninstall_allowed: bool = False
+    is_deleted: bool = False
 
 
 class DeviceRegistration(BaseModel):
