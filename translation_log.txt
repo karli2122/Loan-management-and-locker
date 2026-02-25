@@ -150,10 +150,9 @@ Extracted 616 translation keys
   Translating batch 2/6 (100 keys)
     Got 100 translations
   Translating batch 3/6 (100 keys)
-anslating batch 6/6 (70 keys)
-    Got 70 translations
-
---- Translating to German (de) ---
+    Got 100 translations
+  Translating batch 4/6 (100 keys)
+ranslating to German (de) ---
   538 keys need translation
   Translating batch 1/6 (100 keys)
     Got 100 translations
