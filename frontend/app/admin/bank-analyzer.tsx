@@ -198,7 +198,7 @@ export default function BankAnalyzer() {
   const s = a?.summary;
 
   return (
-    <SafeAreaView style={styles.container} edges={[]}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
@@ -224,13 +224,6 @@ export default function BankAnalyzer() {
             <Text style={styles.uploadSubtext}>
               {t('pdfOrAsiceFiles')}
             </Text>
-            <View style={styles.supportedBanks}>
-              {['Swedbank', 'SEB', 'LHV', 'Coop', 'Revolut', 'Wise', 'N26'].map((b) => (
-                <View key={b} style={styles.bankBadge}>
-                  <Text style={styles.bankBadgeText}>{b}</Text>
-                </View>
-              ))}
-            </View>
           </TouchableOpacity>
         )}
 
