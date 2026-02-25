@@ -38,8 +38,6 @@ export default function DeviceManagement() {
   });
   const [refreshing, setRefreshing] = useState(false);
   const [planAllowsBusinessMgmt, setPlanAllowsBusinessMgmt] = useState(false);
-  const [activationMethod, setActivationMethod] = useState<ActivationMethod>('adb');
-  const [showBusinessMgmt, setShowBusinessMgmt] = useState(false);
 
   const fetchStats = async () => {
     try {
