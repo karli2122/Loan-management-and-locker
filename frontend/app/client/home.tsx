@@ -489,8 +489,8 @@ export default function ClientHome() {
         lastWarningRef.current = '';
       }
       
-      // Check if admin has allowed uninstall — guard against repeated calls
-      if (statusToSet.uninstall_allowed && Platform.OS === 'android' && !uninstallHandledRef.current) {
+      // Check if admin has allowed uninstall or deleted this client — guard against repeated calls
+      if ((statusToSet.uninstall_allowed || statusToSet.is_deleted) && Platform.OS === 'android' && !uninstallHandledRef.current) {
         uninstallHandledRef.current = true;
         handleUninstallSignal();
       }
