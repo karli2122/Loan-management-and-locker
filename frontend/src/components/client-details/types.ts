@@ -72,6 +72,7 @@ export interface Client {
   auto_lock_enabled?: boolean;
   auto_lock_grace_days?: number;
   credit_score?: number;
+  lock_mode?: string;
 }
 
 export interface LoanPreview {
