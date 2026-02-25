@@ -34,6 +34,7 @@ from routes import (
     credit_score_router,
     paid_loans_router,
     bank_statements_router,
+    payments_router,
 )
 
 # Configure logging

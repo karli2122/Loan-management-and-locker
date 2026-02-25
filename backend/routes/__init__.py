@@ -13,6 +13,7 @@ from .audit_logs import router as audit_logs_router
 from .credit_score import router as credit_score_router
 from .paid_loans import router as paid_loans_router
 from .bank_statements import router as bank_statements_router
+from .payments import router as payments_router
 
 __all__ = [
     "admin_router",
@@ -29,4 +30,5 @@ __all__ = [
     "credit_score_router",
     "paid_loans_router",
     "bank_statements_router",
+    "payments_router",
 ]
