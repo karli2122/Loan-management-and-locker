@@ -41,9 +41,9 @@ export default function Index() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Ionicons name="shield-checkmark" size={80} color="#4F46E5" />
+          <Ionicons name="shield-checkmark" size={80} color="#2563EB" />
           <Text style={styles.loadingText}>
-            {appMode === 'admin' ? 'EMI Admin' : 'EMI Client'}
+            {appMode === 'admin' ? 'PayLock Admin' : 'PayLock Client'}
           </Text>
         </View>
       </SafeAreaView>
@@ -58,13 +58,13 @@ export default function Index() {
       {/* Language Switcher */}
       <View style={styles.langSwitcher}>
         <LanguagePicker compact colors={{
-          surface: '#1E293B', text: '#F8FAFC', textMuted: '#94A3B8',
-          border: '#334155', primary: '#4F46E5', background: '#0F172A',
+          surface: '#152035', text: '#F8FAFC', textMuted: '#7A9CC6',
+          border: '#1E3050', primary: '#2563EB', background: '#0B1527',
         }} />
       </View>
 
       <View style={styles.header}>
-        <Ionicons name="shield-checkmark" size={80} color="#4F46E5" />
+        <Ionicons name="shield-checkmark" size={80} color="#2563EB" />
         <Text style={styles.title}>{t('appTitle')}</Text>
         <Text style={styles.subtitle}>{t('appSubtitle')}</Text>
       </View>
@@ -117,7 +117,7 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   loadingContainer: {
     flex: 1,
@@ -141,10 +141,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
   },
   langButtonActive: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
   },
   langText: {
     fontSize: 12,

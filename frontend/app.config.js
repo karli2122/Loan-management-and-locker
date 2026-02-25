@@ -26,7 +26,7 @@ export default {
       },
       package: IS_ADMIN_APP ? "com.paylock.admin" : "com.paylock.client",
       versionCode: 1,
-      navigationBarColor: "#1E293B",
+      navigationBarColor: "#152035",
       navigationBarStyle: "dark",
       // Permissions: Admin app needs basic location/network, 
       // Client app needs elevated permissions for Device Admin protection
@@ -65,7 +65,7 @@ export default {
           image: "./assets/images/splash-image.png",
           imageWidth: 200,
           resizeMode: "contain",
-          backgroundColor: "#0F172A"
+          backgroundColor: "#0B1527"
         }
       ],
       // emi-device-admin auto-links via expo-module.config.json (no plugin entry needed)
