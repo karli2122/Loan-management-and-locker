@@ -176,9 +176,9 @@ Extracted 616 translation keys
 --- Translating to Italian (it) ---
   570 keys need translation
   Translating batch 1/6 (100 keys)
-   Got 100 translations
-  Translating batch 2/6 (100 keys)
     Got 100 translations
+  Translating batch 2/6 (100 keys)
+   Got 100 translations
   Translating batch 3/6 (100 keys)
     Got 100 translations
   Translating batch 4/6 (100 keys)
