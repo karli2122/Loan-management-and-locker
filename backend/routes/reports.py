@@ -48,7 +48,7 @@ async def get_heartbeat_summary(
             target_admin_id = filter_admin_id
     
     now = datetime.utcnow()
-    query = {"is_registered": True}
+    query = {"is_registered": True, "is_deleted": {"$ne": True}}
     if target_admin_id:
         query["admin_id"] = target_admin_id
     
