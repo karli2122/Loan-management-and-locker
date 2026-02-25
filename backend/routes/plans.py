@@ -69,7 +69,19 @@ async def get_plan_limits(admin_token: str = Query(...)):
 
     # Superadmins get custom plan limits
     if is_super:
-        return {"plan": "custom", "limits": PLAN_LIMITS["custom"], "is_super_admin": True}
+        # Count current clients for superadmin too
+        client_count = await db.clients.count_documents({
+            "admin_id": admin_id,
+            "is_deleted": {"$ne": True},
+        })
+        limits = PLAN_LIMITS["custom"]
+        return {
+            "plan": "custom",
+            "limits": limits,
+            "is_super_admin": True,
+            "current_clients": client_count,
+            "can_add_client": client_count < limits["max_clients"],
+        }
 
     # Check subscription
     sub = await db.subscriptions.find_one({"admin_id": admin_id}, {"_id": 0})
