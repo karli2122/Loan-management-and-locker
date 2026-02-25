@@ -2156,6 +2156,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#FCA5A5',
   },
+  lockModeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(249, 115, 22, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  lockModeBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#F97316',
+  },
   offlineBanner: {
     flexDirection: 'row',
     alignItems: 'center',
