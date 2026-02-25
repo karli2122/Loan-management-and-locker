@@ -19,7 +19,7 @@ export default function ClientLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: '#0F172A' },
+        contentStyle: { backgroundColor: '#0B1527' },
       }}
     >
       <Stack.Screen name="register" options={{ animation: 'none' }} />

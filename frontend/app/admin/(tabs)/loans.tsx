@@ -401,8 +401,8 @@ export default function LoansTab() {
           {/* Payment Count Badge */}
           <View style={styles.paymentInfoRow}>
             <View style={[styles.nextPaymentBadge, { backgroundColor: 'rgba(79, 70, 229, 0.1)' }]}>
-              <Ionicons name="cash-outline" size={12} color="#4F46E5" />
-              <Text style={[styles.nextPaymentText, { color: '#4F46E5' }]}>
+              <Ionicons name="cash-outline" size={12} color="#2563EB" />
+              <Text style={[styles.nextPaymentText, { color: '#2563EB' }]}>
                 {item.payment_count} {t('payments2')}
               </Text>
             </View>
@@ -570,7 +570,7 @@ export default function LoansTab() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -591,7 +591,7 @@ export default function LoansTab() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -610,7 +610,7 @@ export default function LoansTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   header: {
     flexDirection: 'row',
@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   headerTitle: {
     fontSize: 24,
@@ -630,14 +630,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     marginHorizontal: 16,
     marginVertical: 12,
     paddingHorizontal: 12,
@@ -658,18 +658,18 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     flex: 1,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   tabButtonActive: {
-    backgroundColor: '#4F46E5',
-    borderColor: '#4F46E5',
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
   },
   tabText: {
     color: '#94A3B8',
@@ -684,12 +684,12 @@ const styles = StyleSheet.create({
     paddingBottom: 96,
   },
   clientCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   clientHeader: {
     flexDirection: 'row',
@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -756,7 +756,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#334155',
+    borderTopColor: '#1E3050',
     gap: 10,
   },
   loanInfoRow: {
@@ -781,7 +781,7 @@ const styles = StyleSheet.create({
   progressBarBg: {
     flex: 1,
     height: 6,
-    backgroundColor: '#334155',
+    backgroundColor: '#1E3050',
     borderRadius: 3,
     overflow: 'hidden',
   },
@@ -826,7 +826,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#4F46E520',
+    backgroundColor: '#2563EB20',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -834,7 +834,7 @@ const styles = StyleSheet.create({
   nextPaymentText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#4F46E5',
+    color: '#2563EB',
   },
   overdueBadge: {
     flexDirection: 'row',
@@ -885,9 +885,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     padding: 10,
     borderRadius: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   filterText: {
     color: '#E2E8F0',
@@ -905,13 +905,13 @@ const styles = StyleSheet.create({
   paymentFilterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 20,
     paddingVertical: 8,
     paddingHorizontal: 14,
     minHeight: 36,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   paymentFilterButtonActive: {
     backgroundColor: '#10B981',

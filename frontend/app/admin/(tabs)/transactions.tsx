@@ -299,7 +299,7 @@ export default function TransactionsTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   header: {
     flexDirection: 'row',
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   headerTitle: {
     fontSize: 24,
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -331,16 +331,16 @@ const styles = StyleSheet.create({
   },
   filterTab: {
     flex: 1,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   filterTabActive: {
-    backgroundColor: '#4F46E5',
-    borderColor: '#4F46E5',
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
   },
   filterTabText: {
     color: '#94A3B8',
@@ -355,12 +355,12 @@ const styles = StyleSheet.create({
     paddingBottom: 96,
   },
   paymentCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   paymentHeader: {
     flexDirection: 'row',
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#334155',
+    borderTopColor: '#1E3050',
     fontSize: 13,
     color: '#94A3B8',
     lineHeight: 18,

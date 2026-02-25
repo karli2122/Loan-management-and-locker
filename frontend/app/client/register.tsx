@@ -180,8 +180,8 @@ export default function ClientRegister() {
             <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.topBar}>
             <LanguagePicker compact colors={{
-              surface: '#1E293B', text: '#F8FAFC', textMuted: '#94A3B8',
-              border: '#334155', primary: '#10B981', background: '#0F172A',
+              surface: '#152035', text: '#F8FAFC', textMuted: '#94A3B8',
+              border: '#1E3050', primary: '#10B981', background: '#0B1527',
             }} />
           </View>
 
@@ -239,7 +239,7 @@ export default function ClientRegister() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   loadingContainer: {
     flex: 1,
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
   },
   langButtonActive: {
     backgroundColor: '#059669',
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   codeInputContainer: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     borderWidth: 2,
     borderColor: '#059669',
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
   helpBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     marginTop: 24,

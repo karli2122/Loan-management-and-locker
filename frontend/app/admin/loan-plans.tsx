@@ -314,7 +314,7 @@ export default function LoanPlans() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <ActivityIndicator size="large" color="#2563EB" />
         </View>
       </SafeAreaView>
     );
@@ -357,7 +357,7 @@ export default function LoanPlans() {
                     onPress={() => openEditModal(plan)}
                     style={styles.iconButton}
                   >
-                    <Ionicons name="create-outline" size={20} color="#4F46E5" />
+                    <Ionicons name="create-outline" size={20} color="#2563EB" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleToggleActive(plan)}
@@ -384,7 +384,7 @@ export default function LoanPlans() {
 
               <View style={styles.planDetails}>
                 <View style={styles.detailItem}>
-                  <Ionicons name="trending-up" size={16} color="#4F46E5" />
+                  <Ionicons name="trending-up" size={16} color="#2563EB" />
                   <Text style={styles.detailLabel}>Monthly Interest Rate</Text>
                   <Text style={styles.detailValue}>{plan.interest_rate}%</Text>
                 </View>
@@ -543,7 +543,7 @@ export default function LoanPlans() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   loadingContainer: {
     flex: 1,
@@ -557,13 +557,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -576,7 +576,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   planCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -678,7 +678,7 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '90%',
     maxHeight: '85%',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
   },
@@ -705,13 +705,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
     borderRadius: 12,
     padding: 12,
     fontSize: 16,
     color: '#fff',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   textArea: {
     height: 80,
@@ -729,10 +729,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalCancelButton: {
-    backgroundColor: '#334155',
+    backgroundColor: '#1E3050',
   },
   modalConfirmButton: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
   },
   modalButtonText: {
     fontSize: 16,

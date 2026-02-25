@@ -136,7 +136,7 @@ export default function AuditLogPage() {
   };
 
   const getActionColor = (action: string) => {
-    if (action.includes('login')) return '#4F46E5';
+    if (action.includes('login')) return '#2563EB';
     if (action.includes('create')) return '#10B981';
     if (action.includes('delete')) return '#EF4444';
     if (action.includes('lock')) return '#F59E0B';
@@ -152,7 +152,7 @@ export default function AuditLogPage() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <ActivityIndicator size="large" color="#2563EB" />
         </View>
       </SafeAreaView>
     );
@@ -276,7 +276,7 @@ export default function AuditLogPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   loadingContainer: {
     flex: 1,
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   backButton: {
     padding: 8,
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   },
   // Summary Card
   summaryCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -344,11 +344,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     marginRight: 8,
   },
   filterChipActive: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
   },
   filterChipText: {
     fontSize: 13,
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
   },
   logItem: {
     flexDirection: 'row',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 14,
     gap: 12,

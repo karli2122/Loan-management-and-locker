@@ -282,7 +282,7 @@ export default function AddClient() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   keyboardView: {
     flex: 1,
@@ -294,13 +294,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   backButton: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -329,10 +329,10 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
     paddingHorizontal: 16,
     height: 56,
   },
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#334155',
+    backgroundColor: '#1E3050',
   },
   sectionTitle: {
     fontSize: 14,
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     borderRadius: 12,
     height: 56,
     marginTop: 32,
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
   },
   datePickerContent: {
     width: '90%',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
   },
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   datePreview: {
-    backgroundColor: '#4F46E520',
+    backgroundColor: '#2563EB20',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
   datePreviewText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#4F46E5',
+    color: '#2563EB',
   },
   datePickerButtons: {
     flexDirection: 'row',
@@ -479,10 +479,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   datePickerCancelButton: {
-    backgroundColor: '#334155',
+    backgroundColor: '#1E3050',
   },
   datePickerConfirmButton: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
   },
   datePickerButtonText: {
     fontSize: 16,

@@ -235,7 +235,7 @@ export default function PaymentHistoryScreen() {
             ))
           ) : (
             <View style={styles.emptyContainer}>
-              <Ionicons name="receipt-outline" size={48} color="#334155" />
+              <Ionicons name="receipt-outline" size={48} color="#1E3050" />
               <Text style={styles.emptyText}>
                 {t('noPaymentsYet')}
               </Text>
@@ -250,7 +250,7 @@ export default function PaymentHistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   loadingContainer: {
     flex: 1,
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   backButton: {
     padding: 8,
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   summaryCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 12,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
     borderRadius: 6,
     overflow: 'hidden',
     marginBottom: 8,
@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
     borderRadius: 8,
     padding: 12,
     marginTop: 8,
@@ -371,12 +371,12 @@ const styles = StyleSheet.create({
   timelineConnector: {
     flex: 1,
     width: 2,
-    backgroundColor: '#334155',
+    backgroundColor: '#1E3050',
     marginVertical: 4,
   },
   paymentCard: {
     flex: 1,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     marginLeft: 12,

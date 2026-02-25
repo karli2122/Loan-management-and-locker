@@ -113,7 +113,7 @@ export default function NotificationsScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <ActivityIndicator size="large" color="#2563EB" />
         </View>
       </SafeAreaView>
     );
@@ -149,12 +149,12 @@ export default function NotificationsScreen() {
       <ScrollView
         style={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />
         }
       >
         {notifications.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="notifications-off" size={64} color="#334155" />
+            <Ionicons name="notifications-off" size={64} color="#1E3050" />
             <Text style={styles.emptyText}>
               {t('noNotifications')}
             </Text>
@@ -204,7 +204,7 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   loadingContainer: {
     flex: 1,
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   backButton: {
     padding: 8,
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
   },
   markAllText: {
     fontSize: 12,
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   notificationCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,

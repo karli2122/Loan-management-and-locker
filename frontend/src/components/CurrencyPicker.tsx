@@ -35,8 +35,8 @@ export const CurrencyPicker = ({ colors: themeColors }: CurrencyPickerProps) => 
 
   const currentCurrency = CURRENCIES.find(c => c.code === currency) || CURRENCIES[0];
   const colors = themeColors || {
-    surface: '#1E293B', text: '#F8FAFC', textMuted: '#94A3B8',
-    border: '#334155', primary: '#4F46E5', background: '#0F172A',
+    surface: '#152035', text: '#F8FAFC', textMuted: '#94A3B8',
+    border: '#1E3050', primary: '#2563EB', background: '#0B1527',
   };
 
   return (

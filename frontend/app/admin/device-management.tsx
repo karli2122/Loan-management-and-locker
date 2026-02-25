@@ -71,7 +71,7 @@ export default function DeviceManagement() {
 
       <ScrollView
         style={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />}
       >
         <Text style={styles.sectionTitle}>
           {t('deviceOverview')}
@@ -128,7 +128,7 @@ export default function DeviceManagement() {
             style={styles.actionCard}
             onPress={() => router.push('/admin/clients')}
           >
-            <View style={[styles.actionIcon, { backgroundColor: '#4F46E5' }]}>
+            <View style={[styles.actionIcon, { backgroundColor: '#2563EB' }]}>
               <Ionicons name="list" size={24} color="#fff" />
             </View>
             <View style={styles.actionContent}>
@@ -168,7 +168,7 @@ export default function DeviceManagement() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   header: {
     flexDirection: 'row',
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   backButton: {
     width: 40,
@@ -240,11 +240,11 @@ const styles = StyleSheet.create({
   actionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   actionIcon: {
     width: 48,
@@ -269,11 +269,11 @@ const styles = StyleSheet.create({
   },
   infoBox: {
     flexDirection: 'row',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     borderLeftWidth: 4,
-    borderLeftColor: '#4F46E5',
+    borderLeftColor: '#2563EB',
     gap: 12,
   },
   infoText: {

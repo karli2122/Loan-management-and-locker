@@ -233,7 +233,7 @@ export default function DeviceSetup() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   header: {
     flexDirection: 'row',
@@ -242,13 +242,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   backButton: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   clientCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     marginRight: 12,
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   clientCardSelected: {
-    borderColor: '#4F46E5',
+    borderColor: '#2563EB',
     backgroundColor: 'rgba(79, 70, 229, 0.1)',
   },
   clientName: {
@@ -316,11 +316,11 @@ const styles = StyleSheet.create({
   },
   clientCode: {
     fontSize: 14,
-    color: '#4F46E5',
+    color: '#2563EB',
     fontWeight: '500',
   },
   emptyCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 32,
     alignItems: 'center',
@@ -341,13 +341,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 14,
     gap: 8,
   },
   qrTypeButtonActive: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
   },
   qrTypeText: {
     fontSize: 14,
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   qrContainer: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
@@ -379,11 +379,11 @@ const styles = StyleSheet.create({
   qrCode: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#4F46E5',
+    color: '#2563EB',
     letterSpacing: 4,
   },
   instructionsCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     borderRadius: 12,
     padding: 16,
     gap: 8,

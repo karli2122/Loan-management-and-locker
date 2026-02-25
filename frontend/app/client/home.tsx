@@ -1292,8 +1292,8 @@ export default function ClientHome() {
         </View>
         <View style={styles.headerRight}>
           <LanguagePicker compact colors={{
-            surface: '#1E293B', text: '#F8FAFC', textMuted: '#94A3B8',
-            border: '#334155', primary: '#10B981', background: '#0F172A',
+            surface: '#152035', text: '#F8FAFC', textMuted: '#94A3B8',
+            border: '#1E3050', primary: '#10B981', background: '#0B1527',
           }} />
         </View>
       </View>
@@ -1733,7 +1733,7 @@ export default function ClientHome() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   loadingContainer: {
     flex: 1,
@@ -1752,7 +1752,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   headerRight: {
     flexDirection: 'row',
@@ -1767,7 +1767,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
   },
   langButtonActive: {
     backgroundColor: '#10B981',
@@ -1793,7 +1793,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1937,7 +1937,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   statusCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
@@ -1980,7 +1980,7 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
   },
   loanCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
@@ -2010,7 +2010,7 @@ const styles = StyleSheet.create({
   },
   loanDetailDivider: {
     width: 1,
-    backgroundColor: '#334155',
+    backgroundColor: '#1E3050',
   },
   actionsSection: {
     marginBottom: 20,
@@ -2024,7 +2024,7 @@ const styles = StyleSheet.create({
   actionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -2158,7 +2158,7 @@ const styles = StyleSheet.create({
     color: '#F59E0B',
   },
   allPaidCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 32,
     marginBottom: 20,

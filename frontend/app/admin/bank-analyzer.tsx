@@ -217,7 +217,7 @@ export default function BankAnalyzer() {
             onPress={pickAndUploadFile}
             data-testid="upload-area"
           >
-            <Ionicons name="cloud-upload" size={48} color="#4F46E5" />
+            <Ionicons name="cloud-upload" size={48} color="#2563EB" />
             <Text style={styles.uploadTitle}>
               {t('uploadBankStatement')}
             </Text>
@@ -254,7 +254,7 @@ export default function BankAnalyzer() {
         {/* Loading */}
         {uploading && (
           <View style={styles.loadingContainer} data-testid="analyzing-indicator">
-            <ActivityIndicator size="large" color="#4F46E5" />
+            <ActivityIndicator size="large" color="#2563EB" />
             <Text style={styles.loadingTitle}>
               {t('analyzing')}
             </Text>
@@ -305,7 +305,7 @@ export default function BankAnalyzer() {
                 }}
                 data-testid="new-analysis-btn"
               >
-                <Ionicons name="add-circle" size={28} color="#4F46E5" />
+                <Ionicons name="add-circle" size={28} color="#2563EB" />
               </TouchableOpacity>
             </View>
 
@@ -535,25 +535,25 @@ export default function BankAnalyzer() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F172A' },
+  container: { flex: 1, backgroundColor: '#0B1527' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: '#1E293B',
+    borderBottomWidth: 1, borderBottomColor: '#152035',
   },
   backButton: { padding: 4 },
   title: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
   content: { flex: 1, padding: 16 },
   contentContainer: { paddingBottom: 40 },
   uploadArea: {
-    backgroundColor: '#1E293B', borderRadius: 16, padding: 40,
+    backgroundColor: '#152035', borderRadius: 16, padding: 40,
     alignItems: 'center', borderWidth: 2, borderStyle: 'dashed',
-    borderColor: '#4F46E530', gap: 8,
+    borderColor: '#2563EB30', gap: 8,
   },
   uploadTitle: { fontSize: 18, fontWeight: '600', color: '#fff', marginTop: 8 },
   uploadSubtext: { fontSize: 14, color: '#94A3B8' },
   supportedBanks: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 16, justifyContent: 'center' },
-  bankBadge: { backgroundColor: '#334155', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+  bankBadge: { backgroundColor: '#1E3050', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
   bankBadgeText: { fontSize: 11, color: '#94A3B8', fontWeight: '500' },
   loadingContainer: { alignItems: 'center', paddingVertical: 60, gap: 12 },
   loadingTitle: { fontSize: 18, fontWeight: '600', color: '#fff' },
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
   sebLoadingEta: { fontSize: 12, color: '#94A3B8' },
   errorContainer: { alignItems: 'center', gap: 8, paddingVertical: 40 },
   errorText: { fontSize: 14, color: '#EF4444', textAlign: 'center' },
-  retryButton: { backgroundColor: '#4F46E5', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, marginTop: 8 },
+  retryButton: { backgroundColor: '#2563EB', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, marginTop: 8 },
   retryText: { color: '#fff', fontWeight: '600', fontSize: 14 },
   resultHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16,
@@ -570,8 +570,8 @@ const styles = StyleSheet.create({
   resultHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   resultHeaderTitle: { fontSize: 16, fontWeight: '600', color: '#10B981' },
   card: {
-    backgroundColor: '#1E293B', borderRadius: 12, padding: 16,
-    marginBottom: 12, borderWidth: 1, borderColor: '#334155',
+    backgroundColor: '#152035', borderRadius: 12, padding: 16,
+    marginBottom: 12, borderWidth: 1, borderColor: '#1E3050',
   },
   cardTitle: { fontSize: 14, fontWeight: '600', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 },
   cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
   expenseCard: { backgroundColor: '#EF444415', borderWidth: 1, borderColor: '#EF444430' },
   summaryLabel: { fontSize: 12, color: '#94A3B8' },
   summaryAmount: { fontSize: 20, fontWeight: 'bold' },
-  categoryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#334155' },
+  categoryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#1E3050' },
   categoryLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   categoryDot: { width: 8, height: 8, borderRadius: 4 },
   categoryName: { fontSize: 14, color: '#fff' },
@@ -594,7 +594,7 @@ const styles = StyleSheet.create({
   riskLabel: { fontSize: 14, color: '#CBD5E1' },
   riskNotes: { fontSize: 13, color: '#94A3B8', fontStyle: 'italic', marginTop: 8, lineHeight: 18 },
   creditCard: {
-    backgroundColor: '#1E293B', borderRadius: 12, padding: 16,
+    backgroundColor: '#152035', borderRadius: 12, padding: 16,
     marginBottom: 12, borderWidth: 1, borderColor: '#8B5CF630',
   },
   creditHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },

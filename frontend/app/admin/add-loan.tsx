@@ -745,7 +745,7 @@ export default function AddLoan() {
                     <Text style={styles.pickerItemSubtext}>{client.phone}</Text>
                   </View>
                   {selectedClient?.id === client.id && (
-                    <Ionicons name="checkmark-circle" size={24} color="#4F46E5" />
+                    <Ionicons name="checkmark-circle" size={24} color="#2563EB" />
                   )}
                 </TouchableOpacity>
               ))}
@@ -784,7 +784,7 @@ export default function AddLoan() {
                     )}
                   </View>
                   {selectedPlan?.id === plan.id && (
-                    <Ionicons name="checkmark-circle" size={24} color="#4F46E5" />
+                    <Ionicons name="checkmark-circle" size={24} color="#2563EB" />
                   )}
                 </TouchableOpacity>
               ))}
@@ -799,7 +799,7 @@ export default function AddLoan() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   header: {
     flexDirection: 'row',
@@ -808,13 +808,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   backButton: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -852,13 +852,13 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 12,
     borderRadius: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderWidth: 2,
     borderColor: 'transparent',
   },
   modeButtonActive: {
-    backgroundColor: '#4F46E5',
-    borderColor: '#6366F1',
+    backgroundColor: '#2563EB',
+    borderColor: '#3B82F6',
   },
   modeButtonText: {
     fontSize: 14,
@@ -874,9 +874,9 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   pickerButtonText: {
     flex: 1,
@@ -905,9 +905,9 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   input: {
     flex: 1,
@@ -921,13 +921,13 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     marginTop: 8,
     marginBottom: 40,
   },
   // EMI Preview Card
   emiPreviewCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
@@ -953,7 +953,7 @@ const styles = StyleSheet.create({
   emiPreviewItem: {
     flex: 1,
     minWidth: '40%',
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
     borderRadius: 12,
     padding: 14,
   },
@@ -986,7 +986,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -1006,9 +1006,9 @@ const styles = StyleSheet.create({
   searchInput: {
     padding: 12,
     borderRadius: 10,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
     color: '#fff',
     fontSize: 16,
     marginBottom: 16,
@@ -1022,14 +1022,14 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 12,
     borderRadius: 10,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
     marginBottom: 8,
   },
   clientAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
   },

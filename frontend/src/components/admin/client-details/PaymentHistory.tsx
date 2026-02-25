@@ -46,7 +46,7 @@ export const PaymentHistory = ({ colors, language, paymentHistory, paymentHistor
             </Text>
           </View>
           <View style={styles.paymentHistoryRight}>
-            <View style={[styles.paymentMethodBadge, { backgroundColor: colors.surfaceAlt || '#334155' }]}>
+            <View style={[styles.paymentMethodBadge, { backgroundColor: colors.surfaceAlt || '#1E3050' }]}>
               <Ionicons
                 name={payment.payment_method === 'cash' ? 'cash' : payment.payment_method === 'bank_transfer' ? 'swap-horizontal' : 'card'}
                 size={14}

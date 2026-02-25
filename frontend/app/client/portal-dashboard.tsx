@@ -156,7 +156,7 @@ export default function ClientPortalDashboard() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <ActivityIndicator size="large" color="#2563EB" />
           <Text style={styles.loadingText}>
             {t('loading')}
           </Text>
@@ -177,8 +177,8 @@ export default function ClientPortalDashboard() {
         </View>
         <View style={styles.headerRight}>
           <LanguagePicker compact colors={{
-            surface: '#1E293B', text: '#F8FAFC', textMuted: '#94A3B8',
-            border: '#334155', primary: '#10B981', background: '#0F172A',
+            surface: '#152035', text: '#F8FAFC', textMuted: '#94A3B8',
+            border: '#1E3050', primary: '#10B981', background: '#0B1527',
           }} />
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
             <Ionicons name="log-out" size={22} color="#EF4444" />
@@ -189,7 +189,7 @@ export default function ClientPortalDashboard() {
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />}
       >
         {/* Progress Card */}
         {loanSummary && loanSummary.outstanding_balance > 0 ? (
@@ -236,7 +236,7 @@ export default function ClientPortalDashboard() {
               <Ionicons 
                 name={paymentStatus.is_overdue ? 'warning' : 'calendar'} 
                 size={24} 
-                color={paymentStatus.is_overdue ? '#EF4444' : '#4F46E5'} 
+                color={paymentStatus.is_overdue ? '#EF4444' : '#2563EB'} 
               />
               <Text style={styles.paymentStatusTitle}>
                 {paymentStatus.is_overdue 
@@ -394,7 +394,7 @@ export default function ClientPortalDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   loadingContainer: {
     flex: 1,
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   headerRight: {
     flexDirection: 'row',
@@ -437,10 +437,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
   },
   langButtonActive: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
   },
   langText: {
     fontSize: 11,
@@ -462,12 +462,12 @@ const styles = StyleSheet.create({
   },
   // Progress Card
   progressCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   cardTitle: {
     fontSize: 16,
@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
   progressBar: {
     flex: 1,
     height: 12,
-    backgroundColor: '#334155',
+    backgroundColor: '#1E3050',
     borderRadius: 6,
     overflow: 'hidden',
   },
@@ -517,12 +517,12 @@ const styles = StyleSheet.create({
   },
   // Payment Status Card
   paymentStatusCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#4F46E530',
+    borderColor: '#2563EB30',
   },
   paymentStatusCardOverdue: {
     borderColor: '#EF444450',
@@ -578,19 +578,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#4F46E520',
+    backgroundColor: '#2563EB20',
     padding: 12,
     borderRadius: 8,
     marginTop: 8,
   },
   daysUntilDueLabel: {
     fontSize: 13,
-    color: '#4F46E5',
+    color: '#2563EB',
   },
   daysUntilDueValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#4F46E5',
+    color: '#2563EB',
   },
   lateFeeRow: {
     flexDirection: 'row',
@@ -613,12 +613,12 @@ const styles = StyleSheet.create({
   },
   // Details Card
   detailsCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   detailRow: {
     flexDirection: 'row',
@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    borderBottomColor: '#1E3050',
   },
   detailLabel: {
     fontSize: 14,
@@ -639,12 +639,12 @@ const styles = StyleSheet.create({
   },
   // Device Card
   deviceCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   deviceHeader: {
     flexDirection: 'row',
@@ -687,11 +687,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   paymentsHeaderLeft: {
     flexDirection: 'row',
@@ -699,14 +699,14 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   paymentsContainer: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
     padding: 16,
     marginTop: -16,
     borderWidth: 1,
     borderTopWidth: 0,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   noPayments: {
     textAlign: 'center',
@@ -720,7 +720,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    borderBottomColor: '#1E3050',
   },
   paymentItemLeft: {},
   paymentAmount: {
@@ -743,7 +743,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   allPaidCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 32,
     marginBottom: 16,

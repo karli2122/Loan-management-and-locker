@@ -13,7 +13,7 @@ export default function TabLayout() {
   // Set Android navigation bar to match tab bar color so it blends seamlessly
   useEffect(() => {
     if (Platform.OS === 'android') {
-      NavigationBar.setBackgroundColorAsync('#1E293B').catch(() => {});
+      NavigationBar.setBackgroundColorAsync('#152035').catch(() => {});
       NavigationBar.setButtonStyleAsync('light').catch(() => {});
     }
   }, []);
@@ -25,16 +25,16 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        sceneStyle: { backgroundColor: '#0F172A', paddingTop: 30 },
+        sceneStyle: { backgroundColor: '#0B1527', paddingTop: 30 },
         tabBarStyle: {
-          backgroundColor: '#1E293B',
-          borderTopColor: '#334155',
+          backgroundColor: '#152035',
+          borderTopColor: '#1E3050',
           borderTopWidth: 1,
           height: 60 + bottomPadding,
           paddingBottom: bottomPadding,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: '#4F46E5',
+        tabBarActiveTintColor: '#2563EB',
         tabBarInactiveTintColor: '#64748B',
         tabBarLabelStyle: {
           fontSize: 11,

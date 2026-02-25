@@ -286,7 +286,7 @@ export default function AdminLogin() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <ActivityIndicator size="large" color="#2563EB" />
         </View>
       </SafeAreaView>
     );
@@ -350,7 +350,7 @@ export default function AdminLogin() {
               <Switch
                 value={staySignedIn}
                 onValueChange={setStaySignedIn}
-                trackColor={{ false: colors.border, true: '#4F46E5' }}
+                trackColor={{ false: colors.border, true: '#2563EB' }}
                 thumbColor="#fff"
                 data-testid="admin-stay-signed-in-switch"
               />
@@ -381,7 +381,7 @@ export default function AdminLogin() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   keyboardView: {
     flex: 1,
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 25,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
@@ -421,10 +421,10 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
     paddingHorizontal: 16,
     marginBottom: 16,
     height: 56,
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   button: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     borderRadius: 12,
     height: 56,
     alignItems: 'center',

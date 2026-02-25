@@ -43,7 +43,7 @@ export const LoanOverview = ({
           ) : (
             <>
               <TouchableOpacity style={styles.editLoanBtn} onPress={onEditLoan} data-testid="edit-loan-btn">
-                <Ionicons name="create-outline" size={16} color="#4F46E5" />
+                <Ionicons name="create-outline" size={16} color="#2563EB" />
                 <Text style={styles.editLoanBtnText}>{t('edit')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.recordPaymentBtn} onPress={onRecordPayment}>

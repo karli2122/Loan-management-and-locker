@@ -177,7 +177,7 @@ export default function SupportChatScreen() {
       >
         {messages.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="chatbubbles-outline" size={64} color="#334155" />
+            <Ionicons name="chatbubbles-outline" size={64} color="#1E3050" />
             <Text style={styles.emptyText}>
               {t('noMessagesYet')}
             </Text>
@@ -226,7 +226,7 @@ export default function SupportChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   loadingContainer: {
     flex: 1,
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   backButton: {
     padding: 8,
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 12,
     color: '#64748B',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   },
   adminBubble: {
     alignSelf: 'flex-start',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderBottomLeftRadius: 4,
   },
   messageText: {
@@ -336,12 +336,12 @@ const styles = StyleSheet.create({
     padding: 12,
     paddingBottom: 32,
     borderTopWidth: 1,
-    borderTopColor: '#1E293B',
-    backgroundColor: '#0F172A',
+    borderTopColor: '#152035',
+    backgroundColor: '#0B1527',
   },
   textInput: {
     flex: 1,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -359,6 +359,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: '#334155',
+    backgroundColor: '#1E3050',
   },
 });

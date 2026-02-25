@@ -557,7 +557,7 @@ export default function ClientDetails() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <ActivityIndicator size="large" color="#2563EB" />
         </View>
       </SafeAreaView>
     );
@@ -589,8 +589,8 @@ export default function ClientDetails() {
               try { await fetchClient(); await fetchCredits(); }
               finally { setRefreshing(false); }
             }}
-            tintColor="#4F46E5"
-            colors={['#4F46E5']}
+            tintColor="#2563EB"
+            colors={['#2563EB']}
           />
         }
       >
@@ -630,7 +630,7 @@ export default function ClientDetails() {
             onPress={() => setActiveTab('loan')}
             data-testid="tab-active-loan"
           >
-            <Ionicons name="wallet" size={16} color={activeTab === 'loan' ? '#4F46E5' : '#94A3B8'} />
+            <Ionicons name="wallet" size={16} color={activeTab === 'loan' ? '#2563EB' : '#94A3B8'} />
             <Text style={[styles.tabButtonText, activeTab === 'loan' && styles.tabButtonTextActive]}>
               {t('activeLoan')}
             </Text>
@@ -640,7 +640,7 @@ export default function ClientDetails() {
             onPress={() => setActiveTab('payments')}
             data-testid="tab-payment-history"
           >
-            <Ionicons name="receipt" size={16} color={activeTab === 'payments' ? '#4F46E5' : '#94A3B8'} />
+            <Ionicons name="receipt" size={16} color={activeTab === 'payments' ? '#2563EB' : '#94A3B8'} />
             <Text style={[styles.tabButtonText, activeTab === 'payments' && styles.tabButtonTextActive]}>
               {t('paymentHistory')}
             </Text>

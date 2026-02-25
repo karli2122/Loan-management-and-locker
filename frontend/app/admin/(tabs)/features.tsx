@@ -69,8 +69,8 @@ export default function FeaturesTab() {
             <Text style={styles.userName}>{displayName}</Text>
             <View style={styles.languageToggle}>
               <LanguagePicker compact colors={{
-                surface: '#1E293B', text: '#F8FAFC', textMuted: '#94A3B8',
-                border: '#334155', primary: '#4F46E5', background: '#0F172A',
+                surface: '#152035', text: '#F8FAFC', textMuted: '#94A3B8',
+                border: '#1E3050', primary: '#2563EB', background: '#0B1527',
               }} />
             </View>
           </View>
@@ -218,7 +218,7 @@ export default function FeaturesTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   contentContainer: {
     paddingBottom: 96,
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   headerTitle: {
     fontSize: 24,
@@ -241,18 +241,18 @@ const styles = StyleSheet.create({
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   userAvatar: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -279,10 +279,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#334155',
+    backgroundColor: '#1E3050',
   },
   langButtonActive: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
   },
   langText: {
     fontSize: 12,
@@ -304,12 +304,12 @@ const styles = StyleSheet.create({
   featureCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   featureIcon: {
     width: 48,
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     marginTop: 24,

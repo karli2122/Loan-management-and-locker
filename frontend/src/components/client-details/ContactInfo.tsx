@@ -16,7 +16,7 @@ export const ContactInfo = ({ client, language, t, onEdit }: Props) => (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{t('contactInfo')}</Text>
       <TouchableOpacity style={styles.editButton} onPress={onEdit} data-testid="edit-client-btn">
-        <Ionicons name="create-outline" size={18} color="#4F46E5" />
+        <Ionicons name="create-outline" size={18} color="#2563EB" />
         <Text style={styles.editButtonText}>{t('edit')}</Text>
       </TouchableOpacity>
     </View>

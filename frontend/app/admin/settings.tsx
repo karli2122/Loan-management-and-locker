@@ -844,7 +844,7 @@ export default function AdminSettings() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <ActivityIndicator size="large" color="#2563EB" />
         </View>
       </SafeAreaView>
     );
@@ -1147,7 +1147,7 @@ export default function AdminSettings() {
             {/* Auto-Lock Enabled Toggle */}
             <View style={styles.settingRow}>
               <View style={styles.settingLabelContainer}>
-                <Ionicons name="lock-closed" size={20} color="#4F46E5" />
+                <Ionicons name="lock-closed" size={20} color="#2563EB" />
                 <View>
                   <Text style={styles.settingLabel}>
                     {t('autolockEnabled')}
@@ -1192,7 +1192,7 @@ export default function AdminSettings() {
               disabled={settingsSaving}
               data-testid="apply-to-all-button"
             >
-              <Ionicons name="people" size={18} color="#4F46E5" />
+              <Ionicons name="people" size={18} color="#2563EB" />
               <Text style={styles.applyToAllButtonText}>
                 {t('applyToAllClients')}
               </Text>
@@ -1718,7 +1718,7 @@ export default function AdminSettings() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   loadingContainer: {
     flex: 1,
@@ -1732,13 +1732,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   backButton: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1772,7 +1772,7 @@ const styles = StyleSheet.create({
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
@@ -1781,7 +1781,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1806,7 +1806,7 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     gap: 12,
@@ -1822,7 +1822,7 @@ const styles = StyleSheet.create({
   },
   langOption: {
     flex: 1,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -1830,7 +1830,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   langOptionActive: {
-    borderColor: '#4F46E5',
+    borderColor: '#2563EB',
     backgroundColor: 'rgba(79, 70, 229, 0.1)',
   },
   langText: {
@@ -1839,7 +1839,7 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
   },
   langTextActive: {
-    color: '#4F46E5',
+    color: '#2563EB',
   },
   // Theme toggle styles
   themeContainer: {
@@ -1858,7 +1858,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   themeOptionActive: {
-    borderColor: '#4F46E5',
+    borderColor: '#2563EB',
     backgroundColor: 'rgba(79, 70, 229, 0.1)',
   },
   themeText: {
@@ -1868,7 +1868,7 @@ const styles = StyleSheet.create({
   },
   // Google Drive Backup styles
   backupCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 16,
   },
@@ -1898,7 +1898,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#334155',
+    borderTopColor: '#1E3050',
   },
   lastBackupText: {
     fontSize: 13,
@@ -1918,7 +1918,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   backupNowButton: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
   },
   disconnectButton: {
     backgroundColor: '#EF444420',
@@ -1937,14 +1937,14 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
   adminCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
@@ -1953,7 +1953,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#334155',
+    backgroundColor: '#1E3050',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1975,7 +1975,7 @@ const styles = StyleSheet.create({
   },
   youBadge: {
     fontSize: 12,
-    color: '#4F46E5',
+    color: '#2563EB',
   },
   deleteButton: {
     width: 36,
@@ -2008,7 +2008,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 20,
     padding: 24,
     width: '100%',
@@ -2023,10 +2023,10 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
     paddingHorizontal: 16,
     marginBottom: 12,
     height: 52,
@@ -2049,10 +2049,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#334155',
+    backgroundColor: '#1E3050',
   },
   confirmButton: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
   },
   cancelButtonText: {
     fontSize: 16,
@@ -2086,13 +2086,13 @@ const styles = StyleSheet.create({
     gap: 6,
     padding: 12,
     borderRadius: 8,
-    backgroundColor: '#334155',
+    backgroundColor: '#1E3050',
     borderWidth: 2,
     borderColor: 'transparent',
   },
   roleButtonActive: {
-    backgroundColor: '#4F46E5',
-    borderColor: '#6366F1',
+    backgroundColor: '#2563EB',
+    borderColor: '#3B82F6',
   },
   roleButtonText: {
     fontSize: 14,
@@ -2106,10 +2106,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 12,
-    backgroundColor: '#334155',
+    backgroundColor: '#1E3050',
   },
   roleBadgeAdmin: {
-    backgroundColor: '#4F46E520',
+    backgroundColor: '#2563EB20',
   },
   roleBadgeText: {
     fontSize: 10,
@@ -2128,7 +2128,7 @@ const styles = StyleSheet.create({
   creditCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     marginTop: 12,
@@ -2216,7 +2216,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
@@ -2250,13 +2250,13 @@ const styles = StyleSheet.create({
   userSearchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
     gap: 8,
   },
   userSearchInput: {
@@ -2266,7 +2266,7 @@ const styles = StyleSheet.create({
   },
   // Late Fee & Auto-Lock Settings Styles
   settingsCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
   },
@@ -2276,7 +2276,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    borderBottomColor: '#1E3050',
   },
   settingLabelContainer: {
     flexDirection: 'row',
@@ -2297,12 +2297,12 @@ const styles = StyleSheet.create({
   settingInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   settingInput: {
     fontSize: 16,
@@ -2320,12 +2320,12 @@ const styles = StyleSheet.create({
     width: 52,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#334155',
+    backgroundColor: '#1E3050',
     justifyContent: 'center',
     padding: 2,
   },
   toggleActive: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
   },
   toggleKnob: {
     width: 24,
@@ -2341,7 +2341,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     borderRadius: 12,
     paddingVertical: 14,
     marginTop: 20,
@@ -2356,20 +2356,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#4F46E520',
+    backgroundColor: '#2563EB20',
     borderRadius: 12,
     paddingVertical: 14,
     marginTop: 10,
     borderWidth: 1,
-    borderColor: '#4F46E540',
+    borderColor: '#2563EB40',
   },
   applyToAllButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#4F46E5',
+    color: '#2563EB',
   },
   diagnosticCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,

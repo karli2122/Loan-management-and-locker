@@ -448,7 +448,7 @@ export default function ClientsList() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   header: {
     flexDirection: 'row',
@@ -457,13 +457,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   backButton: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -476,14 +476,14 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     marginHorizontal: 20,
     marginTop: 16,
@@ -509,10 +509,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
   },
   filterButtonActive: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
   },
   filterText: {
     fontSize: 14,
@@ -529,12 +529,12 @@ const styles = StyleSheet.create({
   clientCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   clientInfo: {
     flex: 1,
@@ -586,7 +586,7 @@ const styles = StyleSheet.create({
   },
   emiAmount: {
     fontSize: 14,
-    color: '#4F46E5',
+    color: '#2563EB',
     fontWeight: '500',
   },
   registeredBadge: {
@@ -708,12 +708,12 @@ const styles = StyleSheet.create({
   filterDropdown: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
     gap: 8,
   },
   filterDropdownText: {
@@ -733,7 +733,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   filterModalContent: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
     width: '100%',
@@ -749,16 +749,16 @@ const styles = StyleSheet.create({
   filterModalItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
     borderRadius: 12,
     padding: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   filterModalItemActive: {
-    backgroundColor: '#4F46E5',
-    borderColor: '#4F46E5',
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
   },
   filterModalItemText: {
     flex: 1,

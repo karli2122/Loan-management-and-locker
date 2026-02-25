@@ -78,8 +78,8 @@ export default function ClientPortalLogin() {
         {/* Language Switcher */}
         <View style={styles.langSwitcher}>
           <LanguagePicker compact colors={{
-            surface: '#1E293B', text: '#F8FAFC', textMuted: '#94A3B8',
-            border: '#334155', primary: '#10B981', background: '#0F172A',
+            surface: '#152035', text: '#F8FAFC', textMuted: '#94A3B8',
+            border: '#1E3050', primary: '#10B981', background: '#0B1527',
           }} />
         </View>
 
@@ -87,7 +87,7 @@ export default function ClientPortalLogin() {
           {/* Logo / Icon */}
           <View style={styles.logoContainer}>
             <View style={styles.logoCircle}>
-              <Ionicons name="wallet" size={48} color="#4F46E5" />
+              <Ionicons name="wallet" size={48} color="#2563EB" />
             </View>
           </View>
 
@@ -174,7 +174,7 @@ export default function ClientPortalLogin() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   keyboardView: {
     flex: 1,
@@ -189,10 +189,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
   },
   langButtonActive: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
   },
   langText: {
     fontSize: 12,
@@ -216,11 +216,11 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#4F46E530',
+    borderColor: '#2563EB30',
   },
   title: {
     fontSize: 28,
@@ -238,11 +238,11 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   inputIcon: {
     padding: 16,
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     borderRadius: 12,
     padding: 16,
     marginTop: 8,

@@ -330,7 +330,7 @@ export default function Dashboard() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <ActivityIndicator size="large" color="#2563EB" />
           <Text style={{ color: colors.textMuted, marginTop: 12, fontSize: 14 }}>
             {t('loadingData')}
           </Text>
@@ -364,7 +364,7 @@ export default function Dashboard() {
       <ScrollView
         style={[styles.content, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.contentContainer}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />}
       >
         {/* Admin Filter for Superadmins */}
         {isSuperAdmin && (
@@ -374,7 +374,7 @@ export default function Dashboard() {
             data-testid="admin-filter-btn"
           >
             <View style={styles.adminFilterContent}>
-              <Ionicons name="funnel" size={18} color="#4F46E5" />
+              <Ionicons name="funnel" size={18} color="#2563EB" />
               <Text style={[styles.adminFilterLabel, { color: colors.textMuted }]}>
                 {t('filterByAdmin')}
               </Text>
@@ -408,11 +408,11 @@ export default function Dashboard() {
                   setShowAdminFilter(false);
                 }}
               >
-                <Ionicons name="person" size={18} color={!selectedAdminId ? '#4F46E5' : colors.textMuted} />
+                <Ionicons name="person" size={18} color={!selectedAdminId ? '#2563EB' : colors.textMuted} />
                 <Text style={[styles.modalOptionText, { color: colors.textMuted }, !selectedAdminId && styles.modalOptionTextActive]}>
                   {t('myData')}
                 </Text>
-                {!selectedAdminId && <Ionicons name="checkmark" size={18} color="#4F46E5" />}
+                {!selectedAdminId && <Ionicons name="checkmark" size={18} color="#2563EB" />}
               </TouchableOpacity>
               
               <TouchableOpacity
@@ -422,11 +422,11 @@ export default function Dashboard() {
                   setShowAdminFilter(false);
                 }}
               >
-                <Ionicons name="people" size={18} color={selectedAdminId === 'all' ? '#4F46E5' : colors.textMuted} />
+                <Ionicons name="people" size={18} color={selectedAdminId === 'all' ? '#2563EB' : colors.textMuted} />
                 <Text style={[styles.modalOptionText, { color: colors.textMuted }, selectedAdminId === 'all' && styles.modalOptionTextActive]}>
                   {t('allAdmins')}
                 </Text>
-                {selectedAdminId === 'all' && <Ionicons name="checkmark" size={18} color="#4F46E5" />}
+                {selectedAdminId === 'all' && <Ionicons name="checkmark" size={18} color="#2563EB" />}
               </TouchableOpacity>
               
               <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
@@ -440,11 +440,11 @@ export default function Dashboard() {
                     setShowAdminFilter(false);
                   }}
                 >
-                  <Ionicons name="person-circle" size={18} color={selectedAdminId === admin.id ? '#4F46E5' : colors.textMuted} />
+                  <Ionicons name="person-circle" size={18} color={selectedAdminId === admin.id ? '#2563EB' : colors.textMuted} />
                   <Text style={[styles.modalOptionText, { color: colors.textMuted }, selectedAdminId === admin.id && styles.modalOptionTextActive]}>
                     {admin.first_name || admin.username}
                   </Text>
-                  {selectedAdminId === admin.id && <Ionicons name="checkmark" size={18} color="#4F46E5" />}
+                  {selectedAdminId === admin.id && <Ionicons name="checkmark" size={18} color="#2563EB" />}
                 </TouchableOpacity>
               ))}
             </View>
@@ -519,7 +519,7 @@ export default function Dashboard() {
           </View>
           <View style={[styles.financialRow, { borderBottomColor: colors.border }]}>
             <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{t('profitThisMonth')}</Text>
-            <Text style={[styles.financialValue, { color: '#4F46E5' }]}>{formatAmount(monthStats.profit)}</Text>
+            <Text style={[styles.financialValue, { color: '#2563EB' }]}>{formatAmount(monthStats.profit)}</Text>
           </View>
           <View style={[styles.financialRow, { borderBottomColor: colors.border }]}>
             <Text style={[styles.financialLabel, { color: colors.textMuted }]}>{t('dueThisMonth')}</Text>
@@ -547,7 +547,7 @@ export default function Dashboard() {
             <View style={[styles.interestDivider, { backgroundColor: colors.border }]} />
             <View style={styles.interestSubStats}>
               <View style={styles.interestSubStat}>
-                <Text style={[styles.interestSubValue, { color: '#4F46E5' }]} data-testid="month-interest-value">
+                <Text style={[styles.interestSubValue, { color: '#2563EB' }]} data-testid="month-interest-value">
                   {formatAmount(interestSummary.current_month_interest)}
                 </Text>
                 <Text style={[styles.interestSubLabel, { color: colors.textMuted }]}>
@@ -685,7 +685,7 @@ export default function Dashboard() {
                 propsForDots: {
                   r: '5',
                   strokeWidth: '2',
-                  stroke: '#4F46E5',
+                  stroke: '#2563EB',
                 },
                 propsForBackgroundLines: {
                   strokeDasharray: '',
@@ -706,7 +706,7 @@ export default function Dashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   header: {
     flexDirection: 'row',
@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   langSwitcher: {
     flexDirection: 'row',
@@ -725,10 +725,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
   },
   langButtonActive: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
   },
   langText: {
     fontSize: 11,
@@ -777,7 +777,7 @@ const styles = StyleSheet.create({
   creditBalanceCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
@@ -871,11 +871,11 @@ const styles = StyleSheet.create({
   actionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   actionIcon: {
     width: 48,
@@ -899,12 +899,12 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   financialSummary: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 16,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   financialRow: {
     flexDirection: 'row',
@@ -912,7 +912,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    borderBottomColor: '#1E3050',
   },
   financialLabel: {
     fontSize: 14,
@@ -925,12 +925,12 @@ const styles = StyleSheet.create({
   },
   // Heartbeat card styles
   heartbeatCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 12,
     marginTop: 10,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   heartbeatHeader: {
     flexDirection: 'row',
@@ -982,7 +982,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#334155',
+    borderTopColor: '#1E3050',
   },
   heartbeatAlertText: {
     fontSize: 12,
@@ -991,24 +991,24 @@ const styles = StyleSheet.create({
   },
   // Chart styles
   chartContainer: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 12,
     marginTop: 10,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   // Admin Filter styles
   adminFilterButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 14,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#4F46E530',
+    borderColor: '#2563EB30',
   },
   adminFilterContent: {
     flexDirection: 'row',
@@ -1022,7 +1022,7 @@ const styles = StyleSheet.create({
   adminFilterValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#4F46E5',
+    color: '#2563EB',
   },
   // Modal styles
   modalOverlay: {
@@ -1033,7 +1033,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
     width: '100%',
@@ -1055,7 +1055,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   modalOptionActive: {
-    backgroundColor: '#4F46E520',
+    backgroundColor: '#2563EB20',
   },
   modalOptionText: {
     flex: 1,
@@ -1063,12 +1063,12 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
   },
   modalOptionTextActive: {
-    color: '#4F46E5',
+    color: '#2563EB',
     fontWeight: '500',
   },
   modalDivider: {
     height: 1,
-    backgroundColor: '#334155',
+    backgroundColor: '#1E3050',
     marginVertical: 8,
   },
   // Interest Earned Card styles

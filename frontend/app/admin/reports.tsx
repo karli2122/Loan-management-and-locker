@@ -274,11 +274,11 @@ export default function Reports() {
               .header {
                 text-align: center;
                 margin-bottom: 40px;
-                border-bottom: 2px solid #4F46E5;
+                border-bottom: 2px solid #2563EB;
                 padding-bottom: 20px;
               }
               .header h1 {
-                color: #4F46E5;
+                color: #2563EB;
                 margin: 0;
                 font-size: 28px;
               }
@@ -293,7 +293,7 @@ export default function Reports() {
                 padding: 15px;
                 background: #f8fafc;
                 border-radius: 8px;
-                border-left: 4px solid #4F46E5;
+                border-left: 4px solid #2563EB;
               }
               .user-info p {
                 margin: 5px 0;
@@ -314,7 +314,7 @@ export default function Reports() {
                 background: #f8fafc;
                 padding: 20px;
                 border-radius: 8px;
-                border-left: 4px solid #4F46E5;
+                border-left: 4px solid #2563EB;
               }
               .summary-card.profit {
                 border-left-color: #10B981;
@@ -348,7 +348,7 @@ export default function Reports() {
                 border-collapse: collapse;
               }
               th {
-                background: #4F46E5;
+                background: #2563EB;
                 color: white;
                 padding: 12px 8px;
                 text-align: left;
@@ -446,7 +446,7 @@ export default function Reports() {
                     </tr>
                     <tr class="totals-row">
                       <td style="padding: 12px 8px;">${t('totalRevenue')}</td>
-                      <td style="padding: 12px 8px; text-align: right; color: #4F46E5; font-size: 18px;">${currencySymbol}${financialReport.totals.total_revenue.toFixed(2)}</td>
+                      <td style="padding: 12px 8px; text-align: right; color: #2563EB; font-size: 18px;">${currencySymbol}${financialReport.totals.total_revenue.toFixed(2)}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -495,7 +495,7 @@ export default function Reports() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <ActivityIndicator size="large" color="#2563EB" />
         </View>
       </SafeAreaView>
     );
@@ -624,10 +624,10 @@ export default function Reports() {
             </View>
 
             {/* Repeat Customers */}
-            <View style={[styles.metricCard, { backgroundColor: '#4F46E520' }]}>
+            <View style={[styles.metricCard, { backgroundColor: '#2563EB20' }]}>
               <View style={styles.metricHeader}>
-                <Ionicons name="people" size={24} color="#4F46E5" />
-                <Text style={[styles.metricValue, { color: '#4F46E5' }]}>{advancedMetrics.repeatRate.toFixed(1)}%</Text>
+                <Ionicons name="people" size={24} color="#2563EB" />
+                <Text style={[styles.metricValue, { color: '#2563EB' }]}>{advancedMetrics.repeatRate.toFixed(1)}%</Text>
               </View>
               <Text style={styles.metricLabel}>{t('repeatCustomers')}</Text>
               <Text style={styles.metricSubLabel}>({advancedMetrics.repeatCustomers})</Text>
@@ -644,10 +644,10 @@ export default function Reports() {
             </View>
 
             {/* New Loans This Month */}
-            <View style={[styles.metricCard, { backgroundColor: '#6366F120' }]}>
+            <View style={[styles.metricCard, { backgroundColor: '#3B82F620' }]}>
               <View style={styles.metricHeader}>
-                <Ionicons name="document-text" size={24} color="#6366F1" />
-                <Text style={[styles.metricValue, { color: '#6366F1' }]}>{advancedMetrics.newLoansThisMonth}</Text>
+                <Ionicons name="document-text" size={24} color="#3B82F6" />
+                <Text style={[styles.metricValue, { color: '#3B82F6' }]}>{advancedMetrics.newLoansThisMonth}</Text>
               </View>
               <Text style={styles.metricLabel}>{t('newLoans')}</Text>
               <Text style={styles.metricSubLabel}>{t('thisMonth')}</Text>
@@ -680,8 +680,8 @@ export default function Reports() {
             <Text style={styles.sectionTitle}>{t('collectionOverview')}</Text>
             
             <View style={styles.statsGrid}>
-              <View style={[styles.statCard, { backgroundColor: '#4F46E520' }]}>
-                <Ionicons name="people" size={24} color="#4F46E5" />
+              <View style={[styles.statCard, { backgroundColor: '#2563EB20' }]}>
+                <Ionicons name="people" size={24} color="#2563EB" />
                 <Text style={styles.statValue}>{collectionReport.overview?.total_clients || 0}</Text>
                 <Text style={styles.statLabel}>{t('totalClients')}</Text>
               </View>
@@ -730,7 +730,7 @@ export default function Reports() {
               </View>
               <View style={[styles.financialRow, styles.separator]}>
                 <Text style={[styles.financialLabel, { fontWeight: 'bold' }]}>{t('collectionRate')}</Text>
-                <Text style={[styles.financialValue, { color: '#4F46E5', fontWeight: 'bold' }]}>
+                <Text style={[styles.financialValue, { color: '#2563EB', fontWeight: 'bold' }]}>
                   {collectionReport.financial?.collection_rate || 0}%
                 </Text>
               </View>
@@ -782,7 +782,7 @@ export default function Reports() {
                 { name: t('onTime'), population: onTime, color: '#10B981', legendFontColor: '#94A3B8', legendFontSize: 12 },
                 { name: t('atRisk'), population: atRisk, color: '#F59E0B', legendFontColor: '#94A3B8', legendFontSize: 12 },
                 { name: t('defaulted'), population: defaulted, color: '#EF4444', legendFontColor: '#94A3B8', legendFontSize: 12 },
-                { name: t('completed'), population: completed, color: '#4F46E5', legendFontColor: '#94A3B8', legendFontSize: 12 },
+                { name: t('completed'), population: completed, color: '#2563EB', legendFontColor: '#94A3B8', legendFontSize: 12 },
               ].filter(item => item.population > 0);
               
               return (
@@ -792,9 +792,9 @@ export default function Reports() {
                     width={screenWidth - 40}
                     height={220}
                     chartConfig={{
-                      backgroundColor: '#1E293B',
-                      backgroundGradientFrom: '#1E293B',
-                      backgroundGradientTo: '#1E293B',
+                      backgroundColor: '#152035',
+                      backgroundGradientFrom: '#152035',
+                      backgroundGradientTo: '#152035',
                       color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
                     }}
                     accessor="population"
@@ -852,7 +852,7 @@ export default function Reports() {
               </View>
               <View style={[styles.revenueItem, styles.separator]}>
                 <Text style={[styles.revenueLabel, { fontWeight: 'bold' }]}>{t('totalRevenue')}</Text>
-                <Text style={[styles.revenueValue, { color: '#4F46E5', fontWeight: 'bold', fontSize: 20 }]}>
+                <Text style={[styles.revenueValue, { color: '#2563EB', fontWeight: 'bold', fontSize: 20 }]}>
                   {formatAmount(financialReport.totals?.total_revenue || 0)}
                 </Text>
               </View>
@@ -897,14 +897,14 @@ export default function Reports() {
                     width={screenWidth - 40}
                     height={220}
                     chartConfig={{
-                      backgroundColor: '#1E293B',
-                      backgroundGradientFrom: '#1E293B',
-                      backgroundGradientTo: '#334155',
+                      backgroundColor: '#152035',
+                      backgroundGradientFrom: '#152035',
+                      backgroundGradientTo: '#1E3050',
                       decimalPlaces: 0,
                       color: (opacity = 1) => `rgba(79, 70, 229, ${opacity})`,
                       labelColor: (opacity = 1) => `rgba(148, 163, 184, ${opacity})`,
                       style: { borderRadius: 16 },
-                      propsForDots: { r: '6', strokeWidth: '2', stroke: '#4F46E5' },
+                      propsForDots: { r: '6', strokeWidth: '2', stroke: '#2563EB' },
                     }}
                     bezier
                     style={{ marginVertical: 8, borderRadius: 16 }}
@@ -1013,7 +1013,7 @@ export default function Reports() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   loadingContainer: {
     flex: 1,
@@ -1027,13 +1027,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1041,7 +1041,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1088,7 +1088,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   financialCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -1110,19 +1110,19 @@ const styles = StyleSheet.create({
   },
   separator: {
     borderTopWidth: 1,
-    borderTopColor: '#334155',
+    borderTopColor: '#1E3050',
     marginTop: 8,
     paddingTop: 12,
   },
   monthCard: {
-    backgroundColor: '#4F46E520',
+    backgroundColor: '#2563EB20',
     borderRadius: 12,
     padding: 16,
   },
   monthTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#4F46E5',
+    color: '#2563EB',
     marginBottom: 12,
   },
   monthDetails: {
@@ -1181,7 +1181,7 @@ const styles = StyleSheet.create({
     color: '#F59E0B',
   },
   revenueCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -1204,7 +1204,7 @@ const styles = StyleSheet.create({
   chartContainer: {
     alignItems: 'center',
     marginVertical: 16,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 8,
   },
@@ -1222,7 +1222,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   trendSummaryItem: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 8,
     padding: 12,
     flex: 1,
@@ -1236,7 +1236,7 @@ const styles = StyleSheet.create({
   trendSummaryValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#4F46E5',
+    color: '#2563EB',
     marginBottom: 2,
   },
   trendSummaryCount: {
@@ -1245,7 +1245,7 @@ const styles = StyleSheet.create({
   },
   // Filter section styles
   filterSection: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
@@ -1267,12 +1267,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   filterButtonText: {
     fontSize: 14,
@@ -1284,7 +1284,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -1296,7 +1296,7 @@ const styles = StyleSheet.create({
   },
   // Profit summary styles
   profitCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 20,
   },
@@ -1324,7 +1324,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#334155',
+    borderTopColor: '#1E3050',
   },
   profitDetailItem: {
     alignItems: 'center',
@@ -1421,7 +1421,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   pickerModal: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -1444,7 +1444,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   pickerItemActive: {
-    backgroundColor: '#4F46E520',
+    backgroundColor: '#2563EB20',
   },
   pickerItemText: {
     fontSize: 16,
@@ -1452,11 +1452,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   pickerItemTextActive: {
-    color: '#4F46E5',
+    color: '#2563EB',
     fontWeight: '600',
   },
   pickerCloseButton: {
-    backgroundColor: '#334155',
+    backgroundColor: '#1E3050',
     borderRadius: 8,
     paddingVertical: 14,
     marginTop: 16,

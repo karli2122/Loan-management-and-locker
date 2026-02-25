@@ -400,9 +400,9 @@ export const EditLoanModal = ({
               disabled={previewLoading || !loanAmount || !interestRate || !startDate || !dueDate}
               data-testid="preview-loan-btn"
             >
-              {previewLoading ? <ActivityIndicator color="#4F46E5" size="small" /> : (
+              {previewLoading ? <ActivityIndicator color="#2563EB" size="small" /> : (
                 <>
-                  <Ionicons name="calculator-outline" size={18} color="#4F46E5" />
+                  <Ionicons name="calculator-outline" size={18} color="#2563EB" />
                   <Text style={styles.previewButtonText}>
                     {t('calculatePreview')}
                   </Text>

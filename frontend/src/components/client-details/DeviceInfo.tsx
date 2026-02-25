@@ -25,7 +25,7 @@ export const DeviceInfo = ({
         <Text style={styles.sectionTitle}>{t('deviceInfo')}</Text>
         {client.is_registered && (
           <TouchableOpacity style={styles.editButton} onPress={onEditDevice}>
-            <Ionicons name="create-outline" size={18} color="#4F46E5" />
+            <Ionicons name="create-outline" size={18} color="#2563EB" />
             <Text style={styles.editButtonText}>{t('edit')}</Text>
           </TouchableOpacity>
         )}
@@ -67,10 +67,10 @@ export const DeviceInfo = ({
             data-testid="fetch-price-btn"
           >
             {fetchingPrice ? (
-              <ActivityIndicator size="small" color="#4F46E5" />
+              <ActivityIndicator size="small" color="#2563EB" />
             ) : (
               <>
-                <Ionicons name="sync" size={16} color="#4F46E5" />
+                <Ionicons name="sync" size={16} color="#2563EB" />
                 <Text style={styles.fetchPriceText}>{t('fetchPrice')}</Text>
               </>
             )}

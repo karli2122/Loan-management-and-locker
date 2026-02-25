@@ -313,7 +313,7 @@ export default function LoanManagement() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <ActivityIndicator size="large" color="#2563EB" />
         </View>
       </SafeAreaView>
     );
@@ -352,7 +352,7 @@ export default function LoanManagement() {
                 style={styles.setupButton}
                 onPress={() => setSetupLoanModal(true)}
               >
-                <Ionicons name="add-circle" size={20} color="#4F46E5" />
+                <Ionicons name="add-circle" size={20} color="#2563EB" />
                 <Text style={styles.setupButtonText}>Setup Loan</Text>
               </TouchableOpacity>
             ) : (
@@ -360,7 +360,7 @@ export default function LoanManagement() {
                 style={styles.editButton}
                 onPress={openEditLoanModal}
               >
-                <Ionicons name="create-outline" size={20} color="#4F46E5" />
+                <Ionicons name="create-outline" size={20} color="#2563EB" />
                 <Text style={styles.editButtonText}>Edit</Text>
               </TouchableOpacity>
             )}
@@ -772,7 +772,7 @@ export default function LoanManagement() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   loadingContainer: {
     flex: 1,
@@ -786,13 +786,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -800,7 +800,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -824,7 +824,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   summaryCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
@@ -851,13 +851,13 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#4F46E520',
+    backgroundColor: '#2563EB20',
     borderRadius: 8,
   },
   setupButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#4F46E5',
+    color: '#2563EB',
   },
   editButton: {
     flexDirection: 'row',
@@ -865,20 +865,20 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#4F46E520',
+    backgroundColor: '#2563EB20',
     borderRadius: 8,
   },
   editButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#4F46E5',
+    color: '#2563EB',
   },
   progressContainer: {
     marginBottom: 20,
   },
   progressBar: {
     height: 8,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -981,7 +981,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   paymentCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -1015,13 +1015,13 @@ const styles = StyleSheet.create({
   paymentMethod: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    backgroundColor: '#4F46E520',
+    backgroundColor: '#2563EB20',
     borderRadius: 6,
   },
   paymentMethodText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#4F46E5',
+    color: '#2563EB',
     textTransform: 'capitalize',
   },
   paymentNotes: {
@@ -1038,7 +1038,7 @@ const styles = StyleSheet.create({
   scheduleItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
@@ -1092,7 +1092,7 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '90%',
     maxHeight: '80%',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
   },
@@ -1112,13 +1112,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
     borderRadius: 12,
     padding: 12,
     fontSize: 16,
     color: '#fff',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   textArea: {
     height: 80,
@@ -1137,15 +1137,15 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
     alignItems: 'center',
   },
   methodButtonActive: {
-    backgroundColor: '#4F46E520',
-    borderColor: '#4F46E5',
+    backgroundColor: '#2563EB20',
+    borderColor: '#2563EB',
   },
   methodButtonText: {
     fontSize: 12,
@@ -1154,7 +1154,7 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
   methodButtonTextActive: {
-    color: '#4F46E5',
+    color: '#2563EB',
   },
   modalButtons: {
     flexDirection: 'row',
@@ -1168,10 +1168,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalCancelButton: {
-    backgroundColor: '#334155',
+    backgroundColor: '#1E3050',
   },
   modalConfirmButton: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
   },
   modalButtonText: {
     fontSize: 16,
@@ -1202,7 +1202,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#334155',
+    backgroundColor: '#1E3050',
     padding: 2,
   },
   toggleActive: {

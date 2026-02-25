@@ -184,15 +184,15 @@ const styles = StyleSheet.create({
   modeCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   adminCard: {
-    borderColor: '#4F46E5',
+    borderColor: '#2563EB',
   },
   clientCard: {
     borderColor: '#059669',
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 16,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
   },

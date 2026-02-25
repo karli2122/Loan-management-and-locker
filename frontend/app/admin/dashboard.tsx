@@ -125,7 +125,7 @@ export default function Dashboard() {
 
       <ScrollView
         style={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />}
       >
         <Text style={styles.sectionTitle}>{t('loanOverview')}</Text>
 
@@ -186,7 +186,7 @@ export default function Dashboard() {
             style={styles.actionCard}
             onPress={() => router.push('/admin/clients')}
           >
-            <View style={[styles.actionIcon, { backgroundColor: '#4F46E5' }]}>
+            <View style={[styles.actionIcon, { backgroundColor: '#2563EB' }]}>
               <Ionicons name="people" size={24} color="#fff" />
             </View>
             <Text style={styles.actionTitle}>{t('viewClients')}</Text>
@@ -272,7 +272,7 @@ export default function Dashboard() {
             style={styles.actionCard}
             onPress={() => router.push('/admin/notifications')}
           >
-            <View style={[styles.actionIcon, { backgroundColor: '#6366F1' }]}>
+            <View style={[styles.actionIcon, { backgroundColor: '#3B82F6' }]}>
               <Ionicons name="mail" size={24} color="#fff" />
             </View>
             <Text style={styles.actionTitle}>{t('notifications')}</Text>
@@ -300,7 +300,7 @@ export default function Dashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1527',
   },
   header: {
     flexDirection: 'row',
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#152035',
   },
   headerRight: {
     flexDirection: 'row',
@@ -324,10 +324,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
   },
   langButtonActive: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
   },
   langText: {
     fontSize: 11,
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -395,11 +395,11 @@ const styles = StyleSheet.create({
   actionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   actionIcon: {
     width: 48,
@@ -423,12 +423,12 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   financialSummary: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderRadius: 16,
     padding: 16,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   financialRow: {
     flexDirection: 'row',
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    borderBottomColor: '#1E3050',
   },
   financialLabel: {
     fontSize: 14,

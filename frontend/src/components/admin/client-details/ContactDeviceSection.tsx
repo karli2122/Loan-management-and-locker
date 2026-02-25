@@ -30,7 +30,7 @@ export const ContactDeviceSection = ({
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{t('contactInfo')}</Text>
           <TouchableOpacity style={styles.editButton} onPress={onEditClient} data-testid="edit-client-btn">
-            <Ionicons name="create-outline" size={18} color="#4F46E5" />
+            <Ionicons name="create-outline" size={18} color="#2563EB" />
             <Text style={styles.editButtonText}>{t('edit')}</Text>
           </TouchableOpacity>
         </View>
@@ -56,7 +56,7 @@ export const ContactDeviceSection = ({
           <Text style={styles.sectionTitle}>{t('deviceInfo')}</Text>
           {client.is_registered && (
             <TouchableOpacity style={styles.editButton} onPress={onEditDevice}>
-              <Ionicons name="create-outline" size={18} color="#4F46E5" />
+              <Ionicons name="create-outline" size={18} color="#2563EB" />
               <Text style={styles.editButtonText}>{t('edit')}</Text>
             </TouchableOpacity>
           )}
@@ -93,10 +93,10 @@ export const ContactDeviceSection = ({
             <Text style={styles.sectionTitle}>{t('estimatedValue')}</Text>
             <TouchableOpacity style={styles.fetchPriceButton} onPress={onFetchPrice} disabled={fetchingPrice}>
               {fetchingPrice ? (
-                <ActivityIndicator size="small" color="#4F46E5" />
+                <ActivityIndicator size="small" color="#2563EB" />
               ) : (
                 <>
-                  <Ionicons name="sync" size={16} color="#4F46E5" />
+                  <Ionicons name="sync" size={16} color="#2563EB" />
                   <Text style={styles.fetchPriceText}>{t('fetchPrice')}</Text>
                 </>
               )}

@@ -189,9 +189,9 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E3050',
   },
   inputText: {
     flex: 1,
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 40,
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    borderBottomColor: '#1E3050',
   },
   modalTitle: {
     fontSize: 17,
@@ -232,11 +232,11 @@ const styles = StyleSheet.create({
   doneText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#4F46E5',
+    color: '#2563EB',
   },
   picker: {
     height: 200,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#152035',
   },
 });
 
