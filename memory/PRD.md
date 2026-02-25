@@ -6,47 +6,47 @@ Loan management application with client-facing Android app (kiosk/lock mode) and
 ## Architecture
 - **Backend**: FastAPI (Python) on port 8001
 - **Frontend**: React Native (Expo) on port 3000
-- **Database**: MongoDB
+- **Database**: MongoDB (DB: test_database)
 - **Build System**: EAS Build for Android APKs
 - **Native Module**: emi-device-admin (Kotlin) for Device Admin kiosk mode
 
 ## What's Been Implemented
 
-### Session 1-19 (Previous Sessions)
+### Previous Sessions
 - Full loan management system (CRUD clients, loans, payments)
 - Admin app with dashboard, client details, reports, calculator
 - Client app with registration, home screen, kiosk lock mode
 - Device Admin native module (Kotlin) for Android lock screen
-- Credit score display
-- Used phone price scraper (Swappa)
+- Credit score display, Used phone price scraper (Swappa)
 - Maximum security features: Foreground Monitor, Notification Blocker, Auto-Restart, Camera/Bluetooth disable
 - Multi-language support (16 languages) via LanguageContext
 
 ### Session 20 (Feb 24, 2026) - Language & Currency Selectors
-- **CurrencyContext**: Created with 8 currencies (EUR, NOK, SEK, DKK, PLN, CHF, GBP, USD) with conversion rates from EUR, `formatAmount()` function, AsyncStorage persistence
-- **LanguagePicker component**: Reusable modal dropdown with flag emojis, 16 languages, compact mode
-- **CurrencyPicker component**: Reusable modal dropdown with flags, currency codes, symbols, names
-- **Admin Settings**: Replaced ET/EN toggle with LanguagePicker dropdown + added CurrencyPicker dropdown
-- **Admin Dashboard (tabs/index)**: Replaced ET/EN toggle with LanguagePicker, all financial values use formatAmount
-- **All admin pages updated**: dashboard, reports, client-details, clients, loans, transactions, add-loan, add-client, calculator, bank-analyzer, client-map, payment-reminders, loan-management
-- **Client pages updated**: home.tsx, register.tsx, portal-dashboard, payment-history
-- **PDF export**: Updated to use currencySymbol variable
-- **Zero hardcoded €** symbols remaining in codebase
+- **CurrencyContext**: 8 currencies (EUR, NOK, SEK, DKK, PLN, CHF, GBP, USD) with conversion rates, formatAmount(), AsyncStorage persistence
+- **LanguagePicker + CurrencyPicker**: Reusable modal dropdown components with flag emojis
+- **All screens updated**: Replaced ET/EN toggles with LanguagePicker dropdowns, all hardcoded € replaced with formatAmount() across 20+ files
+- Zero hardcoded € remaining in codebase
 
-## Pending Verification
-- Client app max security features build (d0be2f0b-f64b-4bcc-ae82-98b17154affa) - User needs to test on device
-- Guided permission setup for Usage Stats / Notification Access
+### Session 20 (Feb 25, 2026) - Permissions + Auto-Fetch
+- **Guided Permission Setup**: Added Usage Stats Access and Notification Listener permission cards with device-specific instructions, Samsung "Restricted settings" handling
+- **Auto-Fetch Fix**: Removed freshRegistration polling guard, reduced interval to 5s
+- **Backend Fixes**: Admin seeding with is_super_admin, client reassignment, KEEPALIVE_URL fix
+
+## Current Environment
+- Backend URL: https://localization-hub-10.preview.emergentagent.com
+- Admin login: username=admin, password=admin123
+- DB_NAME: test_database
 
 ## Prioritized Backlog
 
 ### P0
-- Guided permission setup screen in client app (for Usage Stats, Notification Access)
+- Verify new permission prompts work on device (Usage Stats, Notification Listener)
+- Verify auto-fetch updates lock/warning status without manual refresh
 
 ### P1
 - Custom Launcher (Default Home App) for client app
 - Add "address" field to client information form
 - Offline mode data accuracy fix
-- Client app crash post-registration fix
 
 ### P2
 - Diagnostic Report PDF export for superadmins
@@ -57,5 +57,4 @@ Loan management application with client-facing Android app (kiosk/lock mode) and
 - iOS client app (soft lock)
 - Automated Payment Reminders (SMS/Email)
 - Bulk Payment Import (CSV)
-- AMAPI integration
-- FCM Push Notifications
+- AMAPI integration, FCM Push Notifications
