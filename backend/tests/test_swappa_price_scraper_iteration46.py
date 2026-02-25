@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://admin-dashboard-v2-20.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://secure-loan-app.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 TEST_USERNAME = "karli1987"

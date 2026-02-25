@@ -30,7 +30,7 @@ Loan management application with client-facing Android app (kiosk/lock mode) and
 - **Zero hardcoded €** in codebase
 
 ## Current Environment
-- Backend URL: https://localization-hub-10.preview.emergentagent.com
+- Backend URL: https://secure-loan-app.preview.emergentagent.com
 - Admin login: username=admin, password=admin123
 - DB_NAME: test_database
 

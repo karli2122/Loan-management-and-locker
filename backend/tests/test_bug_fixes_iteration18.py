@@ -14,7 +14,7 @@ import requests
 import os
 from datetime import datetime
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://loan-admin-refactor.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://secure-loan-app.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_USERNAME = "karli1987"
