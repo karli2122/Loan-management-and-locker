@@ -25,8 +25,6 @@ interface DeviceStats {
   unlocked_devices: number;
 }
 
-type ActivationMethod = 'adb' | 'qr' | 'nfc';
-
 export default function DeviceManagement() {
   const router = useRouter();
   const { language, t } = useLanguage();
