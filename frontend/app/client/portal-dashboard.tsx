@@ -14,6 +14,9 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '../../src/constants/api';
+import { useLanguage } from '../../src/context/LanguageContext';
+import { useCurrency } from '../../src/context/CurrencyContext';
+import { LanguagePicker } from '../../src/components/LanguagePicker';
 
 interface LoanSummary {
   loan_amount: number;
@@ -50,7 +53,8 @@ interface Payment {
 
 export default function ClientPortalDashboard() {
   const router = useRouter();
-  const [language, setLanguage] = useState<'et' | 'en'>('et');
+  const { language, t } = useLanguage();
+  const { formatAmount } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [clientName, setClientName] = useState('');
@@ -172,20 +176,10 @@ export default function ClientPortalDashboard() {
           <Text style={styles.clientName}>{clientName}</Text>
         </View>
         <View style={styles.headerRight}>
-          <View style={styles.langSwitcher}>
-            <TouchableOpacity
-              style={[styles.langButton, language === 'et' && styles.langButtonActive]}
-              onPress={() => setLanguage('et')}
-            >
-              <Text style={[styles.langText, language === 'et' && styles.langTextActive]}>ET</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.langButton, language === 'en' && styles.langButtonActive]}
-              onPress={() => setLanguage('en')}
-            >
-              <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>EN</Text>
-            </TouchableOpacity>
-          </View>
+          <LanguagePicker compact colors={{
+            surface: '#1E293B', text: '#F8FAFC', textMuted: '#94A3B8',
+            border: '#334155', primary: '#10B981', background: '#0F172A',
+          }} />
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
             <Ionicons name="log-out" size={22} color="#EF4444" />
           </TouchableOpacity>
