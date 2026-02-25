@@ -276,23 +276,50 @@ class TestTelegramReminder:
     
     def test_telegram_reminder_returns_response(self):
         """Test that /api/reminders/send-telegram returns success/failure"""
-        if not TestClientCreation.test_client_id:
-            pytest.skip("No test client available")
-        
-        response = requests.post(
-            f"{BASE_URL}/api/reminders/send-telegram/{TestClientCreation.test_client_id}",
+        # Create a test client inline with telegram_chat_id
+        client_data = {
+            "name": f"{TEST_PREFIX}telegram_test_{uuid.uuid4().hex[:8]}",
+            "phone": "+7777888899",
+            "email": "telegram-test@example.com",
+        }
+        create_resp = requests.post(
+            f"{BASE_URL}/api/clients",
+            json=client_data,
             params={"admin_token": TestAdminAuth.admin_token}
         )
-        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+        if create_resp.status_code != 200:
+            pytest.skip(f"Could not create test client: {create_resp.text}")
         
-        data = response.json()
-        print(f"Telegram reminder response: {data}")
+        client_id = create_resp.json().get("id")
         
-        assert "success" in data, "Response should contain 'success' field"
-        assert "message" in data, "Response should contain 'message' field"
-        
-        # Since TELEGRAM_TOKEN is not configured, expect success=false
-        print(f"PASS: Telegram reminder endpoint returned - success: {data['success']}, message: {data['message']}")
+        try:
+            # Update client to add telegram_chat_id
+            requests.put(
+                f"{BASE_URL}/api/clients/{client_id}",
+                json={"telegram_chat_id": "123456789"},
+                params={"admin_token": TestAdminAuth.admin_token}
+            )
+            
+            response = requests.post(
+                f"{BASE_URL}/api/reminders/send-telegram/{client_id}",
+                params={"admin_token": TestAdminAuth.admin_token}
+            )
+            assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+            
+            data = response.json()
+            print(f"Telegram reminder response: {data}")
+            
+            assert "success" in data, "Response should contain 'success' field"
+            assert "message" in data, "Response should contain 'message' field"
+            
+            # Since TELEGRAM_TOKEN is not configured, expect success=false
+            print(f"PASS: Telegram reminder endpoint returned - success: {data['success']}, message: {data['message']}")
+        finally:
+            # Cleanup
+            requests.delete(
+                f"{BASE_URL}/api/clients/{client_id}",
+                params={"admin_token": TestAdminAuth.admin_token}
+            )
     
     def test_telegram_reminder_client_not_found(self):
         """Test telegram reminder with non-existent client"""
