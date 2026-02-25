@@ -260,7 +260,7 @@ async def get_financial_report(
 ):
     """Get financial report with optional date range."""
     admin_id = await get_admin_id_from_token(admin_token)
-    query = {"admin_id": admin_id}
+    query = {"admin_id": admin_id, "is_deleted": {"$ne": True}}
     
     clients = await db.clients.find(query, {"_id": 0}).to_list(1000)
     
@@ -456,7 +456,7 @@ async def get_dashboard_analytics(
         else:
             target_admin_id = filter_admin_id
     
-    query = {"admin_id": target_admin_id} if target_admin_id else {}
+    query = {"admin_id": target_admin_id, "is_deleted": {"$ne": True}} if target_admin_id else {"is_deleted": {"$ne": True}}
     clients = await db.clients.find(query, {"_id": 0}).to_list(1000)
     
     # Overview metrics
