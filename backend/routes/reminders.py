@@ -542,6 +542,107 @@ async def get_reminder_config(admin_token: str = Query(...)):
     return {
         "email_configured": bool(RESEND_API_KEY),
         "telegram_configured": bool(TELEGRAM_TOKEN),
+        "whatsapp_configured": bool(WHATSAPP_TOKEN and WHATSAPP_PHONE_ID),
         "push_configured": True,
         "sender_email": SENDER_EMAIL if RESEND_API_KEY else None,
     }
+
+
+@router.post("/reminders/send-whatsapp/{client_id}")
+async def send_whatsapp_to_client(
+    client_id: str,
+    admin_token: str = Query(...),
+):
+    """Send WhatsApp reminder to a specific client. Falls back to deep link URL."""
+    admin_id = await get_admin_id_from_token(admin_token)
+
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    if client.get("admin_id") != admin_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    phone = client.get("phone") or client.get("phone_number", "")
+    if not phone:
+        return {"success": False, "message": "Client has no phone number"}
+
+    # Clean phone number
+    clean_phone = phone.replace(" ", "").replace("-", "").replace("+", "")
+
+    amount = client.get("monthly_emi", 0) or client.get("outstanding_balance", 0)
+    due_date = ""
+    npd = client.get("next_payment_due")
+    if isinstance(npd, datetime):
+        due_date = npd.strftime("%d.%m.%Y")
+    elif npd:
+        due_date = str(npd)
+
+    days_overdue = client.get("days_overdue", 0)
+    message = build_whatsapp_reminder_text(client.get("name", "Client"), amount, due_date, days_overdue)
+
+    # Try Cloud API first
+    if WHATSAPP_TOKEN and WHATSAPP_PHONE_ID:
+        success = await send_whatsapp_message(clean_phone, message)
+        if success:
+            reminder = Reminder(
+                client_id=client_id,
+                reminder_type="whatsapp",
+                scheduled_date=datetime.utcnow(),
+                sent=True,
+                sent_at=datetime.utcnow(),
+                message=f"WhatsApp sent to {phone}",
+                admin_id=admin_id,
+            )
+            await db.reminders.insert_one(reminder.dict())
+            return {"success": True, "message": f"WhatsApp sent to {phone}"}
+
+    # Return deep link for manual send
+    import urllib.parse
+    encoded_msg = urllib.parse.quote(message)
+    deep_link = f"https://wa.me/{clean_phone}?text={encoded_msg}"
+
+    return {
+        "success": False,
+        "use_deep_link": True,
+        "deep_link": deep_link,
+        "phone": clean_phone,
+        "message": message,
+    }
+
+
+@router.get("/reminders/whatsapp-link/{client_id}")
+async def get_whatsapp_link(
+    client_id: str,
+    admin_token: str = Query(...),
+):
+    """Generate a WhatsApp deep link for a client reminder."""
+    admin_id = await get_admin_id_from_token(admin_token)
+
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    if client.get("admin_id") != admin_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    phone = client.get("phone") or client.get("phone_number", "")
+    if not phone:
+        return {"deep_link": None, "message": "Client has no phone number"}
+
+    clean_phone = phone.replace(" ", "").replace("-", "").replace("+", "")
+
+    amount = client.get("monthly_emi", 0) or client.get("outstanding_balance", 0)
+    due_date = ""
+    npd = client.get("next_payment_due")
+    if isinstance(npd, datetime):
+        due_date = npd.strftime("%d.%m.%Y")
+    elif npd:
+        due_date = str(npd)
+
+    days_overdue = client.get("days_overdue", 0)
+    message = build_whatsapp_reminder_text(client.get("name", "Client"), amount, due_date, days_overdue)
+
+    import urllib.parse
+    encoded_msg = urllib.parse.quote(message)
+    deep_link = f"https://wa.me/{clean_phone}?text={encoded_msg}"
+
+    return {"deep_link": deep_link, "phone": clean_phone, "message": message}
