@@ -61,6 +61,8 @@ export default function ClientHome() {
     accessibility: false,
     location: false,
     notification: false,
+    usageStats: false,
+    notificationListener: false,
   });
   const [showProtectionSetup, setShowProtectionSetup] = useState(false);
   const [protectionComplete, setProtectionComplete] = useState(false);
