@@ -1,0 +1,69 @@
+{
+  "summary": "Backend-only testing completed for soft-delete client feature and translation verification. All 10 backend tests PASSED. Verified: (1) DELETE /api/clients/{client_id} marks client as is_deleted=True and uninstall_allowed=True (soft-delete), (2) GET /api/clients excludes soft-deleted clients, (3) GET /api/device/status/{client_id} returns is_deleted=True for soft-deleted clients, (4) DELETE /api/clients/{client_id}/purge permanently removes client, (5) Report endpoints exclude soft-deleted clients, (6) Admin login works, (7) Health check returns 200, (8) LanguageContext.tsx has 622 translation keys and all 16 languages defined.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_soft_delete_clients.py",
+    "/app/test_reports/pytest/soft_delete_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PASS: routes/clients.py lines 249-290 correctly implements soft-delete (is_deleted=True, uninstall_allowed=True, is_locked=False)",
+    "PASS: routes/clients.py line 65 excludes soft-deleted from GET /api/clients with is_deleted: {$ne: True}",
+    "PASS: routes/device.py lines 45-93 correctly returns is_deleted in ClientStatusResponse",
+    "PASS: routes/clients.py lines 274-289 purge endpoint hard-deletes client and associated payments/reminders",
+    "PASS: routes/reports.py correctly filters with is_deleted: {$ne: True} in multiple endpoints",
+    "PASS: LanguageContext.tsx has 622 translation keys (exceeds 616 requirement) and 16 languages with de_at/de_ch fallback to de"
+  ],
+  "updated_files": ["/app/backend/tests/test_soft_delete_clients.py"],
+  "success_rate": {
+    "backend": "100% (10/10 tests passed)",
+    "frontend": "Not tested (backend-only testing requested)"
+  },
+  "test_credentials": "admin/admin123",
+  "seed_data_creation": "Created test clients with TEST_SoftDelete_ prefix during testing (automatically cleaned up via purge)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Soft-delete feature is fully working. When admin deletes a client via DELETE /api/clients/{id}, the client is marked as is_deleted=True and uninstall_allowed=True. The client device can check GET /api/device/status/{client_id} to learn it should uninstall. The client is excluded from listings and reports. Purge via DELETE /api/clients/{id}/purge permanently removes the record.",
+  "verified_features": {
+    "soft_delete_client": {
+      "status": "PASS",
+      "evidence": "DELETE /api/clients/{id} sets is_deleted=True, uninstall_allowed=True, is_locked=False"
+    },
+    "list_excludes_deleted": {
+      "status": "PASS",
+      "evidence": "GET /api/clients correctly filters with is_deleted: {$ne: True}"
+    },
+    "device_status_shows_deleted": {
+      "status": "PASS",
+      "evidence": "GET /api/device/status/{id} returns is_deleted=True for soft-deleted clients"
+    },
+    "purge_hard_delete": {
+      "status": "PASS",
+      "evidence": "DELETE /api/clients/{id}/purge removes client, payments, reminders; device status returns 404"
+    },
+    "reports_exclude_deleted": {
+      "status": "PASS",
+      "evidence": "/api/reports/collection, /api/analytics/dashboard, /api/heartbeat/summary all filter soft-deleted"
+    },
+    "admin_login": {
+      "status": "PASS",
+      "evidence": "POST /api/admin/login with admin/admin123 returns token"
+    },
+    "health_check": {
+      "status": "PASS",
+      "evidence": "GET /api/health returns {status: healthy}"
+    },
+    "translations_complete": {
+      "status": "PASS",
+      "evidence": "LanguageContext.tsx: 622 keys, 16 languages (en, et, no, sv, da, fi, lv, lt, de_at, cs, pl, de_ch, es, de, fr, it)"
+    }
+  }
+}
