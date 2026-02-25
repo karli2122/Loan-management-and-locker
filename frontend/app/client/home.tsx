@@ -39,8 +39,11 @@ interface ClientStatus {
   warning_message: string;
   loan_amount: number;
   loan_due_date: string | null;
+  outstanding_balance?: number;
+  monthly_emi?: number;
   uninstall_allowed?: boolean;
   is_deleted?: boolean;
+  lock_mode?: string;
 }
 
 export default function ClientHome() {
