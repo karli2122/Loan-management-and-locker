@@ -246,7 +246,32 @@ async def allow_uninstall(client_id: str, admin_token: str = Query(...)):
 
 @router.delete("/clients/{client_id}")
 async def delete_client(client_id: str, admin_token: str = Query(...)):
-    """Delete a client."""
+    """Soft-delete a client: marks as deleted and allows uninstall so the device can clean up."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    await enforce_client_scope(client, admin_id)
+    
+    # Soft-delete: mark as deleted and allow uninstall so device gets the signal
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {
+            "is_deleted": True,
+            "deleted_at": datetime.utcnow(),
+            "uninstall_allowed": True,
+            "is_locked": False,
+        }}
+    )
+    
+    return {"message": "Client deleted successfully"}
+
+
+@router.delete("/clients/{client_id}/purge")
+async def purge_client(client_id: str, admin_token: str = Query(...)):
+    """Hard-delete a soft-deleted client and all associated data."""
     admin_id = await get_admin_id_from_token(admin_token)
     
     client = await db.clients.find_one({"id": client_id})
@@ -259,7 +284,7 @@ async def delete_client(client_id: str, admin_token: str = Query(...)):
     await db.payments.delete_many({"client_id": client_id})
     await db.reminders.delete_many({"client_id": client_id})
     
-    return {"message": "Client deleted successfully"}
+    return {"message": "Client purged successfully"}
 
 
 @router.post("/clients/{client_id}/lock")
