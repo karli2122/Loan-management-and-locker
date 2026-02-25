@@ -468,10 +468,9 @@ class TestDeviceStatus:
                 }
             )
             assert reg_resp.status_code == 200, f"Registration failed: {reg_resp.text}"
-            device_id = reg_resp.json().get("device_id")
             
-            # Check device status
-            status_resp = requests.get(f"{BASE_URL}/api/device/status/{device_id}")
+            # Check device status using client_id (NOT device_id)
+            status_resp = requests.get(f"{BASE_URL}/api/device/status/{client_id}")
             assert status_resp.status_code == 200, f"Status failed: {status_resp.text}"
             
             status_data = status_resp.json()
