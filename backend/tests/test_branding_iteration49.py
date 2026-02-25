@@ -68,7 +68,10 @@ class TestBrandingAndAPI:
             params={"admin_token": self.admin_token}
         )
         assert response.status_code == 200
-        clients = response.json()
+        data = response.json()
+        
+        # API returns {"clients": [...]}
+        clients = data.get("clients", []) if isinstance(data, dict) else data
         
         # The soft-deleted client (a5d1e54d-66c5-450d-aad3-ae1839143a8b) should NOT appear
         soft_deleted_id = "a5d1e54d-66c5-450d-aad3-ae1839143a8b"
@@ -93,7 +96,10 @@ class TestBrandingAndAPI:
             params={"admin_token": self.admin_token}
         )
         assert response.status_code == 200
-        clients = response.json()
+        data = response.json()
+        
+        # API returns {"clients": [...]}
+        clients = data.get("clients", []) if isinstance(data, dict) else data
         
         # Find a client with loan_amount > 0
         client_with_loan = None
