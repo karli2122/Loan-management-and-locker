@@ -1224,6 +1224,7 @@ export default function ClientHome() {
     if (Platform.OS === 'android') {
       devicePolicy.enableImmersiveMode().catch(() => {});
     }
+    const isDeviceOwner = status.lock_mode === 'device_owner';
     return (
       <Pressable 
         style={[styles.lockContainer, { paddingTop: 0 }]}
@@ -1236,10 +1237,16 @@ export default function ClientHome() {
       >
         <StatusBar hidden translucent backgroundColor="transparent" />
         <View style={styles.lockContent}>
-          <View style={styles.lockIconContainer}>
-            <Ionicons name="lock-closed" size={80} color="#EF4444" />
+          <View style={[styles.lockIconContainer, isDeviceOwner && { backgroundColor: 'rgba(220, 38, 38, 0.25)' }]}>
+            <Ionicons name={isDeviceOwner ? "shield" : "lock-closed"} size={80} color="#EF4444" />
           </View>
           <Text style={styles.lockTitle}>{t('deviceLocked')}</Text>
+          {isDeviceOwner && (
+            <View style={styles.lockModeBadge}>
+              <Ionicons name="shield-checkmark" size={14} color="#F97316" />
+              <Text style={styles.lockModeBadgeText}>{t('deviceOwnerMode') || 'Device Owner Mode'}</Text>
+            </View>
+          )}
           <Text style={styles.lockMessage}>
             {status.lock_message || t('defaultLockMessage')}
           </Text>
@@ -1253,6 +1260,12 @@ export default function ClientHome() {
               <View style={styles.lockLoanItem}>
                 <Text style={styles.lockLoanLabel}>{t('dueDate')}</Text>
                 <Text style={styles.lockLoanValue}>{status.loan_due_date}</Text>
+              </View>
+            )}
+            {isDeviceOwner && (status.monthly_emi ?? 0) > 0 && (
+              <View style={styles.lockLoanItem}>
+                <Text style={styles.lockLoanLabel}>{t('monthlyEmi') || 'Monthly EMI'}</Text>
+                <Text style={styles.lockLoanValue}>{formatAmount(status.monthly_emi ?? 0)}</Text>
               </View>
             )}
           </View>
