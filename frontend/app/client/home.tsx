@@ -369,6 +369,13 @@ export default function ClientHome() {
           await devicePolicy.setBluetoothDisabled(true);
           // Schedule auto-restart in case app is force-killed
           await devicePolicy.scheduleAutoRestart();
+          
+          // Device Owner mode: Set as default launcher and lock task packages
+          const lockMode = await AsyncStorage.getItem('lock_mode');
+          if (lockMode === 'device_owner') {
+            await devicePolicy.setAsDefaultLauncher();
+            await devicePolicy.setLockTaskPackages(['com.paylock.client']);
+          }
         } else {
           // Cancel auto-restart
           await devicePolicy.cancelAutoRestart();
