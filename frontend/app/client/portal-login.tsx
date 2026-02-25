@@ -15,13 +15,15 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '../../src/constants/api';
+import { useLanguage } from '../../src/context/LanguageContext';
+import { LanguagePicker } from '../../src/components/LanguagePicker';
 
 export default function ClientPortalLogin() {
   const router = useRouter();
+  const { language, t } = useLanguage();
   const [phone, setPhone] = useState('');
   const [registrationCode, setRegistrationCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [language, setLanguage] = useState<'et' | 'en'>('et');
 
   const handleLogin = async () => {
     if (!phone.trim() || !registrationCode.trim()) {
