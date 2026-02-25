@@ -316,6 +316,41 @@ async def send_telegram_message(chat_id: str, message: str) -> bool:
         return False
 
 
+# WhatsApp Cloud API setup
+WHATSAPP_TOKEN = os.environ.get("WHATSAPP_TOKEN")
+WHATSAPP_PHONE_ID = os.environ.get("WHATSAPP_PHONE_ID")
+
+
+async def send_whatsapp_message(phone: str, message: str) -> bool:
+    """Send WhatsApp message via Cloud API."""
+    if not WHATSAPP_TOKEN or not WHATSAPP_PHONE_ID:
+        logger.warning("WHATSAPP_TOKEN/WHATSAPP_PHONE_ID not configured")
+        return False
+    try:
+        url = f"https://graph.facebook.com/v18.0/{WHATSAPP_PHONE_ID}/messages"
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(url, headers={
+                "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+                "Content-Type": "application/json",
+            }, json={
+                "messaging_product": "whatsapp",
+                "to": phone,
+                "type": "text",
+                "text": {"body": message},
+            })
+            return resp.status_code == 200
+    except Exception as e:
+        logger.error(f"WhatsApp send failed: {e}")
+        return False
+
+
+def build_whatsapp_reminder_text(client_name: str, amount: float, due_date: str, days_overdue: int = 0) -> str:
+    """Build plain text message for WhatsApp reminder."""
+    if days_overdue > 0:
+        return f"*Payment Overdue*\n\nDear {client_name}, your payment of *€{amount:.2f}* is {days_overdue} days overdue.\n\nPlease pay promptly to avoid service interruption.\n\n— PayLock Pro"
+    return f"*Payment Reminder*\n\nDear {client_name}, your payment of *€{amount:.2f}* is due on {due_date}.\n\nPlease ensure timely payment.\n\n— PayLock Pro"
+
+
 def build_reminder_email(client_name: str, amount: float, due_date: str, days_overdue: int = 0) -> str:
     """Build HTML email for payment reminder."""
     if days_overdue > 0:
