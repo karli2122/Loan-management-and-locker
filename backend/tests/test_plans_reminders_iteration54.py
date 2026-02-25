@@ -216,24 +216,44 @@ class TestEmailReminder:
     
     def test_email_reminder_returns_response(self):
         """Test that /api/reminders/send-email returns success/failure"""
-        if not TestClientCreation.test_client_id:
-            pytest.skip("No test client available")
-        
-        response = requests.post(
-            f"{BASE_URL}/api/reminders/send-email/{TestClientCreation.test_client_id}",
+        # Create a test client inline
+        client_data = {
+            "name": f"{TEST_PREFIX}email_test_{uuid.uuid4().hex[:8]}",
+            "phone": "+4444555566",
+            "email": "email-test@example.com",
+        }
+        create_resp = requests.post(
+            f"{BASE_URL}/api/clients",
+            json=client_data,
             params={"admin_token": TestAdminAuth.admin_token}
         )
-        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+        if create_resp.status_code != 200:
+            pytest.skip(f"Could not create test client: {create_resp.text}")
         
-        data = response.json()
-        print(f"Email reminder response: {data}")
+        client_id = create_resp.json().get("id")
         
-        assert "success" in data, "Response should contain 'success' field"
-        assert "message" in data, "Response should contain 'message' field"
-        
-        # Since RESEND_API_KEY is not configured, expect success=false with appropriate message
-        # OR success=true if it happens to be configured
-        print(f"PASS: Email reminder endpoint returned - success: {data['success']}, message: {data['message']}")
+        try:
+            response = requests.post(
+                f"{BASE_URL}/api/reminders/send-email/{client_id}",
+                params={"admin_token": TestAdminAuth.admin_token}
+            )
+            assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+            
+            data = response.json()
+            print(f"Email reminder response: {data}")
+            
+            assert "success" in data, "Response should contain 'success' field"
+            assert "message" in data, "Response should contain 'message' field"
+            
+            # Since RESEND_API_KEY is not configured, expect success=false with appropriate message
+            # OR success=true if it happens to be configured
+            print(f"PASS: Email reminder endpoint returned - success: {data['success']}, message: {data['message']}")
+        finally:
+            # Cleanup
+            requests.delete(
+                f"{BASE_URL}/api/clients/{client_id}",
+                params={"admin_token": TestAdminAuth.admin_token}
+            )
     
     def test_email_reminder_client_not_found(self):
         """Test email reminder with non-existent client"""
