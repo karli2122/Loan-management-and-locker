@@ -1446,8 +1446,8 @@ export default function ClientHome() {
                   let steps = info.steps;
                   if (needsRestricted && isSamsung) {
                     steps = language === 'et'
-                      ? 'Samsung (Android 13+ / One UI):\n1) Ava Seaded > Juurdepääsetavus > Installitud rakendused > Loan Client (näitab: "Pole lubatud").\n2) Sule see vaade (tagasi).\n3) Ava Seaded > Rakendused > Loan Client.\n4) Vajuta ⋮ ja vali "Luba piiratud seaded".\n5) Ava uuesti Seaded > Juurdepääsetavus > Installitud rakendused > Loan Client ja lülita SISSE.'
-                      : 'Samsung (Android 13+ / One UI):\n1) Open Settings > Accessibility > Installed apps > Loan Client (shows "Not allowed").\n2) Close/back out of this screen.\n3) Open Settings > Apps > Loan Client.\n4) Tap ⋮ and select "Allow restricted settings".\n5) Go back to Settings > Accessibility > Installed apps > Loan Client and turn ON.';
+                      ? 'Samsung (Android 13+ / One UI):\n1) Ava Seaded > Juurdepääsetavus > Installitud rakendused > PayLock Client (näitab: "Pole lubatud").\n2) Sule see vaade (tagasi).\n3) Ava Seaded > Rakendused > PayLock Client.\n4) Vajuta ⋮ ja vali "Luba piiratud seaded".\n5) Ava uuesti Seaded > Juurdepääsetavus > Installitud rakendused > PayLock Client ja lülita SISSE.'
+                      : 'Samsung (Android 13+ / One UI):\n1) Open Settings > Accessibility > Installed apps > PayLock Client (shows "Not allowed").\n2) Close/back out of this screen.\n3) Open Settings > Apps > PayLock Client.\n4) Tap ⋮ and select "Allow restricted settings".\n5) Go back to Settings > Accessibility > Installed apps > PayLock Client and turn ON.';
                   }
                   const buttons: any[] = [];
                   if (needsRestricted && isSamsung) {
@@ -1529,8 +1529,8 @@ export default function ClientHome() {
                 const model = dev?.model || 'Device';
                 const ver = dev?.androidVersion || '';
                 const instructions = language === 'et'
-                  ? `${model} (Android ${ver})\n\nSee luba on vajalik, et rakendus saaks tuvastada, milline rakendus on esiplaanile.\n\n1. Avaneb seadete leht\n2. Leidke "Loan Client"\n3. L\u00fclitage SISSE`
-                  : `${model} (Android ${ver})\n\nThis permission is needed so the app can detect which app is in the foreground.\n\n1. Settings page will open\n2. Find "Loan Client"\n3. Toggle ON`;
+                  ? `${model} (Android ${ver})\n\nSee luba on vajalik, et rakendus saaks tuvastada, milline rakendus on esiplaanile.\n\n1. Avaneb seadete leht\n2. Leidke "PayLock Client"\n3. L\u00fclitage SISSE`
+                  : `${model} (Android ${ver})\n\nThis permission is needed so the app can detect which app is in the foreground.\n\n1. Settings page will open\n2. Find "PayLock Client"\n3. Toggle ON`;
                 Alert.alert(
                   t('usageStatsAccess'),
                   instructions,
@@ -1568,8 +1568,8 @@ export default function ClientHome() {
                 const isSamsung = (dev?.manufacturer || '').toLowerCase().includes('samsung');
                 const needsRestricted = dev.sdkVersion >= 33;
                 let instructions = language === 'et'
-                  ? `${model} (Android ${ver})\n\nSee luba on vajalik, et rakendus saaks blokeerida t\u00f5kestusteatisi.\n\n1. Avaneb seadete leht\n2. Leidke "Loan Client"\n3. L\u00fclitage SISSE`
-                  : `${model} (Android ${ver})\n\nThis permission is needed so the app can block interruption notifications.\n\n1. Settings page will open\n2. Find "Loan Client"\n3. Toggle ON`;
+                  ? `${model} (Android ${ver})\n\nSee luba on vajalik, et rakendus saaks blokeerida t\u00f5kestusteatisi.\n\n1. Avaneb seadete leht\n2. Leidke "PayLock Client"\n3. L\u00fclitage SISSE`
+                  : `${model} (Android ${ver})\n\nThis permission is needed so the app can block interruption notifications.\n\n1. Settings page will open\n2. Find "PayLock Client"\n3. Toggle ON`;
                 if (needsRestricted) {
                   instructions += language === 'et'
                     ? '\n\nNB: Android 13+ n\u00f5uab "Piiratud seadete" lubamist rakenduse info lehel enne selle loa aktiveerimist.'
