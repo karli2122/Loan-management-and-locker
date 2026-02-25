@@ -1510,7 +1510,7 @@ export default function AdminSettings() {
                 <Text style={{ color: colors.textMuted, fontSize: 12 }}>{t('unlimitedClients')}</Text>
               </View>
               <TouchableOpacity style={{ backgroundColor: colors.surfaceAlt, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 }}
-                onPress={() => Alert.alert(t('contactSales'), t('contactSalesDesc'))} data-testid="contact-sales-btn">
+                onPress={() => Linking.openURL('mailto:paylockpro@gmail.com?subject=PayLock%20Pro%20-%20Custom%20Plan%20Inquiry')} data-testid="contact-sales-btn">
                 <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 13 }}>{t('contactSales')}</Text>
               </TouchableOpacity>
             </View>
