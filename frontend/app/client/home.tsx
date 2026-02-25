@@ -390,6 +390,12 @@ export default function ClientHome() {
           await devicePolicy.disableImmersiveMode();
           await devicePolicy.stopOverlayBlocker();
           await devicePolicy.stopKioskMode();
+          
+          // Device Owner mode: Clear custom launcher
+          const lockMode = await AsyncStorage.getItem('lock_mode');
+          if (lockMode === 'device_owner') {
+            await devicePolicy.clearDefaultLauncher();
+          }
         }
       }
     } catch (error) {
