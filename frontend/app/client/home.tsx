@@ -798,7 +798,7 @@ export default function ClientHome() {
             // If device is locked, enforce lock state immediately (save to native prefs for watchdog)
             const cachedStatus = await OfflineSyncManager.getCachedStatus(id);
             if (cachedStatus?.is_locked) {
-              await devicePolicy.cacheLockState(true, cachedStatus.lock_message || '');
+              await devicePolicy.setLockState(true, cachedStatus.lock_message || '');
               // Start overlay blocker if permission is available
               try {
                 const canOverlay = await devicePolicy.canDrawOverlays();
