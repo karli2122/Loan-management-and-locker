@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayLock Pro - Professional Loan Management</title>
+    <meta name="description" content="PayLock Pro - The most secure loan management platform with device locking, automated reminders, and real-time analytics.">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='20' width='100' height='100' fill='%232563EB'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'>P</text></svg>">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563EB;
+            --primary-dark: #1E3A5F;
+            --accent: #06B6D4;
+            --bg-dark: #0B1527;
+            --bg-surface: #152035;
+            --text: #F8FAFC;
+            --text-muted: #94A3B8;
+            --warning: #F59E0B;
+            --success: #10B981;
+            --danger: #EF4444;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            background: rgba(11, 21, 39, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(37, 99, 235, 0.2);
+            padding: 0 24px;
+        }
+
+        .nav-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 72px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--text);
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 20px;
+        }
+
+        .logo-text { font-size: 22px; font-weight: 700; }
+        .logo-text span { color: var(--accent); }
+
+        .nav-links { display: flex; align-items: center; gap: 32px; }
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--text); }
+
+        .nav-cta {
+            background: var(--primary);
+            color: white !important;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600 !important;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); }
+
+        .hamburger { display: none; background: none; border: none; color: var(--text); font-size: 24px; cursor: pointer; }
+
+        /* Hero */
+        .hero {
+            padding: 160px 24px 100px;
+            text-align: center;
+            position: relative;
+            background: linear-gradient(180deg, var(--bg-dark) 0%, var(--primary-dark) 100%);
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: url('https://static.prod-images.emergentagent.com/jobs/f7d8500b-61be-430a-a665-11d0df19fcb3/images/025382c5d85b9ec981b2f1ddd93abfa4730496d2bfb2e0c00df97e4f705c35e7.png') center/cover;
+            opacity: 0.15;
+        }
+
+        .hero-content { position: relative; max-width: 800px; margin: 0 auto; }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(37, 99, 235, 0.2);
+            border: 1px solid rgba(37, 99, 235, 0.4);
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-size: 14px;
+            color: var(--accent);
+            margin-bottom: 24px;
+        }
+
+        .hero h1 {
+            font-size: clamp(36px, 6vw, 64px);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 18px;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto 40px;
+            line-height: 1.7;
+        }
+
+        .hero-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+
+        .btn {
+            padding: 14px 32px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4); }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text);
+            border: 2px solid rgba(248, 250, 252, 0.2);
+        }
+        .btn-outline:hover { border-color: var(--primary); background: rgba(37, 99, 235, 0.1); }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            max-width: 900px;
+            margin: -40px auto 0;
+            padding: 0 24px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .stat-card {
+            background: var(--bg-surface);
+            border: 1px solid rgba(37, 99, 235, 0.2);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .stat-number { font-size: 32px; font-weight: 800; color: var(--accent); }
+        .stat-label { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+
+        /* Section */
+        section { padding: 100px 24px; }
+        .section-inner { max-width: 1200px; margin: 0 auto; }
+        .section-header { text-align: center; margin-bottom: 60px; }
+        .section-header h2 { font-size: clamp(28px, 4vw, 42px); font-weight: 800; margin-bottom: 16px; }
+        .section-header p { font-size: 18px; color: var(--text-muted); max-width: 600px; margin: 0 auto; }
+
+        /* Features */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--bg-surface);
+            border: 1px solid rgba(37, 99, 235, 0.15);
+            border-radius: 16px;
+            padding: 32px;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+        .feature-card:hover { transform: translateY(-4px); border-color: var(--primary); }
+
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .feature-card h3 { font-size: 20px; font-weight: 700; margin-bottom: 10px; }
+        .feature-card p { color: var(--text-muted); line-height: 1.6; font-size: 15px; }
+
+        /* How It Works */
+        .how-it-works { background: var(--bg-surface); }
+        .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 40px; }
+
+        .step {
+            text-align: center;
+            position: relative;
+        }
+
+        .step-number {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 800;
+            margin: 0 auto 20px;
+        }
+
+        .step h3 { font-size: 18px; margin-bottom: 8px; }
+        .step p { color: var(--text-muted); font-size: 14px; line-height: 1.6; }
+
+        /* Pricing */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 24px;
+            align-items: start;
+        }
+
+        .price-card {
+            background: var(--bg-surface);
+            border: 1px solid rgba(37, 99, 235, 0.15);
+            border-radius: 20px;
+            padding: 32px;
+            position: relative;
+            transition: transform 0.3s;
+        }
+        .price-card:hover { transform: translateY(-4px); }
+
+        .price-card.popular {
+            border-color: var(--primary);
+            box-shadow: 0 0 30px rgba(37, 99, 235, 0.2);
+        }
+
+        .popular-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: white;
+            padding: 4px 16px;
+            border-radius: 50px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .price-card h3 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+        .price-amount { font-size: 42px; font-weight: 800; margin: 16px 0; }
+        .price-amount span { font-size: 16px; color: var(--text-muted); font-weight: 400; }
+
+        .price-features { list-style: none; margin: 24px 0; }
+        .price-features li {
+            padding: 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        .price-features li i { color: var(--success); font-size: 14px; }
+        .price-features li.disabled { opacity: 0.4; }
+        .price-features li.disabled i { color: var(--danger); }
+
+        .price-btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+        }
+
+        /* Security */
+        .security-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+        }
+
+        .security-item {
+            display: flex;
+            gap: 16px;
+            padding: 24px;
+            background: var(--bg-surface);
+            border-radius: 16px;
+            border: 1px solid rgba(37, 99, 235, 0.1);
+        }
+
+        .security-item i {
+            font-size: 28px;
+            color: var(--accent);
+            flex-shrink: 0;
+            margin-top: 4px;
+        }
+
+        .security-item h4 { font-size: 16px; margin-bottom: 6px; }
+        .security-item p { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+
+        /* CTA */
+        .cta-section {
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+            text-align: center;
+            border-radius: 24px;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 80px 40px;
+        }
+
+        .cta-section h2 { font-size: 36px; margin-bottom: 16px; }
+        .cta-section p { font-size: 18px; color: rgba(255,255,255,0.8); margin-bottom: 32px; }
+
+        /* Footer */
+        footer {
+            background: var(--bg-surface);
+            padding: 60px 24px 32px;
+            border-top: 1px solid rgba(37, 99, 235, 0.1);
+        }
+
+        .footer-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 40px;
+        }
+
+        .footer-brand p { color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-top: 12px; }
+        .footer-col h4 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; color: var(--text-muted); }
+        .footer-col a { display: block; color: var(--text-muted); text-decoration: none; font-size: 14px; padding: 4px 0; }
+        .footer-col a:hover { color: var(--text); }
+
+        .footer-bottom {
+            max-width: 1200px;
+            margin: 40px auto 0;
+            padding-top: 24px;
+            border-top: 1px solid rgba(37, 99, 235, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .social-links { display: flex; gap: 16px; }
+        .social-links a { color: var(--text-muted); font-size: 18px; transition: color 0.2s; }
+        .social-links a:hover { color: var(--primary); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .hamburger { display: block; }
+            .stats { grid-template-columns: repeat(2, 1fr); }
+            .footer-inner { grid-template-columns: 1fr 1fr; }
+            .cta-section { margin: 0 16px; padding: 48px 24px; }
+            .cta-section h2 { font-size: 28px; }
+        }
+
+        @media (max-width: 480px) {
+            .stats { grid-template-columns: 1fr 1fr; gap: 12px; }
+            .stat-card { padding: 16px; }
+            .footer-inner { grid-template-columns: 1fr; }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate { animation: fadeInUp 0.6s ease forwards; opacity: 0; }
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-inner">
+            <a href="#" class="logo">
+                <div class="logo-icon">P</div>
+                <div class="logo-text">PayLock <span>Pro</span></div>
+            </a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#how-it-works">How It Works</a>
+                <a href="#security">Security</a>
+                <a href="#pricing">Pricing</a>
+                <a href="mailto:paylockpro@gmail.com" class="nav-cta">Get Started</a>
+            </div>
+            <button class="hamburger" onclick="document.querySelector('.nav-links').style.display = document.querySelector('.nav-links').style.display === 'flex' ? 'none' : 'flex'">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-badge animate">
+                <i class="fas fa-shield-halved"></i>
+                Trusted by lending professionals
+            </div>
+            <h1 class="animate delay-1">Secure Loan Management Made Simple</h1>
+            <p class="animate delay-2">The all-in-one platform for managing loans, tracking payments, and securing devices. Built for modern lending businesses.</p>
+            <div class="hero-buttons animate delay-3">
+                <a href="mailto:paylockpro@gmail.com?subject=PayLock%20Pro%20-%20Get%20Started" class="btn btn-primary">
+                    <i class="fas fa-rocket"></i> Get Started Free
+                </a>
+                <a href="#features" class="btn btn-outline">
+                    <i class="fas fa-play"></i> See Features
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats -->
+    <div class="stats">
+        <div class="stat-card animate"><div class="stat-number">16+</div><div class="stat-label">Languages</div></div>
+        <div class="stat-card animate delay-1"><div class="stat-number">99.9%</div><div class="stat-label">Uptime</div></div>
+        <div class="stat-card animate delay-2"><div class="stat-number">256-bit</div><div class="stat-label">Encryption</div></div>
+        <div class="stat-card animate delay-3"><div class="stat-number">24/7</div><div class="stat-label">Support</div></div>
+    </div>
+
+    <!-- Features -->
+    <section id="features">
+        <div class="section-inner">
+            <div class="section-header">
+                <h2>Everything You Need to Manage Loans</h2>
+                <p>Powerful tools designed for lending professionals who demand security and efficiency.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card animate">
+                    <div class="feature-icon" style="background: rgba(37, 99, 235, 0.15);">
+                        <i class="fas fa-lock" style="color: var(--primary);"></i>
+                    </div>
+                    <h3>Device Lock & Unlock</h3>
+                    <p>Remotely lock or unlock borrower devices based on payment status. Automated locking on overdue payments.</p>
+                </div>
+                <div class="feature-card animate delay-1">
+                    <div class="feature-icon" style="background: rgba(249, 115, 22, 0.15);">
+                        <i class="fas fa-shield-halved" style="color: #F97316;"></i>
+                    </div>
+                    <h3>Device Owner Kiosk Mode</h3>
+                    <p>Full device control with custom launcher, preventing app uninstall and device tampering. The ultimate security.</p>
+                </div>
+                <div class="feature-card animate delay-2">
+                    <div class="feature-icon" style="background: rgba(16, 185, 129, 0.15);">
+                        <i class="fas fa-chart-line" style="color: var(--success);"></i>
+                    </div>
+                    <h3>Reports & Analytics</h3>
+                    <p>Comprehensive financial reports, payment history, and loan analytics with PDF export capabilities.</p>
+                </div>
+                <div class="feature-card animate delay-3">
+                    <div class="feature-icon" style="background: rgba(6, 182, 212, 0.15);">
+                        <i class="fas fa-bell" style="color: var(--accent);"></i>
+                    </div>
+                    <h3>Smart Reminders</h3>
+                    <p>Automated payment reminders via Email and Telegram. Keep borrowers informed before and after due dates.</p>
+                </div>
+                <div class="feature-card animate">
+                    <div class="feature-icon" style="background: rgba(245, 158, 11, 0.15);">
+                        <i class="fas fa-file-invoice" style="color: var(--warning);"></i>
+                    </div>
+                    <h3>Bank Statement Analysis</h3>
+                    <p>AI-powered analysis of bank statements (PDF, CSV, XML, ASICE). Automatic transaction categorization.</p>
+                </div>
+                <div class="feature-card animate delay-1">
+                    <div class="feature-icon" style="background: rgba(139, 92, 246, 0.15);">
+                        <i class="fas fa-language" style="color: #8B5CF6;"></i>
+                    </div>
+                    <h3>Multi-Language & Currency</h3>
+                    <p>Support for 16 languages and 8 currencies. Serve clients globally with localized interfaces.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="how-it-works">
+        <div class="section-inner">
+            <div class="section-header">
+                <h2>Get Started in Minutes</h2>
+                <p>Simple setup, powerful results.</p>
+            </div>
+            <div class="steps">
+                <div class="step animate">
+                    <div class="step-number">1</div>
+                    <h3>Create Account</h3>
+                    <p>Sign up and choose your plan. Set up your business profile in the admin app.</p>
+                </div>
+                <div class="step animate delay-1">
+                    <div class="step-number">2</div>
+                    <h3>Add Clients</h3>
+                    <p>Register clients with their loan details. Generate unique registration codes.</p>
+                </div>
+                <div class="step animate delay-2">
+                    <div class="step-number">3</div>
+                    <h3>Install Client App</h3>
+                    <p>Install PayLock Pro on borrower devices. Register with the unique code.</p>
+                </div>
+                <div class="step animate delay-3">
+                    <div class="step-number">4</div>
+                    <h3>Manage & Monitor</h3>
+                    <p>Track payments, send reminders, and manage device locks from your dashboard.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Security -->
+    <section id="security">
+        <div class="section-inner">
+            <div class="section-header">
+                <h2>Enterprise-Grade Security</h2>
+                <p>Your data and your clients' data are protected at every level.</p>
+            </div>
+            <div class="security-grid">
+                <div class="security-item animate">
+                    <i class="fas fa-fingerprint"></i>
+                    <div>
+                        <h4>Device Admin Protection</h4>
+                        <p>Standard device administration with lock screen protection and immersive mode.</p>
+                    </div>
+                </div>
+                <div class="security-item animate delay-1">
+                    <i class="fas fa-user-shield"></i>
+                    <div>
+                        <h4>Device Owner Mode</h4>
+                        <p>Full device control with custom launcher, preventing unauthorized access and app removal.</p>
+                    </div>
+                </div>
+                <div class="security-item animate delay-2">
+                    <i class="fas fa-cloud-arrow-up"></i>
+                    <div>
+                        <h4>Cloud Backup</h4>
+                        <p>Automatic cloud backups ensure your data is always safe and recoverable.</p>
+                    </div>
+                </div>
+                <div class="security-item animate delay-3">
+                    <i class="fas fa-qrcode"></i>
+                    <div>
+                        <h4>QR Provisioning</h4>
+                        <p>Secure device provisioning via QR codes for quick and tamper-proof setup.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="pricing">
+        <div class="section-inner">
+            <div class="section-header">
+                <h2>Simple, Transparent Pricing</h2>
+                <p>Choose the plan that fits your business. Upgrade anytime.</p>
+            </div>
+            <div class="pricing-grid">
+                <div class="price-card animate">
+                    <h3>Starter</h3>
+                    <p style="color: var(--text-muted); font-size: 14px;">For small lenders</p>
+                    <div class="price-amount">&euro;29<span>/month</span></div>
+                    <ul class="price-features">
+                        <li><i class="fas fa-check"></i> Up to 20 clients</li>
+                        <li><i class="fas fa-check"></i> Basic client management</li>
+                        <li><i class="fas fa-check"></i> Payment tracking</li>
+                        <li><i class="fas fa-check"></i> Multi-language support</li>
+                        <li class="disabled"><i class="fas fa-times"></i> Device Lock/Unlock</li>
+                        <li class="disabled"><i class="fas fa-times"></i> Reminders</li>
+                    </ul>
+                    <a href="mailto:paylockpro@gmail.com?subject=Starter%20Plan" class="btn btn-outline price-btn">Get Started</a>
+                </div>
+                <div class="price-card popular animate delay-1">
+                    <div class="popular-badge">Most Popular</div>
+                    <h3>Business</h3>
+                    <p style="color: var(--text-muted); font-size: 14px;">For growing businesses</p>
+                    <div class="price-amount">&euro;79<span>/month</span></div>
+                    <ul class="price-features">
+                        <li><i class="fas fa-check"></i> Up to 200 clients</li>
+                        <li><i class="fas fa-check"></i> Device Lock & Unlock</li>
+                        <li><i class="fas fa-check"></i> Auto-lock on overdue</li>
+                        <li><i class="fas fa-check"></i> Email & Telegram Reminders</li>
+                        <li><i class="fas fa-check"></i> Reports & Analytics</li>
+                        <li><i class="fas fa-check"></i> Bank Statement Analyzer</li>
+                        <li><i class="fas fa-check"></i> Cloud Backup</li>
+                        <li><i class="fas fa-check"></i> Business Management</li>
+                    </ul>
+                    <a href="mailto:paylockpro@gmail.com?subject=Business%20Plan" class="btn btn-primary price-btn">Get Started</a>
+                </div>
+                <div class="price-card animate delay-2">
+                    <h3>Enterprise</h3>
+                    <p style="color: var(--text-muted); font-size: 14px;">For large operations</p>
+                    <div class="price-amount">&euro;199<span>/month</span></div>
+                    <ul class="price-features">
+                        <li><i class="fas fa-check"></i> Up to 1000 clients</li>
+                        <li><i class="fas fa-check"></i> Everything in Business</li>
+                        <li><i class="fas fa-check"></i> Device Owner kiosk mode</li>
+                        <li><i class="fas fa-check"></i> Custom Launcher</li>
+                        <li><i class="fas fa-check"></i> Priority support</li>
+                    </ul>
+                    <a href="mailto:paylockpro@gmail.com?subject=Enterprise%20Plan" class="btn btn-outline price-btn">Get Started</a>
+                </div>
+                <div class="price-card animate delay-3">
+                    <h3>Custom</h3>
+                    <p style="color: var(--text-muted); font-size: 14px;">Unlimited everything</p>
+                    <div class="price-amount" style="font-size: 28px; padding: 14px 0;">Contact Us</div>
+                    <ul class="price-features">
+                        <li><i class="fas fa-check"></i> Unlimited clients</li>
+                        <li><i class="fas fa-check"></i> Everything in Enterprise</li>
+                        <li><i class="fas fa-check"></i> Dedicated support</li>
+                        <li><i class="fas fa-check"></i> Custom integrations</li>
+                        <li><i class="fas fa-check"></i> SLA guarantee</li>
+                    </ul>
+                    <a href="mailto:paylockpro@gmail.com?subject=Custom%20Plan%20Inquiry" class="btn btn-outline price-btn">Contact Sales</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section style="padding: 60px 24px 100px;">
+        <div class="cta-section animate">
+            <h2>Ready to Secure Your Lending Business?</h2>
+            <p>Join lending professionals who trust PayLock Pro for secure loan management.</p>
+            <div class="hero-buttons" style="justify-content: center;">
+                <a href="mailto:paylockpro@gmail.com?subject=PayLock%20Pro%20-%20Get%20Started" class="btn btn-primary" style="background: white; color: var(--primary-dark);">
+                    <i class="fas fa-rocket"></i> Start Free Trial
+                </a>
+                <a href="mailto:paylockpro@gmail.com?subject=PayLock%20Pro%20-%20Demo%20Request" class="btn btn-outline" style="border-color: rgba(255,255,255,0.3); color: white;">
+                    <i class="fas fa-calendar"></i> Book a Demo
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <a href="#" class="logo">
+                    <div class="logo-icon">P</div>
+                    <div class="logo-text">PayLock <span>Pro</span></div>
+                </a>
+                <p>Professional loan management platform with enterprise-grade device security. Built for modern lending businesses.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Product</h4>
+                <a href="#features">Features</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#security">Security</a>
+                <a href="#how-it-works">How It Works</a>
+            </div>
+            <div class="footer-col">
+                <h4>Company</h4>
+                <a href="mailto:paylockpro@gmail.com">About Us</a>
+                <a href="mailto:paylockpro@gmail.com">Careers</a>
+                <a href="mailto:paylockpro@gmail.com">Blog</a>
+            </div>
+            <div class="footer-col">
+                <h4>Support</h4>
+                <a href="mailto:paylockpro@gmail.com">Contact Us</a>
+                <a href="mailto:paylockpro@gmail.com">Documentation</a>
+                <a href="mailto:paylockpro@gmail.com">Terms of Service</a>
+                <a href="mailto:paylockpro@gmail.com">Privacy Policy</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>&copy; 2026 PayLock Pro. All rights reserved.</span>
+            <div class="social-links">
+                <a href="#"><i class="fab fa-twitter"></i></a>
+                <a href="#"><i class="fab fa-linkedin"></i></a>
+                <a href="#"><i class="fab fa-github"></i></a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Intersection Observer for animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animationPlayState = 'running';
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.animate').forEach(el => {
+            el.style.animationPlayState = 'paused';
+            observer.observe(el);
+        });
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(a => {
+            a.addEventListener('click', e => {
+                e.preventDefault();
+                const el = document.querySelector(a.getAttribute('href'));
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+    </script>
+</body>
+</html>
