@@ -444,18 +444,23 @@ async def analyze_bank_statement(
         raise HTTPException(status_code=400, detail="Empty file")
 
     # Extract PDF/document if .asice
+    statement_text = ""
+    pdf_bytes = None
     try:
         if ext == "asice":
             content, content_type = extract_pdf_from_asice(file_bytes)
             if content_type == 'pdf':
                 pdf_bytes = content
             elif content_type in ('xml', 'csv', 'unknown'):
-                # For non-PDF files, use the raw text directly (Windows-1252 / ISO-8859-1 fallback)
                 statement_text = decode_legacy_text_bytes(content)
                 statement_text = normalize_seb_encoding(statement_text)
                 pdf_bytes = None
             else:
                 pdf_bytes = content
+        elif ext == "csv":
+            statement_text = decode_legacy_text_bytes(file_bytes)
+        elif ext == "xml":
+            statement_text = decode_legacy_text_bytes(file_bytes)
         else:
             pdf_bytes = file_bytes
     except ValueError as e:
