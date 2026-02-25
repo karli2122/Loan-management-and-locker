@@ -123,6 +123,6 @@ Users can switch languages using the EST/ENG buttons in the app.
 ---
 
 ## Backend API
-The backend runs at: `https://secure-loan-app.preview.emergentagent.com/api/`
+The backend runs at: `https://loan-kiosk-mode.preview.emergentagent.com/api/`
 
 Make sure to update `EXPO_PUBLIC_BACKEND_URL` in `.env` for production deployment.

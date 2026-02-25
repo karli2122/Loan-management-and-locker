@@ -17,7 +17,7 @@ import time
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://secure-loan-app.preview.emergentagent.com"
+    BASE_URL = "https://loan-kiosk-mode.preview.emergentagent.com"
 
 # Test credentials
 SUPERADMIN_USERNAME = "karli1987"
