@@ -79,6 +79,33 @@ def generate_loan_contract_pdf(lender: dict, client: dict, loan_amount: float, d
     
     story = []
     
+    # PayLock Pro header with logo
+    LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "paylock-logo.png")
+    header_data = []
+    if os.path.exists(LOGO_PATH):
+        logo = RLImage(LOGO_PATH, width=1.5*cm, height=1.5*cm)
+        header_data = [[logo, Paragraph("<b>PayLock Pro</b><br/><font size='8' color='#666666'>Loan Management Platform</font>", 
+                        ParagraphStyle('Header', parent=styles['Normal'], fontSize=12, fontName='Helvetica-Bold'))]]
+    else:
+        header_data = [["", Paragraph("<b>PayLock Pro</b><br/><font size='8' color='#666666'>Loan Management Platform</font>", 
+                        ParagraphStyle('Header', parent=styles['Normal'], fontSize=12, fontName='Helvetica-Bold'))]]
+    
+    header_table = Table(header_data, colWidths=[2*cm, 14*cm])
+    header_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    story.append(header_table)
+    story.append(Spacer(1, 8))
+    
+    # Divider line
+    divider = Table([[""]], colWidths=[16*cm])
+    divider.setStyle(TableStyle([
+        ('LINEBELOW', (0, 0), (-1, -1), 1, colors.HexColor('#2563EB')),
+    ]))
+    story.append(divider)
+    story.append(Spacer(1, 15))
+    
     # Title
     story.append(Paragraph("LAENULEPING", title_style))
     story.append(Spacer(1, 10))
