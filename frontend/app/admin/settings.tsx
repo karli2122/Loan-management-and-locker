@@ -59,6 +59,8 @@ export default function AdminSettings() {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>('starter');
+  const [subscribingPlan, setSubscribingPlan] = useState<string | null>(null);
+  const [currentSubscription, setCurrentSubscription] = useState<string>('starter');
   
   // Form states
   const [newUsername, setNewUsername] = useState('');
