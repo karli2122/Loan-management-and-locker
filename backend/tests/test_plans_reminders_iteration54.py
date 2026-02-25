@@ -148,7 +148,7 @@ class TestClientCreation:
         client_data = {
             "name": f"{TEST_PREFIX}reminder_test_{uuid.uuid4().hex[:8]}",
             "phone": "+1234567890",
-            "email": "test@example.com",
+            "email": "test-reminder@example.com",  # Required field
             "address": "Test Address",
         }
         response = requests.post(
@@ -166,6 +166,8 @@ class TestClientCreation:
                 json={"telegram_chat_id": "123456789"},
                 params={"admin_token": TestAdminAuth.admin_token}
             )
+        else:
+            print(f"Failed to create test client: {response.status_code} - {response.text}")
     
     @classmethod
     def teardown_class(cls):
