@@ -648,7 +648,8 @@ async def calculate_all_late_fees(admin_token: str = Query(...), apply_auto_lock
     clients = await db.clients.find({
         "admin_id": admin_id,
         "next_payment_due": {"$exists": True, "$ne": None},
-        "outstanding_balance": {"$gt": 0}
+        "outstanding_balance": {"$gt": 0},
+        "is_deleted": {"$ne": True}
     }).to_list(1000)
     
     updated_count = 0
