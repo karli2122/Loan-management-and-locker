@@ -427,14 +427,14 @@ async def analyze_bank_statement(
     admin_token: str = Query(...),
     client_id: str = Query(None),
 ):
-    """Upload and analyze a bank statement (.pdf or .asice)."""
+    """Upload and analyze a bank statement (.pdf, .asice, .csv, or .xml)."""
     admin_id = await get_admin_id_from_token(admin_token)
 
     # Validate file type
     filename = file.filename or ""
     ext = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""
-    if ext not in ("pdf", "asice"):
-        raise HTTPException(status_code=400, detail="Only .pdf and .asice files are supported")
+    if ext not in ("pdf", "asice", "csv", "xml"):
+        raise HTTPException(status_code=400, detail="Supported formats: .pdf, .asice, .csv, .xml")
 
     # Read file
     file_bytes = await file.read()
