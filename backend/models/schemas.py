@@ -184,8 +184,11 @@ class ClientStatusResponse(BaseModel):
     warning_message: str
     loan_amount: float = 0.0
     loan_due_date: Optional[str] = None
+    outstanding_balance: float = 0.0
+    monthly_emi: float = 0.0
     uninstall_allowed: bool = False
     is_deleted: bool = False
+    lock_mode: str = "device_admin"
 
 
 class DeviceRegistration(BaseModel):
