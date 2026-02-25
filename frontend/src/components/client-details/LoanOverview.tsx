@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { styles } from './styles';
 import { Client } from './types';
 import { useCurrency } from '../../context/CurrencyContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface Props {
   client: Client;
@@ -23,6 +24,7 @@ export const LoanOverview = ({
   onDownloadContract, onShareContract,
 }: Props) => {
   const { formatAmount } = useCurrency();
+  const { t } = useLanguage();
   if (!client.loan_start_date) return null;
 
   return (

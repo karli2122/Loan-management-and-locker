@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { styles } from './styles';
 import { LoanHistoryItem } from './types';
 import { useCurrency } from '../../context/CurrencyContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface Props {
   loanHistory: LoanHistoryItem[];

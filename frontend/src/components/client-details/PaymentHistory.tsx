@@ -3,6 +3,7 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { styles } from './styles';
 import { useCurrency } from '../../context/CurrencyContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface Props {
   paymentHistory: any[];
@@ -13,6 +14,7 @@ interface Props {
 
 export const PaymentHistory = ({ paymentHistory, paymentHistoryLoading, language, colors }: Props) => {
   const { formatAmount } = useCurrency();
+  const { t } = useLanguage();
   return (
   <View style={[styles.section, { backgroundColor: colors.surface }]} data-testid="payment-history-section">
     <Text style={[styles.sectionTitle, { color: colors.text }]}>
