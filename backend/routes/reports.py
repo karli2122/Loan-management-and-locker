@@ -125,7 +125,7 @@ async def get_collection_report(
         else:
             target_admin_id = filter_admin_id
     
-    query = {"admin_id": target_admin_id} if target_admin_id else {}
+    query = {"admin_id": target_admin_id, "is_deleted": {"$ne": True}} if target_admin_id else {"is_deleted": {"$ne": True}}
     clients = await db.clients.find(query, {"_id": 0}).to_list(1000)
     
     total_disbursed = sum(c.get("loan_amount", 0) for c in clients)
