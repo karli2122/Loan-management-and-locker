@@ -1422,7 +1422,7 @@ export default function AdminSettings() {
               {t('plansAndPricing')}
             </Text>
             <View style={{ backgroundColor: colors.primary + '20', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>{t('currentPlan')}: {t('starter')}</Text>
+              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>{t('currentPlan')}: {t(currentSubscription)}</Text>
             </View>
           </View>
 
