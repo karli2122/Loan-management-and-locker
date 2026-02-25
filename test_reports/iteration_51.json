@@ -1,0 +1,81 @@
+{
+  "summary": "Backend-only testing for Stripe payment integration completed. All 9 required features verified working. Found and fixed 1 bug in /api/payments/current-plan endpoint (was querying wrong collection for token lookup).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_stripe_payments_iteration51.py",
+    "/app/test_reports/pytest/stripe_payments_iteration51_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PASS: POST /api/payments/subscribe creates Stripe checkout session with URL and session_id",
+    "PASS: POST /api/payments/subscribe validates plan_id - rejects invalid plans with 400 error",
+    "PASS: Valid plan_ids: starter, business, enterprise (custom is contact-sales only)",
+    "PASS: GET /api/payments/status/{session_id} returns payment status with plan info",
+    "PASS: GET /api/payments/current-plan returns admin's current subscription plan",
+    "PASS: POST /api/payments/subscribe stores payment_transactions record in DB",
+    "PASS: Health check endpoint returns 200 healthy",
+    "PASS: Admin login works with admin/admin123 credentials",
+    "FIXED: /api/payments/current-plan was querying admins collection for token - now correctly uses admin_tokens collection"
+  ],
+  "updated_files": [
+    "/app/backend/routes/payments.py",
+    "/app/backend/tests/test_stripe_payments_iteration51.py"
+  ],
+  "success_rate": {
+    "backend": "100% (12/12 tests passed)",
+    "frontend": "Not tested (backend-only request)"
+  },
+  "test_credentials": "admin/admin123",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Stripe payment integration fully working. Endpoints: POST /api/payments/subscribe (creates checkout session), GET /api/payments/status/{session_id} (check payment status), GET /api/payments/current-plan?admin_token=X (get current subscription). Plans defined in PLANS dict at line 22-26 of payments.py. Stripe integration uses emergentintegrations library with test key. Transaction records stored in payment_transactions collection.",
+  "verified_features": {
+    "subscribe_creates_checkout": {
+      "status": "PASS",
+      "evidence": "POST /api/payments/subscribe returns {url: stripe_checkout_url, session_id: cs_test_...}"
+    },
+    "subscribe_validates_plan_id": {
+      "status": "PASS", 
+      "evidence": "Invalid plan returns 400 {detail: 'Invalid plan'}, custom plan also rejected"
+    },
+    "status_returns_payment_info": {
+      "status": "PASS",
+      "evidence": "GET /api/payments/status/{session_id} returns {status, payment_status, plan_id, plan_name}"
+    },
+    "current_plan_returns_subscription": {
+      "status": "PASS",
+      "evidence": "GET /api/payments/current-plan returns {plan_id: 'starter', plan_name: 'Starter', clients_limit: 50}"
+    },
+    "subscribe_stores_transaction": {
+      "status": "PASS",
+      "evidence": "Transaction record created in DB, verified via status endpoint finding the session"
+    },
+    "health_check_working": {
+      "status": "PASS",
+      "evidence": "GET /api/health returns {status: 'healthy'}"
+    },
+    "admin_login_working": {
+      "status": "PASS",
+      "evidence": "POST /api/admin/login with admin/admin123 returns token and user info"
+    }
+  },
+  "bugs_fixed": [
+    {
+      "endpoint": "GET /api/payments/current-plan",
+      "issue": "Was querying db.admins.find_one({'token': admin_token}) but tokens are stored in admin_tokens collection",
+      "fix": "Changed to first lookup token in admin_tokens, then find admin by admin_id from token doc",
+      "file": "/app/backend/routes/payments.py",
+      "lines": "221-238"
+    }
+  ],
+  "rca_of_the_issue": "The current-plan endpoint had a bug where it was looking for the token directly in the admins collection ({token: admin_token}), but the authentication tokens are stored in a separate admin_tokens collection. The fix involves: 1) First looking up the token in admin_tokens to get admin_id, 2) Then querying admins collection by id to get subscription info."
+}
