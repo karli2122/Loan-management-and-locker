@@ -6,6 +6,7 @@
     "admin-development": {
       "developmentClient": true,
       "distribution": "internal",
+      "credentialsSource": "local",
       "env": {
         "APP_MODE": "admin",
         "EXPO_PUBLIC_BACKEND_URL": "https://secure-loan-app.preview.emergentagent.com"
@@ -18,6 +19,7 @@
     },
     "admin-preview": {
       "distribution": "internal",
+      "credentialsSource": "local",
       "env": {
         "APP_MODE": "admin",
         "EXPO_PUBLIC_BACKEND_URL": "https://secure-loan-app.preview.emergentagent.com"
@@ -31,6 +33,7 @@
     },
     "admin-production": {
       "distribution": "store",
+      "credentialsSource": "local",
       "env": {
         "APP_MODE": "admin",
         "EXPO_PUBLIC_BACKEND_URL": "https://secure-loan-app.preview.emergentagent.com"
@@ -45,6 +48,7 @@
     "client-development": {
       "developmentClient": true,
       "distribution": "internal",
+      "credentialsSource": "local",
       "env": {
         "APP_MODE": "client",
         "EXPO_PUBLIC_BACKEND_URL": "https://secure-loan-app.preview.emergentagent.com"
@@ -57,7 +61,7 @@
     },
     "client-preview": {
       "distribution": "internal",
-      "credentialsSource": "remote",
+      "credentialsSource": "local",
       "env": {
         "APP_MODE": "client",
         "EXPO_PUBLIC_BACKEND_URL": "https://secure-loan-app.preview.emergentagent.com"
@@ -71,7 +75,7 @@
     },
     "client-production": {
       "distribution": "store",
-      "credentialsSource": "remote",
+      "credentialsSource": "local",
       "env": {
         "APP_MODE": "client",
         "EXPO_PUBLIC_BACKEND_URL": "https://secure-loan-app.preview.emergentagent.com"
