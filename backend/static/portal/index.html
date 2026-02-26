@@ -297,7 +297,7 @@ function renderSidebar() {
       ${items.map(i => `<div class="nav-item ${state.page===i.id?'active':''}" data-page="${i.id}" data-testid="nav-${i.id}"><i class="fas ${i.icon}"></i><span>${i.label}</span></div>`).join('')}
     </div>
     <div class="sidebar-footer">
-      <div class="user-info"><div class="avatar">${(state.user?.username||'A')[0].toUpperCase()}</div><div><div class="username">${state.user?.username||'Admin'}</div><div class="role">${state.user?.is_super_admin?'Super Admin':'Admin'}</div></div></div>
+      <div class="user-info"><div><div class="username">${state.user?.username||'Admin'}</div><div class="role">${state.user?.is_super_admin?'Super Admin':'Admin'}</div></div></div>
       <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="logout()" data-testid="logout-btn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button>
     </div>
   </div>`;
@@ -930,7 +930,6 @@ async function renderSettings(el) {
     <div class="page-header"><h2>${t('settings_title')}</h2><p>${t('manage_account')}</p></div>
     <div class="card"><div class="card-header"><h3>${t('account')}</h3></div>
       <div class="detail-grid">
-        <div class="detail-item"><div class="label">${t('credits')}</div><div class="value">${admin.credits}</div></div>
         <div class="detail-item"><div class="label">${t('role')}</div><div class="value">${admin.is_super_admin?t('super_admin'):t('admin_role')}</div></div>
       </div>
     </div>
