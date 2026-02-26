@@ -525,4 +525,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
+  enterpriseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  enterpriseTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B5CF6',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
 });
