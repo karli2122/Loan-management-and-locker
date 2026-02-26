@@ -131,12 +131,23 @@ WEBSITE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "paylockp
 
 
 def _serve_website_page(filename: str):
-    """Serve a website HTML page with portal URL injected."""
+    """Serve a website HTML page with portal URL and asset paths injected."""
     file_path = os.path.join(WEBSITE_DIR, filename)
     if not os.path.exists(file_path):
         return JSONResponse(status_code=404, content={"error": "Page not found"})
     with open(file_path, "r") as f:
         content = f.read()
+    # Fix asset paths for backend serving
+    content = content.replace('href="style.css"', 'href="/api/website/style.css"')
+    content = content.replace('src="site.js"', 'src="/api/website/site.js"')
+    # Fix page links
+    content = content.replace('href="index.html"', 'href="/api/website"')
+    content = content.replace('href="pricing.html"', 'href="/api/website/pricing"')
+    content = content.replace('href="how-it-works.html"', 'href="/api/website/how-it-works"')
+    content = content.replace('href="contact.html"', 'href="/api/website/contact"')
+    content = content.replace('href="privacy-policy.html"', 'href="/api/website/privacy-policy"')
+    content = content.replace('href="terms-of-use.html"', 'href="/api/website/terms-of-use"')
+    content = content.replace('href="PORTAL_URL"', 'href="/api/portal"')
     return HTMLResponse(content=content)
 
 
