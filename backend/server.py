@@ -145,7 +145,7 @@ async def serve_website():
     with open(site_path, "r") as f:
         content = f.read()
     # Replace API placeholder with actual backend URL
-    api_url = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "")
+    api_url = os.environ.get("EXPO_PUBLIC_BACKEND_URL", os.environ.get("KEEPALIVE_URL", ""))
     content = content.replace("API_PLACEHOLDER", api_url)
     return HTMLResponse(content=content)
 
