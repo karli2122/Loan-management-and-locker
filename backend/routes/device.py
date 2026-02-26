@@ -129,7 +129,7 @@ async def update_location(location: LocationUpdate):
         "latitude": location.latitude,
         "longitude": location.longitude,
         "timestamp": now.isoformat(),
-        "source": location.source if hasattr(location, 'source') else "foreground",
+        "source": location.source,
     })
     
     return {"message": "Location updated", "client_id": location.client_id}
