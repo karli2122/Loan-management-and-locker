@@ -45,6 +45,7 @@ class AdminResponse(BaseModel):
     token: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    permissions: Optional[list] = None
 
 
 class PasswordChange(BaseModel):
