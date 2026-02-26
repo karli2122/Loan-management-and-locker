@@ -816,7 +816,7 @@ export default function ClientHome() {
             const cachedStatus = await OfflineSyncManager.getCachedStatus(id);
             if (cachedStatus?.is_locked) {
               await devicePolicy.setLockState(true, cachedStatus.lock_message || '');
-              // Start overlay blocker if permission is available
+              // Start ALL protection services after fresh registration lock
               try {
                 const canOverlay = await devicePolicy.canDrawOverlays();
                 if (canOverlay) {
@@ -824,6 +824,10 @@ export default function ClientHome() {
                   await devicePolicy.enableImmersiveMode();
                 }
               } catch (e) { console.log('Fresh reg overlay start error:', e); }
+              try { await devicePolicy.startKioskMode(); } catch (e) { console.log('Fresh reg kiosk start error:', e); }
+              try { await devicePolicy.startForegroundMonitor(); } catch (e) { console.log('Fresh reg monitor start error:', e); }
+              try { await devicePolicy.setStatusBarDisabled(true); } catch (e) { console.log('Fresh reg status bar error:', e); }
+              try { await devicePolicy.scheduleAutoRestart(); } catch (e) { console.log('Fresh reg auto-restart error:', e); }
             }
           } catch (e) {
             console.log('Fresh registration fetchStatus error (non-fatal):', e);
