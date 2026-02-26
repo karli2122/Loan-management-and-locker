@@ -1013,6 +1013,58 @@ async function changePassword() {
   } catch(e) { toast(e.message, 'error'); }
 }
 
+async function loadReportSchedules() {
+  try {
+    const data = await api('GET', '/report-schedules');
+    const list = document.getElementById('report-schedules-list');
+    if (!list) return;
+    const scheds = data.schedules || [];
+    if (!scheds.length) { list.innerHTML = `<p style="font-size:12px;color:var(--text-muted)">${t('no_scheduled_reports')}</p>`; return; }
+    list.innerHTML = scheds.map(s => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg-input);border-radius:8px;margin-bottom:6px">
+        <div style="font-size:13px"><b>${esc(s.email)}</b> - ${s.report_type} (${s.frequency})</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="badge badge-${s.is_active?'success':'danger'}">${s.is_active?t('active'):t('inactive')}</span>
+          <button class="btn btn-outline btn-sm" style="padding:4px 8px;font-size:11px" onclick="deleteReportSchedule('${s.id}')"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>`).join('');
+  } catch(e) { /* ignore */ }
+}
+
+async function createReportSchedule() {
+  const email = document.getElementById('rpt-email').value;
+  if (!email) { toast('Enter email address', 'error'); return; }
+  try {
+    await api('POST', '/report-schedules', {
+      email, report_type: document.getElementById('rpt-type').value,
+      frequency: document.getElementById('rpt-freq').value, send_day: 1
+    });
+    toast(t('schedule_created'));
+    loadReportSchedules();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteReportSchedule(id) {
+  try {
+    await api('DELETE', `/report-schedules/${id}`);
+    toast(t('schedule_deleted'));
+    loadReportSchedules();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function sendReportNow() {
+  const email = document.getElementById('rpt-email').value;
+  if (!email) { toast('Enter email address', 'error'); return; }
+  try {
+    const result = await api('POST', '/report-schedules/send-now', {
+      email, report_type: document.getElementById('rpt-type').value
+    });
+    if (result.success) toast(result.message);
+    else toast(result.error || 'Failed', 'error');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+
 function setPortalLanguage(lang) {
   state.language = lang;
   localStorage.setItem('plp_language', lang);
