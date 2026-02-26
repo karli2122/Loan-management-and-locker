@@ -39,6 +39,11 @@ from routes import (
 from routes.backup import router as backup_router
 from routes.provisioning import router as provisioning_router
 from routes.plans import router as plans_router
+from routes.schedules import router as schedules_router
+from routes.team import router as team_router
+from routes.telegram import router as telegram_router
+from routes.documents import router as documents_router
+from routes.bulk_import import router as import_router
 
 # Configure logging
 logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT)
@@ -109,6 +114,11 @@ app.include_router(payments_router, prefix="/api")
 app.include_router(backup_router)
 app.include_router(provisioning_router)
 app.include_router(plans_router)
+app.include_router(schedules_router)
+app.include_router(team_router)
+app.include_router(telegram_router)
+app.include_router(documents_router)
+app.include_router(import_router)
 
 
 @app.get("/api/download/website")
