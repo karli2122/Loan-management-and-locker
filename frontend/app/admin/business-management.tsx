@@ -35,7 +35,7 @@ export default function BusinessManagement() {
             </View>
             <Text style={s.modeTitle}>Device Admin</Text>
             <Text style={s.modeDesc}>
-              {language === 'et' ? '8-kohaline kood\nStandardne lukustus\nKasutaja saab keelata' : '8-digit code\nStandard lock\nUser can disable'}
+              {language === 'et' ? '8-kohaline kood\nStandardne lukustus' : '8-digit code\nStandard lock'}
             </Text>
           </View>
           <View style={s.modeCard}>
@@ -44,7 +44,7 @@ export default function BusinessManagement() {
             </View>
             <Text style={[s.modeTitle, { color: '#F97316' }]}>Device Owner</Text>
             <Text style={s.modeDesc}>
-              {language === 'et' ? '9-kohaline kood\nTäielik kiosk-režiim\nEi saa keelata' : '9-digit code\nFull kiosk mode\nCannot be disabled'}
+              {language === 'et' ? '9-kohaline kood\nTäielik kiosk-režiim' : '9-digit code\nFull kiosk mode'}
             </Text>
           </View>
         </View>

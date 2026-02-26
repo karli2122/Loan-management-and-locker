@@ -7,7 +7,7 @@ function normalize(url: string) {
   return clean;
 }
 
-export const FALLBACK_BACKEND = 'https://paylock-i18n.preview.emergentagent.com';
+export const FALLBACK_BACKEND = 'https://paylock-i18n-verify.preview.emergentagent.com';
 
 const rawCandidate =
   process.env.EXPO_PUBLIC_BACKEND_URL ||
