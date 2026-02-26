@@ -127,27 +127,83 @@ app.include_router(report_schedules_router)
 app.include_router(contact_router)
 
 
+WEBSITE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "paylockpro-website")
+
+
+def _serve_website_page(filename: str):
+    """Serve a website HTML page with portal URL injected."""
+    file_path = os.path.join(WEBSITE_DIR, filename)
+    if not os.path.exists(file_path):
+        return JSONResponse(status_code=404, content={"error": "Page not found"})
+    with open(file_path, "r") as f:
+        content = f.read()
+    return HTMLResponse(content=content)
+
+
 @app.get("/api/download/website")
 async def download_website():
     """Download the PayLock Pro website ZIP file."""
-    zip_path = os.path.join(os.path.dirname(__file__), "static", "paylockpro-website.zip")
-    if not os.path.exists(zip_path):
-        return JSONResponse(status_code=404, content={"error": "File not found"})
-    return FileResponse(zip_path, media_type="application/zip", filename="paylockpro-website.zip")
+    import zipfile, io
+    if not os.path.isdir(WEBSITE_DIR):
+        return JSONResponse(status_code=404, content={"error": "Website directory not found"})
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for fname in os.listdir(WEBSITE_DIR):
+            fpath = os.path.join(WEBSITE_DIR, fname)
+            if os.path.isfile(fpath):
+                zf.write(fpath, f"paylockpro-website/{fname}")
+    buf.seek(0)
+    return Response(content=buf.read(), media_type="application/zip",
+                    headers={"Content-Disposition": "attachment; filename=paylockpro-website.zip"})
 
 
 @app.get("/api/website")
 async def serve_website():
-    """Serve the PayLock Pro marketing website."""
-    site_path = os.path.join(os.path.dirname(__file__), "static", "website", "index.html")
-    if not os.path.exists(site_path):
-        return JSONResponse(status_code=404, content={"error": "Website not found"})
-    with open(site_path, "r") as f:
-        content = f.read()
-    # Replace API placeholder with actual backend URL
-    api_url = os.environ.get("EXPO_PUBLIC_BACKEND_URL", os.environ.get("KEEPALIVE_URL", ""))
-    content = content.replace("API_PLACEHOLDER", api_url)
-    return HTMLResponse(content=content)
+    """Serve the PayLock Pro marketing website homepage."""
+    return _serve_website_page("index.html")
+
+
+@app.get("/api/website/pricing")
+async def serve_website_pricing():
+    return _serve_website_page("pricing.html")
+
+
+@app.get("/api/website/how-it-works")
+async def serve_website_how_it_works():
+    return _serve_website_page("how-it-works.html")
+
+
+@app.get("/api/website/contact")
+async def serve_website_contact():
+    return _serve_website_page("contact.html")
+
+
+@app.get("/api/website/privacy-policy")
+async def serve_website_privacy():
+    return _serve_website_page("privacy-policy.html")
+
+
+@app.get("/api/website/terms-of-use")
+async def serve_website_terms():
+    return _serve_website_page("terms-of-use.html")
+
+
+@app.get("/api/website/style.css")
+async def serve_website_css():
+    css_path = os.path.join(WEBSITE_DIR, "style.css")
+    if not os.path.exists(css_path):
+        return JSONResponse(status_code=404, content={"error": "Not found"})
+    with open(css_path, "r") as f:
+        return Response(content=f.read(), media_type="text/css")
+
+
+@app.get("/api/website/site.js")
+async def serve_website_js():
+    js_path = os.path.join(WEBSITE_DIR, "site.js")
+    if not os.path.exists(js_path):
+        return JSONResponse(status_code=404, content={"error": "Not found"})
+    with open(js_path, "r") as f:
+        return Response(content=f.read(), media_type="application/javascript")
 
 
 @app.get("/api/portal/translations.js")
