@@ -841,11 +841,11 @@ async function generateQR() {
     document.getElementById('qr-result').innerHTML = `
       <img src="data:image/png;base64,${data.qr_code_base64}" style="max-width:300px;border-radius:8px;border:1px solid var(--border)" data-testid="qr-code-img">
       <div style="margin-top:12px;text-align:left;background:var(--bg-input);padding:16px;border-radius:8px">
-        <b>Instructions:</b><ol style="margin:8px 0 0 16px;color:var(--text-muted);font-size:13px;line-height:1.8">
+        <b>${t('instructions_label')}:</b><ol style="margin:8px 0 0 16px;color:var(--text-muted);font-size:13px;line-height:1.8">
           ${data.instructions.en.map(i => `<li>${i.substring(3)}</li>`).join('')}
         </ol>
       </div>`;
-    toast('QR code generated');
+    toast(t('qr_generated'));
   } catch(e) { toast(e.message, 'error'); }
 }
 
@@ -856,22 +856,22 @@ async function generateNFC() {
     const data = await api('GET', `/provisioning/nfc-payload?wifi_ssid=${encodeURIComponent(ssid)}&wifi_password=${encodeURIComponent(pass)}`);
     document.getElementById('nfc-result').innerHTML = `
       <div class="detail-grid">
-        <div class="detail-item"><div class="label">MIME Type</div><div class="value" style="font-size:12px;word-break:break-all">${data.mime_type}</div></div>
-        <div class="detail-item"><div class="label">Payload Size</div><div class="value">${data.payload_size_bytes} bytes</div></div>
+        <div class="detail-item"><div class="label">${t('nfc_mime_type')}</div><div class="value" style="font-size:12px;word-break:break-all">${data.mime_type}</div></div>
+        <div class="detail-item"><div class="label">${t('payload_size')}</div><div class="value">${data.payload_size_bytes} bytes</div></div>
       </div>
       <div style="margin-top:12px;background:var(--bg-input);padding:16px;border-radius:8px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <b style="font-size:13px">NFC Payload</b>
-          <button class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('nfc-payload-text').textContent);toast('Copied!')"><i class="fas fa-copy"></i> Copy</button>
+          <b style="font-size:13px">${t('nfc_payload')}</b>
+          <button class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('nfc-payload-text').textContent);toast(t('copied'))"><i class="fas fa-copy"></i> ${t('copy_btn')}</button>
         </div>
         <pre id="nfc-payload-text" style="background:var(--bg);padding:12px;border-radius:6px;font-size:11px;overflow-x:auto;color:var(--text-muted);white-space:pre-wrap">${esc(data.payload_text)}</pre>
       </div>
       <div style="margin-top:12px;background:var(--bg-input);padding:16px;border-radius:8px">
-        <b>Instructions:</b><ol style="margin:8px 0 0 16px;color:var(--text-muted);font-size:13px;line-height:1.8">
+        <b>${t('instructions_label')}:</b><ol style="margin:8px 0 0 16px;color:var(--text-muted);font-size:13px;line-height:1.8">
           ${data.instructions.en.map(i => `<li>${i.substring(3)}</li>`).join('')}
         </ol>
       </div>`;
-    toast('NFC payload generated');
+    toast(t('nfc_generated'));
   } catch(e) { toast(e.message, 'error'); }
 }
 
