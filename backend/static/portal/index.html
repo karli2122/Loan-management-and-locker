@@ -945,7 +945,8 @@ async function changePassword() {
 function setPortalLanguage(lang) {
   state.language = lang;
   localStorage.setItem('plp_language', lang);
-  toast('Language set to ' + lang.toUpperCase());
+  toast(t('language_label') + ': ' + lang.toUpperCase());
+  render(); // Re-render entire portal with new language
 }
 
 // ===================== TEAM MANAGEMENT =====================
