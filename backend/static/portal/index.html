@@ -1085,27 +1085,46 @@ async function renderTeam(el) {
     api('GET', '/team/roles'),
     api('GET', '/team/members')
   ]);
+  window._teamRoles = roles.roles;
+  window._teamMembers = members.members;
+  window._teamPage = 1;
+  window._teamPageSize = 5;
+  window._teamCheck = check;
+  renderTeamTable(el, check, members);
+}
+
+function renderTeamTable(el, check, members) {
+  const allMembers = members.members || window._teamMembers || [];
+  const page = window._teamPage || 1;
+  const pageSize = window._teamPageSize || 5;
+  const totalPages = Math.max(1, Math.ceil(allMembers.length / pageSize));
+  const paged = allMembers.slice((page - 1) * pageSize, page * pageSize);
+
   el.innerHTML = `
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:start">
-      <div><h2>${t('team_title')}</h2><p>${members.total} ${t('team_members')}</p></div>
+      <div><h2>${t('team_title')}</h2><p>${allMembers.length} ${t('team_members')}</p></div>
       ${check.is_super_admin ? `<button class="btn btn-primary btn-sm" onclick="showAddMember()" data-testid="add-member-btn"><i class="fas fa-user-plus"></i> ${t('add_member')}</button>` : ''}
     </div>
     <div class="card"><div class="table-wrap"><table data-testid="team-table">
       <thead><tr><th>${t('username')}</th><th>${t('name')}</th><th>${t('role')}</th><th>${t('email')}</th><th>${t('status')}</th>${check.is_super_admin?`<th>${t('actions')}</th>`:''}</tr></thead>
-      <tbody>${members.members.map(m => `<tr>
+      <tbody>${paged.map(m => `<tr>
         <td><b>${esc(m.username)}</b></td>
         <td>${esc((m.first_name||'')+' '+(m.last_name||''))}</td>
         <td><span class="badge badge-info">${esc(m.role_label||m.role)}</span></td>
         <td>${esc(m.email||'-')}</td>
-        <td><span class="badge badge-${m.is_active!==false?'success':'warning'}">${m.is_active!==false?'Active':'Inactive'}</span></td>
+        <td><span class="badge badge-${m.is_active!==false?'success':'warning'}">${m.is_active!==false?t('active'):t('inactive')}</span></td>
         ${check.is_super_admin && !m.is_super_admin ? `<td class="action-row">
           <button class="btn btn-ghost btn-sm" onclick="editMember('${m.id}')" data-testid="edit-member-${m.id}"><i class="fas fa-edit"></i></button>
           <button class="btn btn-ghost btn-sm" onclick="deleteMember('${m.id}','${esc(m.username)}')" data-testid="delete-member-${m.id}"><i class="fas fa-trash" style="color:var(--danger)"></i></button>
         </td>` : '<td></td>'}
       </tr>`).join('')}</tbody>
-    </table></div></div>`;
-  window._teamRoles = roles.roles;
-  window._teamMembers = members.members;
+    </table></div>
+    ${totalPages > 1 ? `<div style="display:flex;justify-content:center;align-items:center;gap:8px;padding:16px">
+      <button class="btn btn-outline btn-sm" ${page <= 1 ? 'disabled' : ''} onclick="teamPageNav(${page - 1})" data-testid="team-prev-page"><i class="fas fa-chevron-left"></i></button>
+      <span style="font-size:13px;color:var(--text-muted)">${page} / ${totalPages}</span>
+      <button class="btn btn-outline btn-sm" ${page >= totalPages ? 'disabled' : ''} onclick="teamPageNav(${page + 1})" data-testid="team-next-page"><i class="fas fa-chevron-right"></i></button>
+    </div>` : ''}
+    </div>`;
 }
 
 function showAddMember() {
