@@ -1464,15 +1464,17 @@ async function renderActivity(el) {
 }
 
 function renderActivityRows(logs, memberMap) {
-  if (!logs.length) return '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No activity logs found</td></tr>';
+  if (!logs.length) return `<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">${t('no_activity')}</td></tr>`;
   return logs.map(l => {
     const user = memberMap[l.admin_id] || l.admin_username || l.admin_id || '-';
     const actionBadge = { login: 'info', lock: 'danger', unlock: 'success', payment: 'success', client_create: 'accent', reminder: 'warning' };
+    const actionIcon = { login: 'fa-sign-in-alt', lock: 'fa-lock', unlock: 'fa-lock-open', payment: 'fa-money-bill', client_create: 'fa-user-plus', client_update: 'fa-user-edit', reminder: 'fa-bell' };
     const badge = actionBadge[l.action_type] || 'info';
+    const icon = actionIcon[l.action_type] || 'fa-circle';
     return `<tr>
       <td style="font-size:12px;white-space:nowrap">${fmtDate(l.timestamp||l.created_at)}</td>
       <td><b>${esc(user)}</b></td>
-      <td><span class="badge badge-${badge}">${esc(l.action_type||'-')}</span></td>
+      <td><span class="badge badge-${badge}"><i class="fas ${icon}" style="margin-right:4px;font-size:10px"></i>${esc(l.action_type||'-')}</span></td>
       <td>${esc(l.target_type||'-')}: ${esc(l.target_id||'').substring(0,8)}</td>
       <td style="font-size:12px;color:var(--text-muted);max-width:300px;overflow:hidden;text-overflow:ellipsis">${esc(l.details||l.description||'-')}</td>
     </tr>`;
