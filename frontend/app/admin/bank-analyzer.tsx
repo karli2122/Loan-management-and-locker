@@ -224,6 +224,9 @@ export default function BankAnalyzer() {
             <Text style={styles.uploadSubtext}>
               {t('pdfOrAsiceFiles')}
             </Text>
+            <Text style={styles.uploadSubtext}>
+              {language === 'et' ? 'Toetatud formaadid: PDF, ASICE' : 'Supported formats: PDF, ASICE'}
+            </Text>
           </TouchableOpacity>
         )}
 
