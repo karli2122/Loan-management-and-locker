@@ -412,6 +412,47 @@ async def preview_loan_calculation(
     }
 
 
+
+@router.get("/payments/live-feed")
+async def get_live_payment_feed(admin_token: str = Query(...), limit: int = Query(default=20)):
+    """Get recent payments for the live dashboard widget. Returns last N payments sorted by date."""
+    from datetime import timezone
+    admin_id = await get_admin_id_from_token(admin_token)
+
+    # Get payments for this admin's clients
+    clients = await db.clients.find({"admin_id": admin_id}, {"_id": 0, "id": 1, "name": 1}).to_list(5000)
+    client_map = {c["id"]: c.get("name", "Unknown") for c in clients}
+    client_ids = list(client_map.keys())
+
+    if not client_ids:
+        return {"payments": [], "total_today": 0, "amount_today": 0}
+
+    payments = await db.payments.find(
+        {"client_id": {"$in": client_ids}},
+        {"_id": 0}
+    ).sort("payment_date", -1).to_list(limit)
+
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today_payments = [p for p in payments if str(p.get("payment_date", ""))[:10] == today_str]
+
+    feed = []
+    for p in payments:
+        feed.append({
+            "id": p.get("id", ""),
+            "client_name": client_map.get(p.get("client_id", ""), "Unknown"),
+            "amount": p.get("amount", 0),
+            "payment_method": p.get("payment_method", "cash"),
+            "payment_date": str(p.get("payment_date", "")),
+            "notes": p.get("notes", ""),
+        })
+
+    return {
+        "payments": feed,
+        "total_today": len(today_payments),
+        "amount_today": sum(p.get("amount", 0) for p in today_payments),
+    }
+
+
 # ===================== PAYMENTS =====================
 
 @router.post("/loans/{client_id}/payments")
