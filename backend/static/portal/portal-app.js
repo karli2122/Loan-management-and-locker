@@ -359,10 +359,50 @@ async function renderClientDetail(el) {
 // Client actions
 async function toggleLock(id, lock) {
   try {
-    await api('POST', `/device/${lock?'lock':'unlock'}/${id}`);
-    toast(lock ? t('device_locked') : t('device_unlocked'));
+    if (lock) {
+      // Show lock options dialog
+      const reason = prompt('Lock reason:\n1. manual\n2. overdue_payment\n3. policy_violation\n4. suspicious_activity\n\nEnter reason (or press Enter for manual):', 'manual');
+      const message = prompt('Lock message for client (optional):', '');
+      const tempStr = prompt('Temporary lock? Enter hours (or leave empty for permanent):', '');
+      
+      let url = `/clients/${id}/lock?reason=${reason || 'manual'}`;
+      if (message) url += `&message=${encodeURIComponent(message)}`;
+      if (tempStr && parseInt(tempStr) > 0) {
+        url += `&temporary=true&unlock_after_hours=${parseInt(tempStr)}`;
+      }
+      await api('POST', url);
+      toast(t('device_locked'));
+    } else {
+      await api('POST', `/clients/${id}/unlock`);
+      toast(t('device_unlocked'));
+    }
     state.selectedClient = { ...state.selectedClient, is_locked: lock };
     renderClientDetail(document.getElementById('page-content'));
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function showLockHistory(clientId) {
+  try {
+    const data = await api('GET', `/clients/${clientId}/lock-history?limit=20`);
+    const history = data.history || [];
+    let html = '<div style="max-height:300px;overflow-y:auto"><table><thead><tr><th>Action</th><th>Reason</th><th>Message</th><th>Time</th></tr></thead><tbody>';
+    if (history.length === 0) {
+      html += '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">No lock history</td></tr>';
+    } else {
+      history.forEach(h => {
+        const badge = h.action === 'lock' ? 'badge-danger' : 'badge-success';
+        html += `<tr>
+          <td><span class="badge ${badge}">${h.action}</span></td>
+          <td>${(h.reason || '-').replace(/_/g, ' ')}</td>
+          <td>${h.message || '-'}</td>
+          <td>${fmtDate(h.timestamp)}</td>
+        </tr>`;
+      });
+    }
+    html += '</tbody></table></div>';
+    
+    state.modal = { title: 'Lock/Unlock History', body: html };
+    renderModal();
   } catch(e) { toast(e.message, 'error'); }
 }
 
