@@ -365,7 +365,7 @@ async function renderDashboard(el) {
     <div class="card" style="margin-top:16px"><div class="card-header"><h3>${t('recent_activity')}</h3></div>
       ${dash.activity_log?.length ? `<table><thead><tr><th>${t('client')}</th><th>${t('action')}</th><th>${t('time')}</th></tr></thead><tbody>
         ${dash.activity_log.map(a => `<tr><td>${a.client_name}</td><td>${a.details}</td><td>${fmtDate(a.timestamp)}</td></tr>`).join('')}
-      </tbody></table>` : '<p style="color:var(--text-muted);font-size:13px">No recent activity</p>'}
+      </tbody></table>` : `<p style="color:var(--text-muted);font-size:13px">${t('no_recent_activity')}</p>`}
     </div>`;
 
   // Render charts after DOM is ready
