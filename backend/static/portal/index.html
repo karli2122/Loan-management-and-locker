@@ -208,12 +208,12 @@ function render() {
 // Login
 function renderLogin() {
   return `<div class="login-screen"><div class="login-box">
-    <div class="logo-row"><div class="logo-icon">P</div><div><h1>PayLock Pro</h1><p class="subtitle">Admin Portal</p></div></div>
+    <div class="logo-row"><div class="logo-icon">P</div><div><h1>PayLock Pro</h1><p class="subtitle">${t('login_title')}</p></div></div>
     <form id="login-form">
-      <div class="form-group"><label>Username</label><input id="login-user" type="text" placeholder="Enter username" data-testid="login-username" required></div>
-      <div class="form-group"><label>Password</label><input id="login-pass" type="password" placeholder="Enter password" data-testid="login-password" required></div>
+      <div class="form-group"><label>${t('login_username')}</label><input id="login-user" type="text" placeholder="${t('login_username')}" data-testid="login-username" required></div>
+      <div class="form-group"><label>${t('login_password')}</label><input id="login-pass" type="password" placeholder="${t('login_password')}" data-testid="login-password" required></div>
       <div id="login-error" class="error-msg hidden"></div>
-      <button type="submit" class="btn btn-primary" style="margin-top:8px" data-testid="login-submit"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+      <button type="submit" class="btn btn-primary" style="margin-top:8px" data-testid="login-submit"><i class="fas fa-sign-in-alt"></i> ${t('login_submit')}</button>
     </form>
   </div></div>`;
 }
