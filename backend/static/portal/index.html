@@ -560,24 +560,24 @@ function showAddClient() {
   overlay.className = 'modal-overlay';
   overlay.id = 'modal-overlay';
   overlay.innerHTML = `<div class="modal">
-    <h3>Add New Client</h3>
+    <h3>${t('add_new_client')}</h3>
     <form id="add-client-form">
       <div class="form-row">
-        <div class="form-group"><label>Name *</label><input id="nc-name" required data-testid="new-client-name"></div>
-        <div class="form-group"><label>Phone</label><input id="nc-phone" data-testid="new-client-phone"></div>
+        <div class="form-group"><label>${t('name_required')}</label><input id="nc-name" required data-testid="new-client-name"></div>
+        <div class="form-group"><label>${t('phone')}</label><input id="nc-phone" data-testid="new-client-phone"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Email</label><input id="nc-email" type="email" data-testid="new-client-email"></div>
-        <div class="form-group"><label>ID Code</label><input id="nc-birth" data-testid="new-client-birth"></div>
+        <div class="form-group"><label>${t('email')}</label><input id="nc-email" type="email" data-testid="new-client-email"></div>
+        <div class="form-group"><label>${t('id_code')}</label><input id="nc-birth" data-testid="new-client-birth"></div>
       </div>
-      <div class="form-group"><label>Address</label><input id="nc-addr" data-testid="new-client-address"></div>
+      <div class="form-group"><label>${t('address')}</label><input id="nc-addr" data-testid="new-client-address"></div>
       <div class="form-row">
-        <div class="form-group"><label>Loan Amount (€)</label><input id="nc-loan" type="number" step="0.01" data-testid="new-client-loan"></div>
-        <div class="form-group"><label>Interest Rate (%)</label><input id="nc-rate" type="number" step="0.1" data-testid="new-client-rate"></div>
+        <div class="form-group"><label>${t('loan_amount_eur')} (&#8364;)</label><input id="nc-loan" type="number" step="0.01" data-testid="new-client-loan"></div>
+        <div class="form-group"><label>${t('interest_rate_pct')}</label><input id="nc-rate" type="number" step="0.1" data-testid="new-client-rate"></div>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
-        <button type="submit" class="btn btn-primary btn-sm" data-testid="save-client-btn"><i class="fas fa-save"></i> Save</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">${t('cancel')}</button>
+        <button type="submit" class="btn btn-primary btn-sm" data-testid="save-client-btn"><i class="fas fa-save"></i> ${t('save')}</button>
       </div>
     </form>
   </div>`;
@@ -595,7 +595,7 @@ function showAddClient() {
         loan_amount: parseFloat(document.getElementById('nc-loan').value) || 0,
         interest_rate: parseFloat(document.getElementById('nc-rate').value) || 0,
       });
-      toast('Client added');
+      toast(t('client_added'));
       closeModal();
       navigate('clients');
     } catch(err) { toast(err.message, 'error'); }
@@ -609,19 +609,19 @@ function showEditClient(clientId) {
   overlay.className = 'modal-overlay';
   overlay.id = 'modal-overlay';
   overlay.innerHTML = `<div class="modal">
-    <h3>Edit Client</h3>
+    <h3>${t('edit_client')}</h3>
     <form id="edit-client-form">
       <div class="form-row">
-        <div class="form-group"><label>Name</label><input id="ec-name" value="${esc(c.name||'')}" data-testid="edit-client-name"></div>
-        <div class="form-group"><label>Phone</label><input id="ec-phone" value="${esc(c.phone||'')}" data-testid="edit-client-phone"></div>
+        <div class="form-group"><label>${t('name')}</label><input id="ec-name" value="${esc(c.name||'')}" data-testid="edit-client-name"></div>
+        <div class="form-group"><label>${t('phone')}</label><input id="ec-phone" value="${esc(c.phone||'')}" data-testid="edit-client-phone"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Email</label><input id="ec-email" value="${esc(c.email||'')}" data-testid="edit-client-email"></div>
-        <div class="form-group"><label>Address</label><input id="ec-addr" value="${esc(c.address||'')}" data-testid="edit-client-address"></div>
+        <div class="form-group"><label>${t('email')}</label><input id="ec-email" value="${esc(c.email||'')}" data-testid="edit-client-email"></div>
+        <div class="form-group"><label>${t('address')}</label><input id="ec-addr" value="${esc(c.address||'')}" data-testid="edit-client-address"></div>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
-        <button type="submit" class="btn btn-primary btn-sm" data-testid="save-edit-btn"><i class="fas fa-save"></i> Save</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">${t('cancel')}</button>
+        <button type="submit" class="btn btn-primary btn-sm" data-testid="save-edit-btn"><i class="fas fa-save"></i> ${t('save')}</button>
       </div>
     </form>
   </div>`;
@@ -636,7 +636,7 @@ function showEditClient(clientId) {
         email: document.getElementById('ec-email').value,
         address: document.getElementById('ec-addr').value,
       });
-      toast('Client updated');
+      toast(t('client_updated'));
       closeModal();
       const data = await api('GET', '/clients');
       state.clients = data.clients || [];
