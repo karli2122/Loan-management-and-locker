@@ -800,28 +800,28 @@ async function renderProvisioning(el) {
   el.innerHTML = `
     <div class="page-header"><h2>${t('provisioning_title')}</h2><p>${t('provisioning_subtitle')}</p></div>
     <div class="tabs" data-testid="provisioning-tabs">
-      <button class="tab active" onclick="showProvTab(this,'prov-qr')">QR Code</button>
-      <button class="tab" onclick="showProvTab(this,'prov-nfc')">NFC Tag</button>
+      <button class="tab active" onclick="showProvTab(this,'prov-qr')">${t('qr_code')}</button>
+      <button class="tab" onclick="showProvTab(this,'prov-nfc')">${t('nfc_tag')}</button>
     </div>
     <div id="prov-qr">
       <div class="card">
-        <h3 style="margin-bottom:16px">QR Code Provisioning</h3>
+        <h3 style="margin-bottom:16px">${t('qr_provisioning')}</h3>
         <div class="form-row" style="gap:12px;margin-bottom:16px">
-          <div class="form-group"><label>WiFi SSID</label><input id="qr-ssid" placeholder="Network name" data-testid="qr-wifi-ssid"></div>
-          <div class="form-group"><label>WiFi Password</label><input id="qr-pass" type="password" placeholder="Password" data-testid="qr-wifi-pass"></div>
+          <div class="form-group"><label>${t('wifi_ssid')}</label><input id="qr-ssid" placeholder="${t('network_name')}" data-testid="qr-wifi-ssid"></div>
+          <div class="form-group"><label>${t('wifi_password')}</label><input id="qr-pass" type="password" placeholder="${t('password')}" data-testid="qr-wifi-pass"></div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="generateQR()" data-testid="generate-qr-btn"><i class="fas fa-qrcode"></i> Generate QR Code</button>
+        <button class="btn btn-primary btn-sm" onclick="generateQR()" data-testid="generate-qr-btn"><i class="fas fa-qrcode"></i> ${t('generate_qr')}</button>
         <div id="qr-result" style="margin-top:16px;text-align:center"></div>
       </div>
     </div>
     <div id="prov-nfc" class="hidden">
       <div class="card">
-        <h3 style="margin-bottom:16px">NFC Tag Provisioning</h3>
+        <h3 style="margin-bottom:16px">${t('nfc_provisioning')}</h3>
         <div class="form-row" style="gap:12px;margin-bottom:16px">
-          <div class="form-group"><label>WiFi SSID</label><input id="nfc-ssid" placeholder="Network name" data-testid="nfc-wifi-ssid"></div>
-          <div class="form-group"><label>WiFi Password</label><input id="nfc-pass" type="password" placeholder="Password" data-testid="nfc-wifi-pass"></div>
+          <div class="form-group"><label>${t('wifi_ssid')}</label><input id="nfc-ssid" placeholder="${t('network_name')}" data-testid="nfc-wifi-ssid"></div>
+          <div class="form-group"><label>${t('wifi_password')}</label><input id="nfc-pass" type="password" placeholder="${t('password')}" data-testid="nfc-wifi-pass"></div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="generateNFC()" data-testid="generate-nfc-btn"><i class="fas fa-wifi"></i> Generate NFC Payload</button>
+        <button class="btn btn-primary btn-sm" onclick="generateNFC()" data-testid="generate-nfc-btn"><i class="fas fa-wifi"></i> ${t('generate_nfc')}</button>
         <div id="nfc-result" style="margin-top:16px"></div>
       </div>
     </div>`;
@@ -909,17 +909,17 @@ async function renderSettings(el) {
         </select>
       </div>
     </div>
-    <div class="card"><div class="card-header"><h3>Default Settings</h3></div>
+    <div class="card"><div class="card-header"><h3>${t('default_settings')}</h3></div>
       <div class="form-row" style="gap:16px">
-        <div class="form-group"><label>Late Fee %</label><input id="set-late" type="number" step="0.1" value="${settings.default_late_fee_percent||2}" data-testid="settings-late-fee"></div>
-        <div class="form-group"><label>Auto-Lock Grace Days</label><input id="set-grace" type="number" value="${settings.default_auto_lock_grace_days||3}" data-testid="settings-grace-days"></div>
+        <div class="form-group"><label>${t('late_fee_pct')}</label><input id="set-late" type="number" step="0.1" value="${settings.default_late_fee_percent||2}" data-testid="settings-late-fee"></div>
+        <div class="form-group"><label>${t('auto_lock_grace')}</label><input id="set-grace" type="number" value="${settings.default_auto_lock_grace_days||3}" data-testid="settings-grace-days"></div>
       </div>
-      <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="saveSettings()" data-testid="save-settings-btn"><i class="fas fa-save"></i> Save Settings</button>
+      <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="saveSettings()" data-testid="save-settings-btn"><i class="fas fa-save"></i> ${t('save_settings')}</button>
     </div>
-    <div class="card"><div class="card-header"><h3>Change Password</h3></div>
-      <div class="form-group"><label>Current Password</label><input id="pw-current" type="password" data-testid="current-password"></div>
-      <div class="form-group"><label>New Password</label><input id="pw-new" type="password" data-testid="new-password"></div>
-      <button class="btn btn-warning btn-sm" style="margin-top:8px" onclick="changePassword()" data-testid="change-password-btn"><i class="fas fa-key"></i> Change Password</button>
+    <div class="card"><div class="card-header"><h3>${t('change_password')}</h3></div>
+      <div class="form-group"><label>${t('current_password')}</label><input id="pw-current" type="password" data-testid="current-password"></div>
+      <div class="form-group"><label>${t('new_password')}</label><input id="pw-new" type="password" data-testid="new-password"></div>
+      <button class="btn btn-warning btn-sm" style="margin-top:8px" onclick="changePassword()" data-testid="change-password-btn"><i class="fas fa-key"></i> ${t('change_password')}</button>
     </div>`;
 }
 
