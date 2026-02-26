@@ -222,6 +222,69 @@ async function renderDashboard(el) {
   setTimeout(() => startLiveFeed(), 200);
 }
 
+
+let liveFeedInterval = null;
+let liveFeedPrevIds = new Set();
+
+async function startLiveFeed() {
+  if (liveFeedInterval) clearInterval(liveFeedInterval);
+  await loadLiveFeed();
+  liveFeedInterval = setInterval(loadLiveFeed, 15000); // Poll every 15s
+}
+
+async function loadLiveFeed() {
+  try {
+    const data = await api('GET', '/payments/live-feed?limit=20');
+    const container = document.getElementById('live-feed-container');
+    const statsEl = document.getElementById('live-feed-stats');
+    if (!container) { if (liveFeedInterval) clearInterval(liveFeedInterval); return; }
+
+    if (statsEl) {
+      statsEl.innerHTML = `<span class="live-stat"><i class="fas fa-coins"></i> Today: <strong>${cur(data.amount_today)}</strong></span><span class="live-stat"><i class="fas fa-receipt"></i> <strong>${data.total_today}</strong> payments</span>`;
+    }
+
+    if (!data.payments || data.payments.length === 0) {
+      container.innerHTML = '<div class="live-feed-empty"><i class="fas fa-inbox" style="font-size:28px;color:#334155"></i><p style="color:#64748B;margin-top:8px">No payments recorded yet</p></div>';
+      return;
+    }
+
+    const newIds = new Set(data.payments.map(p => p.id));
+    const html = data.payments.map((p, i) => {
+      const isNew = !liveFeedPrevIds.has(p.id) && liveFeedPrevIds.size > 0;
+      const methodIcon = { cash: 'fa-money-bill-wave', bank_transfer: 'fa-university', card: 'fa-credit-card', mobile_money: 'fa-mobile-alt', stripe: 'fa-stripe-s', other: 'fa-ellipsis-h' }[p.payment_method] || 'fa-money-bill-wave';
+      const methodColor = { cash: '#10B981', bank_transfer: '#3B82F6', card: '#8B5CF6', mobile_money: '#F59E0B', stripe: '#6366F1' }[p.payment_method] || '#10B981';
+      const timeAgo = getTimeAgo(p.payment_date);
+      return `<div class="live-feed-item${isNew ? ' feed-item-new' : ''}" style="animation-delay:${i * 60}ms" data-testid="feed-item-${p.id}">
+        <div class="feed-icon" style="background:${methodColor}20;color:${methodColor}"><i class="fas ${methodIcon}"></i></div>
+        <div class="feed-details">
+          <div class="feed-name">${p.client_name}</div>
+          <div class="feed-meta"><span>${p.payment_method.replace('_',' ')}</span>${p.notes ? ` &middot; ${p.notes}` : ''}</div>
+        </div>
+        <div class="feed-right">
+          <div class="feed-amount">+${cur(p.amount)}</div>
+          <div class="feed-time">${timeAgo}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    container.innerHTML = html;
+    liveFeedPrevIds = newIds;
+  } catch(e) { console.error('Live feed error:', e); }
+}
+
+function getTimeAgo(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diff = Math.floor((now - d) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+  if (diff < 604800) return `${Math.floor(diff/86400)}d ago`;
+  return d.toLocaleDateString();
+}
+
+
 function drawDashboardCharts(financial, dash, collection) {
   if (typeof Chart === 'undefined') return;
   const chartColors = { blue: '#3b82f6', green: '#10b981', amber: '#f59e0b', red: '#ef4444', cyan: '#06b6d4', purple: '#8b5cf6' };
