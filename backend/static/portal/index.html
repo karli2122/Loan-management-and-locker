@@ -829,23 +829,41 @@ async function renderProvisioning(el) {
     </div>
     <div id="prov-qr">
       <div class="card">
-        <h3 style="margin-bottom:16px">${t('qr_provisioning')}</h3>
-        <div class="form-row" style="gap:12px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+          <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center">
+            <i class="fas fa-qrcode" style="color:#fff;font-size:18px"></i>
+          </div>
+          <div><h3 style="margin:0">${t('qr_provisioning')}</h3><p style="margin:0;font-size:12px;color:var(--text-muted)">${t('provisioning_subtitle')}</p></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
           <div class="form-group"><label>${t('wifi_ssid')}</label><input id="qr-ssid" placeholder="${t('network_name')}" data-testid="qr-wifi-ssid"></div>
           <div class="form-group"><label>${t('wifi_password')}</label><input id="qr-pass" type="password" placeholder="${t('password')}" data-testid="qr-wifi-pass"></div>
+          <div class="form-group"><label>${t('server_url_label')}</label><input id="qr-server" placeholder="https://api.example.com" value="${API_BASE}" data-testid="qr-server-url"></div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="generateQR()" data-testid="generate-qr-btn"><i class="fas fa-qrcode"></i> ${t('generate_qr')}</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-primary btn-sm" onclick="generateQR()" data-testid="generate-qr-btn"><i class="fas fa-qrcode"></i> ${t('generate_qr')}</button>
+          <span id="qr-status" style="font-size:12px;color:var(--text-muted)"></span>
+        </div>
         <div id="qr-result" style="margin-top:16px;text-align:center"></div>
       </div>
     </div>
     <div id="prov-nfc" class="hidden">
       <div class="card">
-        <h3 style="margin-bottom:16px">${t('nfc_provisioning')}</h3>
-        <div class="form-row" style="gap:12px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+          <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);display:flex;align-items:center;justify-content:center">
+            <i class="fas fa-wifi" style="color:#fff;font-size:18px"></i>
+          </div>
+          <div><h3 style="margin:0">${t('nfc_provisioning')}</h3><p style="margin:0;font-size:12px;color:var(--text-muted)">${t('provisioning_subtitle')}</p></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
           <div class="form-group"><label>${t('wifi_ssid')}</label><input id="nfc-ssid" placeholder="${t('network_name')}" data-testid="nfc-wifi-ssid"></div>
           <div class="form-group"><label>${t('wifi_password')}</label><input id="nfc-pass" type="password" placeholder="${t('password')}" data-testid="nfc-wifi-pass"></div>
+          <div class="form-group"><label>${t('server_url_label')}</label><input id="nfc-server" placeholder="https://api.example.com" value="${API_BASE}" data-testid="nfc-server-url"></div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="generateNFC()" data-testid="generate-nfc-btn"><i class="fas fa-wifi"></i> ${t('generate_nfc')}</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-primary btn-sm" onclick="generateNFC()" data-testid="generate-nfc-btn"><i class="fas fa-wifi"></i> ${t('generate_nfc')}</button>
+          <span id="nfc-status" style="font-size:12px;color:var(--text-muted)"></span>
+        </div>
         <div id="nfc-result" style="margin-top:16px"></div>
       </div>
     </div>`;
