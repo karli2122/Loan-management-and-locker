@@ -327,6 +327,7 @@ async function renderClientDetail(el) {
         <button class="btn btn-outline btn-sm" onclick="sendReminder('${c.id}','email')" data-testid="send-email-btn"><i class="fas fa-envelope"></i> ${t('email')}</button>
         <button class="btn btn-outline btn-sm" onclick="sendReminder('${c.id}','whatsapp')" data-testid="send-whatsapp-btn"><i class="fab fa-whatsapp"></i> ${t('whatsapp')}</button>
         <button class="btn btn-outline btn-sm" onclick="downloadContract('${c.id}')" data-testid="download-contract-btn"><i class="fas fa-file-pdf"></i> ${t('contract')}</button>
+        <button class="btn btn-outline btn-sm" onclick="showLockHistory('${c.id}')" data-testid="lock-history-btn"><i class="fas fa-history"></i> Lock History</button>
       </div>
     </div>
     <div class="detail-grid" data-testid="client-details">
