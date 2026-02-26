@@ -43,8 +43,8 @@ class TestContractLanguageAndSection6:
     @pytest.fixture(scope="class")
     def client_with_loan(self, admin_token):
         """Find a client with loan_amount > 0 for contract testing"""
-        response = requests.get(f"{BASE_URL}/api/clients", headers={
-            "Authorization": f"Bearer {admin_token}"
+        response = requests.get(f"{BASE_URL}/api/clients", params={
+            "admin_token": admin_token
         })
         assert response.status_code == 200, f"Failed to get clients: {response.text}"
         data = response.json()
