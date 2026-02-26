@@ -675,6 +675,10 @@ export default function ClientHome() {
       // Fire-and-forget background tasks — don't await
       updateLocation(id).catch(e => console.log('Location update error (non-fatal):', e));
       registerPushToken(id).catch(e => console.log('Push token error (non-fatal):', e));
+      
+      // Initialize background services (location tracking + notifications)
+      initializeNotifications().catch(e => console.log('Notification init error (non-fatal):', e));
+      startBackgroundLocationTracking(API_URL).catch(e => console.log('Background location init error (non-fatal):', e));
     } catch (error) {
       console.error('loadClientData error:', error);
       if (isMounted.current) setLoading(false);
