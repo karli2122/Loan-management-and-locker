@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLanguage, LANGUAGES, Language } from '../context/LanguageContext';
 
 const FLAG_EMOJI: Record<string, string> = {
-  GB: '\uD83C\uDDEC\uD83C\uDDE7', NO: '\uD83C\uDDF3\uD83C\uDDF4', SE: '\uD83C\uDDF8\uD83C\uDDEA',
+  EU: '\uD83C\uDDEA\uD83C\uDDFA', NO: '\uD83C\uDDF3\uD83C\uDDF4', SE: '\uD83C\uDDF8\uD83C\uDDEA',
   DK: '\uD83C\uDDE9\uD83C\uDDF0', FI: '\uD83C\uDDEB\uD83C\uDDEE', EE: '\uD83C\uDDEA\uD83C\uDDEA',
   LV: '\uD83C\uDDF1\uD83C\uDDFB', LT: '\uD83C\uDDF1\uD83C\uDDF9', AT: '\uD83C\uDDE6\uD83C\uDDF9',
   CZ: '\uD83C\uDDE8\uD83C\uDDFF', PL: '\uD83C\uDDF5\uD83C\uDDF1', CH: '\uD83C\uDDE8\uD83C\uDDED',
