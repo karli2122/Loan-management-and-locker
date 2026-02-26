@@ -146,7 +146,7 @@ async def get_location_history(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    cutoff = (datetime.utcnow() - __import__('datetime').timedelta(days=days)).isoformat()
+    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
     
     history = await db.location_history.find(
         {"client_id": client_id, "timestamp": {"$gte": cutoff}},
