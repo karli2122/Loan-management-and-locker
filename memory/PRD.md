@@ -21,15 +21,30 @@ Web portal for loan management with features: device lock/unlock, payment tracki
 - QR/NFC provisioning, Device Owner kiosk mode
 - Multi-language PDF contract generator
 
-### Session - Feb 26, 2026 (New Features)
-1. **Team Management (Enterprise)** - Super admin creates sub-users with roles (Manager, Collection Agent, Accountant, Viewer). Enterprise data sharing: superuser sees all clients/revenue, team members see only their own data. Enterprise plan required.
-2. **Bulk CSV Import** - Upload CSV to create multiple clients at once. Template download, duplicate skip option, error reporting.
-3. **Document Storage** - GridFS-based file upload/download/delete for contracts, ID scans, proof of income. Stats dashboard.
-4. **Telegram Bot** - One-way notification bot (@Paylockpro_bot). Link clients to chat IDs, send bulk or individual payment reminders.
-5. **Payment Scheduling** - Recurring payment schedules with APScheduler.
-6. **Analytics/Reports** - Enterprise-scoped dashboards. Superuser sees all enterprise data, team members see own.
-7. **Updated Plans** - Starter/Business/Enterprise/Custom with new features named (Team Management, Document Storage, Bulk Import, Telegram, Payment Scheduling, Analytics Charts).
-8. **Updated Website** - New feature cards for Team Management, Bulk Import & Documents, Telegram Notifications, Payment Scheduling.
+### Session 1 - Feb 26, 2026 (New Features Batch 1)
+1. **Team Management (Enterprise)** - Super admin creates sub-users with roles
+2. **Bulk CSV Import** - Upload CSV to create multiple clients
+3. **Document Storage** - GridFS file upload/download/delete
+4. **Telegram Bot** - One-way @Paylockpro_bot notifications
+5. **Payment Scheduling Backend** - Recurring payment schedules with APScheduler
+6. **Updated Plans** - 4 tiers with new features named
+7. **Updated Website** - New feature cards
+
+### Session 2 - Feb 26, 2026 (Features Batch 2)
+1. **Analytics Charts (Chart.js)** - 4 charts on dashboard: Revenue Trends (line), Profit Trends (bar+line), Collection Rates (bar+line), Loan Distribution (doughnut)
+2. **Payment Scheduling UI** - Full CRUD page: create/view/toggle/delete schedules with "Process Reminders" and "New Schedule" actions
+3. **Team Activity Log** - Superuser-only page showing all team member actions with filtering by action type and member
+4. **Role-based Sidebar Filtering** - Nav items hidden based on user permissions (super_admin sees all, viewer sees only Clients & Reports)
+5. **Enhanced Auth** - Login and verify endpoints return permissions, is_super_admin, full user info
+
+## Roles & Permissions
+| Role | Permissions |
+|------|------------|
+| Super Admin | All (team, activity, everything) |
+| Manager | clients, loans, reminders, reports, devices, contracts, schedules, documents, import |
+| Collection Agent | clients, loans, reminders, contracts |
+| Accountant | reports, loans, clients |
+| Viewer | clients, reports |
 
 ## Plan Tiers
 | Feature | Starter | Business | Enterprise | Custom |
@@ -43,26 +58,43 @@ Web portal for loan management with features: device lock/unlock, payment tracki
 | Analytics Charts | No | Yes | Yes | Yes |
 | Device Owner Mode | No | No | Yes | Yes |
 
-## Key API Endpoints (New)
+## Key API Endpoints
+### Team
 - `GET/POST/PUT/DELETE /api/team/members` - Team CRUD
 - `GET /api/team/enterprise-check` - Enterprise plan check
 - `GET /api/team/roles` - Available roles
-- `POST /api/import/clients/csv` - CSV bulk import
-- `GET /api/import/template` - CSV template
+
+### Documents & Import
 - `POST /api/documents/upload` - Upload document
 - `GET /api/documents/client/{id}` - Client documents
 - `GET /api/documents/stats` - Storage stats
+- `POST /api/import/clients/csv` - CSV bulk import
+- `GET /api/import/template` - CSV template
+
+### Schedules
+- `GET/POST /api/schedules` - List/create schedules
+- `PUT/DELETE /api/schedules/{id}` - Update/delete schedule
+- `GET /api/schedules/due/today` - Due today
+- `POST /api/schedules/process-reminders` - Process all due reminders
+
+### Telegram
 - `GET /api/telegram/bot-info` - Bot status
 - `POST /api/telegram/send-bulk` - Bulk reminders
 - `POST /api/telegram/send/{client_id}` - Individual reminder
+
+### Activity & Analytics
+- `GET /api/audit-logs` - Activity log with filters
+- `GET /api/audit-logs/action-types` - Available action types
+- `GET /api/analytics/dashboard` - Dashboard analytics
+- `GET /api/reports/financial` - Financial report with monthly trends
 - `GET /api/plans/features` - All plan features
-- `GET /api/plans/limits` - Current plan limits
 
 ## Upcoming Tasks (Backlog)
 - P1: WhatsApp Business API (user asked to skip for now)
-- P1: NFC Provisioning UI (backend ready)
-- P2: Analytics charts visualization (Chart.js integration in portal)
-- P2: Payment scheduling frontend UI improvements
+- P1: NFC Provisioning UI improvements (backend ready)
+- P2: Enterprise data isolation testing with real multi-user scenarios
+- P2: Revenue/profit charts with date range filtering
+- P3: Export reports to PDF/CSV
 
 ## Credentials
 - Admin: username=admin, password=admin123
