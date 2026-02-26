@@ -360,7 +360,7 @@ async function renderDashboard(el) {
       <div class="card" style="padding:20px"><div class="card-header"><h3>${t('loan_distribution')}</h3></div><canvas id="chart-distribution" height="220" data-testid="chart-distribution"></canvas></div>
     </div>
     <div class="card" style="margin-top:16px"><div class="card-header"><h3>${t('recent_activity')}</h3></div>
-      ${dash.activity_log?.length ? `<table><thead><tr><th>Client</th><th>Action</th><th>Time</th></tr></thead><tbody>
+      ${dash.activity_log?.length ? `<table><thead><tr><th>${t('client')}</th><th>${t('action')}</th><th>${t('time')}</th></tr></thead><tbody>
         ${dash.activity_log.map(a => `<tr><td>${a.client_name}</td><td>${a.details}</td><td>${fmtDate(a.timestamp)}</td></tr>`).join('')}
       </tbody></table>` : '<p style="color:var(--text-muted);font-size:13px">No recent activity</p>'}
     </div>`;
@@ -789,9 +789,9 @@ async function renderDevices(el) {
 function renderDeviceSection(title, devices, type) {
   if (!devices?.length) return '';
   return `<div class="card"><div class="card-header"><h3>${title}</h3><span class="badge badge-${type}">${devices.length}</span></div>
-    <div class="table-wrap"><table><thead><tr><th>Client</th><th>Device</th><th>Last Seen</th><th>Lock Status</th></tr></thead><tbody>
-      ${devices.map(d => `<tr><td>${esc(d.name)}</td><td>${esc(d.device_model)}</td><td>${d.minutes_ago!==null? d.minutes_ago+' min ago':'Never'}</td>
-        <td>${d.is_locked?'<span class="badge badge-danger">Locked</span>':'<span class="badge badge-success">Unlocked</span>'}</td></tr>`).join('')}
+    <div class="table-wrap"><table><thead><tr><th>${t('client')}</th><th>${t('device_col')}</th><th>${t('last_seen')}</th><th>${t('lock_status')}</th></tr></thead><tbody>
+      ${devices.map(d => `<tr><td>${esc(d.name)}</td><td>${esc(d.device_model)}</td><td>${d.minutes_ago!==null? d.minutes_ago+' '+t('min_ago'):t('never')}</td>
+        <td>${d.is_locked?`<span class="badge badge-danger">${t('locked')}</span>`:`<span class="badge badge-success">${t('unlocked')}</span>`}</td></tr>`).join('')}
     </tbody></table></div></div>`;
 }
 
@@ -880,15 +880,15 @@ async function renderSettings(el) {
   const settings = await api('GET', '/admin/settings');
   const admin = await api('GET', '/admin/credits');
   el.innerHTML = `
-    <div class="page-header"><h2>Settings</h2><p>Manage your account and defaults</p></div>
-    <div class="card"><div class="card-header"><h3>Account</h3></div>
+    <div class="page-header"><h2>${t('settings_title')}</h2><p>${t('manage_account')}</p></div>
+    <div class="card"><div class="card-header"><h3>${t('account')}</h3></div>
       <div class="detail-grid">
-        <div class="detail-item"><div class="label">Credits</div><div class="value">${admin.credits}</div></div>
-        <div class="detail-item"><div class="label">Role</div><div class="value">${admin.is_super_admin?'Super Admin':'Admin'}</div></div>
+        <div class="detail-item"><div class="label">${t('credits')}</div><div class="value">${admin.credits}</div></div>
+        <div class="detail-item"><div class="label">${t('role')}</div><div class="value">${admin.is_super_admin?t('super_admin'):t('admin_role')}</div></div>
       </div>
     </div>
-    <div class="card"><div class="card-header"><h3>Language / Keel</h3></div>
-      <div class="form-group"><label>Contract & Portal Language</label>
+    <div class="card"><div class="card-header"><h3>${t('language_label')}</h3></div>
+      <div class="form-group"><label>${t('contract_portal_language')}</label>
         <select id="set-lang" style="width:100%;padding:10px 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px" onchange="setPortalLanguage(this.value)" data-testid="settings-language">
           <option value="et" ${state.language==='et'?'selected':''}>Eesti (Estonian)</option>
           <option value="en" ${state.language==='en'?'selected':''}>English</option>
