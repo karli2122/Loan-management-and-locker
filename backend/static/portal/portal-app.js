@@ -916,6 +916,25 @@ async function saveSettings() {
   } catch(e) { toast(e.message, 'error'); }
 }
 
+async function saveAutomationSettings() {
+  try {
+    const channels = [];
+    if (document.getElementById('pa-ch-push').checked) channels.push('push');
+    if (document.getElementById('pa-ch-email').checked) channels.push('email');
+    if (document.getElementById('pa-ch-telegram').checked) channels.push('telegram');
+    const params = new URLSearchParams({
+      payment_auto_reminder_enabled: document.getElementById('pa-auto-remind').checked,
+      payment_auto_reminder_days_before: document.getElementById('pa-remind-days').value,
+      payment_auto_lock_enabled: document.getElementById('pa-auto-lock').checked,
+      payment_auto_late_fee_enabled: document.getElementById('pa-auto-late-fee').checked,
+      payment_late_fee_frequency_days: document.getElementById('pa-fee-freq').value,
+      payment_reminder_channels: channels.join(','),
+    });
+    await api('PUT', `/admin/settings?${params.toString()}`);
+    toast('Automation settings saved');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
 async function changePassword() {
   const curr = document.getElementById('pw-current').value;
   const newPw = document.getElementById('pw-new').value;
