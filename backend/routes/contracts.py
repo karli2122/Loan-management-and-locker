@@ -615,10 +615,12 @@ async def download_contract(client_id: str, admin_token: str = Query(...), langu
         loan_amount=loan_amt,
         due_date=due_date,
         total_repayment=round(total_repayment, 2),
-        interest_rate=interest_rate_val
+        interest_rate=interest_rate_val,
+        language=language
     )
     
-    filename = f"laenuleping_{client.get('name', 'client').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
+    prefix = "loan_agreement" if language.lower()[:2] == "en" else "laenuleping"
+    filename = f"{prefix}_{client.get('name', 'client').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
     
     return StreamingResponse(
         BytesIO(pdf_bytes),
