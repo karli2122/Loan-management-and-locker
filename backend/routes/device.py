@@ -105,22 +105,59 @@ async def get_device_status(client_id: str):
 
 @router.post("/device/location")
 async def update_location(location: LocationUpdate):
-    """Update device location."""
+    """Update device location and store in location history."""
     client = await db.clients.find_one({"id": location.client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
+    now = datetime.utcnow()
+    
+    # Update current location on client
     await db.clients.update_one(
         {"id": location.client_id},
         {"$set": {
             "latitude": location.latitude,
             "longitude": location.longitude,
-            "last_location_update": datetime.utcnow(),
-            "last_heartbeat": datetime.utcnow()
+            "last_location_update": now,
+            "last_heartbeat": now
         }}
     )
     
+    # Store in location history collection for tracking over time
+    await db.location_history.insert_one({
+        "client_id": location.client_id,
+        "latitude": location.latitude,
+        "longitude": location.longitude,
+        "timestamp": now.isoformat(),
+        "source": location.source if hasattr(location, 'source') else "foreground",
+    })
+    
     return {"message": "Location updated", "client_id": location.client_id}
+
+
+@router.get("/device/location-history/{client_id}")
+async def get_location_history(
+    client_id: str,
+    limit: int = Query(default=100, le=500),
+    days: int = Query(default=7, le=30),
+):
+    """Get location history for a client over the last N days."""
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    cutoff = (datetime.utcnow() - __import__('datetime').timedelta(days=days)).isoformat()
+    
+    history = await db.location_history.find(
+        {"client_id": client_id, "timestamp": {"$gte": cutoff}},
+        {"_id": 0}
+    ).sort("timestamp", -1).limit(limit).to_list(limit)
+    
+    return {
+        "client_id": client_id,
+        "locations": history,
+        "count": len(history),
+    }
 
 
 @router.post("/device/push-token")

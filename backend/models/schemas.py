@@ -202,6 +202,7 @@ class LocationUpdate(BaseModel):
     client_id: str
     latitude: float
     longitude: float
+    source: str = "foreground"  # "foreground" or "background"
 
 
 class PushTokenUpdate(BaseModel):
