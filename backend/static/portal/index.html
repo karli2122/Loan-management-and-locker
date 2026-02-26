@@ -488,28 +488,28 @@ async function renderClientDetail(el) {
       </div>
     </div>
     <div class="detail-grid" data-testid="client-details">
-      <div class="detail-item"><div class="label">Phone</div><div class="value">${esc(c.phone||'-')}</div></div>
-      <div class="detail-item"><div class="label">Email</div><div class="value">${esc(c.email||'-')}</div></div>
-      <div class="detail-item"><div class="label">Address</div><div class="value">${esc(c.address||'-')}</div></div>
-      <div class="detail-item"><div class="label">ID Code</div><div class="value">${esc(c.birth_number||'-')}</div></div>
-      <div class="detail-item"><div class="label">Loan Amount</div><div class="value">${cur(c.loan_amount||0)}</div></div>
-      <div class="detail-item"><div class="label">Total Due</div><div class="value">${cur(c.total_amount_due||c.outstanding_balance||0)}</div></div>
-      <div class="detail-item"><div class="label">Total Paid</div><div class="value" style="color:var(--success)">${cur(c.total_paid||0)}</div></div>
-      <div class="detail-item"><div class="label">Outstanding</div><div class="value" style="color:${c.outstanding_balance>0?'var(--warning)':'var(--success)'}">${cur(c.outstanding_balance||0)}</div></div>
-      <div class="detail-item"><div class="label">Interest Rate</div><div class="value">${c.interest_rate||0}%</div></div>
-      <div class="detail-item"><div class="label">Next Payment</div><div class="value">${c.next_payment_due ? fmtDate(c.next_payment_due) : '-'}</div></div>
-      <div class="detail-item"><div class="label">Days Overdue</div><div class="value" style="color:${(c.days_overdue||0)>0?'var(--danger)':'var(--text)'}">${c.days_overdue||0}</div></div>
-      <div class="detail-item"><div class="label">Device</div><div class="value">${c.is_locked?'<span style="color:var(--danger)">Locked</span>':c.is_registered?'<span style="color:var(--success)">Active</span>':'Unregistered'}</div></div>
+      <div class="detail-item"><div class="label">${t('phone')}</div><div class="value">${esc(c.phone||'-')}</div></div>
+      <div class="detail-item"><div class="label">${t('email')}</div><div class="value">${esc(c.email||'-')}</div></div>
+      <div class="detail-item"><div class="label">${t('address')}</div><div class="value">${esc(c.address||'-')}</div></div>
+      <div class="detail-item"><div class="label">${t('id_code')}</div><div class="value">${esc(c.birth_number||'-')}</div></div>
+      <div class="detail-item"><div class="label">${t('loan_amount')}</div><div class="value">${cur(c.loan_amount||0)}</div></div>
+      <div class="detail-item"><div class="label">${t('total_due')}</div><div class="value">${cur(c.total_amount_due||c.outstanding_balance||0)}</div></div>
+      <div class="detail-item"><div class="label">${t('total_paid')}</div><div class="value" style="color:var(--success)">${cur(c.total_paid||0)}</div></div>
+      <div class="detail-item"><div class="label">${t('outstanding')}</div><div class="value" style="color:${c.outstanding_balance>0?'var(--warning)':'var(--success)'}">${cur(c.outstanding_balance||0)}</div></div>
+      <div class="detail-item"><div class="label">${t('interest_rate')}</div><div class="value">${c.interest_rate||0}%</div></div>
+      <div class="detail-item"><div class="label">${t('next_payment')}</div><div class="value">${c.next_payment_due ? fmtDate(c.next_payment_due) : '-'}</div></div>
+      <div class="detail-item"><div class="label">${t('days_overdue')}</div><div class="value" style="color:${(c.days_overdue||0)>0?'var(--danger)':'var(--text)'}">${c.days_overdue||0}</div></div>
+      <div class="detail-item"><div class="label">${t('device_col')}</div><div class="value">${c.is_locked?`<span style="color:var(--danger)">${t('locked')}</span>`:c.is_registered?`<span style="color:var(--success)">${t('active_status')}</span>`:t('unregistered')}</div></div>
     </div>
-    <div class="card" style="margin-top:16px"><div class="card-header"><h3>Record Payment</h3></div>
+    <div class="card" style="margin-top:16px"><div class="card-header"><h3>${t('record_payment')}</h3></div>
       <div style="display:flex;gap:12px;align-items:end">
-        <div class="form-group" style="flex:1;margin:0"><label>Amount (€)</label><input id="pay-amount" type="number" step="0.01" placeholder="0.00" data-testid="payment-amount"></div>
-        <button class="btn btn-success btn-sm" onclick="recordPayment('${c.id}')" data-testid="record-payment-btn"><i class="fas fa-plus"></i> Record</button>
+        <div class="form-group" style="flex:1;margin:0"><label>${t('amount_eur')} (&#8364;)</label><input id="pay-amount" type="number" step="0.01" placeholder="0.00" data-testid="payment-amount"></div>
+        <button class="btn btn-success btn-sm" onclick="recordPayment('${c.id}')" data-testid="record-payment-btn"><i class="fas fa-plus"></i> ${t('record')}</button>
       </div>
     </div>
-    <div class="card"><div class="card-header"><h3>Payment History</h3></div>
-      <div class="table-wrap"><table data-testid="payments-table"><thead><tr><th>Date</th><th>Amount</th><th>Method</th></tr></thead><tbody>
-        ${(Array.isArray(payments)?payments:[]).map(p => `<tr><td>${fmtDate(p.payment_date)}</td><td>${cur(p.amount)}</td><td>${esc(p.payment_method||'cash')}</td></tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">No payments</td></tr>'}
+    <div class="card"><div class="card-header"><h3>${t('payment_history')}</h3></div>
+      <div class="table-wrap"><table data-testid="payments-table"><thead><tr><th>${t('date')}</th><th>${t('amount')}</th><th>${t('method')}</th></tr></thead><tbody>
+        ${(Array.isArray(payments)?payments:[]).map(p => `<tr><td>${fmtDate(p.payment_date)}</td><td>${cur(p.amount)}</td><td>${esc(p.payment_method||'cash')}</td></tr>`).join('') || `<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">${t('no_payments')}</td></tr>`}
       </tbody></table></div>
     </div>`;
 }
@@ -518,7 +518,7 @@ async function renderClientDetail(el) {
 async function toggleLock(id, lock) {
   try {
     await api('POST', `/device/${lock?'lock':'unlock'}/${id}`);
-    toast(lock ? 'Device locked' : 'Device unlocked');
+    toast(lock ? t('device_locked') : t('device_unlocked'));
     state.selectedClient = { ...state.selectedClient, is_locked: lock };
     renderClientDetail(document.getElementById('page-content'));
   } catch(e) { toast(e.message, 'error'); }
@@ -526,10 +526,10 @@ async function toggleLock(id, lock) {
 
 async function recordPayment(clientId) {
   const amount = parseFloat(document.getElementById('pay-amount').value);
-  if (!amount || amount <= 0) { toast('Enter a valid amount', 'error'); return; }
+  if (!amount || amount <= 0) { toast(t('enter_valid_amount'), 'error'); return; }
   try {
     await api('POST', '/loans/payment', { client_id: clientId, amount, payment_method: 'cash' });
-    toast('Payment recorded');
+    toast(t('payment_recorded'));
     // Refresh client data
     const data = await api('GET', '/clients');
     state.clients = data.clients || [];
