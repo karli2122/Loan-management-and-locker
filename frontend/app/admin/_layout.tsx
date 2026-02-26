@@ -22,6 +22,12 @@ export default function AdminLayout() {
       <Stack.Screen name="calculator" />
       <Stack.Screen name="reports" />
       <Stack.Screen name="device-management" />
+      <Stack.Screen name="documents" />
+      <Stack.Screen name="bulk-import" />
+      <Stack.Screen name="schedules" />
+      <Stack.Screen name="telegram" />
+      <Stack.Screen name="team" />
+      <Stack.Screen name="provisioning" />
     </Stack>
   );
 }
