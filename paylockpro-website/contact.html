@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact Us - PayLock Pro</title>
+<meta name="description" content="Get in touch with the PayLock Pro team. We're based in Tallinn, Estonia.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='20' width='100' height='100' fill='%230ea5e9'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'>P</text></svg>">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="grid-bg"></div>
+<nav id="navbar">
+  <div class="container nav-inner">
+    <a href="index.html" class="logo"><span class="logo-icon">P</span> PayLock<span class="logo-accent">Pro</span></a>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html">Home</a><a href="how-it-works.html">How It Works</a><a href="pricing.html">Pricing</a><a href="contact.html" class="active">Contact</a>
+      <div class="nav-divider"></div>
+      <a href="PORTAL_URL" class="nav-cta" data-portal-link><i class="fas fa-arrow-right-to-bracket"></i> Admin Portal</a>
+    </div>
+    <button class="mobile-toggle" onclick="document.getElementById('navLinks').classList.toggle('open')"><i class="fas fa-bars"></i></button>
+  </div>
+</nav>
+
+<section class="page-hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <span class="section-tag"><i class="fas fa-headset"></i> Get In Touch</span>
+    <h1>Contact Us</h1>
+    <p>Have questions or need a demo? Our team in Tallinn is ready to help.</p>
+  </div>
+</section>
+
+<section class="content-section">
+  <div class="container">
+    <div class="contact-grid">
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div class="contact-info-card">
+          <div class="contact-icon"><i class="fas fa-envelope"></i></div>
+          <div><h3 style="font-size:16px;font-weight:700;margin-bottom:4px">Email</h3><p style="color:var(--text-muted);font-size:14px"><a href="mailto:paylockpro@gmail.com" style="color:var(--primary-light);text-decoration:none">paylockpro@gmail.com</a></p></div>
+        </div>
+        <div class="contact-info-card">
+          <div class="contact-icon"><i class="fas fa-map-marker-alt"></i></div>
+          <div><h3 style="font-size:16px;font-weight:700;margin-bottom:4px">Office</h3><p style="color:var(--text-muted);font-size:14px">Tallinn, Harju County<br>Estonia, European Union</p></div>
+        </div>
+        <div class="contact-info-card">
+          <div class="contact-icon"><i class="fas fa-clock"></i></div>
+          <div><h3 style="font-size:16px;font-weight:700;margin-bottom:4px">Business Hours</h3><p style="color:var(--text-muted);font-size:14px">Mon - Fri: 9:00 - 18:00 EET<br>Support: 24/7 for Enterprise plans</p></div>
+        </div>
+        <div class="contact-info-card">
+          <div class="contact-icon"><i class="fab fa-telegram-plane"></i></div>
+          <div><h3 style="font-size:16px;font-weight:700;margin-bottom:4px">Telegram</h3><p style="color:var(--text-muted);font-size:14px">@paylockpro</p></div>
+        </div>
+      </div>
+      <div class="contact-form">
+        <h3 style="font-size:20px;font-weight:700;margin-bottom:24px">Send Us a Message</h3>
+        <form id="contactForm" onsubmit="handleContact(event)">
+          <div class="form-group"><label>Full Name</label><input type="text" placeholder="Your name" required></div>
+          <div class="form-group"><label>Email</label><input type="email" placeholder="your@email.com" required></div>
+          <div class="form-group"><label>Subject</label>
+            <select required>
+              <option value="">Select a topic</option>
+              <option>General Inquiry</option>
+              <option>Sales / Pricing</option>
+              <option>Technical Support</option>
+              <option>Partnership</option>
+              <option>Request a Demo</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Message</label><textarea placeholder="Tell us how we can help..." required></textarea></div>
+          <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center"><i class="fas fa-paper-plane"></i> Send Message</button>
+        </form>
+        <p id="contactSuccess" style="display:none;text-align:center;color:var(--accent);margin-top:16px;font-weight:600"><i class="fas fa-check-circle"></i> Message sent! We'll get back to you within 24 hours.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container footer-grid">
+    <div class="footer-brand"><div class="logo"><span class="logo-icon">P</span> PayLock<span class="logo-accent">Pro</span></div><p>Professional loan management platform built in Estonia.</p></div>
+    <div class="footer-col"><h4>Product</h4><a href="how-it-works.html">How It Works</a><a href="pricing.html">Pricing</a><a href="PORTAL_URL" data-portal-link>Admin Portal</a></div>
+    <div class="footer-col"><h4>Legal</h4><a href="privacy-policy.html">Privacy Policy</a><a href="terms-of-use.html">Terms of Use</a></div>
+    <div class="footer-col"><h4>Contact</h4><a href="mailto:paylockpro@gmail.com"><i class="fas fa-envelope"></i> paylockpro@gmail.com</a><p class="footer-location"><i class="fas fa-map-marker-alt"></i> Tallinn, Estonia, EU</p></div>
+  </div>
+  <div class="container footer-bottom"><p>&copy; 2026 PayLock Pro OU. All rights reserved.</p><div class="footer-legal"><a href="privacy-policy.html">Privacy</a><a href="terms-of-use.html">Terms</a></div></div>
+</footer>
+<script src="site.js"></script>
+<script>
+function handleContact(e){
+  e.preventDefault();
+  document.getElementById('contactForm').style.display='none';
+  document.getElementById('contactSuccess').style.display='block';
+}
+</script>
+</body>
+</html>
