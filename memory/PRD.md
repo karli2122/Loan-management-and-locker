@@ -9,101 +9,59 @@ PayLock Pro is a comprehensive loan management platform with device-locking capa
 - **Static Website** - Business marketing website
 
 ## Core Features
-1. **Client Management**: Full CRUD for loan clients with personal info, loan details, payment tracking
-2. **Device Locking**: Remote device lock/unlock via Android Device Owner mode (kiosk mode)
-3. **Payment Tracking**: Record payments, track outstanding balances, late fees
-4. **Reminders**: Email (Resend), push notifications, WhatsApp deep links
-5. **Reports**: Collection, financial, client analytics
-6. **Bank Statement Analyzer**: PDF, CSV, XML, ASiC-E format support
-7. **PDF Contracts**: Auto-generated loan contracts with PayLock Pro branding
-8. **Provisioning**: QR code and NFC tag provisioning for Device Owner setup
-9. **Google Drive Backup**: Automated backup via Emergent Google Auth
-10. **SaaS Feature Entitlement**: Plan-based feature access control
-11. **Web Admin Portal**: Full-featured admin dashboard for browser-based management
+1. Client Management, Device Locking, Payment Tracking
+2. Reminders (Email via Resend, Push, WhatsApp deep links)
+3. Reports & Analytics (Collection, Financial, Client)
+4. Bank Statement Analyzer (PDF, CSV, XML, ASiC-E)
+5. PDF Contracts with multi-language support (Estonian/English) and Section 6 device security clause
+6. Provisioning (QR code + NFC tag) for Device Owner setup
+7. Google Drive Backup, SaaS Feature Entitlement
+8. Web Admin Portal with full feature parity
 
 ## Architecture
 ```
-/app
-├── backend/
-│   ├── server.py              # Main FastAPI server
-│   ├── routes/
-│   │   ├── admin.py           # Admin auth, settings
-│   │   ├── clients.py         # Client CRUD
-│   │   ├── loans.py           # Loan plans, payments
-│   │   ├── contracts.py       # PDF generation
-│   │   ├── reminders.py       # Email/push/WhatsApp reminders
-│   │   ├── reports.py         # Analytics and reports
-│   │   ├── bank_statements.py # Statement analysis
-│   │   ├── provisioning.py    # QR + NFC provisioning
-│   │   ├── backup.py          # Google Drive backup
-│   │   ├── plans.py           # Feature entitlements
-│   │   └── support.py         # Support chat + feature suggestions
-│   ├── static/portal/         # Web admin portal SPA
-│   └── assets/                # Logo, fonts
-├── frontend/                  # Expo React Native apps
-│   ├── app/admin/             # Admin mobile app
-│   ├── app/client/            # Client mobile app (with lock screen)
-│   └── modules/emi-device-admin/  # Native Android module (Kotlin)
-└── paylockpro-website/        # Static marketing website
+/app/backend/
+  server.py, routes/{admin,clients,loans,contracts,reminders,reports,bank_statements,provisioning,backup,plans,support}.py
+  static/portal/index.html (Web Admin SPA)
+  assets/ (logo, fonts)
+/app/frontend/ (Expo React Native)
+  app/admin/, app/client/, modules/emi-device-admin/
+/app/paylockpro-website/index.html
 ```
 
-## Credentials
-- **Admin Login**: username=admin, password=admin123
-- **Resend API Key**: In backend/.env
-- **Web Portal URL**: /api/portal
+## What's Been Implemented
 
-## What's Been Implemented (as of Feb 26, 2026)
-
-### Session 3 (Current)
-- [x] Fixed email/push reminder amount bug (uses outstanding_balance, not monthly_emi)
-- [x] Fixed push notification amounts across all endpoints
-- [x] Built web admin portal at /api/portal (Dashboard, Clients, Loans, Reminders, Reports, Devices, Provisioning, Settings)
-- [x] Added NFC provisioning endpoint (/api/provisioning/nfc-payload)
-- [x] Added feature suggestions endpoint (/api/feature-suggestions)
-- [x] Added provisioning page (QR + NFC) to web portal
-- [x] Updated website with Admin Login link
-- [x] Fixed reminders/pending datetime comparison bug
-- [x] Prepared Android native code fixes for lock screen bypass (onTaskRemoved, onDestroy restart)
-- [x] Prepared fix for fresh registration lock enforcement (starts kiosk + monitor + auto-restart)
-- [x] Verified CSV/XML bank statement support (already working)
-- [x] Verified report calculations (correct)
-- [x] Verified PDF logo integration (already present)
+### Session 3 (Feb 26, 2026)
+- [x] Fixed email/push reminder amount bug (outstanding_balance instead of monthly_emi)
+- [x] Built web admin portal at /api/portal
+- [x] NFC provisioning endpoint
+- [x] Feature suggestions endpoint (14 ideas)
+- [x] Android lock screen bypass fix (onTaskRemoved, onDestroy restart)
+- [x] Website updated with Admin Login link
+- [x] **Contract Section 6**: Added device security measures clause (6.1-6.7) about app installation, device locking, permissions
+- [x] **Multi-language contracts**: ET (Estonian) and EN (English) with `?language=` param
+- [x] Contract sections renumbered: 9 total sections (was 8)
+- [x] Web portal: language selector for contract downloads (ET/EN buttons)
 
 ### Session 2
-- Device Owner Mode (9-digit codes, QR provisioning, custom launcher)
-- Google Drive Backup
-- Plan-based feature entitlements
-- Resend email integration
-- WhatsApp deep-link messaging
-- Dependency resolution for Expo
-- Static website creation
+- Device Owner Mode, Google Drive Backup, Plan-based entitlements
+- Resend email, WhatsApp deep links, Dependency resolution, Website
 
 ### Session 1
-- Core backend API (clients, loans, payments, reminders)
-- Admin and Client mobile apps
-- Device lock/unlock functionality
-- PDF contract generation
-- Bank statement analyzer
-- Stripe payment integration
+- Core backend API, Admin/Client apps, Device lock/unlock, PDF contracts
+- Bank statement analyzer, Stripe payments
+
+## Credentials
+- Admin: username=admin, password=admin123
+- Web Portal: /api/portal
 
 ## Remaining Backlog
+### P0 (Requires APK Build)
+- Lock screen bypass fix (code ready, needs build + device test)
+- Status bar visibility fix (needs device test)
 
-### P0 (Critical - Requires APK Build + Physical Device)
-- Lock screen bypass when app killed from recents (code prepared, needs APK build)
-- Status bar visibility on lock screen (code already comprehensive, needs device test)
-
-### P1
-- Automated payment scheduling
-- Multi-language SMS/email templates
-- Client self-service web portal
-
-### P2
-- Credit scoring integration
-- Payment receipt generation
-- Bulk client import (CSV/Excel)
-- Admin team management (sub-admin accounts)
-- Advanced analytics with charts
-- Client photo verification
-- Telegram bot for reminders
-- Document storage for IDs/contracts
-- WhatsApp Business API (beyond deep links)
+### P1-P2
+- Automated payment scheduling, Multi-language templates
+- Client self-service portal, Credit scoring, Payment receipts
+- Bulk CSV import, Admin team management, Charts, Telegram bot
+- Document storage, WhatsApp Business API
