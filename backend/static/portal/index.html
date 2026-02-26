@@ -314,6 +314,8 @@ async function loadPage() {
       case 'import': await renderImport(el); break;
       case 'telegram': await renderTelegram(el); break;
       case 'team': await renderTeam(el); break;
+      case 'schedules': await renderSchedules(el); break;
+      case 'activity': await renderActivity(el); break;
       case 'provisioning': await renderProvisioning(el); break;
       case 'settings': await renderSettings(el); break;
       default: el.innerHTML = '<p>Page not found</p>';
