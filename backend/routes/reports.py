@@ -487,10 +487,7 @@ async def get_dashboard_analytics(
             query = {"admin_id": filter_admin_id, "is_deleted": {"$ne": True}}
     else:
         query = {"admin_id": admin_id, "is_deleted": {"$ne": True}}
-        else:
-            target_admin_id = filter_admin_id
     
-    query = {"admin_id": target_admin_id, "is_deleted": {"$ne": True}} if target_admin_id else {"is_deleted": {"$ne": True}}
     clients = await db.clients.find(query, {"_id": 0}).to_list(1000)
     
     # Overview metrics
