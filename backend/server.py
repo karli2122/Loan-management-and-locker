@@ -160,6 +160,26 @@ async def serve_portal_translations():
         return Response(content=f.read(), media_type="application/javascript")
 
 
+@app.get("/api/portal/portal.css")
+async def serve_portal_css():
+    """Serve portal CSS file."""
+    css_path = os.path.join(os.path.dirname(__file__), "static", "portal", "portal.css")
+    if not os.path.exists(css_path):
+        return JSONResponse(status_code=404, content={"error": "Not found"})
+    with open(css_path, "r") as f:
+        return Response(content=f.read(), media_type="text/css")
+
+
+@app.get("/api/portal/portal-app.js")
+async def serve_portal_app_js():
+    """Serve portal main application JS file."""
+    js_path = os.path.join(os.path.dirname(__file__), "static", "portal", "portal-app.js")
+    if not os.path.exists(js_path):
+        return JSONResponse(status_code=404, content={"error": "Not found"})
+    with open(js_path, "r") as f:
+        return Response(content=f.read(), media_type="application/javascript")
+
+
 @app.get("/api/portal")
 async def serve_portal():
     """Serve the web admin portal."""
