@@ -322,9 +322,27 @@ async def get_admin_settings(admin_token: str = Query(...)):
             "admin_id": admin_id,
             "default_late_fee_percent": 2.0,
             "default_auto_lock_grace_days": 3,
-            "default_auto_lock_enabled": True
+            "default_auto_lock_enabled": True,
+            "payment_auto_reminder_enabled": True,
+            "payment_auto_reminder_days_before": 3,
+            "payment_auto_lock_enabled": True,
+            "payment_auto_late_fee_enabled": True,
+            "payment_late_fee_frequency_days": 7,
+            "payment_reminder_channels": ["push", "email"],
         }
     
+    # Ensure all payment automation fields are present with defaults
+    defaults = {
+        "payment_auto_reminder_enabled": True,
+        "payment_auto_reminder_days_before": 3,
+        "payment_auto_lock_enabled": True,
+        "payment_auto_late_fee_enabled": True,
+        "payment_late_fee_frequency_days": 7,
+        "payment_reminder_channels": ["push", "email"],
+    }
+    for k, v in defaults.items():
+        if k not in settings:
+            settings[k] = v
     return settings
 
 
@@ -333,9 +351,15 @@ async def update_admin_settings(
     admin_token: str = Query(...),
     default_late_fee_percent: float = Query(default=None),
     default_auto_lock_grace_days: int = Query(default=None),
-    default_auto_lock_enabled: bool = Query(default=None)
+    default_auto_lock_enabled: bool = Query(default=None),
+    payment_auto_reminder_enabled: bool = Query(default=None),
+    payment_auto_reminder_days_before: int = Query(default=None),
+    payment_auto_lock_enabled: bool = Query(default=None),
+    payment_auto_late_fee_enabled: bool = Query(default=None),
+    payment_late_fee_frequency_days: int = Query(default=None),
+    payment_reminder_channels: str = Query(default=None),
 ):
-    """Update admin's default settings for late fees and auto-lock."""
+    """Update admin's default settings for late fees, auto-lock, and payment automation."""
     admin_id = await get_admin_id_from_token(admin_token)
     
     # Build update dict with only provided values
@@ -353,6 +377,20 @@ async def update_admin_settings(
     
     if default_auto_lock_enabled is not None:
         update_data["default_auto_lock_enabled"] = default_auto_lock_enabled
+    
+    # Payment automation settings
+    if payment_auto_reminder_enabled is not None:
+        update_data["payment_auto_reminder_enabled"] = payment_auto_reminder_enabled
+    if payment_auto_reminder_days_before is not None:
+        update_data["payment_auto_reminder_days_before"] = max(1, min(30, payment_auto_reminder_days_before))
+    if payment_auto_lock_enabled is not None:
+        update_data["payment_auto_lock_enabled"] = payment_auto_lock_enabled
+    if payment_auto_late_fee_enabled is not None:
+        update_data["payment_auto_late_fee_enabled"] = payment_auto_late_fee_enabled
+    if payment_late_fee_frequency_days is not None:
+        update_data["payment_late_fee_frequency_days"] = max(1, min(30, payment_late_fee_frequency_days))
+    if payment_reminder_channels is not None:
+        update_data["payment_reminder_channels"] = [c.strip() for c in payment_reminder_channels.split(",") if c.strip()]
     
     # Upsert settings
     await db.admin_settings.update_one(
