@@ -432,8 +432,8 @@ async function sendReminder(clientId, type) {
   } catch(e) { toast(e.message, 'error'); }
 }
 
-function downloadContract(clientId) {
-  window.open(`${API_BASE}/contracts/${clientId}/download?admin_token=${state.token}`, '_blank');
+function downloadContract(clientId, lang) {
+  window.open(`${API_BASE}/contracts/${clientId}/download?admin_token=${state.token}&language=${lang||'et'}`, '_blank');
 }
 
 function showAddClient() {
