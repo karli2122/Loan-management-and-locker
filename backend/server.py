@@ -258,6 +258,12 @@ async def startup_event():
 
     start_keepalive(app)
 
+    # Start background tasks
+    from tasks import process_due_payments, send_scheduled_reports
+    asyncio.create_task(process_due_payments())
+    asyncio.create_task(send_scheduled_reports())
+    logger.info("Background tasks started (payment scheduler, report emailer)")
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
