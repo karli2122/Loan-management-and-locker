@@ -1,4 +1,8 @@
-"""Admin Team Management - Sub-admin accounts with role-based permissions."""
+"""Admin Team Management - Enterprise plan feature.
+Superuser creates sub-users under their enterprise. Data sharing model:
+- Superuser sees all enterprise clients + revenue/profits
+- Normal team members see only their own clients
+"""
 import uuid
 import hashlib
 from datetime import datetime, timezone
@@ -11,7 +15,7 @@ router = APIRouter(prefix="/api/team", tags=["team"])
 
 ROLES = {
     "super_admin": {"label": "Super Admin", "permissions": ["all"]},
-    "manager": {"label": "Manager", "permissions": ["clients", "loans", "reminders", "reports", "devices", "contracts", "schedules"]},
+    "manager": {"label": "Manager", "permissions": ["clients", "loans", "reminders", "reports", "devices", "contracts", "schedules", "documents", "import"]},
     "collection_agent": {"label": "Collection Agent", "permissions": ["clients", "loans", "reminders", "contracts"]},
     "accountant": {"label": "Accountant", "permissions": ["reports", "loans", "clients"]},
     "viewer": {"label": "Viewer", "permissions": ["clients", "reports"]},
@@ -22,6 +26,35 @@ def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 
+async def check_enterprise_plan(admin_id: str) -> bool:
+    """Check if admin has enterprise or custom plan."""
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
+    if not admin:
+        return False
+    plan = admin.get("subscription_plan") or admin.get("plan", "starter")
+    return plan in ("enterprise", "custom")
+
+
+async def get_enterprise_id(admin_id: str) -> str:
+    """Get enterprise_id for an admin. Superusers use their own id, team members use their enterprise_id."""
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
+    if not admin:
+        return admin_id
+    return admin.get("enterprise_id") or admin_id
+
+
+async def get_enterprise_member_ids(enterprise_id: str) -> list:
+    """Get all admin IDs belonging to an enterprise."""
+    members = await db.admins.find(
+        {"enterprise_id": enterprise_id},
+        {"_id": 0, "id": 1}
+    ).to_list(100)
+    ids = [m["id"] for m in members]
+    if enterprise_id not in ids:
+        ids.append(enterprise_id)
+    return ids
+
+
 @router.get("/roles")
 async def get_roles(admin_token: str = Query(...)):
     """Get available roles and permissions."""
@@ -29,13 +62,38 @@ async def get_roles(admin_token: str = Query(...)):
     return {"roles": {k: v for k, v in ROLES.items()}}
 
 
+@router.get("/enterprise-check")
+async def enterprise_check(admin_token: str = Query(...)):
+    """Check if current admin has enterprise plan and team management access."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0, "password": 0, "password_hash": 0})
+    if not admin:
+        return {"has_enterprise": False, "is_super_admin": False}
+    is_super = admin.get("is_super_admin", False)
+    has_enterprise = await check_enterprise_plan(admin_id)
+    # Team members whose superuser has enterprise also count
+    if not has_enterprise and admin.get("enterprise_id"):
+        has_enterprise = await check_enterprise_plan(admin.get("enterprise_id"))
+    return {
+        "has_enterprise": has_enterprise or is_super,
+        "is_super_admin": is_super,
+        "enterprise_id": admin.get("enterprise_id") or admin_id,
+        "role": admin.get("role", "viewer"),
+        "permissions": admin.get("permissions", []),
+    }
+
+
 @router.post("/members")
 async def add_team_member(admin_token: str = Query(...), data: dict = Body(...)):
-    """Add a new team member (sub-admin)."""
+    """Add a new team member (sub-admin). Enterprise plan required."""
     admin_id = await get_admin_id_from_token(admin_token)
     admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
     if not admin or not admin.get("is_super_admin"):
         return JSONResponse(status_code=403, content={"error": "Only super admins can manage team"})
+
+    has_enterprise = await check_enterprise_plan(admin_id)
+    if not has_enterprise and not admin.get("is_super_admin"):
+        return JSONResponse(status_code=403, content={"error": "Team management requires Enterprise plan"})
 
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
@@ -49,31 +107,40 @@ async def add_team_member(admin_token: str = Query(...), data: dict = Body(...))
     if existing:
         return JSONResponse(status_code=409, content={"error": "Username already exists"})
 
+    enterprise_id = admin.get("enterprise_id") or admin_id
+
     member = {
         "id": str(uuid.uuid4()),
         "username": username,
-        "password": hash_password(password),
+        "password_hash": hash_password(password),
         "role": role,
-        "is_super_admin": role == "super_admin",
+        "is_super_admin": False,
         "permissions": ROLES[role]["permissions"],
         "first_name": data.get("first_name", ""),
         "last_name": data.get("last_name", ""),
         "email": data.get("email", ""),
         "is_active": True,
+        "enterprise_id": enterprise_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": admin_id,
         "credits": 0,
     }
     await db.admins.insert_one(member)
-    safe = {k: v for k, v in member.items() if k not in ("_id", "password")}
+    safe = {k: v for k, v in member.items() if k not in ("_id", "password_hash")}
     return safe
 
 
 @router.get("/members")
 async def list_team_members(admin_token: str = Query(...)):
-    """List all team members."""
-    await get_admin_id_from_token(admin_token)
-    members = await db.admins.find({}, {"_id": 0, "password": 0}).sort("created_at", -1).to_list(100)
+    """List all team members in the enterprise."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
+    if not admin:
+        return JSONResponse(status_code=404, content={"error": "Admin not found"})
+
+    enterprise_id = admin.get("enterprise_id") or admin_id
+    query = {"$or": [{"enterprise_id": enterprise_id}, {"id": enterprise_id}]}
+    members = await db.admins.find(query, {"_id": 0, "password_hash": 0, "password": 0}).sort("created_at", -1).to_list(100)
     for m in members:
         m["role_label"] = ROLES.get(m.get("role", "viewer"), {}).get("label", m.get("role", "Unknown"))
     return {"members": members, "total": len(members)}
@@ -96,12 +163,12 @@ async def update_team_member(member_id: str, admin_token: str = Query(...), data
         if field in data:
             updates[field] = data[field]
     if "password" in data and data["password"]:
-        updates["password"] = hash_password(data["password"])
+        updates["password_hash"] = hash_password(data["password"])
 
     if updates:
         await db.admins.update_one({"id": member_id}, {"$set": updates})
 
-    member = await db.admins.find_one({"id": member_id}, {"_id": 0, "password": 0})
+    member = await db.admins.find_one({"id": member_id}, {"_id": 0, "password_hash": 0})
     return member or {"error": "Member not found"}
 
 

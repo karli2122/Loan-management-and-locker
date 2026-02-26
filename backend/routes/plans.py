@@ -17,6 +17,12 @@ PLAN_LIMITS = {
         "device_owner": False,
         "backup": False,
         "credit_score": False,
+        "team_management": False,
+        "document_storage": False,
+        "bulk_import": False,
+        "telegram_bot": False,
+        "payment_scheduling": False,
+        "analytics_charts": False,
     },
     "business": {
         "max_clients": 200,
@@ -29,6 +35,12 @@ PLAN_LIMITS = {
         "device_owner": False,
         "backup": True,
         "credit_score": True,
+        "team_management": False,
+        "document_storage": True,
+        "bulk_import": True,
+        "telegram_bot": True,
+        "payment_scheduling": True,
+        "analytics_charts": True,
     },
     "enterprise": {
         "max_clients": 1000,
@@ -41,6 +53,12 @@ PLAN_LIMITS = {
         "device_owner": True,
         "backup": True,
         "credit_score": True,
+        "team_management": True,
+        "document_storage": True,
+        "bulk_import": True,
+        "telegram_bot": True,
+        "payment_scheduling": True,
+        "analytics_charts": True,
     },
     "custom": {
         "max_clients": 999999,
@@ -53,6 +71,12 @@ PLAN_LIMITS = {
         "device_owner": True,
         "backup": True,
         "credit_score": True,
+        "team_management": True,
+        "document_storage": True,
+        "bulk_import": True,
+        "telegram_bot": True,
+        "payment_scheduling": True,
+        "analytics_charts": True,
     },
 }
 
@@ -67,9 +91,7 @@ async def get_plan_limits(admin_token: str = Query(...)):
 
     is_super = admin.get("is_super_admin", False)
 
-    # Superadmins get custom plan limits
     if is_super:
-        # Count current clients for superadmin too
         client_count = await db.clients.count_documents({
             "admin_id": admin_id,
             "is_deleted": {"$ne": True},
@@ -83,20 +105,17 @@ async def get_plan_limits(admin_token: str = Query(...)):
             "can_add_client": client_count < limits["max_clients"],
         }
 
-    # Check subscription
     sub = await db.subscriptions.find_one({"admin_id": admin_id}, {"_id": 0})
     plan = "starter"
     if sub and sub.get("status") == "active":
         plan = sub.get("plan", "starter")
 
-    # Also check admin.plan field
-    admin_plan = admin.get("plan", "")
+    admin_plan = admin.get("plan", "") or admin.get("subscription_plan", "")
     if admin_plan in PLAN_LIMITS and admin_plan != "starter":
         plan = admin_plan
 
     limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["starter"])
 
-    # Count current clients
     client_count = await db.clients.count_documents({
         "admin_id": admin_id,
         "is_deleted": {"$ne": True},
@@ -136,6 +155,11 @@ async def get_all_plans():
                     "Reports & Analytics",
                     "Bank Statement Analyzer",
                     "Data Backup",
+                    "Document Storage",
+                    "Bulk CSV Import",
+                    "Telegram Notifications",
+                    "Payment Scheduling",
+                    "Team Management",
                 ],
             },
             {
@@ -151,14 +175,18 @@ async def get_all_plans():
                     "Device Lock/Unlock",
                     "Auto-lock on overdue",
                     "Email & Telegram Reminders",
-                    "Reports & Analytics",
+                    "Reports & Analytics Charts",
                     "Bank Statement Analyzer",
                     "Cloud Backup",
                     "Credit Score System",
                     "Business Management",
+                    "Document Storage",
+                    "Bulk CSV Import",
+                    "Payment Scheduling",
                 ],
                 "not_included": [
                     "Device Owner mode",
+                    "Team Management",
                 ],
             },
             {
@@ -173,6 +201,9 @@ async def get_all_plans():
                     "Everything in Business",
                     "Device Owner kiosk mode",
                     "Custom Launcher",
+                    "Team Management (multi-user)",
+                    "Enterprise data sharing",
+                    "Revenue & profit dashboards",
                     "Priority support",
                 ],
                 "not_included": [],
