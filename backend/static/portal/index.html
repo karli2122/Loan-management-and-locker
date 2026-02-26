@@ -798,7 +798,7 @@ function renderDeviceSection(title, devices, type) {
 // Provisioning
 async function renderProvisioning(el) {
   el.innerHTML = `
-    <div class="page-header"><h2>Device Provisioning</h2><p>Generate QR codes and NFC payloads for Device Owner setup</p></div>
+    <div class="page-header"><h2>${t('provisioning_title')}</h2><p>${t('provisioning_subtitle')}</p></div>
     <div class="tabs" data-testid="provisioning-tabs">
       <button class="tab active" onclick="showProvTab(this,'prov-qr')">QR Code</button>
       <button class="tab" onclick="showProvTab(this,'prov-nfc')">NFC Tag</button>
