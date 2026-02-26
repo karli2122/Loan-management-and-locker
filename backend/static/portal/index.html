@@ -721,43 +721,43 @@ async function renderReports(el) {
   const f = collection.financial || collection;
   const cs = clientsReport.summary;
   el.innerHTML = `
-    <div class="page-header"><h2>Reports & Analytics</h2><p>Financial overview and client insights</p></div>
+    <div class="page-header"><h2>${t('reports_title')}</h2><p>${t('reports_subtitle')}</p></div>
     <div class="tabs" data-testid="report-tabs">
-      <button class="tab active" onclick="showReportTab(this,'tab-financial')">Financial</button>
-      <button class="tab" onclick="showReportTab(this,'tab-clients')">Clients</button>
-      <button class="tab" onclick="showReportTab(this,'tab-revenue')">Revenue</button>
+      <button class="tab active" onclick="showReportTab(this,'tab-financial')">${t('tab_financial')}</button>
+      <button class="tab" onclick="showReportTab(this,'tab-clients')">${t('tab_clients')}</button>
+      <button class="tab" onclick="showReportTab(this,'tab-revenue')">${t('tab_revenue')}</button>
     </div>
     <div id="tab-financial">
       <div class="stats-grid">
-        <div class="stat-card accent"><div class="stat-label">Total Disbursed</div><div class="stat-value">${cur(f.total_disbursed)}</div></div>
-        <div class="stat-card success"><div class="stat-label">Total Collected</div><div class="stat-value">${cur(f.total_collected)}</div></div>
-        <div class="stat-card warning"><div class="stat-label">Outstanding</div><div class="stat-value">${cur(f.total_outstanding)}</div></div>
-        <div class="stat-card"><div class="stat-label">Collection Rate</div><div class="stat-value">${(f.collection_rate||0).toFixed(1)}%</div></div>
+        <div class="stat-card accent"><div class="stat-label">${t('total_disbursed')}</div><div class="stat-value">${cur(f.total_disbursed)}</div></div>
+        <div class="stat-card success"><div class="stat-label">${t('total_collected')}</div><div class="stat-value">${cur(f.total_collected)}</div></div>
+        <div class="stat-card warning"><div class="stat-label">${t('outstanding')}</div><div class="stat-value">${cur(f.total_outstanding)}</div></div>
+        <div class="stat-card"><div class="stat-label">${t('collection_rate')}</div><div class="stat-value">${(f.collection_rate||0).toFixed(1)}%</div></div>
       </div>
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-label">Interest Earned</div><div class="stat-value">${cur(financial.totals?.interest_earned||0)}</div></div>
-        <div class="stat-card"><div class="stat-label">Late Fees</div><div class="stat-value">${cur(f.total_late_fees||0)}</div></div>
-        <div class="stat-card"><div class="stat-label">Processing Fees</div><div class="stat-value">${cur(financial.totals?.processing_fees||0)}</div></div>
-        <div class="stat-card success"><div class="stat-label">Total Revenue</div><div class="stat-value">${cur(financial.totals?.total_revenue||0)}</div></div>
+        <div class="stat-card"><div class="stat-label">${t('interest_earned_label')}</div><div class="stat-value">${cur(financial.totals?.interest_earned||0)}</div></div>
+        <div class="stat-card"><div class="stat-label">${t('late_fees')}</div><div class="stat-value">${cur(f.total_late_fees||0)}</div></div>
+        <div class="stat-card"><div class="stat-label">${t('processing_fees')}</div><div class="stat-value">${cur(financial.totals?.processing_fees||0)}</div></div>
+        <div class="stat-card success"><div class="stat-label">${t('total_revenue')}</div><div class="stat-value">${cur(financial.totals?.total_revenue||0)}</div></div>
       </div>
     </div>
     <div id="tab-clients" class="hidden">
       <div class="stats-grid">
-        <div class="stat-card success"><div class="stat-label">On Time</div><div class="stat-value">${cs.on_time_clients}</div></div>
-        <div class="stat-card warning"><div class="stat-label">At Risk</div><div class="stat-value">${cs.at_risk_clients}</div></div>
-        <div class="stat-card danger"><div class="stat-label">Defaulted</div><div class="stat-value">${cs.defaulted_clients}</div></div>
-        <div class="stat-card"><div class="stat-label">Completed</div><div class="stat-value">${cs.completed_clients}</div></div>
+        <div class="stat-card success"><div class="stat-label">${t('on_time')}</div><div class="stat-value">${cs.on_time_clients}</div></div>
+        <div class="stat-card warning"><div class="stat-label">${t('at_risk')}</div><div class="stat-value">${cs.at_risk_clients}</div></div>
+        <div class="stat-card danger"><div class="stat-label">${t('defaulted')}</div><div class="stat-value">${cs.defaulted_clients}</div></div>
+        <div class="stat-card"><div class="stat-label">${t('completed')}</div><div class="stat-value">${cs.completed_clients}</div></div>
       </div>
       <div class="stats-grid">
-        <div class="stat-card accent"><div class="stat-label">New This Month</div><div class="stat-value">${cs.new_clients_this_month}</div></div>
-        <div class="stat-card"><div class="stat-label">Repeat Customers</div><div class="stat-value">${cs.repeat_customers}</div></div>
+        <div class="stat-card accent"><div class="stat-label">${t('new_this_month')}</div><div class="stat-value">${cs.new_clients_this_month}</div></div>
+        <div class="stat-card"><div class="stat-label">${t('repeat_customers')}</div><div class="stat-value">${cs.repeat_customers}</div></div>
       </div>
     </div>
     <div id="tab-revenue" class="hidden">
-      <div class="card"><div class="card-header"><h3>Monthly Revenue</h3></div>
-        <div class="table-wrap"><table><thead><tr><th>Month</th><th>Revenue</th><th>Payments</th><th>Interest</th><th>Principal</th></tr></thead><tbody>
+      <div class="card"><div class="card-header"><h3>${t('monthly_revenue')}</h3></div>
+        <div class="table-wrap"><table><thead><tr><th>${t('month')}</th><th>${t('revenue')}</th><th>${t('payments')}</th><th>${t('interest')}</th><th>${t('principal')}</th></tr></thead><tbody>
           ${(financial.monthly_trend||[]).map(m => `<tr><td>${m.month}</td><td>${cur(m.revenue)}</td><td>${m.payments_count}</td><td>${cur(m.interest_earned)}</td><td>${cur(m.principal_collected)}</td></tr>`).join('')
-          || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No data</td></tr>'}
+          || `<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">${t('no_data')}</td></tr>`}
         </tbody></table></div>
       </div>
     </div>`;
@@ -775,15 +775,15 @@ function showReportTab(btn, tabId) {
 async function renderDevices(el) {
   const hb = await api('GET', '/heartbeat/summary');
   el.innerHTML = `
-    <div class="page-header"><h2>Device Management</h2><p>${hb.total_registered} registered devices</p></div>
+    <div class="page-header"><h2>${t('devices_title')}</h2><p>${hb.total_registered} ${t('registered_devices')}</p></div>
     <div class="stats-grid" data-testid="device-stats">
-      <div class="stat-card success"><div class="stat-label">Online</div><div class="stat-value">${hb.online_count}</div><div class="stat-sub">< ${hb.thresholds.online_minutes} min</div></div>
-      <div class="stat-card warning"><div class="stat-label">Warning</div><div class="stat-value">${hb.warning_count}</div><div class="stat-sub">${hb.thresholds.online_minutes}-${hb.thresholds.warning_minutes} min</div></div>
-      <div class="stat-card danger"><div class="stat-label">Critical</div><div class="stat-value">${hb.critical_count}</div><div class="stat-sub">> ${hb.thresholds.warning_minutes} min</div></div>
+      <div class="stat-card success"><div class="stat-label">${t('online')}</div><div class="stat-value">${hb.online_count}</div><div class="stat-sub">< ${hb.thresholds.online_minutes} min</div></div>
+      <div class="stat-card warning"><div class="stat-label">${t('warning_label')}</div><div class="stat-value">${hb.warning_count}</div><div class="stat-sub">${hb.thresholds.online_minutes}-${hb.thresholds.warning_minutes} min</div></div>
+      <div class="stat-card danger"><div class="stat-label">${t('critical')}</div><div class="stat-value">${hb.critical_count}</div><div class="stat-sub">> ${hb.thresholds.warning_minutes} min</div></div>
     </div>
-    ${renderDeviceSection('Online', hb.online, 'success')}
-    ${renderDeviceSection('Warning', hb.warning, 'warning')}
-    ${renderDeviceSection('Critical / Offline', hb.critical, 'danger')}`;
+    ${renderDeviceSection(t('online'), hb.online, 'success')}
+    ${renderDeviceSection(t('warning_label'), hb.warning, 'warning')}
+    ${renderDeviceSection(t('critical_offline'), hb.critical, 'danger')}`;
 }
 
 function renderDeviceSection(title, devices, type) {
