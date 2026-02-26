@@ -263,7 +263,7 @@ def generate_loan_contract_pdf(lender: dict, client: dict, loan_amount: float, d
 
 
 @router.get("/contracts/{client_id}/preview")
-async def preview_contract(client_id: str, admin_token: str = Query(...), language: str = Query(default="et")):
+async def preview_contract(client_id: str, admin_token: str = Query(...), language: str = Query(default="et"), currency: str = Query(default="EUR")):
     """Generate and return a loan contract PDF for preview. Language: 'et' (Estonian) or 'en' (English)."""
     admin_id = await get_admin_id_from_token(admin_token)
     
@@ -314,7 +314,8 @@ async def preview_contract(client_id: str, admin_token: str = Query(...), langua
         due_date=due_date,
         total_repayment=round(total_repayment, 2),
         interest_rate=interest_rate_val,
-        language=language
+        language=language,
+        currency=currency
     )
     
     prefix = "loan_agreement" if language.lower()[:2] == "en" else "laenuleping"
@@ -328,7 +329,7 @@ async def preview_contract(client_id: str, admin_token: str = Query(...), langua
 
 
 @router.post("/contracts/{client_id}/send-email")
-async def send_contract_email(client_id: str, admin_token: str = Query(...), test_mode: bool = Query(default=False), language: str = Query(default="et")):
+async def send_contract_email(client_id: str, admin_token: str = Query(...), test_mode: bool = Query(default=False), language: str = Query(default="et"), currency: str = Query(default="EUR")):
     """Generate a loan contract PDF and send it to the client's email.
     
     Args:
