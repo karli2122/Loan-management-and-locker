@@ -54,7 +54,7 @@ export const LanguagePicker = ({ compact, colors: themeColors }: LanguagePickerP
       >
         <Text style={styles.flag}>{FLAG_EMOJI[currentLang.flag] || ''}</Text>
         <Text style={[styles.selectorText, { color: colors.text }, compact && styles.selectorTextCompact]} numberOfLines={1}>
-          {compact ? currentLang.flag : currentLang.name}
+          {compact ? currentLang.code.toUpperCase() : currentLang.name}
         </Text>
         <Ionicons name="chevron-down" size={compact ? 14 : 16} color={colors.textMuted} />
       </TouchableOpacity>
