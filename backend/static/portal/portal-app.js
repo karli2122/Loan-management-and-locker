@@ -205,10 +205,21 @@ async function renderDashboard(el) {
       ${dash.activity_log?.length ? `<table><thead><tr><th>${t('client')}</th><th>${t('action')}</th><th>${t('time')}</th></tr></thead><tbody>
         ${dash.activity_log.map(a => `<tr><td>${a.client_name}</td><td>${a.details}</td><td>${fmtDate(a.timestamp)}</td></tr>`).join('')}
       </tbody></table>` : `<p style="color:var(--text-muted);font-size:13px">${t('no_recent_activity')}</p>`}
+    </div>
+    <div class="card live-feed-card" style="margin-top:16px" data-testid="live-payment-feed">
+      <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+        <h3 style="display:flex;align-items:center;gap:8px"><span class="live-dot"></span> Live Payment Feed</h3>
+        <div class="live-feed-stats" id="live-feed-stats"></div>
+      </div>
+      <div id="live-feed-container" class="live-feed-container">
+        <div class="live-feed-loading"><div class="spinner" style="width:24px;height:24px"></div></div>
+      </div>
     </div>`;
 
   // Render charts after DOM is ready
   setTimeout(() => drawDashboardCharts(financial, dash, collection), 100);
+  // Start live feed
+  setTimeout(() => startLiveFeed(), 200);
 }
 
 function drawDashboardCharts(financial, dash, collection) {
