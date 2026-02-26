@@ -263,20 +263,20 @@ const NAV_PERMS = {
 // Sidebar
 function renderSidebar() {
   const allItems = [
-    { id:'dashboard', icon:'fa-chart-line', label:'Dashboard' },
-    { id:'clients', icon:'fa-users', label:'Clients' },
-    { id:'loans', icon:'fa-hand-holding-usd', label:'Loan Plans' },
-    { id:'reminders', icon:'fa-bell', label:'Reminders' },
-    { id:'reports', icon:'fa-chart-bar', label:'Reports' },
-    { id:'devices', icon:'fa-mobile-alt', label:'Devices' },
-    { id:'documents', icon:'fa-folder-open', label:'Documents' },
-    { id:'import', icon:'fa-file-csv', label:'CSV Import' },
-    { id:'schedules', icon:'fa-calendar-check', label:'Schedules' },
-    { id:'telegram', icon:'fa-paper-plane', label:'Telegram' },
-    { id:'team', icon:'fa-user-shield', label:'Team' },
-    { id:'activity', icon:'fa-history', label:'Activity Log' },
-    { id:'provisioning', icon:'fa-qrcode', label:'Provisioning' },
-    { id:'settings', icon:'fa-cog', label:'Settings' },
+    { id:'dashboard', icon:'fa-chart-line', label: t('nav_dashboard') },
+    { id:'clients', icon:'fa-users', label: t('nav_clients') },
+    { id:'loans', icon:'fa-hand-holding-usd', label: t('nav_loans') },
+    { id:'reminders', icon:'fa-bell', label: t('nav_reminders') },
+    { id:'reports', icon:'fa-chart-bar', label: t('nav_reports') },
+    { id:'devices', icon:'fa-mobile-alt', label: t('nav_devices') },
+    { id:'documents', icon:'fa-folder-open', label: t('nav_documents') },
+    { id:'import', icon:'fa-file-csv', label: t('nav_import') },
+    { id:'schedules', icon:'fa-calendar-check', label: t('nav_schedules') },
+    { id:'telegram', icon:'fa-paper-plane', label: t('nav_telegram') },
+    { id:'team', icon:'fa-user-shield', label: t('nav_team') },
+    { id:'activity', icon:'fa-history', label: t('nav_activity') },
+    { id:'provisioning', icon:'fa-qrcode', label: t('nav_provisioning') },
+    { id:'settings', icon:'fa-cog', label: t('nav_settings') },
   ];
   const userPerms = state.user?.permissions || [];
   const isSuperAdmin = state.user?.is_super_admin === true;
