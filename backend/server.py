@@ -106,9 +106,9 @@ app.include_router(credit_score_router, prefix="/api")
 app.include_router(paid_loans_router, prefix="/api")
 app.include_router(bank_statements_router, prefix="/api")
 app.include_router(payments_router, prefix="/api")
-app.include_router(backup_router)
-app.include_router(provisioning_router)
-app.include_router(plans_router)
+app.include_router(backup_router, prefix="/api")
+app.include_router(provisioning_router, prefix="/api")
+app.include_router(plans_router, prefix="/api")
 
 
 @app.get("/api/download/website")

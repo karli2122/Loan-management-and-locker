@@ -248,14 +248,14 @@ async def send_single_reminder(client_id: str, admin_token: str = Query(...)):
         return {"success": False, "message": "Client has no push token"}
     
     days_overdue = client.get("days_overdue", 0)
-    monthly_emi = client.get("monthly_emi", 0)
+    amount = client.get("outstanding_balance", 0) or client.get("monthly_emi", 0) or client.get("loan_amount", 0)
     
     if days_overdue > 0:
         title = "Payment Overdue"
-        body = f"Your payment of €{monthly_emi:.2f} is {days_overdue} days overdue."
+        body = f"Your payment of €{amount:.2f} is {days_overdue} days overdue."
     else:
         title = "Payment Reminder"
-        body = f"Your payment of €{monthly_emi:.2f} is due soon."
+        body = f"Your payment of €{amount:.2f} is due soon."
     
     success = await send_expo_push_notification(
         push_token,
