@@ -79,6 +79,12 @@ def generate_loan_contract_pdf(lender: dict, client: dict, loan_amount: float, d
         fontName='Helvetica-Bold'
     )
     
+    # Replace currency in translation strings
+    currency_label = currency.upper()
+    for key in tx:
+        if isinstance(tx[key], str):
+            tx[key] = tx[key].replace("eurot", currency_label).replace("euros", currency_label).replace("euro", currency_label)
+    
     story = []
     
     # PayLock Pro header with logo
