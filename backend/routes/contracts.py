@@ -388,7 +388,8 @@ async def send_contract_email(client_id: str, admin_token: str = Query(...), tes
         due_date=due_date,
         total_repayment=round(total_repayment, 2),
         interest_rate=interest_rate_val,
-        language=language
+        language=language,
+        currency=currency
     )
     
     prefix = "loan_agreement" if language.lower()[:2] == "en" else "laenuleping"
