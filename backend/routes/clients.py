@@ -315,8 +315,15 @@ async def purge_client(client_id: str, admin_token: str = Query(...)):
 
 
 @router.post("/clients/{client_id}/lock")
-async def lock_client(client_id: str, admin_token: str = Query(...), message: str = Query(default=None)):
-    """Lock a client's device."""
+async def lock_client(
+    client_id: str,
+    admin_token: str = Query(...),
+    message: str = Query(default=None),
+    reason: str = Query(default="manual", regex="^(manual|overdue_payment|policy_violation|suspicious_activity|auto_lock)$"),
+    temporary: bool = Query(default=False),
+    unlock_after_hours: int = Query(default=None, ge=1, le=720),
+):
+    """Lock a client's device with granular reason tracking and optional temporary lock."""
     admin_id = await get_admin_id_from_token(admin_token)
     
     client = await db.clients.find_one({"id": client_id})
@@ -325,28 +332,57 @@ async def lock_client(client_id: str, admin_token: str = Query(...), message: st
     
     await enforce_client_scope(client, admin_id)
     
-    update = {"is_locked": True}
+    now = datetime.utcnow()
+    update = {
+        "is_locked": True,
+        "lock_reason": reason,
+        "locked_at": now.isoformat(),
+        "locked_by": admin_id,
+    }
     if message:
         update["lock_message"] = message
+    if temporary and unlock_after_hours:
+        unlock_at = now + timedelta(hours=unlock_after_hours)
+        update["auto_unlock_at"] = unlock_at.isoformat()
+        update["is_temporary_lock"] = True
     
     await db.clients.update_one({"id": client_id}, {"$set": update})
+    
+    # Record in audit trail
+    await db.lock_audit_log.insert_one({
+        "client_id": client_id,
+        "admin_id": admin_id,
+        "action": "lock",
+        "reason": reason,
+        "message": message,
+        "temporary": temporary,
+        "unlock_after_hours": unlock_after_hours,
+        "timestamp": now.isoformat(),
+    })
     
     # Send push notification for instant lock enforcement
     push_token = client.get("expo_push_token")
     if push_token:
+        notif_msg = message or f"Your device has been locked ({reason.replace('_', ' ')})."
         await send_expo_push_notification(
             push_token,
             "Device Locked",
-            message or "Your device has been locked by the administrator.",
-            {"action": "lock", "is_locked": True}
+            notif_msg,
+            {"action": "lock", "is_locked": True, "reason": reason}
         )
     
-    return {"message": "Device locked", "client_id": client_id}
+    return {
+        "message": "Device locked",
+        "client_id": client_id,
+        "reason": reason,
+        "temporary": temporary,
+        "auto_unlock_at": update.get("auto_unlock_at"),
+    }
 
 
 @router.post("/clients/{client_id}/unlock")
 async def unlock_client(client_id: str, admin_token: str = Query(...)):
-    """Unlock a client's device."""
+    """Unlock a client's device and record in audit trail."""
     admin_id = await get_admin_id_from_token(admin_token)
     
     client = await db.clients.find_one({"id": client_id})
@@ -355,7 +391,26 @@ async def unlock_client(client_id: str, admin_token: str = Query(...)):
     
     await enforce_client_scope(client, admin_id)
     
-    await db.clients.update_one({"id": client_id}, {"$set": {"is_locked": False}})
+    now = datetime.utcnow()
+    await db.clients.update_one({"id": client_id}, {"$set": {
+        "is_locked": False,
+        "lock_reason": None,
+        "lock_message": None,
+        "locked_at": None,
+        "locked_by": None,
+        "auto_unlock_at": None,
+        "is_temporary_lock": False,
+        "unlocked_at": now.isoformat(),
+    }})
+    
+    # Record in audit trail
+    await db.lock_audit_log.insert_one({
+        "client_id": client_id,
+        "admin_id": admin_id,
+        "action": "unlock",
+        "reason": "manual_unlock",
+        "timestamp": now.isoformat(),
+    })
     
     # Send push notification for instant unlock
     push_token = client.get("expo_push_token")
