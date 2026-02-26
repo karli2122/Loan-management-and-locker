@@ -954,9 +954,8 @@ async function renderTeam(el) {
   let check;
   try { check = await api('GET', '/team/enterprise-check'); } catch { check = { has_enterprise: false, is_super_admin: false }; }
   if (!check.has_enterprise && !check.is_super_admin) {
-    el.innerHTML = `<div class="page-header"><h2>Team Management</h2><p>Enterprise plan required</p></div>
-      <div class="card" style="text-align:center;padding:48px"><i class="fas fa-lock" style="font-size:48px;color:var(--text-dim);margin-bottom:16px"></i>
-        <h3>Enterprise Feature</h3><p style="color:var(--text-muted);margin-top:8px">Team management is available on the Enterprise plan. Upgrade to create sub-admin accounts and manage your team.</p></div>`;
+    el.innerHTML = `<div class="page-header" style="text-align:center;padding:48px"><i class="fas fa-lock" style="font-size:48px;color:var(--text-dim);margin-bottom:16px"></i>
+        <h3>${t('enterprise_feature')}</h3><p style="color:var(--text-muted);margin-top:8px">${t('enterprise_desc')}</p></div>`;
     return;
   }
   const [roles, members] = await Promise.all([
@@ -965,11 +964,11 @@ async function renderTeam(el) {
   ]);
   el.innerHTML = `
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:start">
-      <div><h2>Team Management</h2><p>${members.total} team members</p></div>
-      ${check.is_super_admin ? '<button class="btn btn-primary btn-sm" onclick="showAddMember()" data-testid="add-member-btn"><i class="fas fa-user-plus"></i> Add Member</button>' : ''}
+      <div><h2>${t('team_title')}</h2><p>${members.total} ${t('team_members')}</p></div>
+      ${check.is_super_admin ? `<button class="btn btn-primary btn-sm" onclick="showAddMember()" data-testid="add-member-btn"><i class="fas fa-user-plus"></i> ${t('add_member')}</button>` : ''}
     </div>
     <div class="card"><div class="table-wrap"><table data-testid="team-table">
-      <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Email</th><th>Status</th>${check.is_super_admin?'<th>Actions</th>':''}</tr></thead>
+      <thead><tr><th>${t('username')}</th><th>${t('name')}</th><th>${t('role')}</th><th>${t('email')}</th><th>${t('status')}</th>${check.is_super_admin?`<th>${t('actions')}</th>`:''}</tr></thead>
       <tbody>${members.members.map(m => `<tr>
         <td><b>${esc(m.username)}</b></td>
         <td>${esc((m.first_name||'')+' '+(m.last_name||''))}</td>
