@@ -881,7 +881,12 @@ async function generateQR() {
     const pass = document.getElementById('qr-pass').value;
     const data = await api('GET', `/provisioning/qr-code?wifi_ssid=${encodeURIComponent(ssid)}&wifi_password=${encodeURIComponent(pass)}`);
     document.getElementById('qr-result').innerHTML = `
-      <img src="data:image/png;base64,${data.qr_code_base64}" style="max-width:300px;border-radius:8px;border:1px solid var(--border)" data-testid="qr-code-img">
+      <div style="display:inline-block;background:var(--bg-card);border:2px solid var(--border);border-radius:12px;padding:16px">
+        <img src="data:image/png;base64,${data.qr_code_base64}" style="max-width:280px;border-radius:8px" data-testid="qr-code-img">
+        <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
+          <a href="data:image/png;base64,${data.qr_code_base64}" download="paylock_qr.png" class="btn btn-outline btn-sm" data-testid="download-qr-btn"><i class="fas fa-download"></i> ${t('download')}</a>
+        </div>
+      </div>
       <div style="margin-top:12px;text-align:left;background:var(--bg-input);padding:16px;border-radius:8px">
         <b>${t('instructions_label')}:</b><ol style="margin:8px 0 0 16px;color:var(--text-muted);font-size:13px;line-height:1.8">
           ${data.instructions.en.map(i => `<li>${i.substring(3)}</li>`).join('')}
