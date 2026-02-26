@@ -28,7 +28,7 @@ resend.api_key = os.environ.get("RESEND_API_KEY", "")
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
 
 
-def generate_loan_contract_pdf(lender: dict, client: dict, loan_amount: float, due_date: str, total_repayment: float = 0, interest_rate: float = 0, language: str = "et") -> bytes:
+def generate_loan_contract_pdf(lender: dict, client: dict, loan_amount: float, due_date: str, total_repayment: float = 0, interest_rate: float = 0, language: str = "et", currency: str = "EUR") -> bytes:
     """Generate a loan contract PDF. Supports all app languages (et, en, no, sv, da, fi, lv, lt, de, de_at, de_ch, cs, pl, es, fr, it)."""
     from routes.contract_translations import get_contract_translation
     tx = get_contract_translation(language)
