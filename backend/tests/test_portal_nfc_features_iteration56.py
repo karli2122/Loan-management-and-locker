@@ -109,8 +109,15 @@ class TestDashboardAndClients:
         assert response.status_code == 200, f"Clients list failed: {response.status_code} - {response.text}"
         
         data = response.json()
-        assert isinstance(data, list), "Clients response should be a list"
-        print(f"Clients list returned {len(data)} clients")
+        # API returns {"clients": [...]} or a list directly
+        if isinstance(data, dict):
+            assert "clients" in data, "Missing 'clients' key in response"
+            clients = data["clients"]
+            assert isinstance(clients, list), "Clients should be a list"
+            print(f"Clients list returned {len(clients)} clients")
+        else:
+            assert isinstance(data, list), "Clients response should be a list"
+            print(f"Clients list returned {len(data)} clients")
 
 
 class TestReports:
