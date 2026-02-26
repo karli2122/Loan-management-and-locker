@@ -531,6 +531,23 @@ function showEditClient(clientId) {
 
 function closeModal() { document.getElementById('modal-overlay')?.remove(); }
 
+function renderModal() {
+  // Generic modal renderer for state.modal
+  if (!state.modal) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0">${state.modal.title || 'Modal'}</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()" style="padding:4px 8px"><i class="fas fa-times"></i></button>
+    </div>
+    <div>${state.modal.body || ''}</div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+}
+
 // Loan Plans
 async function renderLoanPlans(el) {
   const plans = await api('GET', '/loan-plans');
