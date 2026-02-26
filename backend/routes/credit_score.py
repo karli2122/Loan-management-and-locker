@@ -245,14 +245,20 @@ async def get_credit_scores_overview(
 
 
 # Credit score change amounts for different events
+# Score starts from 0, adjusts based on payment behavior
 CREDIT_SCORE_CHANGES = {
-    "payment_on_time": 15,          # Payment made on time
-    "payment_early": 25,            # Payment made early
-    "payment_late_1_7": -10,        # 1-7 days late
-    "payment_late_8_30": -30,       # 8-30 days late
-    "payment_late_30_plus": -50,    # 30+ days late
-    "loan_completed": 100,          # Loan fully paid off
-    "loan_setup": -20,              # New loan setup (slight decrease due to new debt)
-    "device_lock": -20,             # Device locked for non-payment
-    "device_unlock_payment": 10,    # Device unlocked after payment
+    "payment_on_time": 5,              # Payment made on time
+    "payment_early": 10,               # Payment 1 week+ before due date
+    "payment_late_1_5": 0,             # 1-5 days late (no penalty)
+    "payment_late_5_7": -5,            # More than 5 days late
+    "payment_late_1_7": -5,            # 1-7 days late (alias)
+    "payment_late_7_14": -7,           # More than 1 week late
+    "payment_late_8_30": -7,           # 8-30 days late (alias)
+    "payment_late_14_21": -10,         # More than 2 weeks late
+    "payment_late_21_plus": -15,       # 3+ weeks late
+    "payment_late_30_plus": -15,       # 30+ days late (alias)
+    "loan_completed": 20,              # Loan fully paid off
+    "loan_setup": 0,                   # New loan setup (neutral start)
+    "device_lock": -5,                 # Device locked for non-payment
+    "device_unlock_payment": 5,        # Device unlocked after payment
 }
