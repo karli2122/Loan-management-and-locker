@@ -11,6 +11,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Reports"])
 
 
+async def _get_enterprise_client_query(admin_id: str) -> dict:
+    """Build a client query scoped to enterprise for superusers, or own data for team members."""
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
+    if not admin:
+        return {"admin_id": admin_id, "is_deleted": {"$ne": True}}
+    if admin.get("is_super_admin"):
+        enterprise_id = admin.get("enterprise_id") or admin_id
+        members = await db.admins.find({"enterprise_id": enterprise_id}, {"_id": 0, "id": 1}).to_list(100)
+        member_ids = [m["id"] for m in members]
+        if admin_id not in member_ids:
+            member_ids.append(admin_id)
+        return {"admin_id": {"$in": member_ids}, "is_deleted": {"$ne": True}}
+    return {"admin_id": admin_id, "is_deleted": {"$ne": True}}
+
+
 def calculate_interest_total(client: dict) -> float:
     loan_amount = client.get("loan_amount", 0) or 0
     total_due = client.get("total_amount_due", 0) or 0
