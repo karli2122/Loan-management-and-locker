@@ -859,6 +859,24 @@ async function renderSettings(el) {
       </div>
       <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="saveSettings()" data-testid="save-settings-btn"><i class="fas fa-save"></i> ${t('save_settings')}</button>
     </div>
+    <div class="card"><div class="card-header"><h3><i class="fas fa-robot" style="margin-right:8px;color:var(--primary)"></i> Payment Automation</h3></div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Configure how payments are automatically processed, reminders sent, and overdue actions taken.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group"><label><input type="checkbox" id="pa-auto-remind" ${settings.payment_auto_reminder_enabled!==false?'checked':''} data-testid="pa-auto-remind"> Auto-send payment reminders</label></div>
+        <div class="form-group"><label>Remind days before due</label><input id="pa-remind-days" type="number" min="1" max="30" value="${settings.payment_auto_reminder_days_before||3}" data-testid="pa-remind-days"></div>
+        <div class="form-group"><label><input type="checkbox" id="pa-auto-lock" ${settings.payment_auto_lock_enabled!==false?'checked':''} data-testid="pa-auto-lock"> Auto-lock on overdue (after grace period)</label></div>
+        <div class="form-group"><label><input type="checkbox" id="pa-auto-late-fee" ${settings.payment_auto_late_fee_enabled!==false?'checked':''} data-testid="pa-auto-late-fee"> Auto-apply late fees</label></div>
+        <div class="form-group"><label>Late fee frequency (days)</label><input id="pa-fee-freq" type="number" min="1" max="30" value="${settings.payment_late_fee_frequency_days||7}" data-testid="pa-fee-freq"></div>
+        <div class="form-group"><label>Reminder channels</label>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <label><input type="checkbox" id="pa-ch-push" ${(settings.payment_reminder_channels||['push','email']).includes('push')?'checked':''}> Push</label>
+            <label><input type="checkbox" id="pa-ch-email" ${(settings.payment_reminder_channels||['push','email']).includes('email')?'checked':''}> Email</label>
+            <label><input type="checkbox" id="pa-ch-telegram" ${(settings.payment_reminder_channels||[]).includes('telegram')?'checked':''}> Telegram</label>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="saveAutomationSettings()" data-testid="save-automation-btn"><i class="fas fa-save"></i> Save Automation Settings</button>
+    </div>
     <div class="card"><div class="card-header"><h3>${t('change_password')}</h3></div>
       <div class="form-group"><label>${t('current_password')}</label><input id="pw-current" type="password" data-testid="current-password"></div>
       <div class="form-group"><label>${t('new_password')}</label><input id="pw-new" type="password" data-testid="new-password"></div>
