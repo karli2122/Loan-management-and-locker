@@ -246,7 +246,7 @@ class TestReportSchedules:
 
 
 class TestPaymentSchedules:
-    """Payment scheduling endpoints tests"""
+    """Payment scheduling endpoints tests - endpoint is /api/schedules"""
     
     @pytest.fixture
     def admin_token(self):
@@ -257,13 +257,21 @@ class TestPaymentSchedules:
         return response.json()["token"]
     
     def test_list_payment_schedules(self, admin_token):
-        """GET /api/payment-schedules returns list"""
-        response = requests.get(f"{BASE_URL}/api/payment-schedules", params={"admin_token": admin_token})
+        """GET /api/schedules returns payment schedules list"""
+        response = requests.get(f"{BASE_URL}/api/schedules", params={"admin_token": admin_token})
         assert response.status_code == 200
         data = response.json()
         assert "schedules" in data
         assert isinstance(data["schedules"], list)
         print(f"✓ Payment schedules list: {len(data['schedules'])} schedules")
+    
+    def test_get_due_today(self, admin_token):
+        """GET /api/schedules/due/today returns due schedules"""
+        response = requests.get(f"{BASE_URL}/api/schedules/due/today", params={"admin_token": admin_token})
+        assert response.status_code == 200
+        data = response.json()
+        assert "due_schedules" in data
+        print(f"✓ Due today schedules: {len(data['due_schedules'])} schedules")
 
 
 class TestExistingExports:
