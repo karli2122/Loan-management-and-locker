@@ -552,7 +552,7 @@ export default function ClientDetails() {
       const token = await AsyncStorage.getItem('admin_token');
       if (!token) { Alert.alert(t('error'), 'Not authenticated'); return; }
       const { Linking } = await import('react-native');
-      Linking.openURL(`${API_URL}/api/contracts/${id}/download?admin_token=${token}`);
+      Linking.openURL(`${API_URL}/api/contracts/${id}/download?admin_token=${token}&language=${language}`);
     } catch (error: any) { Alert.alert(t('error'), error.message); }
   };
 
@@ -560,7 +560,7 @@ export default function ClientDetails() {
     try {
       const token = await AsyncStorage.getItem('admin_token');
       if (!token) { Alert.alert(t('error'), 'Not authenticated'); return; }
-      const downloadUrl = `${API_URL}/api/contracts/${id}/download?admin_token=${token}`;
+      const downloadUrl = `${API_URL}/api/contracts/${id}/download?admin_token=${token}&language=${language}`;
       const fileUri = `${FileSystem.cacheDirectory}loan-contract-${id}.pdf`;
       const downloadResult = await FileSystem.downloadAsync(downloadUrl, fileUri);
       if (await Sharing.isAvailableAsync()) {
