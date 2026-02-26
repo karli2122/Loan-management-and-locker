@@ -121,6 +121,7 @@ async def import_clients_csv(
             "created_at": datetime.now(timezone.utc).isoformat(),
             "imported": True,
             "telegram_chat_id": mapped.get("telegram_chat_id", ""),
+            "admin_id": admin_id,
         }
 
         await db.clients.insert_one(client)
