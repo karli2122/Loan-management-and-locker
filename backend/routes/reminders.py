@@ -401,7 +401,7 @@ async def send_email_to_client(
     if not email:
         return {"success": False, "message": "Client has no email address"}
 
-    amount = client.get("monthly_emi", 0) or client.get("outstanding_balance", 0)
+    amount = client.get("outstanding_balance", 0) or client.get("monthly_emi", 0) or client.get("loan_amount", 0)
     due_date = ""
     npd = client.get("next_payment_due")
     if isinstance(npd, datetime):
@@ -448,7 +448,7 @@ async def send_telegram_to_client(
     if not telegram_id:
         return {"success": False, "message": "Client has no Telegram chat ID"}
 
-    amount = client.get("monthly_emi", 0) or client.get("outstanding_balance", 0)
+    amount = client.get("outstanding_balance", 0) or client.get("monthly_emi", 0) or client.get("loan_amount", 0)
     days_overdue = client.get("days_overdue", 0)
     name = client.get("name", "Client")
 
@@ -489,7 +489,7 @@ async def send_bulk_email_reminders(admin_token: str = Query(...)):
     sent = 0
     failed = 0
     for client in clients:
-        amount = client.get("monthly_emi", 0) or client.get("outstanding_balance", 0)
+        amount = client.get("outstanding_balance", 0) or client.get("monthly_emi", 0) or client.get("loan_amount", 0)
         due_date = ""
         npd = client.get("next_payment_due")
         if isinstance(npd, datetime):
@@ -522,7 +522,7 @@ async def send_bulk_telegram_reminders(admin_token: str = Query(...)):
     sent = 0
     failed = 0
     for client in clients:
-        amount = client.get("monthly_emi", 0) or client.get("outstanding_balance", 0)
+        amount = client.get("outstanding_balance", 0) or client.get("monthly_emi", 0) or client.get("loan_amount", 0)
         days_overdue = client.get("days_overdue", 0)
         name = client.get("name", "Client")
         msg = f"<b>Payment {'Overdue' if days_overdue > 0 else 'Reminder'}</b>\n\nDear {name}, your payment of <b>€{amount:.2f}</b> is {'%d days overdue' % days_overdue if days_overdue > 0 else 'due soon'}.\n\n— PayLock Pro"
@@ -569,7 +569,7 @@ async def send_whatsapp_to_client(
     # Clean phone number
     clean_phone = phone.replace(" ", "").replace("-", "").replace("+", "")
 
-    amount = client.get("monthly_emi", 0) or client.get("outstanding_balance", 0)
+    amount = client.get("outstanding_balance", 0) or client.get("monthly_emi", 0) or client.get("loan_amount", 0)
     due_date = ""
     npd = client.get("next_payment_due")
     if isinstance(npd, datetime):
@@ -630,7 +630,7 @@ async def get_whatsapp_link(
 
     clean_phone = phone.replace(" ", "").replace("-", "").replace("+", "")
 
-    amount = client.get("monthly_emi", 0) or client.get("outstanding_balance", 0)
+    amount = client.get("outstanding_balance", 0) or client.get("monthly_emi", 0) or client.get("loan_amount", 0)
     due_date = ""
     npd = client.get("next_payment_due")
     if isinstance(npd, datetime):
