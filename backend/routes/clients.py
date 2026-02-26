@@ -425,6 +425,30 @@ async def unlock_client(client_id: str, admin_token: str = Query(...)):
     return {"message": "Device unlocked", "client_id": client_id}
 
 
+@router.get("/clients/{client_id}/lock-history")
+async def get_lock_history(client_id: str, admin_token: str = Query(...), limit: int = Query(default=50, le=200)):
+    """Get the lock/unlock audit trail for a client."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    await enforce_client_scope(client, admin_id)
+    
+    history = await db.lock_audit_log.find(
+        {"client_id": client_id},
+        {"_id": 0}
+    ).sort("timestamp", -1).limit(limit).to_list(limit)
+    
+    return {
+        "client_id": client_id,
+        "history": history,
+        "count": len(history),
+    }
+
+
+
 @router.post("/clients/{client_id}/warning")
 async def send_warning(client_id: str, message: str = Query(...), admin_token: str = Query(...)):
     """Send a warning message to client's device."""
