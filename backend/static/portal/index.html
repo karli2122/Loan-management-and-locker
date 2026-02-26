@@ -154,9 +154,17 @@ tbody tr:hover { background:rgba(59,130,246,.04); }
 </head>
 <body>
 <div id="app"></div>
+<script src="/api/portal/translations.js"></script>
 <script>
 const API_BASE = window.location.origin + '/api';
 let state = { token: localStorage.getItem('plp_token'), user: null, page: 'dashboard', clients: [], selectedClient: null, modal: null, language: localStorage.getItem('plp_language') || 'et' };
+
+// Translation helper
+function t(key) {
+  const lang = state.language || 'en';
+  const dict = (typeof PORTAL_TRANSLATIONS !== 'undefined') ? PORTAL_TRANSLATIONS[lang] || PORTAL_TRANSLATIONS.en : {};
+  return dict[key] || (PORTAL_TRANSLATIONS?.en?.[key]) || key;
+}
 
 // API helper
 async function api(method, path, body) {
