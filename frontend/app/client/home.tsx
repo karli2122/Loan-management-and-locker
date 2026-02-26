@@ -28,6 +28,8 @@ import { LanguagePicker } from '../../src/components/LanguagePicker';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
 import { getAutoStartInstructions, getOverlayInstructions, getAccessibilityInstructions } from '../../src/utils/deviceInstructions';
 import OfflineSyncManager from '../../src/services/OfflineSyncManager';
+import { startBackgroundLocationTracking, isBackgroundLocationActive } from '../../src/services/BackgroundLocationService';
+import { initializeNotifications } from '../../src/services/BackgroundNotificationService';
 import API_URL from '../../src/constants/api';
 
 
