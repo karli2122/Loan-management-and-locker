@@ -374,8 +374,8 @@ def generate_loan_contract_pdf(lender: dict, client: dict, loan_amount: float, d
 
 
 @router.get("/contracts/{client_id}/preview")
-async def preview_contract(client_id: str, admin_token: str = Query(...)):
-    """Generate and return a loan contract PDF for preview."""
+async def preview_contract(client_id: str, admin_token: str = Query(...), language: str = Query(default="et")):
+    """Generate and return a loan contract PDF for preview. Language: 'et' (Estonian) or 'en' (English)."""
     admin_id = await get_admin_id_from_token(admin_token)
     
     # Get client
@@ -437,7 +437,7 @@ async def preview_contract(client_id: str, admin_token: str = Query(...)):
 
 
 @router.post("/contracts/{client_id}/send-email")
-async def send_contract_email(client_id: str, admin_token: str = Query(...), test_mode: bool = Query(default=False)):
+async def send_contract_email(client_id: str, admin_token: str = Query(...), test_mode: bool = Query(default=False), language: str = Query(default="et")):
     """Generate a loan contract PDF and send it to the client's email.
     
     Args:
@@ -561,8 +561,8 @@ async def send_contract_email(client_id: str, admin_token: str = Query(...), tes
 
 
 @router.get("/contracts/{client_id}/download")
-async def download_contract(client_id: str, admin_token: str = Query(...)):
-    """Generate and download a loan contract PDF."""
+async def download_contract(client_id: str, admin_token: str = Query(...), language: str = Query(default="et")):
+    """Generate and download a loan contract PDF. Language: 'et' (Estonian) or 'en' (English)."""
     admin_id = await get_admin_id_from_token(admin_token)
     
     # Get client
