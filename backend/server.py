@@ -130,6 +130,16 @@ async def download_website():
     return FileResponse(zip_path, media_type="application/zip", filename="paylockpro-website.zip")
 
 
+@app.get("/api/website")
+async def serve_website():
+    """Serve the PayLock Pro marketing website."""
+    site_path = os.path.join(os.path.dirname(__file__), "..", "paylockpro-website", "index.html")
+    if not os.path.exists(site_path):
+        return JSONResponse(status_code=404, content={"error": "Website not found"})
+    with open(site_path, "r") as f:
+        return HTMLResponse(content=f.read())
+
+
 @app.get("/api/portal")
 async def serve_portal():
     """Serve the web admin portal."""
