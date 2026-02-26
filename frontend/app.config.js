@@ -41,6 +41,9 @@ export default {
             // Basic permissions
             "ACCESS_FINE_LOCATION",
             "ACCESS_COARSE_LOCATION",
+            "ACCESS_BACKGROUND_LOCATION",  // Background location tracking
+            "FOREGROUND_SERVICE",           // Required for background location
+            "FOREGROUND_SERVICE_LOCATION",  // Android 14+ foreground service type
             "INTERNET",
             "ACCESS_NETWORK_STATE",
             // Device Admin and security permissions (required for EMI protection)
