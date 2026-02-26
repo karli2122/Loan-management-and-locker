@@ -456,7 +456,7 @@ async def send_contract_email(client_id: str, admin_token: str = Query(...), tes
 
 
 @router.get("/contracts/{client_id}/download")
-async def download_contract(client_id: str, admin_token: str = Query(...), language: str = Query(default="et")):
+async def download_contract(client_id: str, admin_token: str = Query(...), language: str = Query(default="et"), currency: str = Query(default="EUR")):
     """Generate and download a loan contract PDF. Language: 'et' (Estonian) or 'en' (English)."""
     admin_id = await get_admin_id_from_token(admin_token)
     
