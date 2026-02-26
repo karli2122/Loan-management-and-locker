@@ -966,7 +966,32 @@ async function renderSettings(el) {
       <div class="form-group"><label>${t('current_password')}</label><input id="pw-current" type="password" data-testid="current-password"></div>
       <div class="form-group"><label>${t('new_password')}</label><input id="pw-new" type="password" data-testid="new-password"></div>
       <button class="btn btn-warning btn-sm" style="margin-top:8px" onclick="changePassword()" data-testid="change-password-btn"><i class="fas fa-key"></i> ${t('change_password')}</button>
+    </div>
+    <div class="card"><div class="card-header"><h3>${t('scheduled_reports')}</h3></div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">${t('scheduled_reports_desc')}</p>
+      <div class="form-row" style="gap:12px">
+        <div class="form-group" style="flex:2"><label>${t('email_address')}</label><input id="rpt-email" type="email" placeholder="admin@example.com" data-testid="report-email"></div>
+        <div class="form-group" style="flex:1"><label>${t('report_type_label')}</label>
+          <select id="rpt-type" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)" data-testid="report-type-select">
+            <option value="financial">${t('tab_financial')}</option>
+            <option value="clients">${t('tab_clients')}</option>
+            <option value="collection">${t('collection_rate')}</option>
+          </select></div>
+        <div class="form-group" style="flex:1"><label>${t('frequency')}</label>
+          <select id="rpt-freq" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)" data-testid="report-freq-select">
+            <option value="daily">${t('daily')}</option>
+            <option value="weekly">${t('weekly')}</option>
+            <option value="monthly">${t('monthly')}</option>
+          </select></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-primary btn-sm" onclick="createReportSchedule()" data-testid="create-report-schedule-btn"><i class="fas fa-calendar-plus"></i> ${t('schedule_report')}</button>
+        <button class="btn btn-outline btn-sm" onclick="sendReportNow()" data-testid="send-report-now-btn"><i class="fas fa-paper-plane"></i> ${t('send_now')}</button>
+      </div>
+      <div id="report-schedules-list" style="margin-top:12px"></div>
     </div>`;
+  // Load existing report schedules
+  loadReportSchedules();
 }
 
 async function saveSettings() {
