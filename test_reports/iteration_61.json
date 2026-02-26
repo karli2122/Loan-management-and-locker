@@ -1,0 +1,70 @@
+{
+  "summary": "Completed testing of PayLock Pro Admin Portal - i18n improvements and PDF/CSV export functionality. Fixed critical bug where export URLs used undefined variables (${API} and ${adminToken} instead of ${API_BASE} and ${state.token}). All 15 tests passed after fix.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_61.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/static/portal/index.html - Fixed export URL variables from ${API}/${adminToken} to ${API_BASE}/${state.token}"
+  ],
+  "success_rate": {
+    "backend": "100% (Export endpoints returning correct status and content-type)",
+    "frontend": "100% (15/15 tests passed)"
+  },
+  "test_credentials": {
+    "username": "admin",
+    "password": "admin123"
+  },
+  "seed_data_creation": "None required",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All i18n and export features working correctly. The fix applied was changing undefined variables in renderReports function from ${API} to ${API_BASE} and ${adminToken} to ${state.token}.",
+  "test_results_detail": {
+    "passed_tests": [
+      "1. Login page loads successfully with Estonian (default language)",
+      "2. Login with admin/admin123 works - redirects to Dashboard",
+      "3. Dashboard shows 4 charts: Revenue Trends, Profit Trends, Collection Rates, Loan Distribution",
+      "4. Dashboard chart labels translated in Estonian (Tulu trendid, Kasumi trendid, Kogumismaarad, Laenude jaotus)",
+      "5. Reports page has Export PDF and Export CSV buttons visible",
+      "6. PDF dropdown opens with Financial, Clients, Collection options",
+      "7. PDF export URLs correctly formed with admin_token",
+      "8. CSV dropdown opens with Financial, Clients, Collection, Payments options",
+      "9. CSV export URLs correctly formed with admin_token",
+      "10. Language switch to English works via Settings page",
+      "11. Export buttons work after language switch",
+      "12. Provisioning page labels translated correctly",
+      "13. Devices page table headers translated (Client, Device, Last Seen, Lock Status)",
+      "14. Schedules page labels translated",
+      "15. Dropdown menus close when clicking outside"
+    ],
+    "failed_tests": [],
+    "export_verification": {
+      "csv_financial": {
+        "status": 200,
+        "content_type": "text/csv; charset=utf-8",
+        "filename": "paylock_financial_2026-02-26.csv"
+      },
+      "pdf_financial": {
+        "status": 200,
+        "content_type": "application/pdf",
+        "filename": "paylock_financial_2026-02-26.pdf"
+      }
+    }
+  },
+  "bug_fixed": {
+    "description": "Export dropdown links had undefined variables ${API} and ${adminToken}",
+    "location": "/app/backend/static/portal/index.html lines 733-744",
+    "fix_applied": "Changed ${API} to ${API_BASE} and ${adminToken} to ${state.token}",
+    "root_cause": "Variables were incorrectly named during export feature implementation"
+  }
+}
