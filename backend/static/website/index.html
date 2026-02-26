@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PayLock Pro - Secure Loan & Device Management</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0B1527;--bg2:#111D35;--accent:#2962FF;--accent2:#448AFF;--text:#E2E8F0;--text-muted:#94A3B8;--border:#1E3A5F;--green:#10B981;--card:#0F1D32}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+a{color:var(--accent2);text-decoration:none}
+.container{max-width:1200px;margin:0 auto;padding:0 24px}
+
+/* NAV */
+nav{position:fixed;top:0;width:100%;background:rgba(11,21,39,0.95);backdrop-filter:blur(12px);z-index:100;border-bottom:1px solid var(--border);padding:16px 0}
+nav .container{display:flex;justify-content:space-between;align-items:center}
+.logo{font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.5px}
+.logo span{color:var(--accent)}
+nav ul{list-style:none;display:flex;gap:28px;align-items:center}
+nav ul a{color:var(--text-muted);font-size:14px;font-weight:500;transition:color 0.2s}
+nav ul a:hover{color:#fff}
+.nav-btn{background:var(--accent);color:#fff!important;padding:8px 20px;border-radius:8px;font-weight:600;font-size:13px;transition:all 0.2s}
+.nav-btn:hover{background:var(--accent2);transform:translateY(-1px)}
+
+/* HERO */
+.hero{padding:140px 0 80px;text-align:center;background:linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%)}
+.hero h1{font-size:52px;font-weight:800;line-height:1.15;letter-spacing:-1.5px;margin-bottom:20px}
+.hero h1 span{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{font-size:18px;color:var(--text-muted);max-width:600px;margin:0 auto 32px;line-height:1.6}
+.hero-btns{display:flex;gap:16px;justify-content:center}
+.btn{padding:14px 32px;border-radius:10px;font-size:15px;font-weight:600;border:none;cursor:pointer;transition:all 0.2s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2);transform:translateY(-2px)}
+.btn-outline{background:transparent;color:#fff;border:1px solid var(--border)}
+.btn-outline:hover{border-color:var(--accent);background:rgba(41,98,255,0.1)}
+.stats{display:flex;justify-content:center;gap:48px;margin-top:48px}
+.stat{text-align:center}
+.stat .num{font-size:36px;font-weight:800;color:#fff}
+.stat .label{font-size:13px;color:var(--text-muted);margin-top:4px}
+
+/* FEATURES */
+.section{padding:80px 0}
+.section-title{text-align:center;margin-bottom:48px}
+.section-title h2{font-size:36px;font-weight:700;margin-bottom:12px;letter-spacing:-0.5px}
+.section-title p{color:var(--text-muted);font-size:16px;max-width:500px;margin:0 auto}
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.feature{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;transition:all 0.3s}
+.feature:hover{border-color:var(--accent);transform:translateY(-4px)}
+.feature-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:20px}
+.feature h3{font-size:16px;font-weight:600;margin-bottom:8px}
+.feature p{font-size:13px;color:var(--text-muted);line-height:1.6}
+
+/* PRICING */
+.pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;max-width:960px;margin:0 auto}
+.plan{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;position:relative}
+.plan.featured{border-color:var(--accent);background:linear-gradient(135deg,rgba(41,98,255,0.1),var(--card))}
+.plan-badge{position:absolute;top:-12px;right:24px;background:var(--accent);color:#fff;padding:4px 14px;border-radius:20px;font-size:11px;font-weight:600}
+.plan h3{font-size:20px;font-weight:600;margin-bottom:8px}
+.plan .price{font-size:42px;font-weight:800;margin:12px 0}
+.plan .price span{font-size:16px;color:var(--text-muted);font-weight:400}
+.plan ul{list-style:none;margin:20px 0}
+.plan li{padding:8px 0;font-size:14px;color:var(--text-muted);display:flex;align-items:center;gap:10px}
+.plan li i{color:var(--green);font-size:13px}
+.plan .btn{width:100%;text-align:center;margin-top:16px}
+
+/* ABOUT */
+.about-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+.about-text h2{font-size:32px;font-weight:700;margin-bottom:16px;letter-spacing:-0.5px}
+.about-text p{color:var(--text-muted);line-height:1.7;margin-bottom:16px;font-size:15px}
+.about-values{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px}
+.value-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.value-card i{color:var(--accent);font-size:20px;margin-bottom:10px}
+.value-card h4{font-size:14px;font-weight:600;margin-bottom:6px}
+.value-card p{font-size:12px;color:var(--text-muted)}
+
+/* CONTACT */
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px}
+.contact-info h2{font-size:32px;font-weight:700;margin-bottom:16px}
+.contact-info p{color:var(--text-muted);line-height:1.7;margin-bottom:24px}
+.contact-detail{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.contact-detail i{width:40px;height:40px;background:rgba(41,98,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:16px}
+.contact-detail div{font-size:14px}
+.contact-detail .label{font-size:12px;color:var(--text-muted)}
+.contact-form{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text-muted)}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit}
+.form-group textarea{min-height:120px;resize:vertical}
+.form-group input:focus,.form-group textarea:focus{outline:none;border-color:var(--accent)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:48px 0 24px}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;margin-bottom:32px}
+.footer-brand p{color:var(--text-muted);font-size:13px;margin-top:8px;line-height:1.6}
+.footer-col h4{font-size:13px;font-weight:600;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px}
+.footer-col a{display:block;font-size:13px;color:var(--text-muted);padding:4px 0;transition:color 0.2s}
+.footer-col a:hover{color:#fff}
+.footer-bottom{border-top:1px solid var(--border);padding-top:20px;display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted)}
+
+/* PAGE */
+.page-hero{padding:140px 0 60px;text-align:center;background:linear-gradient(180deg,var(--bg),var(--bg2))}
+.page-hero h1{font-size:42px;font-weight:700;margin-bottom:12px}
+.page-hero p{color:var(--text-muted);font-size:16px}
+.page-content{padding:60px 0}
+
+#toast{display:none;position:fixed;top:20px;right:20px;background:var(--green);color:#fff;padding:14px 24px;border-radius:10px;font-weight:600;font-size:14px;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+
+@media(max-width:768px){
+  nav ul{display:none}
+  .hero h1{font-size:32px}
+  .stats{flex-direction:column;gap:20px}
+  .about-grid,.contact-grid,.footer-grid,.form-row{grid-template-columns:1fr}
+  .pricing-grid{grid-template-columns:1fr}
+  .about-values{grid-template-columns:1fr}
+  .page-hero h1{font-size:28px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <div class="logo">Pay<span>Lock</span> Pro</div>
+    <ul>
+      <li><a href="#home" onclick="showPage('home')">Home</a></li>
+      <li><a href="#features" onclick="showPage('home');setTimeout(()=>document.getElementById('features')?.scrollIntoView({behavior:'smooth'}),100)">Features</a></li>
+      <li><a href="#pricing" onclick="showPage('home');setTimeout(()=>document.getElementById('pricing')?.scrollIntoView({behavior:'smooth'}),100)">Pricing</a></li>
+      <li><a href="#about" onclick="showPage('about')">About Us</a></li>
+      <li><a href="#contact" onclick="showPage('contact')">Contact</a></li>
+      <li><a href="API_PLACEHOLDER/api/portal" class="nav-btn">Admin Portal</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div id="toast"></div>
+
+<!-- HOME PAGE -->
+<div id="page-home">
+  <section class="hero">
+    <div class="container">
+      <h1>Manage Loans &<br><span>Secure Devices</span> Remotely</h1>
+      <p>An innovative IT solution from Estonia for modern loan providers. PayLock Pro combines device management, automated payments, and bank-grade security in one platform.</p>
+      <div class="hero-btns">
+        <a href="#contact" onclick="showPage('contact')" class="btn btn-primary">Get Started</a>
+        <a href="#features" onclick="document.getElementById('features')?.scrollIntoView({behavior:'smooth'})" class="btn btn-outline">View Features</a>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="num">16</div><div class="label">Languages Supported</div></div>
+        <div class="stat"><div class="num">100%</div><div class="label">GDPR Compliant</div></div>
+        <div class="stat"><div class="num">24/7</div><div class="label">Device Monitoring</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="features">
+    <div class="container">
+      <div class="section-title">
+        <h2>Enterprise-Grade Features</h2>
+        <p>Everything you need to manage loans, devices, and team operations securely</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature">
+          <div class="feature-icon" style="background:rgba(41,98,255,0.15);color:var(--accent)"><i class="fas fa-lock"></i></div>
+          <h3>Remote Device Lock/Unlock</h3>
+          <p>Instantly lock or unlock client devices remotely. Support for both Device Admin and Device Owner modes with full kiosk capabilities.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon" style="background:rgba(16,185,129,0.15);color:var(--green)"><i class="fas fa-calendar-check"></i></div>
+          <h3>Automated Payment Scheduling</h3>
+          <p>Set up recurring payment reminders with daily, weekly, or monthly schedules. Auto-processing sends notifications when payments are due.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon" style="background:rgba(139,92,246,0.15);color:#8B5CF6"><i class="fas fa-chart-line"></i></div>
+          <h3>Analytics & Reports</h3>
+          <p>Revenue trends, profit analysis, collection rates, and loan distribution charts. Export reports to PDF or CSV. Schedule automatic email reports.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon" style="background:rgba(245,158,11,0.15);color:#F59E0B"><i class="fas fa-users-cog"></i></div>
+          <h3>Team Management</h3>
+          <p>Multi-admin support with role-based permissions. Activity logging tracks every action across your enterprise.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon" style="background:rgba(236,72,153,0.15);color:#EC4899"><i class="fas fa-language"></i></div>
+          <h3>16 Languages (i18n)</h3>
+          <p>Full portal translation for Estonian, English, Norwegian, Swedish, Danish, Finnish, Latvian, Lithuanian, German, Czech, Polish, Spanish, French, Italian, and more.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon" style="background:rgba(14,165,233,0.15);color:#0EA5E9"><i class="fab fa-telegram"></i></div>
+          <h3>Telegram Notifications</h3>
+          <p>One-way Telegram bot integration for instant payment reminders, overdue alerts, and administrative notifications.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon" style="background:rgba(239,68,68,0.15);color:#EF4444"><i class="fas fa-file-invoice"></i></div>
+          <h3>Bank Statement OCR</h3>
+          <p>Upload and parse bank statements automatically. Supported formats: PDF, ASICE. Powered by Tesseract OCR engine.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon" style="background:rgba(34,197,94,0.15);color:#22C55E"><i class="fas fa-qrcode"></i></div>
+          <h3>NFC/QR Provisioning</h3>
+          <p>Generate QR codes and NFC payloads for quick device setup. Download QR images or copy NFC data directly to tags.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon" style="background:rgba(168,85,247,0.15);color:#A855F7"><i class="fas fa-file-csv"></i></div>
+          <h3>Bulk CSV Import</h3>
+          <p>Import hundreds of clients at once from CSV files. Validate data before import with detailed error reporting.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon" style="background:rgba(59,130,246,0.15);color:#3B82F6"><i class="fas fa-cloud-upload-alt"></i></div>
+          <h3>Google Drive Backup</h3>
+          <p>Automatic cloud backups to Google Drive. Keep your loan data, client records, and payment history safe and accessible.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon" style="background:rgba(249,115,22,0.15);color:#F97316"><i class="fas fa-credit-card"></i></div>
+          <h3>Stripe Payments</h3>
+          <p>Accept online payments through Stripe integration. Process subscription fees and loan repayments securely.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon" style="background:rgba(20,184,166,0.15);color:#14B8A6"><i class="fas fa-file-pdf"></i></div>
+          <h3>Document Storage</h3>
+          <p>Upload and manage client documents. Attach ID copies, contracts, and proof of income directly to client profiles.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="pricing" style="background:var(--bg2)">
+    <div class="container">
+      <div class="section-title">
+        <h2>Plans & Pricing</h2>
+        <p>Choose the right plan for your lending business</p>
+      </div>
+      <div class="pricing-grid">
+        <div class="plan">
+          <h3>Starter</h3>
+          <p style="font-size:13px;color:var(--text-muted)">For small lenders</p>
+          <div class="price">29<span>/mo</span></div>
+          <ul>
+            <li><i class="fas fa-check"></i> Up to 50 clients</li>
+            <li><i class="fas fa-check"></i> Remote device lock/unlock</li>
+            <li><i class="fas fa-check"></i> Payment tracking & reminders</li>
+            <li><i class="fas fa-check"></i> Basic analytics dashboard</li>
+            <li><i class="fas fa-check"></i> 2 languages (ET + EN)</li>
+            <li><i class="fas fa-check"></i> Email support</li>
+          </ul>
+          <a href="#contact" onclick="showPage('contact')" class="btn btn-outline">Get Started</a>
+        </div>
+        <div class="plan featured">
+          <div class="plan-badge">Most Popular</div>
+          <h3>Professional</h3>
+          <p style="font-size:13px;color:var(--text-muted)">For growing businesses</p>
+          <div class="price">79<span>/mo</span></div>
+          <ul>
+            <li><i class="fas fa-check"></i> Up to 500 clients</li>
+            <li><i class="fas fa-check"></i> All Starter features</li>
+            <li><i class="fas fa-check"></i> Automated payment scheduling</li>
+            <li><i class="fas fa-check"></i> Advanced analytics & charts</li>
+            <li><i class="fas fa-check"></i> PDF/CSV report exports</li>
+            <li><i class="fas fa-check"></i> Scheduled email reports</li>
+            <li><i class="fas fa-check"></i> NFC/QR provisioning</li>
+            <li><i class="fas fa-check"></i> All 16 languages</li>
+            <li><i class="fas fa-check"></i> Team management (5 users)</li>
+            <li><i class="fas fa-check"></i> Telegram notifications</li>
+            <li><i class="fas fa-check"></i> Priority support</li>
+          </ul>
+          <a href="#contact" onclick="showPage('contact')" class="btn btn-primary">Get Started</a>
+        </div>
+        <div class="plan">
+          <h3>Enterprise</h3>
+          <p style="font-size:13px;color:var(--text-muted)">For large operations</p>
+          <div class="price">199<span>/mo</span></div>
+          <ul>
+            <li><i class="fas fa-check"></i> Unlimited clients</li>
+            <li><i class="fas fa-check"></i> All Professional features</li>
+            <li><i class="fas fa-check"></i> Unlimited team members</li>
+            <li><i class="fas fa-check"></i> Bank statement OCR (ASICE/PDF)</li>
+            <li><i class="fas fa-check"></i> Google Drive backup</li>
+            <li><i class="fas fa-check"></i> Stripe payment integration</li>
+            <li><i class="fas fa-check"></i> Document storage</li>
+            <li><i class="fas fa-check"></i> Bulk CSV import</li>
+            <li><i class="fas fa-check"></i> Custom branding</li>
+            <li><i class="fas fa-check"></i> Dedicated support</li>
+          </ul>
+          <a href="#contact" onclick="showPage('contact')" class="btn btn-outline">Contact Sales</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ABOUT US PAGE -->
+<div id="page-about" style="display:none">
+  <section class="page-hero">
+    <div class="container">
+      <h1>About PayLock Pro</h1>
+      <p>Innovative IT solutions from Estonia, built for secure loan management</p>
+    </div>
+  </section>
+  <section class="page-content">
+    <div class="container">
+      <div class="about-grid">
+        <div class="about-text">
+          <h2>Pioneering Secure Loan Technology from Estonia</h2>
+          <p>PayLock Pro is an <strong>innovative</strong> fintech solution developed in <strong>Estonia</strong>, one of Europe's leading IT hubs. Our platform combines cutting-edge device management technology with comprehensive loan administration tools, providing a <strong>secure</strong> and efficient way for lending businesses to operate.</p>
+          <p>Founded by a team of experienced <strong>IT</strong> professionals, we understand the unique challenges that modern loan providers face. Our Estonian heritage means we build with privacy-first design, GDPR compliance, and the digital-forward thinking that has made Estonia a global leader in e-governance and <strong>secure</strong> digital services.</p>
+          <p>Our mission is to provide <strong>innovative</strong>, enterprise-grade tools that make loan management simple, transparent, and <strong>secure</strong> for businesses of every size. From small micro-lenders to large financial institutions, PayLock Pro scales with your needs while maintaining the highest standards of <strong>IT</strong> security and data protection.</p>
+          <div class="about-values">
+            <div class="value-card">
+              <i class="fas fa-shield-alt"></i>
+              <h4>Security First</h4>
+              <p>Bank-grade encryption and secure device management protocols protect every transaction.</p>
+            </div>
+            <div class="value-card">
+              <i class="fas fa-lightbulb"></i>
+              <h4>Innovation</h4>
+              <p>Continuously evolving with NFC provisioning, OCR, and automated scheduling technologies.</p>
+            </div>
+            <div class="value-card">
+              <i class="fas fa-globe-europe"></i>
+              <h4>Estonian Heritage</h4>
+              <p>Built in one of the world's most advanced digital societies with strong IT infrastructure.</p>
+            </div>
+            <div class="value-card">
+              <i class="fas fa-hands-helping"></i>
+              <h4>Compliance</h4>
+              <p>Full GDPR compliance and transparent data handling across all 16 supported languages.</p>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;text-align:center">
+            <div style="font-size:48px;font-weight:800;color:var(--accent);margin-bottom:8px">2024</div>
+            <div style="font-size:14px;color:var(--text-muted)">Founded in Tallinn, Estonia</div>
+          </div>
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;text-align:center">
+            <div style="font-size:48px;font-weight:800;color:var(--green);margin-bottom:8px">16</div>
+            <div style="font-size:14px;color:var(--text-muted)">Languages supported</div>
+          </div>
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;text-align:center">
+            <div style="font-size:48px;font-weight:800;color:#8B5CF6;margin-bottom:8px">EU</div>
+            <div style="font-size:14px;color:var(--text-muted)">GDPR fully compliant</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- CONTACT PAGE -->
+<div id="page-contact" style="display:none">
+  <section class="page-hero">
+    <div class="container">
+      <h1>Contact Us</h1>
+      <p>Get in touch with our team. We'd love to hear from you.</p>
+    </div>
+  </section>
+  <section class="page-content">
+    <div class="container">
+      <div class="contact-grid">
+        <div class="contact-info">
+          <h2>Let's Talk</h2>
+          <p>Whether you're looking for a demo, have a question about pricing, or need technical support, our team is here to help. Reach out and we'll respond within 24 hours.</p>
+          <div class="contact-detail">
+            <i class="fas fa-envelope"></i>
+            <div><div class="label">Email</div><div>paylockpro@gmail.com</div></div>
+          </div>
+          <div class="contact-detail">
+            <i class="fas fa-map-marker-alt"></i>
+            <div><div class="label">Location</div><div>Tallinn, Estonia</div></div>
+          </div>
+          <div class="contact-detail">
+            <i class="fab fa-telegram"></i>
+            <div><div class="label">Telegram</div><div>@PayLockPro</div></div>
+          </div>
+          <div style="margin-top:32px;padding:24px;background:var(--card);border:1px solid var(--border);border-radius:14px">
+            <h4 style="font-size:14px;margin-bottom:8px">Business Hours</h4>
+            <p style="font-size:13px;color:var(--text-muted)">Monday - Friday: 9:00 - 18:00 EET</p>
+            <p style="font-size:13px;color:var(--text-muted)">Saturday - Sunday: Closed</p>
+          </div>
+        </div>
+        <div class="contact-form">
+          <h3 style="margin-bottom:20px;font-size:18px">Send a Message</h3>
+          <div class="form-row">
+            <div class="form-group"><label>Name</label><input id="c-name" placeholder="Your name" data-testid="contact-name"></div>
+            <div class="form-group"><label>Email</label><input id="c-email" type="email" placeholder="your@email.com" data-testid="contact-email"></div>
+          </div>
+          <div class="form-group"><label>Subject</label>
+            <select id="c-subject" data-testid="contact-subject">
+              <option>General Inquiry</option>
+              <option>Request a Demo</option>
+              <option>Pricing Question</option>
+              <option>Technical Support</option>
+              <option>Partnership</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Message</label><textarea id="c-message" placeholder="How can we help you?" data-testid="contact-message"></textarea></div>
+          <button class="btn btn-primary" style="width:100%" onclick="submitContact()" data-testid="contact-submit-btn"><i class="fas fa-paper-plane" style="margin-right:8px"></i>Send Message</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="logo">Pay<span>Lock</span> Pro</div>
+        <p>An innovative, secure IT solution from Estonia for modern loan providers. Enterprise-grade device management and loan administration.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="#features" onclick="showPage('home');setTimeout(()=>document.getElementById('features')?.scrollIntoView({behavior:'smooth'}),100)">Features</a>
+        <a href="#pricing" onclick="showPage('home');setTimeout(()=>document.getElementById('pricing')?.scrollIntoView({behavior:'smooth'}),100)">Pricing</a>
+        <a href="API_PLACEHOLDER/api/portal">Admin Portal</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="#about" onclick="showPage('about')">About Us</a>
+        <a href="#contact" onclick="showPage('contact')">Contact</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+        <a href="#">GDPR</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div>2024-2026 PayLock Pro. All rights reserved.</div>
+      <div>Made with care in Estonia</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+const API_BASE = 'API_PLACEHOLDER';
+
+function showPage(page) {
+  document.getElementById('page-home').style.display = page === 'home' ? '' : 'none';
+  document.getElementById('page-about').style.display = page === 'about' ? '' : 'none';
+  document.getElementById('page-contact').style.display = page === 'contact' ? '' : 'none';
+  window.scrollTo(0, 0);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 3500);
+}
+
+async function submitContact() {
+  const name = document.getElementById('c-name').value;
+  const email = document.getElementById('c-email').value;
+  const subject = document.getElementById('c-subject').value;
+  const message = document.getElementById('c-message').value;
+
+  if (!email || !message) { showToast('Please fill email and message'); return; }
+
+  try {
+    const res = await fetch(API_BASE + '/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, subject, message })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Message sent successfully!');
+      document.getElementById('c-name').value = '';
+      document.getElementById('c-email').value = '';
+      document.getElementById('c-message').value = '';
+    } else {
+      showToast(data.error || 'Failed to send');
+    }
+  } catch(e) {
+    showToast('Error sending message');
+  }
+}
+</script>
+</body>
+</html>
