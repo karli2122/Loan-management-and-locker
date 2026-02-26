@@ -10,7 +10,7 @@ export interface LanguageOption {
 }
 
 export const LANGUAGES: LanguageOption[] = [
-  { code: 'en', name: 'English', flag: 'GB' },
+  { code: 'en', name: 'English', flag: 'EU' },
   { code: 'no', name: 'Norsk', flag: 'NO' },
   { code: 'sv', name: 'Svenska', flag: 'SE' },
   { code: 'da', name: 'Dansk', flag: 'DK' },
