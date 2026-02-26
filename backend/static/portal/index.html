@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayLock Pro - Admin Portal</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0f1a;
+  --bg-card: #111827;
+  --bg-input: #1a2236;
+  --border: #1e293b;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --accent: #06b6d4;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --radius: 10px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+a { color:var(--primary); text-decoration:none; }
+button { cursor:pointer; font-family:inherit; }
+input,select,textarea { font-family:inherit; }
+
+/* Login Screen */
+.login-screen { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px; }
+.login-box { background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:40px; width:100%; max-width:400px; }
+.login-box h1 { font-size:24px; margin-bottom:6px; }
+.login-box .subtitle { color:var(--text-muted); margin-bottom:28px; font-size:14px; }
+.login-box .logo-row { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+.login-box .logo-icon { width:48px; height:48px; background:linear-gradient(135deg,var(--primary),var(--accent)); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; color:#fff; font-weight:700; }
+.form-group { margin-bottom:16px; }
+.form-group label { display:block; font-size:13px; color:var(--text-muted); margin-bottom:6px; }
+.form-group input { width:100%; padding:10px 14px; background:var(--bg-input); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:14px; outline:none; transition:border .2s; }
+.form-group input:focus { border-color:var(--primary); }
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 20px; border-radius:8px; font-size:14px; font-weight:600; border:none; transition:all .2s; }
+.btn-primary { background:var(--primary); color:#fff; width:100%; }
+.btn-primary:hover { background:var(--primary-hover); }
+.btn-sm { padding:6px 14px; font-size:13px; }
+.btn-danger { background:var(--danger); color:#fff; }
+.btn-success { background:var(--success); color:#fff; }
+.btn-warning { background:var(--warning); color:#000; }
+.btn-outline { background:transparent; border:1px solid var(--border); color:var(--text-muted); }
+.btn-outline:hover { border-color:var(--primary); color:var(--primary); }
+.btn-ghost { background:transparent; color:var(--text-muted); padding:6px 10px; }
+.btn-ghost:hover { color:var(--text); }
+.error-msg { color:var(--danger); font-size:13px; margin-top:8px; }
+
+/* Layout */
+.app-layout { display:flex; min-height:100vh; }
+.sidebar { width:240px; background:var(--bg-card); border-right:1px solid var(--border); padding:16px 0; display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:100; }
+.sidebar .logo { display:flex; align-items:center; gap:10px; padding:8px 20px 20px; border-bottom:1px solid var(--border); margin-bottom:8px; }
+.sidebar .logo-icon { width:36px; height:36px; background:linear-gradient(135deg,var(--primary),var(--accent)); border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:700; color:#fff; font-size:16px; }
+.sidebar .logo span { font-weight:700; font-size:16px; }
+.nav-section { padding:8px 12px; }
+.nav-section .section-title { font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; padding:4px 8px; margin-bottom:4px; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:8px; color:var(--text-muted); font-size:13px; cursor:pointer; transition:all .15s; margin-bottom:2px; }
+.nav-item:hover { background:rgba(59,130,246,.08); color:var(--text); }
+.nav-item.active { background:rgba(59,130,246,.15); color:var(--primary); font-weight:600; }
+.nav-item i { width:18px; text-align:center; font-size:14px; }
+.sidebar-footer { margin-top:auto; padding:12px 16px; border-top:1px solid var(--border); }
+.sidebar-footer .user-info { display:flex; align-items:center; gap:10px; padding:8px; }
+.sidebar-footer .avatar { width:32px; height:32px; border-radius:8px; background:var(--primary); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#fff; }
+.sidebar-footer .username { font-size:13px; font-weight:600; }
+.sidebar-footer .role { font-size:11px; color:var(--text-dim); }
+
+.main-content { margin-left:240px; flex:1; padding:24px 28px; min-height:100vh; }
+.page-header { margin-bottom:24px; }
+.page-header h2 { font-size:22px; font-weight:700; }
+.page-header p { color:var(--text-muted); font-size:14px; margin-top:4px; }
+
+/* Cards & Stats */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:16px; margin-bottom:24px; }
+.stat-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:18px; }
+.stat-card .stat-label { font-size:12px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.5px; }
+.stat-card .stat-value { font-size:28px; font-weight:700; margin:6px 0 2px; }
+.stat-card .stat-sub { font-size:12px; color:var(--text-muted); }
+.stat-card.accent .stat-value { color:var(--primary); }
+.stat-card.success .stat-value { color:var(--success); }
+.stat-card.warning .stat-value { color:var(--warning); }
+.stat-card.danger .stat-value { color:var(--danger); }
+
+.card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:16px; }
+.card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.card-header h3 { font-size:16px; font-weight:600; }
+
+/* Table */
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+thead th { text-align:left; padding:10px 12px; color:var(--text-dim); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--border); }
+tbody td { padding:10px 12px; border-bottom:1px solid rgba(30,41,59,.5); }
+tbody tr:hover { background:rgba(59,130,246,.04); }
+.badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+.badge-success { background:rgba(16,185,129,.15); color:var(--success); }
+.badge-danger { background:rgba(239,68,68,.15); color:var(--danger); }
+.badge-warning { background:rgba(245,158,11,.15); color:var(--warning); }
+.badge-info { background:rgba(59,130,246,.15); color:var(--primary); }
+
+/* Modal */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:1000; }
+.modal { background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:28px; width:90%; max-width:520px; max-height:90vh; overflow-y:auto; }
+.modal h3 { font-size:18px; margin-bottom:16px; }
+.modal .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+/* Toast */
+.toast { position:fixed; top:20px; right:20px; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:14px 20px; z-index:2000; font-size:13px; animation:slideIn .3s ease; box-shadow:0 8px 32px rgba(0,0,0,.3); }
+.toast.success { border-left:3px solid var(--success); }
+.toast.error { border-left:3px solid var(--danger); }
+@keyframes slideIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+
+/* Loading */
+.spinner { width:20px; height:20px; border:2px solid var(--border); border-top-color:var(--primary); border-radius:50%; animation:spin .6s linear infinite; display:inline-block; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-page { display:flex; align-items:center; justify-content:center; height:60vh; flex-direction:column; gap:12px; color:var(--text-muted); }
+
+/* Detail panel */
+.detail-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+.detail-item { padding:12px; background:var(--bg-input); border-radius:8px; }
+.detail-item .label { font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.5px; }
+.detail-item .value { font-size:15px; font-weight:600; margin-top:4px; }
+
+/* Tabs */
+.tabs { display:flex; gap:4px; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:0; }
+.tab { padding:8px 16px; font-size:13px; color:var(--text-muted); cursor:pointer; border-bottom:2px solid transparent; transition:all .2s; background:none; border-top:none; border-left:none; border-right:none; }
+.tab.active { color:var(--primary); border-bottom-color:var(--primary); font-weight:600; }
+.tab:hover { color:var(--text); }
+
+/* Search */
+.search-bar { display:flex; gap:12px; margin-bottom:16px; }
+.search-bar input { flex:1; padding:9px 14px; background:var(--bg-input); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; outline:none; }
+.search-bar input:focus { border-color:var(--primary); }
+
+/* Action buttons row */
+.action-row { display:flex; gap:8px; flex-wrap:wrap; }
+
+/* Responsive */
+@media(max-width:768px) {
+  .sidebar { width:60px; }
+  .sidebar .logo span, .nav-item span, .section-title, .sidebar-footer .username, .sidebar-footer .role { display:none; }
+  .main-content { margin-left:60px; padding:16px; }
+  .stats-grid { grid-template-columns:1fr 1fr; }
+  .modal .form-row { grid-template-columns:1fr; }
+}
+
+.hidden { display:none !important; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const API_BASE = window.location.origin + '/api';
+let state = { token: localStorage.getItem('plp_token'), user: null, page: 'dashboard', clients: [], selectedClient: null, modal: null };
+
+// API helper
+async function api(method, path, body) {
+  const sep = path.includes('?') ? '&' : '?';
+  const url = `${API_BASE}${path}${state.token ? sep + 'admin_token=' + state.token : ''}`;
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body && method !== 'GET') opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  if (res.status === 401) { logout(); throw new Error('Session expired'); }
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || data.error || 'Request failed');
+  return data;
+}
+
+function toast(msg, type='success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function logout() {
+  state.token = null; state.user = null;
+  localStorage.removeItem('plp_token');
+  render();
+}
+
+function navigate(page) { state.page = page; state.selectedClient = null; render(); }
+
+// Render engine
+function render() {
+  const app = document.getElementById('app');
+  if (!state.token) { app.innerHTML = renderLogin(); bindLogin(); return; }
+  if (!state.user) { app.innerHTML = '<div class="loading-page"><div class="spinner"></div>Loading...</div>'; loadUser(); return; }
+  app.innerHTML = renderSidebar() + `<div class="main-content" id="page-content"></div>`;
+  bindSidebar();
+  loadPage();
+}
+
+// Login
+function renderLogin() {
+  return `<div class="login-screen"><div class="login-box">
+    <div class="logo-row"><div class="logo-icon">P</div><div><h1>PayLock Pro</h1><p class="subtitle">Admin Portal</p></div></div>
+    <form id="login-form">
+      <div class="form-group"><label>Username</label><input id="login-user" type="text" placeholder="Enter username" data-testid="login-username" required></div>
+      <div class="form-group"><label>Password</label><input id="login-pass" type="password" placeholder="Enter password" data-testid="login-password" required></div>
+      <div id="login-error" class="error-msg hidden"></div>
+      <button type="submit" class="btn btn-primary" style="margin-top:8px" data-testid="login-submit"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+    </form>
+  </div></div>`;
+}
+
+function bindLogin() {
+  document.getElementById('login-form').onsubmit = async(e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('login-error');
+    errEl.classList.add('hidden');
+    try {
+      const data = await fetch(`${API_BASE}/admin/login`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ username: document.getElementById('login-user').value, password: document.getElementById('login-pass').value })
+      }).then(r=>r.json());
+      if (data.token) { state.token = data.token; state.user = data; localStorage.setItem('plp_token', data.token); toast('Welcome back!'); render(); }
+      else { errEl.textContent = data.detail || 'Login failed'; errEl.classList.remove('hidden'); }
+    } catch(err) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
+  };
+}
+
+async function loadUser() {
+  try {
+    const data = await api('GET', `/admin/verify/${state.token}`);
+    state.user = data;
+    render();
+  } catch { logout(); }
+}
+
+// Sidebar
+function renderSidebar() {
+  const items = [
+    { id:'dashboard', icon:'fa-chart-line', label:'Dashboard' },
+    { id:'clients', icon:'fa-users', label:'Clients' },
+    { id:'loans', icon:'fa-hand-holding-usd', label:'Loan Plans' },
+    { id:'reminders', icon:'fa-bell', label:'Reminders' },
+    { id:'reports', icon:'fa-chart-bar', label:'Reports' },
+    { id:'devices', icon:'fa-mobile-alt', label:'Devices' },
+    { id:'settings', icon:'fa-cog', label:'Settings' },
+  ];
+  return `<div class="sidebar" data-testid="sidebar">
+    <div class="logo"><div class="logo-icon">P</div><span>PayLock Pro</span></div>
+    <div class="nav-section">
+      <div class="section-title">Menu</div>
+      ${items.map(i => `<div class="nav-item ${state.page===i.id?'active':''}" data-page="${i.id}" data-testid="nav-${i.id}"><i class="fas ${i.icon}"></i><span>${i.label}</span></div>`).join('')}
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-info"><div class="avatar">${(state.user?.username||'A')[0].toUpperCase()}</div><div><div class="username">${state.user?.username||'Admin'}</div><div class="role">${state.user?.is_super_admin?'Super Admin':'Admin'}</div></div></div>
+      <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="logout()" data-testid="logout-btn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button>
+    </div>
+  </div>`;
+}
+
+function bindSidebar() {
+  document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+    el.onclick = () => navigate(el.dataset.page);
+  });
+}
+
+// Page loading
+async function loadPage() {
+  const el = document.getElementById('page-content');
+  el.innerHTML = '<div class="loading-page"><div class="spinner"></div>Loading...</div>';
+  try {
+    switch(state.page) {
+      case 'dashboard': await renderDashboard(el); break;
+      case 'clients': state.selectedClient ? await renderClientDetail(el) : await renderClients(el); break;
+      case 'loans': await renderLoanPlans(el); break;
+      case 'reminders': await renderReminders(el); break;
+      case 'reports': await renderReports(el); break;
+      case 'devices': await renderDevices(el); break;
+      case 'settings': await renderSettings(el); break;
+      default: el.innerHTML = '<p>Page not found</p>';
+    }
+  } catch(err) { el.innerHTML = `<div class="card"><p class="error-msg">Error: ${err.message}</p></div>`; }
+}
+
+// Dashboard
+async function renderDashboard(el) {
+  const [dash, collection] = await Promise.all([
+    api('GET', '/analytics/dashboard'),
+    api('GET', '/reports/collection')
+  ]);
+  const o = dash.overview; const f = dash.financial;
+  el.innerHTML = `
+    <div class="page-header"><h2>Dashboard</h2><p>Overview of your loan management</p></div>
+    <div class="stats-grid" data-testid="dashboard-stats">
+      <div class="stat-card accent"><div class="stat-label">Total Clients</div><div class="stat-value">${o.total_clients}</div><div class="stat-sub">${o.registered} registered</div></div>
+      <div class="stat-card success"><div class="stat-label">Total Collected</div><div class="stat-value">${cur(f.total_collected)}</div><div class="stat-sub">${f.collection_rate.toFixed(1)}% rate</div></div>
+      <div class="stat-card warning"><div class="stat-label">Outstanding</div><div class="stat-value">${cur(f.total_outstanding)}</div><div class="stat-sub">${o.active_loans} active loans</div></div>
+      <div class="stat-card danger"><div class="stat-label">Overdue</div><div class="stat-value">${o.overdue}</div><div class="stat-sub">clients overdue</div></div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Disbursed</div><div class="stat-value">${cur(f.total_disbursed)}</div></div>
+      <div class="stat-card"><div class="stat-label">Locked Devices</div><div class="stat-value">${o.locked}</div></div>
+      <div class="stat-card"><div class="stat-label">This Month</div><div class="stat-value">${cur(collection.this_month?.total_collected||0)}</div><div class="stat-sub">${collection.this_month?.number_of_payments||0} payments</div></div>
+      <div class="stat-card"><div class="stat-label">Late Fees</div><div class="stat-value">${cur(collection.financial?.total_late_fees||0)}</div></div>
+    </div>
+    <div class="card"><div class="card-header"><h3>Recent Activity</h3></div>
+      ${dash.activity_log?.length ? `<table><thead><tr><th>Client</th><th>Action</th><th>Time</th></tr></thead><tbody>
+        ${dash.activity_log.map(a => `<tr><td>${a.client_name}</td><td>${a.details}</td><td>${fmtDate(a.timestamp)}</td></tr>`).join('')}
+      </tbody></table>` : '<p style="color:var(--text-muted);font-size:13px">No recent activity</p>'}
+    </div>`;
+}
+
+// Clients
+async function renderClients(el) {
+  const data = await api('GET', '/clients');
+  state.clients = data.clients || [];
+  el.innerHTML = `
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:start">
+      <div><h2>Clients</h2><p>${state.clients.length} total clients</p></div>
+      <button class="btn btn-primary btn-sm" onclick="showAddClient()" data-testid="add-client-btn"><i class="fas fa-plus"></i> Add Client</button>
+    </div>
+    <div class="search-bar"><input id="client-search" placeholder="Search clients..." oninput="filterClients()" data-testid="client-search"></div>
+    <div class="card"><div class="table-wrap"><table data-testid="clients-table">
+      <thead><tr><th>Name</th><th>Phone</th><th>Loan</th><th>Outstanding</th><th>Status</th><th>Device</th><th></th></tr></thead>
+      <tbody id="clients-tbody">${renderClientRows(state.clients)}</tbody>
+    </table></div></div>`;
+}
+
+function renderClientRows(clients) {
+  if (!clients.length) return '<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">No clients found</td></tr>';
+  return clients.map(c => {
+    const status = c.outstanding_balance > 0 ? (c.days_overdue > 0 ? 'danger' : 'info') : 'success';
+    const statusText = c.outstanding_balance > 0 ? (c.days_overdue > 0 ? `${c.days_overdue}d overdue` : 'Active') : 'Paid';
+    return `<tr>
+      <td><b>${esc(c.name)}</b></td><td>${esc(c.phone||'-')}</td><td>${cur(c.loan_amount||0)}</td><td>${cur(c.outstanding_balance||0)}</td>
+      <td><span class="badge badge-${status}">${statusText}</span></td>
+      <td>${c.is_locked ? '<span class="badge badge-danger"><i class="fas fa-lock"></i> Locked</span>' : (c.is_registered ? '<span class="badge badge-success"><i class="fas fa-unlock"></i> Active</span>' : '<span class="badge badge-warning">Unregistered</span>')}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="viewClient('${c.id}')" data-testid="view-client-${c.id}"><i class="fas fa-eye"></i></button></td>
+    </tr>`;
+  }).join('');
+}
+
+function filterClients() {
+  const q = document.getElementById('client-search').value.toLowerCase();
+  const filtered = state.clients.filter(c => c.name.toLowerCase().includes(q) || (c.phone||'').includes(q));
+  document.getElementById('clients-tbody').innerHTML = renderClientRows(filtered);
+}
+
+async function viewClient(id) {
+  state.selectedClient = state.clients.find(c => c.id === id);
+  await renderClientDetail(document.getElementById('page-content'));
+}
+
+async function renderClientDetail(el) {
+  const c = state.selectedClient;
+  if (!c) { navigate('clients'); return; }
+  const payments = await api('GET', `/loans/payments/${c.id}`).catch(() => []);
+  el.innerHTML = `
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:start">
+      <div><button class="btn btn-ghost" onclick="navigate('clients')" data-testid="back-to-clients"><i class="fas fa-arrow-left"></i> Back</button><h2 style="margin-top:8px">${esc(c.name)}</h2></div>
+      <div class="action-row">
+        ${c.is_locked ? `<button class="btn btn-success btn-sm" onclick="toggleLock('${c.id}',false)" data-testid="unlock-btn"><i class="fas fa-unlock"></i> Unlock</button>` : `<button class="btn btn-danger btn-sm" onclick="toggleLock('${c.id}',true)" data-testid="lock-btn"><i class="fas fa-lock"></i> Lock</button>`}
+        <button class="btn btn-outline btn-sm" onclick="showEditClient('${c.id}')" data-testid="edit-client-btn"><i class="fas fa-edit"></i> Edit</button>
+        <button class="btn btn-outline btn-sm" onclick="sendReminder('${c.id}','email')" data-testid="send-email-btn"><i class="fas fa-envelope"></i> Email</button>
+        <button class="btn btn-outline btn-sm" onclick="sendReminder('${c.id}','whatsapp')" data-testid="send-whatsapp-btn"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+        <button class="btn btn-outline btn-sm" onclick="downloadContract('${c.id}')" data-testid="download-contract-btn"><i class="fas fa-file-pdf"></i> Contract</button>
+      </div>
+    </div>
+    <div class="detail-grid" data-testid="client-details">
+      <div class="detail-item"><div class="label">Phone</div><div class="value">${esc(c.phone||'-')}</div></div>
+      <div class="detail-item"><div class="label">Email</div><div class="value">${esc(c.email||'-')}</div></div>
+      <div class="detail-item"><div class="label">Address</div><div class="value">${esc(c.address||'-')}</div></div>
+      <div class="detail-item"><div class="label">ID Code</div><div class="value">${esc(c.birth_number||'-')}</div></div>
+      <div class="detail-item"><div class="label">Loan Amount</div><div class="value">${cur(c.loan_amount||0)}</div></div>
+      <div class="detail-item"><div class="label">Total Due</div><div class="value">${cur(c.total_amount_due||c.outstanding_balance||0)}</div></div>
+      <div class="detail-item"><div class="label">Total Paid</div><div class="value" style="color:var(--success)">${cur(c.total_paid||0)}</div></div>
+      <div class="detail-item"><div class="label">Outstanding</div><div class="value" style="color:${c.outstanding_balance>0?'var(--warning)':'var(--success)'}">${cur(c.outstanding_balance||0)}</div></div>
+      <div class="detail-item"><div class="label">Interest Rate</div><div class="value">${c.interest_rate||0}%</div></div>
+      <div class="detail-item"><div class="label">Next Payment</div><div class="value">${c.next_payment_due ? fmtDate(c.next_payment_due) : '-'}</div></div>
+      <div class="detail-item"><div class="label">Days Overdue</div><div class="value" style="color:${(c.days_overdue||0)>0?'var(--danger)':'var(--text)'}">${c.days_overdue||0}</div></div>
+      <div class="detail-item"><div class="label">Device</div><div class="value">${c.is_locked?'<span style="color:var(--danger)">Locked</span>':c.is_registered?'<span style="color:var(--success)">Active</span>':'Unregistered'}</div></div>
+    </div>
+    <div class="card" style="margin-top:16px"><div class="card-header"><h3>Record Payment</h3></div>
+      <div style="display:flex;gap:12px;align-items:end">
+        <div class="form-group" style="flex:1;margin:0"><label>Amount (€)</label><input id="pay-amount" type="number" step="0.01" placeholder="0.00" data-testid="payment-amount"></div>
+        <button class="btn btn-success btn-sm" onclick="recordPayment('${c.id}')" data-testid="record-payment-btn"><i class="fas fa-plus"></i> Record</button>
+      </div>
+    </div>
+    <div class="card"><div class="card-header"><h3>Payment History</h3></div>
+      <div class="table-wrap"><table data-testid="payments-table"><thead><tr><th>Date</th><th>Amount</th><th>Method</th></tr></thead><tbody>
+        ${(Array.isArray(payments)?payments:[]).map(p => `<tr><td>${fmtDate(p.payment_date)}</td><td>${cur(p.amount)}</td><td>${esc(p.payment_method||'cash')}</td></tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">No payments</td></tr>'}
+      </tbody></table></div>
+    </div>`;
+}
+
+// Client actions
+async function toggleLock(id, lock) {
+  try {
+    await api('POST', `/device/${lock?'lock':'unlock'}/${id}`);
+    toast(lock ? 'Device locked' : 'Device unlocked');
+    state.selectedClient = { ...state.selectedClient, is_locked: lock };
+    renderClientDetail(document.getElementById('page-content'));
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function recordPayment(clientId) {
+  const amount = parseFloat(document.getElementById('pay-amount').value);
+  if (!amount || amount <= 0) { toast('Enter a valid amount', 'error'); return; }
+  try {
+    await api('POST', '/loans/payment', { client_id: clientId, amount, payment_method: 'cash' });
+    toast('Payment recorded');
+    // Refresh client data
+    const data = await api('GET', '/clients');
+    state.clients = data.clients || [];
+    state.selectedClient = state.clients.find(c => c.id === clientId);
+    renderClientDetail(document.getElementById('page-content'));
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function sendReminder(clientId, type) {
+  try {
+    if (type === 'email') {
+      const res = await api('POST', `/reminders/send-email/${clientId}`);
+      toast(res.message || 'Email sent');
+    } else {
+      const res = await api('GET', `/reminders/whatsapp-link/${clientId}`);
+      if (res.deep_link) window.open(res.deep_link, '_blank');
+      else toast('No phone number', 'error');
+    }
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function downloadContract(clientId) {
+  window.open(`${API_BASE}/contracts/${clientId}/download?admin_token=${state.token}`, '_blank');
+}
+
+function showAddClient() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal">
+    <h3>Add New Client</h3>
+    <form id="add-client-form">
+      <div class="form-row">
+        <div class="form-group"><label>Name *</label><input id="nc-name" required data-testid="new-client-name"></div>
+        <div class="form-group"><label>Phone</label><input id="nc-phone" data-testid="new-client-phone"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Email</label><input id="nc-email" type="email" data-testid="new-client-email"></div>
+        <div class="form-group"><label>ID Code</label><input id="nc-birth" data-testid="new-client-birth"></div>
+      </div>
+      <div class="form-group"><label>Address</label><input id="nc-addr" data-testid="new-client-address"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Loan Amount (€)</label><input id="nc-loan" type="number" step="0.01" data-testid="new-client-loan"></div>
+        <div class="form-group"><label>Interest Rate (%)</label><input id="nc-rate" type="number" step="0.1" data-testid="new-client-rate"></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" data-testid="save-client-btn"><i class="fas fa-save"></i> Save</button>
+      </div>
+    </form>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+  document.getElementById('add-client-form').onsubmit = async(e) => {
+    e.preventDefault();
+    try {
+      await api('POST', '/clients', {
+        name: document.getElementById('nc-name').value,
+        phone: document.getElementById('nc-phone').value,
+        email: document.getElementById('nc-email').value,
+        birth_number: document.getElementById('nc-birth').value,
+        address: document.getElementById('nc-addr').value,
+        loan_amount: parseFloat(document.getElementById('nc-loan').value) || 0,
+        interest_rate: parseFloat(document.getElementById('nc-rate').value) || 0,
+      });
+      toast('Client added');
+      closeModal();
+      navigate('clients');
+    } catch(err) { toast(err.message, 'error'); }
+  };
+}
+
+function showEditClient(clientId) {
+  const c = state.selectedClient;
+  if (!c) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal">
+    <h3>Edit Client</h3>
+    <form id="edit-client-form">
+      <div class="form-row">
+        <div class="form-group"><label>Name</label><input id="ec-name" value="${esc(c.name||'')}" data-testid="edit-client-name"></div>
+        <div class="form-group"><label>Phone</label><input id="ec-phone" value="${esc(c.phone||'')}" data-testid="edit-client-phone"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Email</label><input id="ec-email" value="${esc(c.email||'')}" data-testid="edit-client-email"></div>
+        <div class="form-group"><label>Address</label><input id="ec-addr" value="${esc(c.address||'')}" data-testid="edit-client-address"></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" data-testid="save-edit-btn"><i class="fas fa-save"></i> Save</button>
+      </div>
+    </form>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+  document.getElementById('edit-client-form').onsubmit = async(e) => {
+    e.preventDefault();
+    try {
+      await api('PUT', `/clients/${clientId}`, {
+        name: document.getElementById('ec-name').value,
+        phone: document.getElementById('ec-phone').value,
+        email: document.getElementById('ec-email').value,
+        address: document.getElementById('ec-addr').value,
+      });
+      toast('Client updated');
+      closeModal();
+      const data = await api('GET', '/clients');
+      state.clients = data.clients || [];
+      state.selectedClient = state.clients.find(c => c.id === clientId);
+      renderClientDetail(document.getElementById('page-content'));
+    } catch(err) { toast(err.message, 'error'); }
+  };
+}
+
+function closeModal() { document.getElementById('modal-overlay')?.remove(); }
+
+// Loan Plans
+async function renderLoanPlans(el) {
+  const plans = await api('GET', '/loan-plans');
+  el.innerHTML = `
+    <div class="page-header"><h2>Loan Plans</h2><p>Manage your loan plan templates</p></div>
+    <div class="card"><div class="table-wrap"><table data-testid="loan-plans-table">
+      <thead><tr><th>Name</th><th>Interest Rate</th><th>Tenure</th><th>Processing Fee</th><th>Late Fee</th><th>Status</th></tr></thead>
+      <tbody>${(Array.isArray(plans)?plans:[]).map(p => `<tr>
+        <td><b>${esc(p.name)}</b></td><td>${p.interest_rate}%</td><td>${p.min_tenure_months}-${p.max_tenure_months} mo</td>
+        <td>${p.processing_fee_percent}%</td><td>${p.late_fee_percent}%</td>
+        <td><span class="badge badge-${p.is_active?'success':'warning'}">${p.is_active?'Active':'Inactive'}</span></td>
+      </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No loan plans</td></tr>'}</tbody>
+    </table></div></div>`;
+}
+
+// Reminders
+async function renderReminders(el) {
+  const [pending, config] = await Promise.all([
+    api('GET', '/reminders/pending'),
+    api('GET', '/reminders/config')
+  ]);
+  const s = pending.summary;
+  el.innerHTML = `
+    <div class="page-header"><h2>Payment Reminders</h2><p>Send and manage payment reminders</p></div>
+    <div class="stats-grid">
+      <div class="stat-card danger"><div class="stat-label">Overdue</div><div class="stat-value">${s.overdue_count}</div></div>
+      <div class="stat-card warning"><div class="stat-label">Due Today</div><div class="stat-value">${s.due_today_count}</div></div>
+      <div class="stat-card accent"><div class="stat-label">Due Soon</div><div class="stat-value">${s.due_soon_count}</div></div>
+      <div class="stat-card"><div class="stat-label">Upcoming</div><div class="stat-value">${s.upcoming_count}</div></div>
+    </div>
+    <div class="card"><div class="card-header"><h3>Integration Status</h3></div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <span class="badge badge-${config.email_configured?'success':'danger'}"><i class="fas fa-envelope"></i> Email ${config.email_configured?'Connected':'Not configured'}</span>
+        <span class="badge badge-${config.push_configured?'success':'danger'}"><i class="fas fa-bell"></i> Push ${config.push_configured?'Ready':'Unavailable'}</span>
+        <span class="badge badge-${config.whatsapp_configured?'success':'warning'}"><i class="fab fa-whatsapp"></i> WhatsApp ${config.whatsapp_configured?'Connected':'Deep link only'}</span>
+      </div>
+    </div>
+    <div class="action-row" style="margin-bottom:16px">
+      <button class="btn btn-primary btn-sm" onclick="sendBulkEmail()" data-testid="bulk-email-btn"><i class="fas fa-envelope"></i> Send All Emails</button>
+      <button class="btn btn-outline btn-sm" onclick="sendBulkPush()" data-testid="bulk-push-btn"><i class="fas fa-bell"></i> Send All Push</button>
+    </div>
+    ${renderReminderSection('Overdue', pending.overdue, 'danger')}
+    ${renderReminderSection('Due Today', pending.due_today, 'warning')}
+    ${renderReminderSection('Due Soon (1-3 days)', pending.due_soon, 'info')}`;
+}
+
+function renderReminderSection(title, clients, type) {
+  if (!clients?.length) return '';
+  return `<div class="card"><div class="card-header"><h3>${title}</h3><span class="badge badge-${type}">${clients.length}</span></div>
+    <div class="table-wrap"><table><thead><tr><th>Client</th><th>Phone</th><th>Outstanding</th><th>Due Date</th><th>Actions</th></tr></thead><tbody>
+      ${clients.map(c => `<tr><td>${esc(c.client_name)}</td><td>${esc(c.phone||'-')}</td><td>${cur(c.outstanding_balance)}</td><td>${fmtDate(c.next_payment_due)}</td>
+        <td class="action-row"><button class="btn btn-ghost btn-sm" onclick="sendReminder('${c.client_id}','email')"><i class="fas fa-envelope"></i></button>
+        <button class="btn btn-ghost btn-sm" onclick="sendReminder('${c.client_id}','whatsapp')"><i class="fab fa-whatsapp"></i></button></td></tr>`).join('')}
+    </tbody></table></div></div>`;
+}
+
+async function sendBulkEmail() {
+  try { const r = await api('POST', '/reminders/send-bulk-email'); toast(`Sent ${r.sent} emails, ${r.failed} failed`); } catch(e) { toast(e.message, 'error'); }
+}
+async function sendBulkPush() {
+  try { const r = await api('POST', '/reminders/send-push'); toast(r.message); } catch(e) { toast(e.message, 'error'); }
+}
+
+// Reports
+async function renderReports(el) {
+  const [collection, financial, clientsReport] = await Promise.all([
+    api('GET', '/reports/collection'),
+    api('GET', '/reports/financial'),
+    api('GET', '/reports/clients')
+  ]);
+  const f = collection.financial || collection;
+  const cs = clientsReport.summary;
+  el.innerHTML = `
+    <div class="page-header"><h2>Reports & Analytics</h2><p>Financial overview and client insights</p></div>
+    <div class="tabs" data-testid="report-tabs">
+      <button class="tab active" onclick="showReportTab(this,'tab-financial')">Financial</button>
+      <button class="tab" onclick="showReportTab(this,'tab-clients')">Clients</button>
+      <button class="tab" onclick="showReportTab(this,'tab-revenue')">Revenue</button>
+    </div>
+    <div id="tab-financial">
+      <div class="stats-grid">
+        <div class="stat-card accent"><div class="stat-label">Total Disbursed</div><div class="stat-value">${cur(f.total_disbursed)}</div></div>
+        <div class="stat-card success"><div class="stat-label">Total Collected</div><div class="stat-value">${cur(f.total_collected)}</div></div>
+        <div class="stat-card warning"><div class="stat-label">Outstanding</div><div class="stat-value">${cur(f.total_outstanding)}</div></div>
+        <div class="stat-card"><div class="stat-label">Collection Rate</div><div class="stat-value">${(f.collection_rate||0).toFixed(1)}%</div></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Interest Earned</div><div class="stat-value">${cur(financial.totals?.interest_earned||0)}</div></div>
+        <div class="stat-card"><div class="stat-label">Late Fees</div><div class="stat-value">${cur(f.total_late_fees||0)}</div></div>
+        <div class="stat-card"><div class="stat-label">Processing Fees</div><div class="stat-value">${cur(financial.totals?.processing_fees||0)}</div></div>
+        <div class="stat-card success"><div class="stat-label">Total Revenue</div><div class="stat-value">${cur(financial.totals?.total_revenue||0)}</div></div>
+      </div>
+    </div>
+    <div id="tab-clients" class="hidden">
+      <div class="stats-grid">
+        <div class="stat-card success"><div class="stat-label">On Time</div><div class="stat-value">${cs.on_time_clients}</div></div>
+        <div class="stat-card warning"><div class="stat-label">At Risk</div><div class="stat-value">${cs.at_risk_clients}</div></div>
+        <div class="stat-card danger"><div class="stat-label">Defaulted</div><div class="stat-value">${cs.defaulted_clients}</div></div>
+        <div class="stat-card"><div class="stat-label">Completed</div><div class="stat-value">${cs.completed_clients}</div></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card accent"><div class="stat-label">New This Month</div><div class="stat-value">${cs.new_clients_this_month}</div></div>
+        <div class="stat-card"><div class="stat-label">Repeat Customers</div><div class="stat-value">${cs.repeat_customers}</div></div>
+      </div>
+    </div>
+    <div id="tab-revenue" class="hidden">
+      <div class="card"><div class="card-header"><h3>Monthly Revenue</h3></div>
+        <div class="table-wrap"><table><thead><tr><th>Month</th><th>Revenue</th><th>Payments</th><th>Interest</th><th>Principal</th></tr></thead><tbody>
+          ${(financial.monthly_trend||[]).map(m => `<tr><td>${m.month}</td><td>${cur(m.revenue)}</td><td>${m.payments_count}</td><td>${cur(m.interest_earned)}</td><td>${cur(m.principal_collected)}</td></tr>`).join('')
+          || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No data</td></tr>'}
+        </tbody></table></div>
+      </div>
+    </div>`;
+}
+
+function showReportTab(btn, tabId) {
+  btn.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  ['tab-financial','tab-clients','tab-revenue'].forEach(id => {
+    document.getElementById(id)?.classList.toggle('hidden', id !== tabId);
+  });
+}
+
+// Devices
+async function renderDevices(el) {
+  const hb = await api('GET', '/heartbeat/summary');
+  el.innerHTML = `
+    <div class="page-header"><h2>Device Management</h2><p>${hb.total_registered} registered devices</p></div>
+    <div class="stats-grid" data-testid="device-stats">
+      <div class="stat-card success"><div class="stat-label">Online</div><div class="stat-value">${hb.online_count}</div><div class="stat-sub">< ${hb.thresholds.online_minutes} min</div></div>
+      <div class="stat-card warning"><div class="stat-label">Warning</div><div class="stat-value">${hb.warning_count}</div><div class="stat-sub">${hb.thresholds.online_minutes}-${hb.thresholds.warning_minutes} min</div></div>
+      <div class="stat-card danger"><div class="stat-label">Critical</div><div class="stat-value">${hb.critical_count}</div><div class="stat-sub">> ${hb.thresholds.warning_minutes} min</div></div>
+    </div>
+    ${renderDeviceSection('Online', hb.online, 'success')}
+    ${renderDeviceSection('Warning', hb.warning, 'warning')}
+    ${renderDeviceSection('Critical / Offline', hb.critical, 'danger')}`;
+}
+
+function renderDeviceSection(title, devices, type) {
+  if (!devices?.length) return '';
+  return `<div class="card"><div class="card-header"><h3>${title}</h3><span class="badge badge-${type}">${devices.length}</span></div>
+    <div class="table-wrap"><table><thead><tr><th>Client</th><th>Device</th><th>Last Seen</th><th>Lock Status</th></tr></thead><tbody>
+      ${devices.map(d => `<tr><td>${esc(d.name)}</td><td>${esc(d.device_model)}</td><td>${d.minutes_ago!==null? d.minutes_ago+' min ago':'Never'}</td>
+        <td>${d.is_locked?'<span class="badge badge-danger">Locked</span>':'<span class="badge badge-success">Unlocked</span>'}</td></tr>`).join('')}
+    </tbody></table></div></div>`;
+}
+
+// Settings
+async function renderSettings(el) {
+  const settings = await api('GET', '/admin/settings');
+  const admin = await api('GET', '/admin/credits');
+  el.innerHTML = `
+    <div class="page-header"><h2>Settings</h2><p>Manage your account and defaults</p></div>
+    <div class="card"><div class="card-header"><h3>Account</h3></div>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="label">Credits</div><div class="value">${admin.credits}</div></div>
+        <div class="detail-item"><div class="label">Role</div><div class="value">${admin.is_super_admin?'Super Admin':'Admin'}</div></div>
+      </div>
+    </div>
+    <div class="card"><div class="card-header"><h3>Default Settings</h3></div>
+      <div class="form-row" style="gap:16px">
+        <div class="form-group"><label>Late Fee %</label><input id="set-late" type="number" step="0.1" value="${settings.default_late_fee_percent||2}" data-testid="settings-late-fee"></div>
+        <div class="form-group"><label>Auto-Lock Grace Days</label><input id="set-grace" type="number" value="${settings.default_auto_lock_grace_days||3}" data-testid="settings-grace-days"></div>
+      </div>
+      <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="saveSettings()" data-testid="save-settings-btn"><i class="fas fa-save"></i> Save Settings</button>
+    </div>
+    <div class="card"><div class="card-header"><h3>Change Password</h3></div>
+      <div class="form-group"><label>Current Password</label><input id="pw-current" type="password" data-testid="current-password"></div>
+      <div class="form-group"><label>New Password</label><input id="pw-new" type="password" data-testid="new-password"></div>
+      <button class="btn btn-warning btn-sm" style="margin-top:8px" onclick="changePassword()" data-testid="change-password-btn"><i class="fas fa-key"></i> Change Password</button>
+    </div>`;
+}
+
+async function saveSettings() {
+  try {
+    await api('PUT', `/admin/settings?default_late_fee_percent=${document.getElementById('set-late').value}&default_auto_lock_grace_days=${document.getElementById('set-grace').value}`);
+    toast('Settings saved');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function changePassword() {
+  const curr = document.getElementById('pw-current').value;
+  const newPw = document.getElementById('pw-new').value;
+  if (!curr || !newPw) { toast('Fill both fields', 'error'); return; }
+  try {
+    await api('POST', '/admin/change-password', { current_password: curr, new_password: newPw });
+    toast('Password changed');
+    document.getElementById('pw-current').value = '';
+    document.getElementById('pw-new').value = '';
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// Helpers
+function cur(n) { return '€' + (Number(n)||0).toFixed(2); }
+function esc(s) { const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
+function fmtDate(d) {
+  if (!d) return '-';
+  try { const dt = new Date(d); return isNaN(dt) ? String(d).substring(0,10) : dt.toLocaleDateString('en-GB'); } catch { return String(d).substring(0,10); }
+}
+
+// Init
+render();
+</script>
+</body>
+</html>
