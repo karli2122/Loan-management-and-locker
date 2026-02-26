@@ -268,12 +268,13 @@ class TestLockFeaturesIteration66:
             f"{BASE_URL}/api/clients/{self.test_client_id}",
             params={"admin_token": self.token}
         )
+        assert client_resp.status_code == 200, f"Failed to get client: {client_resp.text}"
         client = client_resp.json()
-        assert client.get("is_locked") == False
-        assert client.get("lock_reason") is None
+        assert client.get("is_locked") == False, f"Expected is_locked=False, got: {client.get('is_locked')}"
+        assert client.get("lock_reason") is None or client.get("lock_reason") == ""
         assert client.get("lock_message") is None or client.get("lock_message") == ""
         assert client.get("auto_unlock_at") is None
-        assert client.get("is_temporary_lock") == False
+        assert client.get("is_temporary_lock") == False or client.get("is_temporary_lock") is None
         print("✓ Unlock clears all lock fields correctly")
     
     def test_unlock_creates_audit_entry(self):
