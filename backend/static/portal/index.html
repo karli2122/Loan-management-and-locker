@@ -280,6 +280,10 @@ async function loadPage() {
       case 'reminders': await renderReminders(el); break;
       case 'reports': await renderReports(el); break;
       case 'devices': await renderDevices(el); break;
+      case 'documents': await renderDocuments(el); break;
+      case 'import': await renderImport(el); break;
+      case 'telegram': await renderTelegram(el); break;
+      case 'team': await renderTeam(el); break;
       case 'provisioning': await renderProvisioning(el); break;
       case 'settings': await renderSettings(el); break;
       default: el.innerHTML = '<p>Page not found</p>';
