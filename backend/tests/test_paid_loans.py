@@ -11,7 +11,7 @@ import requests
 import os
 from datetime import datetime
 
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://paylock-features.preview.emergentagent.com')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://paylock-i18n.preview.emergentagent.com')
 
 class TestPaidLoans:
     """Paid Loans / Loan Archiving API tests"""

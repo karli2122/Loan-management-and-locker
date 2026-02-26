@@ -31,7 +31,7 @@
   "seed_data_creation": "None",
   "retest_needed": false,
   "should_main_agent_self_test": false,
-  "context_for_next_testing_agent": "All 5 bug fixes in /app/frontend/app/client/home.tsx have been verified through static code analysis. This is a React Native (Expo) app, not a web app, so Playwright browser testing is not applicable. Backend APIs (/api/health, /api/device/status, /api/device/register) all working correctly. Admin creds: karli1987/nasvakas123. API URL: https://paylock-features.preview.emergentagent.com",
+  "context_for_next_testing_agent": "All 5 bug fixes in /app/frontend/app/client/home.tsx have been verified through static code analysis. This is a React Native (Expo) app, not a web app, so Playwright browser testing is not applicable. Backend APIs (/api/health, /api/device/status, /api/device/register) all working correctly. Admin creds: karli1987/nasvakas123. API URL: https://paylock-i18n.preview.emergentagent.com",
   "bug_fixes_verified": {
     "bug1_uninstall_loop_prevention": {
       "status": "VERIFIED",
