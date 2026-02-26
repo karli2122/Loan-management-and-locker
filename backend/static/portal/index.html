@@ -836,6 +836,307 @@ function setPortalLanguage(lang) {
   toast('Language set to ' + lang.toUpperCase());
 }
 
+// ===================== TEAM MANAGEMENT =====================
+async function renderTeam(el) {
+  let check;
+  try { check = await api('GET', '/team/enterprise-check'); } catch { check = { has_enterprise: false, is_super_admin: false }; }
+  if (!check.has_enterprise && !check.is_super_admin) {
+    el.innerHTML = `<div class="page-header"><h2>Team Management</h2><p>Enterprise plan required</p></div>
+      <div class="card" style="text-align:center;padding:48px"><i class="fas fa-lock" style="font-size:48px;color:var(--text-dim);margin-bottom:16px"></i>
+        <h3>Enterprise Feature</h3><p style="color:var(--text-muted);margin-top:8px">Team management is available on the Enterprise plan. Upgrade to create sub-admin accounts and manage your team.</p></div>`;
+    return;
+  }
+  const [roles, members] = await Promise.all([
+    api('GET', '/team/roles'),
+    api('GET', '/team/members')
+  ]);
+  el.innerHTML = `
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:start">
+      <div><h2>Team Management</h2><p>${members.total} team members</p></div>
+      ${check.is_super_admin ? '<button class="btn btn-primary btn-sm" onclick="showAddMember()" data-testid="add-member-btn"><i class="fas fa-user-plus"></i> Add Member</button>' : ''}
+    </div>
+    <div class="card"><div class="table-wrap"><table data-testid="team-table">
+      <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Email</th><th>Status</th>${check.is_super_admin?'<th>Actions</th>':''}</tr></thead>
+      <tbody>${members.members.map(m => `<tr>
+        <td><b>${esc(m.username)}</b></td>
+        <td>${esc((m.first_name||'')+' '+(m.last_name||''))}</td>
+        <td><span class="badge badge-info">${esc(m.role_label||m.role)}</span></td>
+        <td>${esc(m.email||'-')}</td>
+        <td><span class="badge badge-${m.is_active!==false?'success':'warning'}">${m.is_active!==false?'Active':'Inactive'}</span></td>
+        ${check.is_super_admin && !m.is_super_admin ? `<td class="action-row">
+          <button class="btn btn-ghost btn-sm" onclick="editMember('${m.id}')" data-testid="edit-member-${m.id}"><i class="fas fa-edit"></i></button>
+          <button class="btn btn-ghost btn-sm" onclick="deleteMember('${m.id}','${esc(m.username)}')" data-testid="delete-member-${m.id}"><i class="fas fa-trash" style="color:var(--danger)"></i></button>
+        </td>` : '<td></td>'}
+      </tr>`).join('')}</tbody>
+    </table></div></div>`;
+  window._teamRoles = roles.roles;
+  window._teamMembers = members.members;
+}
+
+function showAddMember() {
+  const roles = window._teamRoles || {};
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay'; overlay.id = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal"><h3>Add Team Member</h3>
+    <form id="add-member-form">
+      <div class="form-row"><div class="form-group"><label>Username *</label><input id="tm-user" required data-testid="tm-username"></div>
+        <div class="form-group"><label>Password *</label><input id="tm-pass" type="password" required data-testid="tm-password"></div></div>
+      <div class="form-row"><div class="form-group"><label>First Name</label><input id="tm-fname" data-testid="tm-fname"></div>
+        <div class="form-group"><label>Last Name</label><input id="tm-lname" data-testid="tm-lname"></div></div>
+      <div class="form-row"><div class="form-group"><label>Email</label><input id="tm-email" type="email" data-testid="tm-email"></div>
+        <div class="form-group"><label>Role</label><select id="tm-role" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)" data-testid="tm-role">
+          ${Object.entries(roles).filter(([k])=>k!=='super_admin').map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}
+        </select></div></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" data-testid="save-member-btn"><i class="fas fa-save"></i> Save</button></div>
+    </form></div>`;
+  document.body.appendChild(overlay);
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+  document.getElementById('add-member-form').onsubmit = async(e) => {
+    e.preventDefault();
+    try {
+      await api('POST', '/team/members', {
+        username: document.getElementById('tm-user').value,
+        password: document.getElementById('tm-pass').value,
+        first_name: document.getElementById('tm-fname').value,
+        last_name: document.getElementById('tm-lname').value,
+        email: document.getElementById('tm-email').value,
+        role: document.getElementById('tm-role').value,
+      });
+      toast('Team member added'); closeModal(); navigate('team');
+    } catch(err) { toast(err.message, 'error'); }
+  };
+}
+
+async function editMember(memberId) {
+  const m = (window._teamMembers||[]).find(x=>x.id===memberId);
+  if (!m) return;
+  const roles = window._teamRoles || {};
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay'; overlay.id = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal"><h3>Edit Team Member</h3>
+    <form id="edit-member-form">
+      <div class="form-row"><div class="form-group"><label>First Name</label><input id="em-fname" value="${esc(m.first_name||'')}" data-testid="em-fname"></div>
+        <div class="form-group"><label>Last Name</label><input id="em-lname" value="${esc(m.last_name||'')}" data-testid="em-lname"></div></div>
+      <div class="form-row"><div class="form-group"><label>Email</label><input id="em-email" value="${esc(m.email||'')}" data-testid="em-email"></div>
+        <div class="form-group"><label>Role</label><select id="em-role" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)" data-testid="em-role">
+          ${Object.entries(roles).filter(([k])=>k!=='super_admin').map(([k,v])=>`<option value="${k}" ${m.role===k?'selected':''}>${v.label}</option>`).join('')}
+        </select></div></div>
+      <div class="form-group"><label>New Password (leave blank to keep)</label><input id="em-pass" type="password" data-testid="em-pass"></div>
+      <div class="form-group"><label><input type="checkbox" id="em-active" ${m.is_active!==false?'checked':''} data-testid="em-active"> Active</label></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" data-testid="save-edit-member-btn"><i class="fas fa-save"></i> Save</button></div>
+    </form></div>`;
+  document.body.appendChild(overlay);
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+  document.getElementById('edit-member-form').onsubmit = async(e) => {
+    e.preventDefault();
+    const data = {
+      first_name: document.getElementById('em-fname').value,
+      last_name: document.getElementById('em-lname').value,
+      email: document.getElementById('em-email').value,
+      role: document.getElementById('em-role').value,
+      is_active: document.getElementById('em-active').checked,
+    };
+    const pw = document.getElementById('em-pass').value;
+    if (pw) data.password = pw;
+    try { await api('PUT', `/team/members/${memberId}`, data); toast('Member updated'); closeModal(); navigate('team'); } catch(err) { toast(err.message, 'error'); }
+  };
+}
+
+async function deleteMember(id, name) {
+  if (!confirm(`Remove team member "${name}"?`)) return;
+  try { await api('DELETE', `/team/members/${id}`); toast('Member removed'); navigate('team'); } catch(e) { toast(e.message, 'error'); }
+}
+
+// ===================== DOCUMENTS =====================
+async function renderDocuments(el) {
+  const stats = await api('GET', '/documents/stats').catch(() => ({ total_documents: 0, total_size_mb: 0, by_type: {} }));
+  el.innerHTML = `
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:start">
+      <div><h2>Document Storage</h2><p>${stats.total_documents} documents (${stats.total_size_mb} MB)</p></div>
+      <button class="btn btn-primary btn-sm" onclick="showUploadDoc()" data-testid="upload-doc-btn"><i class="fas fa-upload"></i> Upload Document</button>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card accent"><div class="stat-label">Total Documents</div><div class="stat-value">${stats.total_documents}</div></div>
+      <div class="stat-card"><div class="stat-label">Total Size</div><div class="stat-value">${stats.total_size_mb} MB</div></div>
+      ${Object.entries(stats.by_type||{}).map(([t,v])=>`<div class="stat-card"><div class="stat-label">${esc(t)}</div><div class="stat-value">${v.count}</div></div>`).join('')}
+    </div>
+    <div class="card"><div class="card-header"><h3>Search Documents by Client</h3></div>
+      <div class="search-bar"><input id="doc-client-search" placeholder="Enter client ID or search clients..." data-testid="doc-search"><button class="btn btn-primary btn-sm" onclick="searchClientDocs()" data-testid="doc-search-btn"><i class="fas fa-search"></i> Search</button></div>
+      <div id="doc-results"></div>
+    </div>`;
+}
+
+async function searchClientDocs() {
+  const q = document.getElementById('doc-client-search').value.trim();
+  if (!q) return;
+  const container = document.getElementById('doc-results');
+  container.innerHTML = '<div class="spinner"></div>';
+  try {
+    // Try as client ID first
+    const docs = await api('GET', `/documents/client/${q}`);
+    if (docs.documents && docs.documents.length > 0) {
+      container.innerHTML = `<table><thead><tr><th>Filename</th><th>Type</th><th>Size</th><th>Uploaded</th><th>Actions</th></tr></thead><tbody>
+        ${docs.documents.map(d=>`<tr><td>${esc(d.filename)}</td><td><span class="badge badge-info">${esc(d.doc_type)}</span></td>
+          <td>${(d.size/1024).toFixed(1)} KB</td><td>${fmtDate(d.uploaded_at)}</td>
+          <td class="action-row"><a href="${API_BASE}/documents/${d.id}/download?admin_token=${state.token}" class="btn btn-ghost btn-sm" target="_blank"><i class="fas fa-download"></i></a>
+          <button class="btn btn-ghost btn-sm" onclick="deleteDoc('${d.id}')"><i class="fas fa-trash" style="color:var(--danger)"></i></button></td></tr>`).join('')}
+      </tbody></table>`;
+    } else {
+      container.innerHTML = '<p style="color:var(--text-muted)">No documents found for this client</p>';
+    }
+  } catch { container.innerHTML = '<p style="color:var(--text-muted)">Client not found or no documents</p>'; }
+}
+
+function showUploadDoc() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay'; overlay.id = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal"><h3>Upload Document</h3>
+    <form id="upload-doc-form">
+      <div class="form-group"><label>Client ID *</label><input id="ud-client" required data-testid="ud-client-id"></div>
+      <div class="form-row"><div class="form-group"><label>Document Type</label><select id="ud-type" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)" data-testid="ud-type">
+        <option value="contract">Contract</option><option value="id_scan">ID Scan</option><option value="proof_of_income">Proof of Income</option><option value="other">Other</option>
+      </select></div><div class="form-group"><label>Description</label><input id="ud-desc" data-testid="ud-desc"></div></div>
+      <div class="form-group"><label>File (max 10MB)</label><input id="ud-file" type="file" required data-testid="ud-file" style="padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);width:100%"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" data-testid="upload-doc-submit"><i class="fas fa-upload"></i> Upload</button></div>
+    </form></div>`;
+  document.body.appendChild(overlay);
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+  document.getElementById('upload-doc-form').onsubmit = async(e) => {
+    e.preventDefault();
+    const fd = new FormData();
+    fd.append('admin_token', state.token);
+    fd.append('client_id', document.getElementById('ud-client').value);
+    fd.append('doc_type', document.getElementById('ud-type').value);
+    fd.append('description', document.getElementById('ud-desc').value);
+    fd.append('file', document.getElementById('ud-file').files[0]);
+    try {
+      const res = await fetch(`${API_BASE}/documents/upload`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      toast('Document uploaded'); closeModal(); navigate('documents');
+    } catch(err) { toast(err.message, 'error'); }
+  };
+}
+
+async function deleteDoc(id) {
+  if (!confirm('Delete this document?')) return;
+  try { await api('DELETE', `/documents/${id}`); toast('Document deleted'); navigate('documents'); } catch(e) { toast(e.message, 'error'); }
+}
+
+// ===================== CSV IMPORT =====================
+async function renderImport(el) {
+  el.innerHTML = `
+    <div class="page-header"><h2>Bulk CSV Import</h2><p>Import multiple clients from a CSV file</p></div>
+    <div class="card"><div class="card-header"><h3>CSV Template</h3><button class="btn btn-outline btn-sm" onclick="downloadTemplate()" data-testid="download-template-btn"><i class="fas fa-download"></i> Download Template</button></div>
+      <p style="color:var(--text-muted);font-size:13px">Expected columns: <b>name</b>, phone, email, address, birth_number, loan_amount, interest_rate, telegram_chat_id</p>
+    </div>
+    <div class="card"><div class="card-header"><h3>Import Clients</h3></div>
+      <form id="import-form" style="display:flex;gap:16px;align-items:end;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:200px"><label>CSV File</label><input id="csv-file" type="file" accept=".csv" required data-testid="csv-file" style="padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);width:100%"></div>
+        <div class="form-group"><label><input type="checkbox" id="csv-skip-dupes" checked data-testid="csv-skip-dupes"> Skip duplicates</label></div>
+        <button type="submit" class="btn btn-primary btn-sm" data-testid="import-btn"><i class="fas fa-file-import"></i> Import</button>
+      </form>
+      <div id="import-result" style="margin-top:16px"></div>
+    </div>`;
+  document.getElementById('import-form').onsubmit = async(e) => {
+    e.preventDefault();
+    const fd = new FormData();
+    fd.append('admin_token', state.token);
+    fd.append('file', document.getElementById('csv-file').files[0]);
+    fd.append('skip_duplicates', document.getElementById('csv-skip-dupes').checked ? 'true' : 'false');
+    document.getElementById('import-result').innerHTML = '<div class="spinner"></div> Importing...';
+    try {
+      const res = await fetch(`${API_BASE}/import/clients/csv`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Import failed');
+      document.getElementById('import-result').innerHTML = `
+        <div class="stats-grid">
+          <div class="stat-card success"><div class="stat-label">Imported</div><div class="stat-value">${data.imported}</div></div>
+          <div class="stat-card warning"><div class="stat-label">Skipped</div><div class="stat-value">${data.skipped}</div></div>
+          <div class="stat-card danger"><div class="stat-label">Errors</div><div class="stat-value">${data.errors?.length||0}</div></div>
+          <div class="stat-card"><div class="stat-label">Total Rows</div><div class="stat-value">${data.total_rows}</div></div>
+        </div>
+        ${data.errors?.length ? `<div class="card" style="margin-top:12px"><h4 style="color:var(--danger);margin-bottom:8px">Errors</h4>
+          ${data.errors.map(e=>`<p style="font-size:12px;color:var(--text-muted)">Row ${e.row}: ${e.error}</p>`).join('')}</div>` : ''}`;
+      toast(`Imported ${data.imported} clients`);
+    } catch(err) { document.getElementById('import-result').innerHTML = `<p class="error-msg">${err.message}</p>`; }
+  };
+}
+
+async function downloadTemplate() {
+  try {
+    const data = await api('GET', '/import/template');
+    const blob = new Blob([data.template], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'client_import_template.csv';
+    a.click();
+    toast('Template downloaded');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ===================== TELEGRAM =====================
+async function renderTelegram(el) {
+  const botInfo = await api('GET', '/telegram/bot-info').catch(() => ({ configured: false }));
+  el.innerHTML = `
+    <div class="page-header"><h2>Telegram Bot</h2><p>Send payment reminders via Telegram</p></div>
+    <div class="card"><div class="card-header"><h3>Bot Status</h3></div>
+      ${botInfo.configured ?
+        `<div style="display:flex;align-items:center;gap:12px"><span class="badge badge-success"><i class="fas fa-check-circle"></i> Connected</span>
+         <span style="color:var(--text-muted);font-size:13px">Bot: <b>@${esc(botInfo.bot_username||'')}</b> (${esc(botInfo.bot_name||'')})</span></div>` :
+        `<span class="badge badge-danger"><i class="fas fa-times-circle"></i> Not Configured</span>
+         <p style="color:var(--text-muted);font-size:13px;margin-top:8px">Set TELEGRAM_BOT_TOKEN in environment to enable.</p>`}
+    </div>
+    <div class="card"><div class="card-header"><h3>Link Client to Telegram</h3></div>
+      <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;margin:0"><label>Client ID</label><input id="tg-client" data-testid="tg-client-id"></div>
+        <div class="form-group" style="flex:1;margin:0"><label>Telegram Chat ID</label><input id="tg-chatid" data-testid="tg-chat-id"></div>
+        <button class="btn btn-primary btn-sm" onclick="linkTelegram()" data-testid="tg-link-btn"><i class="fas fa-link"></i> Link</button>
+      </div>
+    </div>
+    <div class="card"><div class="card-header"><h3>Send Reminders</h3>
+      <button class="btn btn-primary btn-sm" onclick="sendBulkTelegram()" data-testid="tg-bulk-btn"><i class="fas fa-paper-plane"></i> Send All Reminders</button></div>
+      <p style="color:var(--text-muted);font-size:13px">Sends payment reminders to all clients with linked Telegram accounts and outstanding balance.</p>
+      <div id="tg-result" style="margin-top:12px"></div>
+    </div>
+    <div class="card"><div class="card-header"><h3>Send to Individual Client</h3></div>
+      <div style="display:flex;gap:12px;align-items:end">
+        <div class="form-group" style="flex:1;margin:0"><label>Client ID</label><input id="tg-send-client" data-testid="tg-send-client-id"></div>
+        <button class="btn btn-outline btn-sm" onclick="sendTelegramSingle()" data-testid="tg-send-btn"><i class="fas fa-paper-plane"></i> Send</button>
+      </div>
+    </div>`;
+}
+
+async function linkTelegram() {
+  const clientId = document.getElementById('tg-client').value.trim();
+  const chatId = document.getElementById('tg-chatid').value.trim();
+  if (!clientId || !chatId) { toast('Both fields required', 'error'); return; }
+  try { await api('POST', '/telegram/link-client', { client_id: clientId, chat_id: chatId }); toast('Telegram linked'); } catch(e) { toast(e.message, 'error'); }
+}
+
+async function sendBulkTelegram() {
+  try {
+    const r = await api('POST', '/telegram/send-bulk');
+    document.getElementById('tg-result').innerHTML = `<div class="stats-grid">
+      <div class="stat-card success"><div class="stat-label">Sent</div><div class="stat-value">${r.sent}</div></div>
+      <div class="stat-card danger"><div class="stat-label">Failed</div><div class="stat-value">${r.failed}</div></div>
+      <div class="stat-card"><div class="stat-label">Eligible</div><div class="stat-value">${r.total_eligible}</div></div></div>`;
+    toast(`Sent ${r.sent} Telegram reminders`);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function sendTelegramSingle() {
+  const clientId = document.getElementById('tg-send-client').value.trim();
+  if (!clientId) { toast('Enter a client ID', 'error'); return; }
+  try { await api('POST', `/telegram/send/${clientId}`); toast('Telegram reminder sent'); } catch(e) { toast(e.message, 'error'); }
+}
+
 // Helpers
 function cur(n) { return '€' + (Number(n)||0).toFixed(2); }
 function esc(s) { const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
