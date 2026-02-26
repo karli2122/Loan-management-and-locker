@@ -391,9 +391,9 @@ function drawDashboardCharts(financial, dash, collection) {
   if (revCtx) new Chart(revCtx, { type: 'line', data: {
     labels: months.length ? months : ['No data'],
     datasets: [
-      { label: 'Revenue', data: revenues, borderColor: chartColors.blue, backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.3 },
-      { label: 'Principal', data: principals, borderColor: chartColors.green, backgroundColor: 'transparent', tension: 0.3 },
-      { label: 'Interest', data: interests, borderColor: chartColors.amber, backgroundColor: 'transparent', tension: 0.3 },
+      { label: t('revenue'), data: revenues, borderColor: chartColors.blue, backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.3 },
+      { label: t('principal'), data: principals, borderColor: chartColors.green, backgroundColor: 'transparent', tension: 0.3 },
+      { label: t('interest'), data: interests, borderColor: chartColors.amber, backgroundColor: 'transparent', tension: 0.3 },
     ]
   }, options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(30,41,59,0.3)' } }, x: { grid: { display: false } } } } });
 
@@ -402,8 +402,8 @@ function drawDashboardCharts(financial, dash, collection) {
   if (profCtx) new Chart(profCtx, { type: 'bar', data: {
     labels: months.length ? months : ['No data'],
     datasets: [
-      { label: 'Interest Earned', data: interests, backgroundColor: 'rgba(16,185,129,0.6)', borderRadius: 4 },
-      { label: 'Profit Trend', data: profits, type: 'line', borderColor: chartColors.cyan, backgroundColor: 'transparent', tension: 0.3, pointRadius: 3 },
+      { label: t('interest_earned_label'), data: interests, backgroundColor: 'rgba(16,185,129,0.6)', borderRadius: 4 },
+      { label: t('profit_trends'), data: profits, type: 'line', borderColor: chartColors.cyan, backgroundColor: 'transparent', tension: 0.3, pointRadius: 3 },
     ]
   }, options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(30,41,59,0.3)' } }, x: { grid: { display: false } } } } });
 
@@ -416,8 +416,8 @@ function drawDashboardCharts(financial, dash, collection) {
     new Chart(collCtx, { type: 'bar', data: {
       labels: collMonths.length ? collMonths : ['No data'],
       datasets: [
-        { label: 'Collected', data: collected, backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 4 },
-        { label: 'Payments', data: payCounts, type: 'line', borderColor: chartColors.amber, backgroundColor: 'transparent', yAxisID: 'y1', tension: 0.3 },
+        { label: t('collected'), data: collected, backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 4 },
+        { label: t('payments'), data: payCounts, type: 'line', borderColor: chartColors.amber, backgroundColor: 'transparent', yAxisID: 'y1', tension: 0.3 },
       ]
     }, options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(30,41,59,0.3)' } }, y1: { position: 'right', beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } } } });
   }
