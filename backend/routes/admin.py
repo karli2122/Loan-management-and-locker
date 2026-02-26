@@ -119,7 +119,8 @@ async def login_admin(login_data: AdminLogin, request: Request = None):
         credits=admin.get("credits", 5),
         token=token,
         first_name=admin.get("first_name"),
-        last_name=admin.get("last_name")
+        last_name=admin.get("last_name"),
+        permissions=admin.get("permissions", [])
     )
 
 
