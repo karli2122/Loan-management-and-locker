@@ -1068,12 +1068,12 @@ async function renderDocuments(el) {
   const stats = await api('GET', '/documents/stats').catch(() => ({ total_documents: 0, total_size_mb: 0, by_type: {} }));
   el.innerHTML = `
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:start">
-      <div><h2>Document Storage</h2><p>${stats.total_documents} documents (${stats.total_size_mb} MB)</p></div>
-      <button class="btn btn-primary btn-sm" onclick="showUploadDoc()" data-testid="upload-doc-btn"><i class="fas fa-upload"></i> Upload Document</button>
+      <div><h2>${t('docs_title')}</h2><p>${stats.total_documents} ${t('documents')} (${stats.total_size_mb} MB)</p></div>
+      <button class="btn btn-primary btn-sm" onclick="showUploadDoc()" data-testid="upload-doc-btn"><i class="fas fa-upload"></i> ${t('upload_document')}</button>
     </div>
     <div class="stats-grid">
-      <div class="stat-card accent"><div class="stat-label">Total Documents</div><div class="stat-value">${stats.total_documents}</div></div>
-      <div class="stat-card"><div class="stat-label">Total Size</div><div class="stat-value">${stats.total_size_mb} MB</div></div>
+      <div class="stat-card accent"><div class="stat-label">${t('total_documents')}</div><div class="stat-value">${stats.total_documents}</div></div>
+      <div class="stat-card"><div class="stat-label">${t('total_size')}</div><div class="stat-value">${stats.total_size_mb} MB</div></div>
       ${Object.entries(stats.by_type||{}).map(([t,v])=>`<div class="stat-card"><div class="stat-label">${esc(t)}</div><div class="stat-value">${v.count}</div></div>`).join('')}
     </div>
     <div class="card"><div class="card-header"><h3>Search Documents by Client</h3></div>
@@ -1144,7 +1144,7 @@ async function deleteDoc(id) {
 // ===================== CSV IMPORT =====================
 async function renderImport(el) {
   el.innerHTML = `
-    <div class="page-header"><h2>Bulk CSV Import</h2><p>Import multiple clients from a CSV file</p></div>
+    <div class="page-header"><h2>${t('import_title')}</h2><p>${t('import_subtitle')}</p></div>
     <div class="card"><div class="card-header"><h3>CSV Template</h3><button class="btn btn-outline btn-sm" onclick="downloadTemplate()" data-testid="download-template-btn"><i class="fas fa-download"></i> Download Template</button></div>
       <p style="color:var(--text-muted);font-size:13px">Expected columns: <b>name</b>, phone, email, address, birth_number, loan_amount, interest_rate, telegram_chat_id</p>
     </div>
@@ -1197,7 +1197,7 @@ async function downloadTemplate() {
 async function renderTelegram(el) {
   const botInfo = await api('GET', '/telegram/bot-info').catch(() => ({ configured: false }));
   el.innerHTML = `
-    <div class="page-header"><h2>Telegram Bot</h2><p>Send payment reminders via Telegram</p></div>
+    <div class="page-header"><h2>${t('tg_title')}</h2><p>${t('tg_subtitle')}</p></div>
     <div class="card"><div class="card-header"><h3>Bot Status</h3></div>
       ${botInfo.configured ?
         `<div style="display:flex;align-items:center;gap:12px"><span class="badge badge-success"><i class="fas fa-check-circle"></i> Connected</span>
@@ -1257,7 +1257,7 @@ async function renderSchedules(el) {
   ]);
   el.innerHTML = `
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:start">
-      <div><h2>Payment Schedules</h2><p>${data.total} active schedules</p></div>
+      <div><h2>${t('sched_title')}</h2><p>${data.total} ${t('active_schedules')}</p></div>
       <div class="action-row">
         <button class="btn btn-outline btn-sm" onclick="processScheduledReminders()" data-testid="process-reminders-btn"><i class="fas fa-sync"></i> Process Reminders</button>
         <button class="btn btn-primary btn-sm" onclick="showAddSchedule()" data-testid="add-schedule-btn"><i class="fas fa-plus"></i> New Schedule</button>
@@ -1363,7 +1363,7 @@ async function renderActivity(el) {
   (members.members || []).forEach(m => { memberMap[m.id] = m.username; });
 
   el.innerHTML = `
-    <div class="page-header"><h2>Team Activity Log</h2><p>Track all team member actions (superuser only)</p></div>
+    <div class="page-header"><h2>${t('activity_title')}</h2><p>${t('activity_subtitle')}</p></div>
     <div class="card" style="margin-bottom:16px">
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">
         <div class="form-group" style="flex:1;min-width:150px;margin:0"><label>Action Type</label>
