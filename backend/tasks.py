@@ -96,7 +96,8 @@ async def process_due_payments():
                         # Auto-lock if grace period exceeded
                         grace_days = client.get("auto_lock_grace_days", 3)
                         auto_lock = client.get("auto_lock_enabled", True)
-                        if auto_lock and days_overdue > grace_days and not client.get("is_locked", False):
+                        auto_lock_setting = admin_settings.get("payment_auto_lock_enabled", True)
+                        if auto_lock and auto_lock_setting and days_overdue > grace_days and not client.get("is_locked", False):
                             await db.clients.update_one(
                                 {"id": s["client_id"]},
                                 {"$set": {
@@ -119,18 +120,20 @@ async def process_due_payments():
                                 })
                             logger.info(f"Auto-locked client {s['client_id']} ({days_overdue} days overdue)")
                         
-                        # Apply late fees (once per week maximum)
+                        # Apply late fees based on admin settings
+                        auto_late_fee = admin_settings.get("payment_auto_late_fee_enabled", True)
+                        fee_freq = admin_settings.get("payment_late_fee_frequency_days", 7)
                         last_late_fee = client.get("last_late_fee_date")
                         should_apply_fee = True
                         if last_late_fee:
                             try:
                                 last_fee_dt = datetime.fromisoformat(last_late_fee).replace(tzinfo=timezone.utc)
-                                if (today_dt - last_fee_dt).days < 7:
+                                if (today_dt - last_fee_dt).days < fee_freq:
                                     should_apply_fee = False
                             except Exception:
                                 pass
                         
-                        if should_apply_fee and days_overdue > grace_days:
+                        if auto_late_fee and should_apply_fee and days_overdue > grace_days:
                             outstanding = client.get("outstanding_balance", 0)
                             late_fee_pct = 2.0  # Default 2%
                             # Try to get from loan plan
