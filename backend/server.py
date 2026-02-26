@@ -6,7 +6,7 @@ exception handlers, and includes all route modules.
 """
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import Response, JSONResponse, FileResponse
+from starlette.responses import Response, JSONResponse, FileResponse, HTMLResponse
 import logging
 import uuid
 import os
