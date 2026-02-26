@@ -234,9 +234,27 @@ async function loadUser() {
   } catch { logout(); }
 }
 
+// Permission map for sidebar items
+const NAV_PERMS = {
+  dashboard: null, // always visible
+  clients: 'clients',
+  loans: 'loans',
+  reminders: 'reminders',
+  reports: 'reports',
+  devices: 'devices',
+  documents: 'documents',
+  import: 'import',
+  telegram: 'reminders',
+  schedules: 'schedules',
+  team: '__super_admin__',
+  activity: '__super_admin__',
+  provisioning: 'devices',
+  settings: null, // always visible
+};
+
 // Sidebar
 function renderSidebar() {
-  const items = [
+  const allItems = [
     { id:'dashboard', icon:'fa-chart-line', label:'Dashboard' },
     { id:'clients', icon:'fa-users', label:'Clients' },
     { id:'loans', icon:'fa-hand-holding-usd', label:'Loan Plans' },
@@ -245,11 +263,22 @@ function renderSidebar() {
     { id:'devices', icon:'fa-mobile-alt', label:'Devices' },
     { id:'documents', icon:'fa-folder-open', label:'Documents' },
     { id:'import', icon:'fa-file-csv', label:'CSV Import' },
+    { id:'schedules', icon:'fa-calendar-check', label:'Schedules' },
     { id:'telegram', icon:'fa-paper-plane', label:'Telegram' },
     { id:'team', icon:'fa-user-shield', label:'Team' },
+    { id:'activity', icon:'fa-history', label:'Activity Log' },
     { id:'provisioning', icon:'fa-qrcode', label:'Provisioning' },
     { id:'settings', icon:'fa-cog', label:'Settings' },
   ];
+  const userPerms = state.user?.permissions || [];
+  const isSuperAdmin = state.user?.is_super_admin === true;
+  const items = allItems.filter(i => {
+    const req = NAV_PERMS[i.id];
+    if (req === null) return true;
+    if (req === '__super_admin__') return isSuperAdmin;
+    if (isSuperAdmin || userPerms.includes('all')) return true;
+    return userPerms.includes(req);
+  });
   return `<div class="sidebar" data-testid="sidebar">
     <div class="logo"><div class="logo-icon">P</div><span>PayLock Pro</span></div>
     <div class="nav-section">
