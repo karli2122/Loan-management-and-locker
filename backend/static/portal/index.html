@@ -155,7 +155,7 @@ tbody tr:hover { background:rgba(59,130,246,.04); }
 <div id="app"></div>
 <script>
 const API_BASE = window.location.origin + '/api';
-let state = { token: localStorage.getItem('plp_token'), user: null, page: 'dashboard', clients: [], selectedClient: null, modal: null };
+let state = { token: localStorage.getItem('plp_token'), user: null, page: 'dashboard', clients: [], selectedClient: null, modal: null, language: localStorage.getItem('plp_language') || 'et' };
 
 // API helper
 async function api(method, path, body) {
