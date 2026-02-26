@@ -1496,7 +1496,31 @@ async function filterActivity() {
   } catch(e) { toast(e.message, 'error'); }
 }
 
-// Helpers
+async function exportActivityCSV() {
+  try {
+    const type = document.getElementById('act-type')?.value || '';
+    const member = document.getElementById('act-member')?.value || '';
+    let url = '/audit-logs?limit=500';
+    if (type) url += `&action_type=${type}`;
+    if (member) url += `&admin_id_filter=${member}`;
+    const data = await api('GET', url);
+    const logs = data.logs || [];
+    const members = await api('GET', '/team/members').catch(() => ({ members: [] }));
+    const memberMap = {};
+    (members.members || []).forEach(m => { memberMap[m.id] = m.username; });
+    let csv = 'Time,User,Action,Target,Details\n';
+    logs.forEach(l => {
+      const user = memberMap[l.admin_id] || l.admin_username || l.admin_id || '';
+      csv += `"${l.timestamp||l.created_at||''}","${user}","${l.action_type||''}","${(l.target_type||'')+': '+(l.target_id||'')}","${(l.details||l.description||'').replace(/"/g,'""')}"\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `activity_log_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    toast(t('export_csv') + ' - ' + logs.length + ' records');
+  } catch(e) { toast(e.message, 'error'); }
+}
 function cur(n) { return '€' + (Number(n)||0).toFixed(2); }
 function esc(s) { const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
 function fmtDate(d) {
