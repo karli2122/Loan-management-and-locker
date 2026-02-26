@@ -5,8 +5,10 @@
   if(nav){window.addEventListener('scroll',()=>{nav.classList.toggle('scrolled',window.scrollY>50)});}
   // Close mobile menu on link click
   document.querySelectorAll('.nav-links a').forEach(a=>{a.addEventListener('click',()=>{document.getElementById('navLinks')?.classList.remove('open')})});
-  // Set portal links
-  const portalUrl=window.PORTAL_URL||'/api/portal';
+  // Set portal links - use absolute backend URL when on custom domain
+  const BACKEND_URL = 'https://client-app-staging-1.preview.emergentagent.com';
+  const isBackendServed = window.location.pathname.startsWith('/api/website');
+  const portalUrl = isBackendServed ? '/api/portal' : (BACKEND_URL + '/api/portal');
   document.querySelectorAll('[data-portal-link]').forEach(el=>{if(el.href&&el.href.includes('PORTAL_URL'))el.href=portalUrl;});
   document.querySelectorAll('a[href="PORTAL_URL"]').forEach(el=>{el.href=portalUrl;});
   // Fix relative page links to use /api/website/ prefix when served from backend
