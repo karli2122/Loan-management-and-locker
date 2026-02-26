@@ -140,6 +140,16 @@ async def serve_website():
         return HTMLResponse(content=f.read())
 
 
+@app.get("/api/portal/translations.js")
+async def serve_portal_translations():
+    """Serve portal translations JS file."""
+    tr_path = os.path.join(os.path.dirname(__file__), "static", "portal", "translations.js")
+    if not os.path.exists(tr_path):
+        return JSONResponse(status_code=404, content={"error": "Not found"})
+    with open(tr_path, "r") as f:
+        return Response(content=f.read(), media_type="application/javascript")
+
+
 @app.get("/api/portal")
 async def serve_portal():
     """Serve the web admin portal."""
