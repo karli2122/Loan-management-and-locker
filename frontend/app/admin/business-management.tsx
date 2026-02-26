@@ -176,6 +176,6 @@ const s = StyleSheet.create({
   warnText: { flex: 1, fontSize: 12, color: '#FBBF24', lineHeight: 18 },
   genBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#F97316', borderRadius: 10, paddingVertical: 12, marginTop: 12 },
   genBtnText: { fontSize: 14, fontWeight: '600', color: '#fff' },
-  contactBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#2563EB', borderRadius: 12, paddingVertical: 14, marginTop: 24 },
+  contactBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#2563EB', borderRadius: 12, paddingVertical: 14, marginTop: 24, marginBottom: 32 },
   contactBtnText: { fontSize: 15, fontWeight: '600', color: '#fff' },
 });
