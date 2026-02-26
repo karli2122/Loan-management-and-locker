@@ -822,6 +822,12 @@ async function changePassword() {
   } catch(e) { toast(e.message, 'error'); }
 }
 
+function setPortalLanguage(lang) {
+  state.language = lang;
+  localStorage.setItem('plp_language', lang);
+  toast('Language set to ' + lang.toUpperCase());
+}
+
 // Helpers
 function cur(n) { return '€' + (Number(n)||0).toFixed(2); }
 function esc(s) { const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
