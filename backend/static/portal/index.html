@@ -767,6 +767,28 @@ async function renderSettings(el) {
         <div class="detail-item"><div class="label">Role</div><div class="value">${admin.is_super_admin?'Super Admin':'Admin'}</div></div>
       </div>
     </div>
+    <div class="card"><div class="card-header"><h3>Language / Keel</h3></div>
+      <div class="form-group"><label>Contract & Portal Language</label>
+        <select id="set-lang" style="width:100%;padding:10px 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px" onchange="setPortalLanguage(this.value)" data-testid="settings-language">
+          <option value="et" ${state.language==='et'?'selected':''}>Eesti (Estonian)</option>
+          <option value="en" ${state.language==='en'?'selected':''}>English</option>
+          <option value="no" ${state.language==='no'?'selected':''}>Norsk</option>
+          <option value="sv" ${state.language==='sv'?'selected':''}>Svenska</option>
+          <option value="da" ${state.language==='da'?'selected':''}>Dansk</option>
+          <option value="fi" ${state.language==='fi'?'selected':''}>Suomi</option>
+          <option value="lv" ${state.language==='lv'?'selected':''}>Latviešu</option>
+          <option value="lt" ${state.language==='lt'?'selected':''}>Lietuvių</option>
+          <option value="de" ${state.language==='de'?'selected':''}>Deutsch</option>
+          <option value="de_at" ${state.language==='de_at'?'selected':''}>Österreichisch</option>
+          <option value="de_ch" ${state.language==='de_ch'?'selected':''}>Schweizerdeutsch</option>
+          <option value="cs" ${state.language==='cs'?'selected':''}>Čeština</option>
+          <option value="pl" ${state.language==='pl'?'selected':''}>Polski</option>
+          <option value="es" ${state.language==='es'?'selected':''}>Español</option>
+          <option value="fr" ${state.language==='fr'?'selected':''}>Français</option>
+          <option value="it" ${state.language==='it'?'selected':''}>Italiano</option>
+        </select>
+      </div>
+    </div>
     <div class="card"><div class="card-header"><h3>Default Settings</h3></div>
       <div class="form-row" style="gap:16px">
         <div class="form-group"><label>Late Fee %</label><input id="set-late" type="number" step="0.1" value="${settings.default_late_fee_percent||2}" data-testid="settings-late-fee"></div>
