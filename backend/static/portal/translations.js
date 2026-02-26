@@ -139,7 +139,7 @@ const PORTAL_TRANSLATIONS = {
     lock: 'Lock', unlock: 'Unlock', payment: 'Payment', reminder: 'Reminder',
     team_member_filter: 'Team Member', all_members: 'All Members', filter: 'Filter',
     time: 'Time', user: 'User', action: 'Action', target: 'Target', details: 'Details',
-    no_activity: 'No activity logs found',
+    no_activity: 'No activity logs found', total_actions: 'Total Actions', today_actions: 'Today', active_users: 'Active Users', action_types: 'Action Types', action_type_label: 'Action Type', filter_btn: 'Filter', team_member: 'Team Member', reminder_label: 'Reminder', all_members: 'All Members',
     // Common
     loading: 'Loading...', error: 'Error', success: 'Success', confirm: 'Confirm',
     close: 'Close', back: 'Back', yes: 'Yes', no: 'No', page_not_found: 'Page not found',
