@@ -1127,6 +1127,13 @@ function renderTeamTable(el, check, members) {
     </div>`;
 }
 
+function teamPageNav(page) {
+  window._teamPage = page;
+  const el = document.getElementById('main');
+  renderTeamTable(el, window._teamCheck, { members: window._teamMembers });
+}
+
+
 function showAddMember() {
   const roles = window._teamRoles || {};
   const overlay = document.createElement('div');
