@@ -2,8 +2,8 @@
 import asyncio
 import logging
 import os
+import uuid
 from datetime import datetime, timezone, timedelta
-from io import BytesIO
 
 import resend
 
@@ -15,10 +15,20 @@ SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
 
 
 async def process_due_payments():
-    """Auto-process payments that are due today. Runs every hour."""
+    """Auto-process payments that are due today. Runs every hour.
+    
+    Full logic:
+    - Find all active schedules with due dates <= today
+    - For each, create a reminder notification
+    - Check if client has overdue payments and apply late fees
+    - Auto-lock devices if grace period exceeded
+    - Update schedule counters and calculate next due date
+    """
     while True:
         try:
             today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            today_dt = datetime.now(timezone.utc)
+            
             schedules = await db.payment_schedules.find(
                 {"is_active": True, "next_due_date": {"$lte": today}},
                 {"_id": 0}
@@ -37,16 +47,101 @@ async def process_due_payments():
                 if not client:
                     continue
 
-                # Send reminder if auto_reminder is enabled
-                if s.get("auto_reminder", True):
+                admin_id = client.get("admin_id")
+                client_name = client.get("name", "Unknown")
+
+                # Send reminder notification to admin
+                if s.get("auto_reminder", True) and admin_id:
                     await db.notifications.insert_one({
-                        "id": f"sched-{s['id']}-{today}",
-                        "client_id": s["client_id"],
+                        "id": str(uuid.uuid4()),
+                        "admin_id": admin_id,
                         "type": "payment_due",
-                        "message": f"Payment of {s['amount']:.2f} EUR due on {next_due}",
-                        "created_at": datetime.now(timezone.utc).isoformat(),
-                        "read": False,
+                        "title": "Payment Due",
+                        "message": f"Payment of {s['amount']:.2f} EUR due from {client_name} on {next_due}",
+                        "client_id": s["client_id"],
+                        "client_name": client_name,
+                        "is_read": False,
+                        "created_at": today_dt.isoformat(),
                     })
+
+                # Check overdue days and apply late fees
+                try:
+                    due_date = datetime.strptime(next_due, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                    days_overdue = (today_dt - due_date).days
+                    
+                    if days_overdue > 0:
+                        # Update days_overdue on client
+                        await db.clients.update_one(
+                            {"id": s["client_id"]},
+                            {"$set": {
+                                "days_overdue": days_overdue,
+                                "is_late": True,
+                            }}
+                        )
+                        
+                        # Auto-lock if grace period exceeded
+                        grace_days = client.get("auto_lock_grace_days", 3)
+                        auto_lock = client.get("auto_lock_enabled", True)
+                        if auto_lock and days_overdue > grace_days and not client.get("is_locked", False):
+                            await db.clients.update_one(
+                                {"id": s["client_id"]},
+                                {"$set": {
+                                    "is_locked": True,
+                                    "lock_message": f"Device locked: Payment of {s['amount']:.2f} EUR is {days_overdue} days overdue.",
+                                }}
+                            )
+                            # Notify admin about auto-lock
+                            if admin_id:
+                                await db.notifications.insert_one({
+                                    "id": str(uuid.uuid4()),
+                                    "admin_id": admin_id,
+                                    "type": "auto_lock",
+                                    "title": "Auto-Lock Triggered",
+                                    "message": f"{client_name}'s device has been auto-locked ({days_overdue} days overdue).",
+                                    "client_id": s["client_id"],
+                                    "client_name": client_name,
+                                    "is_read": False,
+                                    "created_at": today_dt.isoformat(),
+                                })
+                            logger.info(f"Auto-locked client {s['client_id']} ({days_overdue} days overdue)")
+                        
+                        # Apply late fees (once per week maximum)
+                        last_late_fee = client.get("last_late_fee_date")
+                        should_apply_fee = True
+                        if last_late_fee:
+                            try:
+                                last_fee_dt = datetime.fromisoformat(last_late_fee).replace(tzinfo=timezone.utc)
+                                if (today_dt - last_fee_dt).days < 7:
+                                    should_apply_fee = False
+                            except Exception:
+                                pass
+                        
+                        if should_apply_fee and days_overdue > grace_days:
+                            outstanding = client.get("outstanding_balance", 0)
+                            late_fee_pct = 2.0  # Default 2%
+                            # Try to get from loan plan
+                            plan_id = client.get("loan_plan_id")
+                            if plan_id:
+                                plan = await db.loan_plans.find_one({"id": plan_id}, {"_id": 0})
+                                if plan:
+                                    late_fee_pct = plan.get("late_fee_percent", 2.0)
+                            
+                            late_fee = round(outstanding * late_fee_pct / 100, 2)
+                            if late_fee > 0:
+                                await db.clients.update_one(
+                                    {"id": s["client_id"]},
+                                    {"$inc": {
+                                        "late_fees_accumulated": late_fee,
+                                        "outstanding_balance": late_fee,
+                                        "total_amount_due": late_fee,
+                                    },
+                                    "$set": {
+                                        "last_late_fee_date": today_dt.isoformat(),
+                                    }}
+                                )
+                                logger.info(f"Applied late fee of {late_fee} to client {s['client_id']}")
+                except Exception as e:
+                    logger.error(f"Error processing overdue for {s['client_id']}: {e}")
 
                 # Update schedule: mark processed, increment counters, calculate next due
                 from routes.schedules import _calc_next_due
@@ -62,10 +157,59 @@ async def process_due_payments():
 
                 logger.info(f"Processed schedule {s['id']} for client {s['client_id']}, next due: {new_next}")
 
+            # Also check all clients for overdue payments (not just scheduled ones)
+            await _check_all_overdue_clients()
+
         except Exception as e:
             logger.error(f"Error processing due payments: {e}")
 
         await asyncio.sleep(3600)  # Run every hour
+
+
+async def _check_all_overdue_clients():
+    """Check all clients with active loans for overdue status."""
+    try:
+        today_dt = datetime.now(timezone.utc)
+        
+        clients = await db.clients.find(
+            {
+                "outstanding_balance": {"$gt": 0},
+                "is_deleted": {"$ne": True},
+                "next_payment_due": {"$exists": True, "$ne": None},
+            },
+            {"_id": 0, "id": 1, "next_payment_due": 1, "auto_lock_enabled": 1,
+             "auto_lock_grace_days": 1, "is_locked": 1, "admin_id": 1, "name": 1,
+             "outstanding_balance": 1}
+        ).to_list(1000)
+        
+        for client in clients:
+            try:
+                due = client.get("next_payment_due")
+                if not due:
+                    continue
+                
+                if isinstance(due, str):
+                    due_dt = datetime.fromisoformat(due).replace(tzinfo=timezone.utc)
+                elif isinstance(due, datetime):
+                    due_dt = due.replace(tzinfo=timezone.utc) if due.tzinfo is None else due
+                else:
+                    continue
+                
+                days_overdue = (today_dt - due_dt).days
+                if days_overdue > 0:
+                    await db.clients.update_one(
+                        {"id": client["id"]},
+                        {"$set": {"days_overdue": days_overdue, "is_late": True}}
+                    )
+                elif days_overdue <= 0:
+                    await db.clients.update_one(
+                        {"id": client["id"]},
+                        {"$set": {"days_overdue": 0, "is_late": False}}
+                    )
+            except Exception as e:
+                logger.error(f"Error checking overdue for client {client.get('id')}: {e}")
+    except Exception as e:
+        logger.error(f"Error in _check_all_overdue_clients: {e}")
 
 
 async def send_scheduled_reports():
