@@ -364,8 +364,7 @@ async function renderClientDetail(el) {
         <button class="btn btn-outline btn-sm" onclick="showEditClient('${c.id}')" data-testid="edit-client-btn"><i class="fas fa-edit"></i> Edit</button>
         <button class="btn btn-outline btn-sm" onclick="sendReminder('${c.id}','email')" data-testid="send-email-btn"><i class="fas fa-envelope"></i> Email</button>
         <button class="btn btn-outline btn-sm" onclick="sendReminder('${c.id}','whatsapp')" data-testid="send-whatsapp-btn"><i class="fab fa-whatsapp"></i> WhatsApp</button>
-        <button class="btn btn-outline btn-sm" onclick="downloadContract('${c.id}','et')" data-testid="download-contract-btn"><i class="fas fa-file-pdf"></i> Leping (ET)</button>
-        <button class="btn btn-outline btn-sm" onclick="downloadContract('${c.id}','en')" data-testid="download-contract-en-btn"><i class="fas fa-file-pdf"></i> Contract (EN)</button>
+        <button class="btn btn-outline btn-sm" onclick="downloadContract('${c.id}')" data-testid="download-contract-btn"><i class="fas fa-file-pdf"></i> Contract</button>
       </div>
     </div>
     <div class="detail-grid" data-testid="client-details">
