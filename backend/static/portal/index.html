@@ -1449,6 +1449,13 @@ function fmtDate(d) {
   try { const dt = new Date(d); return isNaN(dt) ? String(d).substring(0,10) : dt.toLocaleDateString('en-GB'); } catch { return String(d).substring(0,10); }
 }
 
+// Close dropdowns on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('.dropdown')) {
+    document.querySelectorAll('.dropdown-menu.show').forEach(m => m.classList.remove('show'));
+  }
+});
+
 // Init
 render();
 </script>
