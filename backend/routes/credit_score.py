@@ -64,7 +64,7 @@ async def get_client_credit_score(
     if not client:
         raise NotFoundException("Client not found")
     
-    score = client.get("credit_score", 500)
+    score = client.get("credit_score", 0)
     
     # Calculate rating based on score
     if score >= 800:
