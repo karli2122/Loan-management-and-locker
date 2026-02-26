@@ -25,8 +25,8 @@ async def update_credit_score(
     if not client:
         raise NotFoundException("Client not found")
     
-    previous_score = client.get("credit_score", 500)
-    new_score = max(0, min(1000, previous_score + change_amount))
+    previous_score = client.get("credit_score", 0)
+    new_score = max(0, previous_score + change_amount)
     
     # Update client
     await db.clients.update_one(
