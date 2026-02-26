@@ -215,6 +215,63 @@ async def _check_all_overdue_clients():
         logger.error(f"Error in _check_all_overdue_clients: {e}")
 
 
+async def _process_temporary_unlocks():
+    """Auto-unlock clients whose temporary lock period has expired."""
+    try:
+        now = datetime.now(timezone.utc).isoformat()
+        
+        # Find all clients with temporary locks that have expired
+        clients = await db.clients.find(
+            {
+                "is_locked": True,
+                "is_temporary_lock": True,
+                "auto_unlock_at": {"$lte": now},
+            },
+            {"_id": 0, "id": 1, "name": 1, "admin_id": 1, "expo_push_token": 1}
+        ).to_list(100)
+        
+        for client in clients:
+            await db.clients.update_one(
+                {"id": client["id"]},
+                {"$set": {
+                    "is_locked": False,
+                    "lock_reason": None,
+                    "lock_message": None,
+                    "auto_unlock_at": None,
+                    "is_temporary_lock": False,
+                    "unlocked_at": now,
+                }}
+            )
+            
+            # Record in audit log
+            await db.lock_audit_log.insert_one({
+                "client_id": client["id"],
+                "admin_id": "system",
+                "action": "unlock",
+                "reason": "temporary_lock_expired",
+                "timestamp": now,
+            })
+            
+            # Notify admin
+            admin_id = client.get("admin_id")
+            if admin_id:
+                await db.notifications.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "admin_id": admin_id,
+                    "type": "auto_unlock",
+                    "title": "Temporary Lock Expired",
+                    "message": f"{client.get('name', 'Client')}'s temporary lock has expired. Device auto-unlocked.",
+                    "client_id": client["id"],
+                    "is_read": False,
+                    "created_at": now,
+                })
+            
+            logger.info(f"Auto-unlocked client {client['id']} (temporary lock expired)")
+    except Exception as e:
+        logger.error(f"Error processing temporary unlocks: {e}")
+
+
+
 async def send_scheduled_reports():
     """Send scheduled report emails. Runs daily at midnight."""
     while True:
