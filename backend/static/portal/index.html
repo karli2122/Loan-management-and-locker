@@ -437,25 +437,25 @@ async function renderClients(el) {
   state.clients = data.clients || [];
   el.innerHTML = `
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:start">
-      <div><h2>Clients</h2><p>${state.clients.length} total clients</p></div>
-      <button class="btn btn-primary btn-sm" onclick="showAddClient()" data-testid="add-client-btn"><i class="fas fa-plus"></i> Add Client</button>
+      <div><h2>${t('clients_title')}</h2><p>${state.clients.length} ${t('total_clients_count')}</p></div>
+      <button class="btn btn-primary btn-sm" onclick="showAddClient()" data-testid="add-client-btn"><i class="fas fa-plus"></i> ${t('add_client')}</button>
     </div>
-    <div class="search-bar"><input id="client-search" placeholder="Search clients..." oninput="filterClients()" data-testid="client-search"></div>
+    <div class="search-bar"><input id="client-search" placeholder="${t('search_clients')}" oninput="filterClients()" data-testid="client-search"></div>
     <div class="card"><div class="table-wrap"><table data-testid="clients-table">
-      <thead><tr><th>Name</th><th>Phone</th><th>Loan</th><th>Outstanding</th><th>Status</th><th>Device</th><th></th></tr></thead>
+      <thead><tr><th>${t('name')}</th><th>${t('phone')}</th><th>${t('loan_col')}</th><th>${t('outstanding_col')}</th><th>${t('status')}</th><th>${t('device_col')}</th><th></th></tr></thead>
       <tbody id="clients-tbody">${renderClientRows(state.clients)}</tbody>
     </table></div></div>`;
 }
 
 function renderClientRows(clients) {
-  if (!clients.length) return '<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">No clients found</td></tr>';
+  if (!clients.length) return `<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">${t('no_clients')}</td></tr>`;
   return clients.map(c => {
     const status = c.outstanding_balance > 0 ? (c.days_overdue > 0 ? 'danger' : 'info') : 'success';
-    const statusText = c.outstanding_balance > 0 ? (c.days_overdue > 0 ? `${c.days_overdue}d overdue` : 'Active') : 'Paid';
+    const statusText = c.outstanding_balance > 0 ? (c.days_overdue > 0 ? `${c.days_overdue}d ${t('overdue_days')}` : t('active_status')) : t('paid');
     return `<tr>
       <td><b>${esc(c.name)}</b></td><td>${esc(c.phone||'-')}</td><td>${cur(c.loan_amount||0)}</td><td>${cur(c.outstanding_balance||0)}</td>
       <td><span class="badge badge-${status}">${statusText}</span></td>
-      <td>${c.is_locked ? '<span class="badge badge-danger"><i class="fas fa-lock"></i> Locked</span>' : (c.is_registered ? '<span class="badge badge-success"><i class="fas fa-unlock"></i> Active</span>' : '<span class="badge badge-warning">Unregistered</span>')}</td>
+      <td>${c.is_locked ? `<span class="badge badge-danger"><i class="fas fa-lock"></i> ${t('locked')}</span>` : (c.is_registered ? `<span class="badge badge-success"><i class="fas fa-unlock"></i> ${t('active_status')}</span>` : `<span class="badge badge-warning">${t('unregistered')}</span>`)}</td>
       <td><button class="btn btn-ghost btn-sm" onclick="viewClient('${c.id}')" data-testid="view-client-${c.id}"><i class="fas fa-eye"></i></button></td>
     </tr>`;
   }).join('');
@@ -478,13 +478,13 @@ async function renderClientDetail(el) {
   const payments = await api('GET', `/loans/payments/${c.id}`).catch(() => []);
   el.innerHTML = `
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:start">
-      <div><button class="btn btn-ghost" onclick="navigate('clients')" data-testid="back-to-clients"><i class="fas fa-arrow-left"></i> Back</button><h2 style="margin-top:8px">${esc(c.name)}</h2></div>
+      <div><button class="btn btn-ghost" onclick="navigate('clients')" data-testid="back-to-clients"><i class="fas fa-arrow-left"></i> ${t('back')}</button><h2 style="margin-top:8px">${esc(c.name)}</h2></div>
       <div class="action-row">
-        ${c.is_locked ? `<button class="btn btn-success btn-sm" onclick="toggleLock('${c.id}',false)" data-testid="unlock-btn"><i class="fas fa-unlock"></i> Unlock</button>` : `<button class="btn btn-danger btn-sm" onclick="toggleLock('${c.id}',true)" data-testid="lock-btn"><i class="fas fa-lock"></i> Lock</button>`}
-        <button class="btn btn-outline btn-sm" onclick="showEditClient('${c.id}')" data-testid="edit-client-btn"><i class="fas fa-edit"></i> Edit</button>
-        <button class="btn btn-outline btn-sm" onclick="sendReminder('${c.id}','email')" data-testid="send-email-btn"><i class="fas fa-envelope"></i> Email</button>
-        <button class="btn btn-outline btn-sm" onclick="sendReminder('${c.id}','whatsapp')" data-testid="send-whatsapp-btn"><i class="fab fa-whatsapp"></i> WhatsApp</button>
-        <button class="btn btn-outline btn-sm" onclick="downloadContract('${c.id}')" data-testid="download-contract-btn"><i class="fas fa-file-pdf"></i> Contract</button>
+        ${c.is_locked ? `<button class="btn btn-success btn-sm" onclick="toggleLock('${c.id}',false)" data-testid="unlock-btn"><i class="fas fa-unlock"></i> ${t('unlock')}</button>` : `<button class="btn btn-danger btn-sm" onclick="toggleLock('${c.id}',true)" data-testid="lock-btn"><i class="fas fa-lock"></i> ${t('lock')}</button>`}
+        <button class="btn btn-outline btn-sm" onclick="showEditClient('${c.id}')" data-testid="edit-client-btn"><i class="fas fa-edit"></i> ${t('edit')}</button>
+        <button class="btn btn-outline btn-sm" onclick="sendReminder('${c.id}','email')" data-testid="send-email-btn"><i class="fas fa-envelope"></i> ${t('email')}</button>
+        <button class="btn btn-outline btn-sm" onclick="sendReminder('${c.id}','whatsapp')" data-testid="send-whatsapp-btn"><i class="fab fa-whatsapp"></i> ${t('whatsapp')}</button>
+        <button class="btn btn-outline btn-sm" onclick="downloadContract('${c.id}')" data-testid="download-contract-btn"><i class="fas fa-file-pdf"></i> ${t('contract')}</button>
       </div>
     </div>
     <div class="detail-grid" data-testid="client-details">
