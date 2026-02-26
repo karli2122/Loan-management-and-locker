@@ -67,7 +67,7 @@ const PORTAL_TRANSLATIONS = {
     generate_qr: 'Generate QR Code', generate_nfc: 'Generate NFC Payload',
     nfc_mime_type: 'MIME Type', payload_size: 'Payload Size', nfc_payload: 'NFC Payload',
     copy_btn: 'Copy', copied: 'Copied!', instructions_label: 'Instructions',
-    qr_generated: 'QR code generated', nfc_generated: 'NFC payload generated',
+    qr_generated: 'QR code generated', nfc_generated: 'NFC payload generated', server_url_label: 'Server URL', download: 'Download',
     // Settings
     settings_title: 'Settings', language_label: 'Language / Keel',
     change_password: 'Change Password', current_password: 'Current Password', new_password: 'New Password',
