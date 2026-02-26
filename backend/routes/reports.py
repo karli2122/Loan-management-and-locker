@@ -320,10 +320,21 @@ async def get_financial_report(
     total_processing_fees = sum(c.get("processing_fee", 0) for c in clients)
 
     # Interest allocation setup
-    paid_loans = await db.paid_loans.find(
-        {"admin_id": admin_id},
-        {"_id": 0, "client_id": 1, "total_interest": 1, "archived_at": 1}
-    ).to_list(10000)
+    if is_super:
+        enterprise_id = admin.get("enterprise_id") or admin_id
+        members = await db.admins.find({"enterprise_id": enterprise_id}, {"_id": 0, "id": 1}).to_list(100)
+        member_ids = [m["id"] for m in members]
+        if admin_id not in member_ids:
+            member_ids.append(admin_id)
+        paid_loans = await db.paid_loans.find(
+            {"admin_id": {"$in": member_ids}},
+            {"_id": 0, "client_id": 1, "total_interest": 1, "archived_at": 1}
+        ).to_list(10000)
+    else:
+        paid_loans = await db.paid_loans.find(
+            {"admin_id": admin_id},
+            {"_id": 0, "client_id": 1, "total_interest": 1, "archived_at": 1}
+        ).to_list(10000)
 
     paid_loans_map = {}
     for pl in paid_loans:
