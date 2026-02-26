@@ -291,6 +291,84 @@ export default function Dashboard() {
             <Text style={styles.actionDescription}>{t('viewClientLocations')}</Text>
             <Ionicons name="chevron-forward" size={20} color="#64748B" />
           </TouchableOpacity>
+
+          {/* Enterprise Features */}
+          <View style={styles.enterpriseHeader}>
+            <Ionicons name="shield-checkmark" size={16} color="#8B5CF6" />
+            <Text style={styles.enterpriseTitle}>Enterprise</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/admin/schedules')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#7C3AED' }]}>
+              <Ionicons name="calendar" size={24} color="#fff" />
+            </View>
+            <Text style={styles.actionTitle}>Payment Schedules</Text>
+            <Text style={styles.actionDescription}>Manage automated payment schedules</Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/admin/documents')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#0891B2' }]}>
+              <Ionicons name="folder" size={24} color="#fff" />
+            </View>
+            <Text style={styles.actionTitle}>Documents</Text>
+            <Text style={styles.actionDescription}>Client document management</Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/admin/bulk-import')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#D97706' }]}>
+              <Ionicons name="cloud-upload" size={24} color="#fff" />
+            </View>
+            <Text style={styles.actionTitle}>Bulk Import</Text>
+            <Text style={styles.actionDescription}>Import clients from CSV</Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/admin/team')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#4F46E5' }]}>
+              <Ionicons name="people-circle" size={24} color="#fff" />
+            </View>
+            <Text style={styles.actionTitle}>Team Management</Text>
+            <Text style={styles.actionDescription}>Manage team members &amp; roles</Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/admin/telegram')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#0088CC' }]}>
+              <Ionicons name="paper-plane" size={24} color="#fff" />
+            </View>
+            <Text style={styles.actionTitle}>Telegram</Text>
+            <Text style={styles.actionDescription}>Bot integration &amp; reminders</Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/admin/provisioning')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#DC2626' }]}>
+              <Ionicons name="qr-code" size={24} color="#fff" />
+            </View>
+            <Text style={styles.actionTitle}>Device Provisioning</Text>
+            <Text style={styles.actionDescription}>QR code for device enrollment</Text>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
