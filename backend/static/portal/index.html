@@ -428,7 +428,7 @@ function drawDashboardCharts(financial, dash, collection) {
     const overview = dash.overview || {};
     const distData = [overview.active_loans||0, overview.overdue||0, overview.completed||0, (overview.total_clients||0)-(overview.active_loans||0)-(overview.overdue||0)-(overview.completed||0)];
     new Chart(distCtx, { type: 'doughnut', data: {
-      labels: ['Active', 'Overdue', 'Completed', 'Other'],
+      labels: [t('active'), t('overdue'), t('completed'), t('other')],
       datasets: [{ data: distData, backgroundColor: [chartColors.blue, chartColors.red, chartColors.green, chartColors.purple], borderWidth: 0 }]
     }, options: { responsive: true, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16 } } } } });
   }
