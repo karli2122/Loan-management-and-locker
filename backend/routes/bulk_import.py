@@ -22,7 +22,7 @@ async def import_clients_csv(
     Expected CSV columns (case-insensitive, flexible matching):
     name, phone, email, address, birth_number/id_code, loan_amount, interest_rate, loan_duration_months
     """
-    await get_admin_id_from_token(admin_token)
+    admin_id = await get_admin_id_from_token(admin_token)
 
     content = await file.read()
     try:

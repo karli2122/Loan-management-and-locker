@@ -58,17 +58,30 @@ async def create_client(client_data: ClientCreate, admin_token: str = Query(...)
 
 @router.get("/clients")
 async def list_clients(admin_token: str = Query(...)):
-    """List all clients for the authenticated admin."""
+    """List all clients for the authenticated admin.
+    Superusers see all enterprise clients. Team members see only their own.
+    """
     admin_id = await get_admin_id_from_token(admin_token)
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
     
-    clients = await db.clients.find(
-        {"admin_id": admin_id, "is_deleted": {"$ne": True}},
-        {"_id": 0}
-    ).to_list(1000)
+    # Enterprise data sharing: superuser sees all enterprise members' clients
+    if admin and admin.get("is_super_admin"):
+        enterprise_id = admin.get("enterprise_id") or admin_id
+        # Get all team member IDs
+        members = await db.admins.find(
+            {"enterprise_id": enterprise_id}, {"_id": 0, "id": 1}
+        ).to_list(100)
+        member_ids = [m["id"] for m in members]
+        if admin_id not in member_ids:
+            member_ids.append(admin_id)
+        query = {"admin_id": {"$in": member_ids}, "is_deleted": {"$ne": True}}
+    else:
+        query = {"admin_id": admin_id, "is_deleted": {"$ne": True}}
+    
+    clients = await db.clients.find(query, {"_id": 0}).to_list(1000)
     
     # Ensure loan fields are properly mapped for frontend compatibility
     for client in clients:
-        # Map loan_amount to principal_amount for frontend compatibility
         if client.get("loan_amount") and not client.get("principal_amount"):
             client["principal_amount"] = client["loan_amount"]
     
