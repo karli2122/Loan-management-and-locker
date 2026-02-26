@@ -1,6 +1,6 @@
 """Device routes - registration, status, location updates."""
 from fastapi import APIRouter, Query, HTTPException
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 
 from database import db
