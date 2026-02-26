@@ -184,18 +184,19 @@ async def send_bulk_push_reminders(admin_token: str = Query(...)):
         
         next_due = client.get("next_payment_due")
         days_overdue = client.get("days_overdue", 0)
+        amount = client.get("outstanding_balance", 0) or client.get("monthly_emi", 0) or client.get("loan_amount", 0)
         
         if days_overdue > 0:
             title = "Payment Overdue"
-            body = f"Your payment of €{client.get('monthly_emi', 0):.2f} is {days_overdue} days overdue. Please pay to avoid service interruption."
+            body = f"Your payment of €{amount:.2f} is {days_overdue} days overdue. Please pay to avoid service interruption."
         elif next_due:
             days_until = (next_due - datetime.utcnow()).days
             if days_until <= 0:
                 title = "Payment Due Today"
-                body = f"Your payment of €{client.get('monthly_emi', 0):.2f} is due today."
+                body = f"Your payment of €{amount:.2f} is due today."
             else:
                 title = "Payment Reminder"
-                body = f"Your payment of €{client.get('monthly_emi', 0):.2f} is due in {days_until} days."
+                body = f"Your payment of €{amount:.2f} is due in {days_until} days."
         else:
             continue
         
