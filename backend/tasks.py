@@ -159,6 +159,9 @@ async def process_due_payments():
 
             # Also check all clients for overdue payments (not just scheduled ones)
             await _check_all_overdue_clients()
+            
+            # Auto-unlock temporary locks that have expired
+            await _process_temporary_unlocks()
 
         except Exception as e:
             logger.error(f"Error processing due payments: {e}")
