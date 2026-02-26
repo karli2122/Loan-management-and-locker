@@ -299,6 +299,39 @@ class EMIOverlayService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    /**
+     * Called when the user swipes the app from the recent apps list.
+     * This is the critical handler for the lock screen bypass bug.
+     * We must restart all protection services immediately.
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        Log.w(TAG, "onTaskRemoved: App removed from recents")
+
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val isLocked = prefs.getBoolean(KEY_LOCKED, false)
+        if (!isLocked) return
+
+        Log.w(TAG, "onTaskRemoved: Device is LOCKED — scheduling immediate restart")
+
+        // Schedule restart via alarm
+        EMIRestartReceiver.scheduleRestart(this, 1000)
+
+        // Also try to relaunch app directly
+        try {
+            val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+            if (launchIntent != null) {
+                launchIntent.addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP
+                )
+                startActivity(launchIntent)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "onTaskRemoved: relaunch failed: ${e.message}")
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         refreshRunnable?.let { handler.removeCallbacks(it) }
@@ -306,5 +339,12 @@ class EMIOverlayService : Service() {
         removeBlockers()
         isRunning = false
         Log.d(TAG, "Overlay foreground service stopped")
+
+        // If device is locked, schedule restart to maintain protection
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_LOCKED, false)) {
+            Log.w(TAG, "onDestroy: Device is locked — scheduling restart")
+            EMIRestartReceiver.scheduleRestart(this, 2000)
+        }
     }
 }
