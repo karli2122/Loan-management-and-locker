@@ -395,7 +395,7 @@ async def unlock_client(client_id: str, admin_token: str = Query(...)):
     await db.clients.update_one({"id": client_id}, {"$set": {
         "is_locked": False,
         "lock_reason": None,
-        "lock_message": None,
+        "lock_message": "",  # Empty string instead of None to match Client model
         "locked_at": None,
         "locked_by": None,
         "auto_unlock_at": None,
