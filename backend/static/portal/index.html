@@ -652,14 +652,14 @@ function closeModal() { document.getElementById('modal-overlay')?.remove(); }
 async function renderLoanPlans(el) {
   const plans = await api('GET', '/loan-plans');
   el.innerHTML = `
-    <div class="page-header"><h2>Loan Plans</h2><p>Manage your loan plan templates</p></div>
+    <div class="page-header"><h2>${t('loan_plans_title')}</h2><p>${t('loan_plans_subtitle')}</p></div>
     <div class="card"><div class="table-wrap"><table data-testid="loan-plans-table">
-      <thead><tr><th>Name</th><th>Interest Rate</th><th>Tenure</th><th>Processing Fee</th><th>Late Fee</th><th>Status</th></tr></thead>
+      <thead><tr><th>${t('name')}</th><th>${t('interest_rate_col')}</th><th>${t('tenure')}</th><th>${t('processing_fee')}</th><th>${t('late_fee_col')}</th><th>${t('status')}</th></tr></thead>
       <tbody>${(Array.isArray(plans)?plans:[]).map(p => `<tr>
         <td><b>${esc(p.name)}</b></td><td>${p.interest_rate}%</td><td>${p.min_tenure_months}-${p.max_tenure_months} mo</td>
         <td>${p.processing_fee_percent}%</td><td>${p.late_fee_percent}%</td>
-        <td><span class="badge badge-${p.is_active?'success':'warning'}">${p.is_active?'Active':'Inactive'}</span></td>
-      </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No loan plans</td></tr>'}</tbody>
+        <td><span class="badge badge-${p.is_active?'success':'warning'}">${p.is_active?t('active'):t('inactive')}</span></td>
+      </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">${t('no_loan_plans')}</td></tr>`}</tbody>
     </table></div></div>`;
 }
 
@@ -671,33 +671,33 @@ async function renderReminders(el) {
   ]);
   const s = pending.summary;
   el.innerHTML = `
-    <div class="page-header"><h2>Payment Reminders</h2><p>Send and manage payment reminders</p></div>
+    <div class="page-header"><h2>${t('reminders_title')}</h2><p>${t('reminders_subtitle')}</p></div>
     <div class="stats-grid">
-      <div class="stat-card danger"><div class="stat-label">Overdue</div><div class="stat-value">${s.overdue_count}</div></div>
-      <div class="stat-card warning"><div class="stat-label">Due Today</div><div class="stat-value">${s.due_today_count}</div></div>
-      <div class="stat-card accent"><div class="stat-label">Due Soon</div><div class="stat-value">${s.due_soon_count}</div></div>
-      <div class="stat-card"><div class="stat-label">Upcoming</div><div class="stat-value">${s.upcoming_count}</div></div>
+      <div class="stat-card danger"><div class="stat-label">${t('overdue')}</div><div class="stat-value">${s.overdue_count}</div></div>
+      <div class="stat-card warning"><div class="stat-label">${t('due_today_label')}</div><div class="stat-value">${s.due_today_count}</div></div>
+      <div class="stat-card accent"><div class="stat-label">${t('due_soon')}</div><div class="stat-value">${s.due_soon_count}</div></div>
+      <div class="stat-card"><div class="stat-label">${t('upcoming')}</div><div class="stat-value">${s.upcoming_count}</div></div>
     </div>
-    <div class="card"><div class="card-header"><h3>Integration Status</h3></div>
+    <div class="card"><div class="card-header"><h3>${t('integration_status')}</h3></div>
       <div style="display:flex;gap:16px;flex-wrap:wrap">
-        <span class="badge badge-${config.email_configured?'success':'danger'}"><i class="fas fa-envelope"></i> Email ${config.email_configured?'Connected':'Not configured'}</span>
-        <span class="badge badge-${config.push_configured?'success':'danger'}"><i class="fas fa-bell"></i> Push ${config.push_configured?'Ready':'Unavailable'}</span>
-        <span class="badge badge-${config.whatsapp_configured?'success':'warning'}"><i class="fab fa-whatsapp"></i> WhatsApp ${config.whatsapp_configured?'Connected':'Deep link only'}</span>
+        <span class="badge badge-${config.email_configured?'success':'danger'}"><i class="fas fa-envelope"></i> ${t('email')} ${config.email_configured?t('email_connected'):t('email_not_configured')}</span>
+        <span class="badge badge-${config.push_configured?'success':'danger'}"><i class="fas fa-bell"></i> ${t('push')} ${config.push_configured?t('push_ready'):t('push_unavailable')}</span>
+        <span class="badge badge-${config.whatsapp_configured?'success':'warning'}"><i class="fab fa-whatsapp"></i> ${t('whatsapp')} ${config.whatsapp_configured?t('whatsapp_connected'):t('whatsapp_deep_link')}</span>
       </div>
     </div>
     <div class="action-row" style="margin-bottom:16px">
-      <button class="btn btn-primary btn-sm" onclick="sendBulkEmail()" data-testid="bulk-email-btn"><i class="fas fa-envelope"></i> Send All Emails</button>
-      <button class="btn btn-outline btn-sm" onclick="sendBulkPush()" data-testid="bulk-push-btn"><i class="fas fa-bell"></i> Send All Push</button>
+      <button class="btn btn-primary btn-sm" onclick="sendBulkEmail()" data-testid="bulk-email-btn"><i class="fas fa-envelope"></i> ${t('send_all_emails')}</button>
+      <button class="btn btn-outline btn-sm" onclick="sendBulkPush()" data-testid="bulk-push-btn"><i class="fas fa-bell"></i> ${t('send_all_push')}</button>
     </div>
-    ${renderReminderSection('Overdue', pending.overdue, 'danger')}
-    ${renderReminderSection('Due Today', pending.due_today, 'warning')}
-    ${renderReminderSection('Due Soon (1-3 days)', pending.due_soon, 'info')}`;
+    ${renderReminderSection(t('overdue'), pending.overdue, 'danger')}
+    ${renderReminderSection(t('due_today_label'), pending.due_today, 'warning')}
+    ${renderReminderSection(t('due_soon_days'), pending.due_soon, 'info')}`;
 }
 
 function renderReminderSection(title, clients, type) {
   if (!clients?.length) return '';
   return `<div class="card"><div class="card-header"><h3>${title}</h3><span class="badge badge-${type}">${clients.length}</span></div>
-    <div class="table-wrap"><table><thead><tr><th>Client</th><th>Phone</th><th>Outstanding</th><th>Due Date</th><th>Actions</th></tr></thead><tbody>
+    <div class="table-wrap"><table><thead><tr><th>${t('client')}</th><th>${t('phone')}</th><th>${t('outstanding')}</th><th>${t('due_date')}</th><th>${t('actions')}</th></tr></thead><tbody>
       ${clients.map(c => `<tr><td>${esc(c.client_name)}</td><td>${esc(c.phone||'-')}</td><td>${cur(c.outstanding_balance)}</td><td>${fmtDate(c.next_payment_due)}</td>
         <td class="action-row"><button class="btn btn-ghost btn-sm" onclick="sendReminder('${c.client_id}','email')"><i class="fas fa-envelope"></i></button>
         <button class="btn btn-ghost btn-sm" onclick="sendReminder('${c.client_id}','whatsapp')"><i class="fab fa-whatsapp"></i></button></td></tr>`).join('')}
