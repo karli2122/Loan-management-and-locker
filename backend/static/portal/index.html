@@ -989,7 +989,7 @@ function showAddMember() {
   const roles = window._teamRoles || {};
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay'; overlay.id = 'modal-overlay';
-  overlay.innerHTML = `<div class="modal"><h3>Add Team Member</h3>
+  overlay.innerHTML = `<div class="modal"><h3>${t('add_team_member')}</h3>
     <form id="add-member-form">
       <div class="form-row"><div class="form-group"><label>Username *</label><input id="tm-user" required data-testid="tm-username"></div>
         <div class="form-group"><label>Password *</label><input id="tm-pass" type="password" required data-testid="tm-password"></div></div>
@@ -1000,7 +1000,7 @@ function showAddMember() {
           ${Object.entries(roles).filter(([k])=>k!=='super_admin').map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}
         </select></div></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">${t('cancel')}</button>
         <button type="submit" class="btn btn-primary btn-sm" data-testid="save-member-btn"><i class="fas fa-save"></i> Save</button></div>
     </form></div>`;
   document.body.appendChild(overlay);
@@ -1038,7 +1038,7 @@ async function editMember(memberId) {
       <div class="form-group"><label>New Password (leave blank to keep)</label><input id="em-pass" type="password" data-testid="em-pass"></div>
       <div class="form-group"><label><input type="checkbox" id="em-active" ${m.is_active!==false?'checked':''} data-testid="em-active"> Active</label></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">${t('cancel')}</button>
         <button type="submit" class="btn btn-primary btn-sm" data-testid="save-edit-member-btn"><i class="fas fa-save"></i> Save</button></div>
     </form></div>`;
   document.body.appendChild(overlay);
@@ -1114,7 +1114,7 @@ function showUploadDoc() {
       </select></div><div class="form-group"><label>Description</label><input id="ud-desc" data-testid="ud-desc"></div></div>
       <div class="form-group"><label>File (max 10MB)</label><input id="ud-file" type="file" required data-testid="ud-file" style="padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);width:100%"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">${t('cancel')}</button>
         <button type="submit" class="btn btn-primary btn-sm" data-testid="upload-doc-submit"><i class="fas fa-upload"></i> Upload</button></div>
     </form></div>`;
   document.body.appendChild(overlay);
@@ -1310,7 +1310,7 @@ function showAddSchedule() {
       </div>
       <div class="form-group"><label><input type="checkbox" id="sched-auto" checked data-testid="sched-auto-remind"> Auto-send reminders</label></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">${t('cancel')}</button>
         <button type="submit" class="btn btn-primary btn-sm" data-testid="save-schedule-btn"><i class="fas fa-save"></i> Create</button></div>
     </form></div>`;
   document.body.appendChild(overlay);
