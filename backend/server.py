@@ -120,6 +120,7 @@ app.include_router(team_router)
 app.include_router(telegram_router)
 app.include_router(documents_router)
 app.include_router(import_router)
+app.include_router(exports_router, prefix="/api")
 
 
 @app.get("/api/download/website")
