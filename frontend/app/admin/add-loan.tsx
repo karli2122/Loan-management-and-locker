@@ -654,7 +654,7 @@ export default function AddLoan() {
                   {t('tenure')}
                 </Text>
                 <Text style={styles.emiPreviewValueSmall}>
-                  {emiPreview.months} {t('months')}
+                  {emiPreview.days} {language === 'et' ? 'päeva' : 'days'}
                 </Text>
               </View>
               <View style={styles.emiPreviewItem}>
