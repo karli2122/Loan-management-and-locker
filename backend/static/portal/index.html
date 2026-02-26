@@ -1409,26 +1409,56 @@ async function renderActivity(el) {
   const memberMap = {};
   (members.members || []).forEach(m => { memberMap[m.id] = m.username; });
 
+  // Compute activity stats
+  const actionCounts = {};
+  logs.forEach(l => { const a = l.action_type||'other'; actionCounts[a] = (actionCounts[a]||0) + 1; });
+  const totalActions = logs.length;
+  const uniqueUsers = new Set(logs.map(l => l.admin_id||l.admin_username)).size;
+  const todayLogs = logs.filter(l => {
+    const d = new Date(l.timestamp||l.created_at);
+    const now = new Date();
+    return d.toDateString() === now.toDateString();
+  }).length;
+
   el.innerHTML = `
     <div class="page-header"><h2>${t('activity_title')}</h2><p>${t('activity_subtitle')}</p></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px">
+      <div class="card" style="padding:16px;text-align:center" data-testid="activity-stat-total">
+        <div style="font-size:24px;font-weight:700;color:var(--accent)">${totalActions}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${t('total_actions')}</div>
+      </div>
+      <div class="card" style="padding:16px;text-align:center" data-testid="activity-stat-today">
+        <div style="font-size:24px;font-weight:700;color:#10b981">${todayLogs}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${t('today_actions')}</div>
+      </div>
+      <div class="card" style="padding:16px;text-align:center" data-testid="activity-stat-users">
+        <div style="font-size:24px;font-weight:700;color:#8b5cf6">${uniqueUsers}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${t('active_users')}</div>
+      </div>
+      <div class="card" style="padding:16px;text-align:center" data-testid="activity-stat-types">
+        <div style="font-size:24px;font-weight:700;color:#f59e0b">${Object.keys(actionCounts).length}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${t('action_types')}</div>
+      </div>
+    </div>
     <div class="card" style="margin-bottom:16px">
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">
-        <div class="form-group" style="flex:1;min-width:150px;margin:0"><label>Action Type</label>
+        <div class="form-group" style="flex:1;min-width:140px;margin:0"><label>${t('action_type_label')}</label>
           <select id="act-type" style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)" data-testid="activity-filter-type">
-            <option value="">All</option><option value="login">Login</option><option value="client_create">Client Create</option>
-            <option value="client_update">Client Update</option><option value="lock">Lock</option><option value="unlock">Unlock</option>
-            <option value="payment">Payment</option><option value="reminder">Reminder</option>
+            <option value="">${t('all')}</option><option value="login">${t('login')}</option><option value="client_create">${t('client_create')}</option>
+            <option value="client_update">${t('client_update')}</option><option value="lock">${t('lock')}</option><option value="unlock">${t('unlock')}</option>
+            <option value="payment">${t('payment')}</option><option value="reminder">${t('reminder_label')}</option>
           </select></div>
-        <div class="form-group" style="flex:1;min-width:150px;margin:0"><label>Team Member</label>
+        <div class="form-group" style="flex:1;min-width:140px;margin:0"><label>${t('team_member')}</label>
           <select id="act-member" style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)" data-testid="activity-filter-member">
-            <option value="">All Members</option>
+            <option value="">${t('all_members')}</option>
             ${(members.members||[]).map(m => `<option value="${m.id}">${esc(m.username)}</option>`).join('')}
           </select></div>
-        <button class="btn btn-primary btn-sm" onclick="filterActivity()" data-testid="activity-filter-btn"><i class="fas fa-filter"></i> Filter</button>
+        <button class="btn btn-primary btn-sm" onclick="filterActivity()" data-testid="activity-filter-btn"><i class="fas fa-filter"></i> ${t('filter_btn')}</button>
+        <button class="btn btn-outline btn-sm" onclick="exportActivityCSV()" data-testid="export-activity-btn"><i class="fas fa-file-csv"></i> ${t('export_csv')}</button>
       </div>
     </div>
     <div class="card"><div class="table-wrap"><table data-testid="activity-table">
-      <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Target</th><th>Details</th></tr></thead>
+      <thead><tr><th>${t('time')}</th><th>${t('user')}</th><th>${t('action')}</th><th>${t('target')}</th><th>${t('details')}</th></tr></thead>
       <tbody id="activity-tbody">${renderActivityRows(logs, memberMap)}</tbody>
     </table></div></div>`;
 }
