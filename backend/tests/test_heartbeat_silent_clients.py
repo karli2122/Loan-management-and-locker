@@ -13,7 +13,7 @@ import time
 import uuid
 from datetime import datetime
 
-BASE_URL = "https://loan-kiosk-mode.preview.emergentagent.com"
+BASE_URL = "https://paylock-features.preview.emergentagent.com"
 
 # Test credentials
 TEST_USERNAME = "karli1987"

@@ -13,7 +13,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://loan-kiosk-mode.preview.emergentagent.com")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://paylock-features.preview.emergentagent.com")
 
 class TestHealthAndAuth:
     """Test health endpoint and admin authentication"""
