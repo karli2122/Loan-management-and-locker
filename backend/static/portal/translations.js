@@ -68,6 +68,10 @@ const PORTAL_TRANSLATIONS = {
     nfc_mime_type: 'MIME Type', payload_size: 'Payload Size', nfc_payload: 'NFC Payload',
     copy_btn: 'Copy', copied: 'Copied!', instructions_label: 'Instructions',
     qr_generated: 'QR code generated', nfc_generated: 'NFC payload generated', server_url_label: 'Server URL', download: 'Download',
+    scheduled_reports: 'Scheduled Reports', scheduled_reports_desc: 'Automatically receive reports via email on a daily, weekly, or monthly basis.',
+    email_address: 'Email Address', report_type_label: 'Report Type', schedule_report: 'Schedule Report', send_now: 'Send Now',
+    no_scheduled_reports: 'No scheduled reports configured', schedule_created: 'Report schedule created', schedule_deleted: 'Schedule removed',
+    daily: 'Daily', no_recent_activity: 'No recent activity', active: 'Active', inactive: 'Inactive', other: 'Other',
     // Settings
     settings_title: 'Settings', language_label: 'Language / Keel',
     change_password: 'Change Password', current_password: 'Current Password', new_password: 'New Password',
