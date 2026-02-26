@@ -1241,6 +1241,174 @@ async function sendTelegramSingle() {
   try { await api('POST', `/telegram/send/${clientId}`); toast('Telegram reminder sent'); } catch(e) { toast(e.message, 'error'); }
 }
 
+// ===================== PAYMENT SCHEDULES =====================
+async function renderSchedules(el) {
+  const [data, due] = await Promise.all([
+    api('GET', '/schedules'),
+    api('GET', '/schedules/due/today').catch(() => ({ due_schedules: [], count: 0 }))
+  ]);
+  el.innerHTML = `
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:start">
+      <div><h2>Payment Schedules</h2><p>${data.total} active schedules</p></div>
+      <div class="action-row">
+        <button class="btn btn-outline btn-sm" onclick="processScheduledReminders()" data-testid="process-reminders-btn"><i class="fas fa-sync"></i> Process Reminders</button>
+        <button class="btn btn-primary btn-sm" onclick="showAddSchedule()" data-testid="add-schedule-btn"><i class="fas fa-plus"></i> New Schedule</button>
+      </div>
+    </div>
+    ${due.count > 0 ? `<div class="card" style="border-left:3px solid var(--warning);margin-bottom:16px"><div class="card-header"><h3 style="color:var(--warning)"><i class="fas fa-exclamation-triangle"></i> ${due.count} Payments Due Today</h3></div>
+      <div class="table-wrap"><table><thead><tr><th>Client</th><th>Amount</th><th>Next Due</th></tr></thead><tbody>
+        ${due.due_schedules.map(s => `<tr><td><b>${esc(s.client_name)}</b></td><td>${cur(s.amount)}</td><td>${s.next_due_date||'-'}</td></tr>`).join('')}
+      </tbody></table></div></div>` : ''}
+    <div class="card"><div class="table-wrap"><table data-testid="schedules-table">
+      <thead><tr><th>Client</th><th>Amount</th><th>Frequency</th><th>Day</th><th>Next Due</th><th>Auto Remind</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>${data.schedules.length ? data.schedules.map(s => `<tr>
+        <td><b>${esc(s.client_name||s.client_id)}</b></td>
+        <td>${cur(s.amount)}</td>
+        <td><span class="badge badge-info">${esc(s.frequency)}</span></td>
+        <td>${s.day_of_month}</td>
+        <td>${s.next_due_date||'-'}</td>
+        <td>${s.auto_reminder ? '<span class="badge badge-success">On</span>' : '<span class="badge badge-warning">Off</span>'}</td>
+        <td><span class="badge badge-${s.is_active?'success':'warning'}">${s.is_active?'Active':'Paused'}</span></td>
+        <td class="action-row">
+          <button class="btn btn-ghost btn-sm" onclick="toggleSchedule('${s.id}',${!s.is_active})" data-testid="toggle-schedule-${s.id}"><i class="fas fa-${s.is_active?'pause':'play'}"></i></button>
+          <button class="btn btn-ghost btn-sm" onclick="deleteSchedule('${s.id}')" data-testid="delete-schedule-${s.id}"><i class="fas fa-trash" style="color:var(--danger)"></i></button>
+        </td>
+      </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--text-muted)">No schedules yet. Create one to automate payment tracking.</td></tr>'}</tbody>
+    </table></div></div>`;
+}
+
+function showAddSchedule() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay'; overlay.id = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal"><h3>New Payment Schedule</h3>
+    <form id="add-schedule-form">
+      <div class="form-group"><label>Client ID *</label><input id="sched-client" required data-testid="sched-client-id"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Amount (leave blank for EMI)</label><input id="sched-amount" type="number" step="0.01" data-testid="sched-amount"></div>
+        <div class="form-group"><label>Frequency</label><select id="sched-freq" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)" data-testid="sched-freq">
+          <option value="monthly">Monthly</option><option value="biweekly">Bi-weekly</option><option value="weekly">Weekly</option>
+        </select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Day of Month</label><input id="sched-day" type="number" min="1" max="28" value="1" data-testid="sched-day"></div>
+        <div class="form-group"><label>Remind Days Before</label><input id="sched-remind" type="number" min="0" max="14" value="3" data-testid="sched-remind-days"></div>
+      </div>
+      <div class="form-group"><label>Reminder Channels</label>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <label><input type="checkbox" id="sched-ch-push" checked> Push</label>
+          <label><input type="checkbox" id="sched-ch-email"> Email</label>
+          <label><input type="checkbox" id="sched-ch-telegram"> Telegram</label>
+        </div>
+      </div>
+      <div class="form-group"><label><input type="checkbox" id="sched-auto" checked data-testid="sched-auto-remind"> Auto-send reminders</label></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" data-testid="save-schedule-btn"><i class="fas fa-save"></i> Create</button></div>
+    </form></div>`;
+  document.body.appendChild(overlay);
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+  document.getElementById('add-schedule-form').onsubmit = async(e) => {
+    e.preventDefault();
+    const channels = [];
+    if (document.getElementById('sched-ch-push').checked) channels.push('push');
+    if (document.getElementById('sched-ch-email').checked) channels.push('email');
+    if (document.getElementById('sched-ch-telegram').checked) channels.push('telegram');
+    try {
+      const payload = {
+        client_id: document.getElementById('sched-client').value,
+        frequency: document.getElementById('sched-freq').value,
+        day_of_month: parseInt(document.getElementById('sched-day').value) || 1,
+        reminder_days_before: parseInt(document.getElementById('sched-remind').value) || 3,
+        auto_reminder: document.getElementById('sched-auto').checked,
+        reminder_channels: channels,
+      };
+      const amt = document.getElementById('sched-amount').value;
+      if (amt) payload.amount = parseFloat(amt);
+      await api('POST', '/schedules', payload);
+      toast('Schedule created'); closeModal(); navigate('schedules');
+    } catch(err) { toast(err.message, 'error'); }
+  };
+}
+
+async function toggleSchedule(id, active) {
+  try { await api('PUT', `/schedules/${id}`, { is_active: active }); toast(active ? 'Schedule activated' : 'Schedule paused'); navigate('schedules'); } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteSchedule(id) {
+  if (!confirm('Delete this schedule?')) return;
+  try { await api('DELETE', `/schedules/${id}`); toast('Schedule deleted'); navigate('schedules'); } catch(e) { toast(e.message, 'error'); }
+}
+
+async function processScheduledReminders() {
+  try {
+    const r = await api('POST', '/schedules/process-reminders');
+    toast(`Processed ${r.processed} schedules, ${r.reminders_sent} reminders sent`);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ===================== ACTIVITY LOG =====================
+async function renderActivity(el) {
+  const data = await api('GET', '/audit-logs?limit=100');
+  const logs = data.logs || [];
+  const members = await api('GET', '/team/members').catch(() => ({ members: [] }));
+  const memberMap = {};
+  (members.members || []).forEach(m => { memberMap[m.id] = m.username; });
+
+  el.innerHTML = `
+    <div class="page-header"><h2>Team Activity Log</h2><p>Track all team member actions (superuser only)</p></div>
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">
+        <div class="form-group" style="flex:1;min-width:150px;margin:0"><label>Action Type</label>
+          <select id="act-type" style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)" data-testid="activity-filter-type">
+            <option value="">All</option><option value="login">Login</option><option value="client_create">Client Create</option>
+            <option value="client_update">Client Update</option><option value="lock">Lock</option><option value="unlock">Unlock</option>
+            <option value="payment">Payment</option><option value="reminder">Reminder</option>
+          </select></div>
+        <div class="form-group" style="flex:1;min-width:150px;margin:0"><label>Team Member</label>
+          <select id="act-member" style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)" data-testid="activity-filter-member">
+            <option value="">All Members</option>
+            ${(members.members||[]).map(m => `<option value="${m.id}">${esc(m.username)}</option>`).join('')}
+          </select></div>
+        <button class="btn btn-primary btn-sm" onclick="filterActivity()" data-testid="activity-filter-btn"><i class="fas fa-filter"></i> Filter</button>
+      </div>
+    </div>
+    <div class="card"><div class="table-wrap"><table data-testid="activity-table">
+      <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Target</th><th>Details</th></tr></thead>
+      <tbody id="activity-tbody">${renderActivityRows(logs, memberMap)}</tbody>
+    </table></div></div>`;
+}
+
+function renderActivityRows(logs, memberMap) {
+  if (!logs.length) return '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No activity logs found</td></tr>';
+  return logs.map(l => {
+    const user = memberMap[l.admin_id] || l.admin_username || l.admin_id || '-';
+    const actionBadge = { login: 'info', lock: 'danger', unlock: 'success', payment: 'success', client_create: 'accent', reminder: 'warning' };
+    const badge = actionBadge[l.action_type] || 'info';
+    return `<tr>
+      <td style="font-size:12px;white-space:nowrap">${fmtDate(l.timestamp||l.created_at)}</td>
+      <td><b>${esc(user)}</b></td>
+      <td><span class="badge badge-${badge}">${esc(l.action_type||'-')}</span></td>
+      <td>${esc(l.target_type||'-')}: ${esc(l.target_id||'').substring(0,8)}</td>
+      <td style="font-size:12px;color:var(--text-muted);max-width:300px;overflow:hidden;text-overflow:ellipsis">${esc(l.details||l.description||'-')}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function filterActivity() {
+  const type = document.getElementById('act-type').value;
+  const member = document.getElementById('act-member').value;
+  let url = '/audit-logs?limit=100';
+  if (type) url += `&action_type=${type}`;
+  if (member) url += `&admin_id_filter=${member}`;
+  try {
+    const data = await api('GET', url);
+    const members = await api('GET', '/team/members').catch(() => ({ members: [] }));
+    const memberMap = {};
+    (members.members || []).forEach(m => { memberMap[m.id] = m.username; });
+    document.getElementById('activity-tbody').innerHTML = renderActivityRows(data.logs||[], memberMap);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
 // Helpers
 function cur(n) { return '€' + (Number(n)||0).toFixed(2); }
 function esc(s) { const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
