@@ -1036,7 +1036,7 @@ async function editMember(memberId) {
           ${Object.entries(roles).filter(([k])=>k!=='super_admin').map(([k,v])=>`<option value="${k}" ${m.role===k?'selected':''}>${v.label}</option>`).join('')}
         </select></div></div>
       <div class="form-group"><label>New Password (leave blank to keep)</label><input id="em-pass" type="password" data-testid="em-pass"></div>
-      <div class="form-group"><label><input type="checkbox" id="em-active" ${m.is_active!==false?'checked':''} data-testid="em-active"> Active</label></div>
+      <div class="form-group"><label><input type="checkbox" id="em-active" ${m.is_active!==false?'checked':''} data-testid="em-active"> ${t('active_label')}</label></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
         <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">${t('cancel')}</button>
         <button type="submit" class="btn btn-primary btn-sm" data-testid="save-edit-member-btn"><i class="fas fa-save"></i> Save</button></div>
@@ -1091,7 +1091,7 @@ async function searchClientDocs() {
     // Try as client ID first
     const docs = await api('GET', `/documents/client/${q}`);
     if (docs.documents && docs.documents.length > 0) {
-      container.innerHTML = `<table><thead><tr><th>Filename</th><th>Type</th><th>Size</th><th>Uploaded</th><th>Actions</th></tr></thead><tbody>
+      container.innerHTML = `<table><thead><tr><th>${t('filename')}</th><th>${t('type')}</th><th>${t('size')}</th><th>${t('uploaded')}</th><th>${t('actions')}</th></tr></thead><tbody>
         ${docs.documents.map(d=>`<tr><td>${esc(d.filename)}</td><td><span class="badge badge-info">${esc(d.doc_type)}</span></td>
           <td>${(d.size/1024).toFixed(1)} KB</td><td>${fmtDate(d.uploaded_at)}</td>
           <td class="action-row"><a href="${API_BASE}/documents/${d.id}/download?admin_token=${state.token}" class="btn btn-ghost btn-sm" target="_blank"><i class="fas fa-download"></i></a>
@@ -1264,11 +1264,11 @@ async function renderSchedules(el) {
       </div>
     </div>
     ${due.count > 0 ? `<div class="card" style="border-left:3px solid var(--warning);margin-bottom:16px"><div class="card-header"><h3 style="color:var(--warning)"><i class="fas fa-exclamation-triangle"></i> ${due.count} Payments Due Today</h3></div>
-      <div class="table-wrap"><table><thead><tr><th>Client</th><th>Amount</th><th>Next Due</th></tr></thead><tbody>
+      <div class="table-wrap"><table><thead><tr><th>${t('client')}</th><th>${t('amount')}</th><th>${t('next_due')}</th></tr></thead><tbody>
         ${due.due_schedules.map(s => `<tr><td><b>${esc(s.client_name)}</b></td><td>${cur(s.amount)}</td><td>${s.next_due_date||'-'}</td></tr>`).join('')}
       </tbody></table></div></div>` : ''}
     <div class="card"><div class="table-wrap"><table data-testid="schedules-table">
-      <thead><tr><th>Client</th><th>Amount</th><th>Frequency</th><th>Day</th><th>Next Due</th><th>Auto Remind</th><th>Status</th><th>Actions</th></tr></thead>
+      <thead><tr><th>${t('client')}</th><th>${t('amount')}</th><th>${t('frequency')}</th><th>${t('day')}</th><th>${t('next_due')}</th><th>${t('auto_remind')}</th><th>${t('status')}</th><th>${t('actions')}</th></tr></thead>
       <tbody>${data.schedules.length ? data.schedules.map(s => `<tr>
         <td><b>${esc(s.client_name||s.client_id)}</b></td>
         <td>${cur(s.amount)}</td>
