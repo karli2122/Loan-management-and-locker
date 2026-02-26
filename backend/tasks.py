@@ -50,8 +50,22 @@ async def process_due_payments():
                 admin_id = client.get("admin_id")
                 client_name = client.get("name", "Unknown")
 
+                # Fetch admin automation settings
+                admin_settings = None
+                if admin_id:
+                    admin_settings = await db.admin_settings.find_one({"admin_id": admin_id}, {"_id": 0})
+                if not admin_settings:
+                    admin_settings = {
+                        "payment_auto_reminder_enabled": True,
+                        "payment_auto_lock_enabled": True,
+                        "payment_auto_late_fee_enabled": True,
+                        "payment_late_fee_frequency_days": 7,
+                        "payment_reminder_channels": ["push", "email"],
+                    }
+
                 # Send reminder notification to admin
-                if s.get("auto_reminder", True) and admin_id:
+                auto_remind = admin_settings.get("payment_auto_reminder_enabled", True)
+                if s.get("auto_reminder", True) and admin_id and auto_remind:
                     await db.notifications.insert_one({
                         "id": str(uuid.uuid4()),
                         "admin_id": admin_id,
