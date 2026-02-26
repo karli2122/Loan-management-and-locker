@@ -273,9 +273,13 @@ async def get_financial_report(
     start_date: Optional[str] = Query(default=None),
     end_date: Optional[str] = Query(default=None)
 ):
-    """Get financial report with optional date range."""
+    """Get financial report. Enterprise superusers see all enterprise data."""
     admin_id = await get_admin_id_from_token(admin_token)
-    query = {"admin_id": admin_id, "is_deleted": {"$ne": True}}
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
+    is_super = admin.get("is_super_admin", False) if admin else False
+    
+    # Use enterprise scoping
+    query = await _get_enterprise_client_query(admin_id)
     
     clients = await db.clients.find(query, {"_id": 0}).to_list(1000)
     
