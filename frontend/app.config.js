@@ -66,6 +66,16 @@ export default {
       "expo-font",
       "expo-web-browser",
       [
+        "expo-location",
+        {
+          locationAlwaysAndWhenInUsePermission: "PayLock needs your location to verify device compliance.",
+          locationAlwaysPermission: "PayLock needs background location access for device tracking.",
+          locationWhenInUsePermission: "PayLock needs your location to verify device compliance.",
+          isAndroidBackgroundLocationEnabled: !IS_ADMIN_APP,
+          isAndroidForegroundServiceEnabled: !IS_ADMIN_APP,
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           image: "./assets/images/splash-image.png",
