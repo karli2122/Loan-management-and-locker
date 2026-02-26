@@ -133,35 +133,27 @@ export default function AddLoan() {
     }
   };
 
-  // Real-time EMI calculator (using monthly interest rate)
+  // Real-time interest calculator (day-count method)
+  // Example: 200 loan, 50% monthly rate, 15 days = 200 * 0.5 * (15/30) = 50
   const emiPreview = React.useMemo(() => {
     const amount = parseFloat(loanAmount);
-    const rate = parseFloat(interestRate); // Already monthly rate
+    const rate = parseFloat(interestRate); // Monthly interest rate %
     if (!dueDate || !givenDate || isNaN(amount) || amount <= 0 || isNaN(rate) || rate < 0) return null;
 
     const start = new Date(givenDate);
     const due = new Date(dueDate);
-    let months = (due.getFullYear() - start.getFullYear()) * 12 + (due.getMonth() - start.getMonth());
-    if (months < 1) return null;
+    const diffMs = due.getTime() - start.getTime();
+    const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 
-    const monthlyRate = rate / 100; // Convert percentage to decimal
-    let monthlyEmi: number;
-    let totalInterest: number;
-
-    if (monthlyRate === 0) {
-      monthlyEmi = amount / months;
-      totalInterest = 0;
-    } else {
-      const power = Math.pow(1 + monthlyRate, months);
-      monthlyEmi = (amount * monthlyRate * power) / (power - 1);
-      totalInterest = (monthlyEmi * months) - amount;
-    }
+    // Day-count interest: principal * (rate/100) * (days/30)
+    const totalInterest = amount * (rate / 100) * (days / 30);
+    const totalAmount = amount + totalInterest;
 
     return {
-      monthlyEmi: Math.round(monthlyEmi * 100) / 100,
-      totalAmount: Math.round((amount + totalInterest) * 100) / 100,
+      monthlyEmi: Math.round((totalAmount / Math.max(1, Math.ceil(days / 30))) * 100) / 100,
+      totalAmount: Math.round(totalAmount * 100) / 100,
       totalInterest: Math.round(totalInterest * 100) / 100,
-      months,
+      days,
     };
   }, [loanAmount, interestRate, givenDate, dueDate]);
 
