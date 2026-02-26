@@ -1,4 +1,52 @@
 """EMI and loan calculation utilities"""
+from datetime import datetime
+
+
+def calculate_day_count_interest(principal: float, monthly_rate: float, loan_period_days: int) -> dict:
+    """
+    Calculate interest based on day count.
+    Example: 200 loan, 50% monthly interest, 15 days:
+      Interest = 200 * (50/100) * (15/30) = 50
+    """
+    total_interest = principal * (monthly_rate / 100) * (loan_period_days / 30)
+    total_repayment = principal + total_interest
+
+    return {
+        "method": "Day Count",
+        "principal": round(principal, 2),
+        "monthly_interest_rate": monthly_rate,
+        "loan_period_days": loan_period_days,
+        "daily_rate": round(monthly_rate / 30, 4),
+        "total_interest": round(total_interest, 2),
+        "total_repayment": round(total_repayment, 2),
+    }
+
+
+def calculate_interest_total(client: dict) -> float:
+    """Calculate total interest for a client based on day-count method."""
+    principal = client.get("loan_amount", 0)
+    rate = client.get("interest_rate", 0)
+    if not principal or not rate:
+        return 0.0
+    
+    loan_period_days = client.get("loan_period_days", 30)
+    
+    loan_start = client.get("loan_start_date") or client.get("created_at")
+    if loan_start:
+        if isinstance(loan_start, str):
+            try:
+                loan_start = datetime.fromisoformat(loan_start.replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                loan_start = None
+        if loan_start:
+            now = datetime.utcnow()
+            if hasattr(loan_start, 'replace') and loan_start.tzinfo:
+                loan_start = loan_start.replace(tzinfo=None)
+            actual_days = (now - loan_start).days
+            loan_period_days = max(actual_days, 1)
+    
+    interest = principal * (rate / 100) * (loan_period_days / 30)
+    return round(interest, 2)
 
 
 def calculate_simple_interest_emi(principal: float, annual_rate: float, months: int) -> dict:
