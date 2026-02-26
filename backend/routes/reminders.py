@@ -128,6 +128,13 @@ async def get_pending_reminders(admin_token: str = Query(...)):
         if not next_due:
             continue
         
+        # Convert next_due to datetime if it's a string
+        if isinstance(next_due, str):
+            try:
+                next_due = datetime.fromisoformat(next_due.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+        
         reminder_data = {
             "client_id": client["id"],
             "client_name": client["name"],
