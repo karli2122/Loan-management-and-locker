@@ -531,8 +531,9 @@ async def get_dashboard_analytics(
             monthly_revenue[month_key] = monthly_revenue.get(month_key, 0) + payment.get("amount", 0)
 
     # Monthly interest earned (last 6 months) — computed from payment allocations
+    client_ids_set = set(c["id"] for c in clients)
     paid_loans = await db.paid_loans.find(
-        {"admin_id": target_admin_id} if target_admin_id else {},
+        {"client_id": {"$in": list(client_ids_set)}},
         {"_id": 0, "client_id": 1, "total_interest": 1, "archived_at": 1}
     ).to_list(10000)
 
