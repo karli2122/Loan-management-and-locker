@@ -5,73 +5,49 @@ Build a full web portal for loan management with admin capabilities, internation
 
 ## Core Architecture
 - **Backend**: FastAPI (Python) on port 8001
-- **Frontend Portal**: Vanilla JS SPA at `/api/portal` (served as static from `backend/static/portal/`)
-- **Mobile Apps**: React Native/Expo (admin + client apps) in `/app/frontend/`
-- **Database**: MongoDB
+- **Frontend Portal**: Vanilla JS SPA at `/api/portal`
+- **Mobile Apps**: React Native/Expo (admin + client) in `/app/frontend/`
+- **Database**: MongoDB (local - migration to Atlas pending)
 - **Website**: Served at `/api/website`, downloadable at `/api/download/website`
 
-## Completed Features
-- Admin authentication (login/logout, password change)
-- Client management (CRUD, search, filtering)
-- Loan management (create, update, payments)
-- Device management (lock/unlock, heartbeat monitoring)
-- Payment recording and tracking
-- Bulk CSV import for clients
-- Admin team management with roles/permissions
-- Document storage with file uploads
-- NFC/QR provisioning (enhanced UI with server URL field, download button)
-- Telegram bot notifications
-- Google Drive backup integration
-- Stripe payment integration
-- Resend email integration
-- Analytics charts (revenue, profit, collection rates, loan distribution) with translated labels
-- Advanced public-facing website with About Us & Contact Us pages
-- Full portal internationalization (16 languages)
-- Export reports to PDF/CSV with dropdown menus
-- Scheduled report emails (daily/weekly/monthly, configurable via Settings)
-- Contact form with email delivery to paylockpro@gmail.com
-- Payment scheduling backend with auto-processing background task
-- Enhanced Activity Log with stats, action icons, CSV export
-- Website zip download available at /api/download/website
-- Plans & pricing (3 tiers: Starter, Professional, Enterprise)
-- Keepalive URL fixed to current domain
+## All Completed Features
+- Admin authentication, client CRUD, loan management, device lock/unlock
+- Payment recording, bulk CSV import, team management with roles
+- Document storage, NFC/QR provisioning (enhanced UI)
+- Telegram bot, Google Drive backup, Stripe, Resend email
+- Analytics charts (revenue, profit, collection, distribution)
+- Full i18n (16 languages), Export PDF/CSV, Scheduled email reports
+- Contact form (paylockpro@gmail.com), About Us & Contact Us pages
+- Website with features/pricing (3 tiers), Admin Portal link
+- Day-count interest calculation, Credit score from 0
+- Currency-aware loan contracts, Team pagination (5/page)
+- Activity log with stats/icons/export, Background payment scheduler
 
-## Recent Changes (Feb 26, 2026)
-1. **i18n Completion** - Fixed all remaining hardcoded strings across portal
-2. **Export Reports PDF/CSV** - New backend endpoints + dropdown UI on Reports page
-3. **Enhanced NFC Provisioning UI** - 3-column layout, server URL field, QR download
-4. **Enhanced Activity Log** - Summary stat cards, action type icons, CSV export
-5. **Payment Scheduling Backend** - Auto-processing background task for due payments
-6. **Scheduled Report Emails** - Full CRUD API + UI in Settings page with Send Now
-7. **Contact Form** - POST /api/contact sends to paylockpro@gmail.com via Resend
-8. **Website Redesign** - Home page (features + pricing), About Us, Contact Us
-9. **Mobile App API URLs** - Updated FALLBACK_BACKEND and eas.json to current domain
-10. **Business Management Cards** - Removed "user can/cannot remove" text
-11. **Bank Analyzer** - Added "Supported formats: PDF, ASICE" text
-12. **Dashboard** - Removed credit counter and sidebar avatar icon
-13. **Website ZIP** - Generated at /api/download/website
+## Recent Changes (Feb 26, 2026 - Session 2)
+1. App icon updated to PayLock logo
+2. Bank analyzer text: "Upload bank statement: PDF, CSV, XML or ASICE files"
+3. Business management: removed "can/cannot remove" text, added padding
+4. Language selector: "English EN" with EU flag
+5. Interest: day-count method (principal * rate/100 * days/30)
+6. Credit score: starts at 0, new tiers (+5/+10/-5/-7/-10/-15)
+7. Currency-aware contracts (NOK, EUR, etc.)
+8. Team page: 5 users per page with pagination
+9. Website: Admin Portal link fixed, API addresses verified
+10. APK builds submitted, website zip updated
 
-## Pending / Blocked
-### P0 (Blocked)
-- **APK Build** - Requires EXPO_TOKEN for EAS authentication. User needs to provide Expo login credentials or token.
+## Pending
+- **MongoDB Atlas migration** - Need to set up persistent database
+- **Lock/unlock improvements** - Suggestions provided (see below)
 
-### P2
-- **WhatsApp Business API Integration** - Deferred by user
-
-### Refactoring
-- Break monolithic `index.html` (1500+ lines) into modules
-
-## Key API Endpoints
-- `/api/portal` - Admin portal SPA
-- `/api/website` - Public website
-- `/api/download/website` - Website ZIP download
-- `/api/reports/export/csv` & `/api/reports/export/pdf` - Report exports
-- `/api/report-schedules` - Schedule CRUD
-- `/api/report-schedules/send-now` - Immediate report email
-- `/api/contact` - Contact form submission
-- `/api/schedules` - Payment schedules
+## Lock/Unlock Improvement Suggestions
+1. **Scheduled auto-lock**: Auto-lock devices at X days overdue (configurable per client)
+2. **Gradual restriction**: Warning lock (limited apps) before full kiosk lock
+3. **Grace period lock**: Lock after grace period with notification countdown
+4. **Lock history audit**: Track lock/unlock events with timestamps and reasons
+5. **Emergency override**: Master unlock code for field agents when server is unreachable
+6. **Geofencing**: Optional location-based lock/unlock rules
+7. **Custom lock screen**: Branded lock screen with payment instructions and QR code
 
 ## Credentials
 - Admin: `admin` / `admin123`
-- Telegram Bot Token: in `backend/.env`
-- Resend API Key: in `backend/.env`
+- Expo Token: in frontend/.env
