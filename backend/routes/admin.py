@@ -126,16 +126,25 @@ async def login_admin(login_data: AdminLogin, request: Request = None):
 
 @router.get("/admin/verify/{token}")
 async def verify_admin_token(token: str):
-    """Verify if a token is valid and not expired."""
+    """Verify if a token is valid and not expired. Returns user info."""
     is_valid = await verify_admin_token_header(token)
     if not is_valid:
         raise AuthenticationException("Invalid or expired token")
     
     token_doc = await db.admin_tokens.find_one({"token": token})
+    admin = await db.admins.find_one({"id": token_doc["admin_id"]}, {"_id": 0, "password_hash": 0})
     return {
         "valid": True,
         "admin_id": token_doc["admin_id"],
-        "expires_at": token_doc.get("expires_at").isoformat() if token_doc.get("expires_at") else None
+        "expires_at": token_doc.get("expires_at").isoformat() if token_doc.get("expires_at") else None,
+        "id": admin.get("id") if admin else token_doc["admin_id"],
+        "username": admin.get("username", "") if admin else "",
+        "role": admin.get("role", "user") if admin else "user",
+        "is_super_admin": admin.get("is_super_admin", False) if admin else False,
+        "permissions": admin.get("permissions", []) if admin else [],
+        "first_name": admin.get("first_name") if admin else None,
+        "last_name": admin.get("last_name") if admin else None,
+        "credits": admin.get("credits", 0) if admin else 0,
     }
 
 
