@@ -139,11 +139,15 @@ async def download_website():
 @app.get("/api/website")
 async def serve_website():
     """Serve the PayLock Pro marketing website."""
-    site_path = os.path.join(os.path.dirname(__file__), "..", "paylockpro-website", "index.html")
+    site_path = os.path.join(os.path.dirname(__file__), "static", "website", "index.html")
     if not os.path.exists(site_path):
         return JSONResponse(status_code=404, content={"error": "Website not found"})
     with open(site_path, "r") as f:
-        return HTMLResponse(content=f.read())
+        content = f.read()
+    # Replace API placeholder with actual backend URL
+    api_url = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "")
+    content = content.replace("API_PLACEHOLDER", api_url)
+    return HTMLResponse(content=content)
 
 
 @app.get("/api/portal/translations.js")
