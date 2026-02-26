@@ -471,18 +471,22 @@ async def get_dashboard_analytics(
     admin_token: str = Query(...),
     filter_admin_id: Optional[str] = Query(default=None)
 ):
-    """Get comprehensive dashboard analytics. Superadmins can filter by specific admin."""
+    """Get comprehensive dashboard analytics. Superadmins see enterprise data."""
     admin_id = await get_admin_id_from_token(admin_token)
     
-    # Check if requester is superadmin for filtering capability
     admin = await db.admins.find_one({"id": admin_id})
     is_super_admin = admin.get("is_super_admin", False) if admin else False
     
-    # Determine which admin's data to fetch
-    target_admin_id = admin_id
-    if filter_admin_id and is_super_admin:
+    # Use enterprise scoping for superadmins
+    if is_super_admin and not filter_admin_id:
+        query = await _get_enterprise_client_query(admin_id)
+    elif filter_admin_id and is_super_admin:
         if filter_admin_id == "all":
-            target_admin_id = None  # Fetch all clients
+            query = {"is_deleted": {"$ne": True}}
+        else:
+            query = {"admin_id": filter_admin_id, "is_deleted": {"$ne": True}}
+    else:
+        query = {"admin_id": admin_id, "is_deleted": {"$ne": True}}
         else:
             target_admin_id = filter_admin_id
     
