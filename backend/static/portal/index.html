@@ -340,26 +340,26 @@ async function renderDashboard(el) {
   ]);
   const o = dash.overview; const f = dash.financial;
   el.innerHTML = `
-    <div class="page-header"><h2>Dashboard</h2><p>Overview of your loan management</p></div>
+    <div class="page-header"><h2>${t('dash_title')}</h2><p>${t('dash_subtitle')}</p></div>
     <div class="stats-grid" data-testid="dashboard-stats">
-      <div class="stat-card accent"><div class="stat-label">Total Clients</div><div class="stat-value">${o.total_clients}</div><div class="stat-sub">${o.registered} registered</div></div>
-      <div class="stat-card success"><div class="stat-label">Total Collected</div><div class="stat-value">${cur(f.total_collected)}</div><div class="stat-sub">${f.collection_rate.toFixed(1)}% rate</div></div>
-      <div class="stat-card warning"><div class="stat-label">Outstanding</div><div class="stat-value">${cur(f.total_outstanding)}</div><div class="stat-sub">${o.active_loans} active loans</div></div>
-      <div class="stat-card danger"><div class="stat-label">Overdue</div><div class="stat-value">${o.overdue}</div><div class="stat-sub">clients overdue</div></div>
+      <div class="stat-card accent"><div class="stat-label">${t('total_clients')}</div><div class="stat-value">${o.total_clients}</div><div class="stat-sub">${o.registered} ${t('registered')}</div></div>
+      <div class="stat-card success"><div class="stat-label">${t('total_collected')}</div><div class="stat-value">${cur(f.total_collected)}</div><div class="stat-sub">${f.collection_rate.toFixed(1)}% ${t('rate')}</div></div>
+      <div class="stat-card warning"><div class="stat-label">${t('outstanding')}</div><div class="stat-value">${cur(f.total_outstanding)}</div><div class="stat-sub">${o.active_loans} ${t('active_loans')}</div></div>
+      <div class="stat-card danger"><div class="stat-label">${t('overdue')}</div><div class="stat-value">${o.overdue}</div><div class="stat-sub">${t('clients_overdue')}</div></div>
     </div>
     <div class="stats-grid">
-      <div class="stat-card"><div class="stat-label">Disbursed</div><div class="stat-value">${cur(f.total_disbursed)}</div></div>
-      <div class="stat-card"><div class="stat-label">Locked Devices</div><div class="stat-value">${o.locked}</div></div>
-      <div class="stat-card"><div class="stat-label">This Month</div><div class="stat-value">${cur(collection.this_month?.total_collected||0)}</div><div class="stat-sub">${collection.this_month?.number_of_payments||0} payments</div></div>
-      <div class="stat-card"><div class="stat-label">Late Fees</div><div class="stat-value">${cur(collection.financial?.total_late_fees||0)}</div></div>
+      <div class="stat-card"><div class="stat-label">${t('disbursed')}</div><div class="stat-value">${cur(f.total_disbursed)}</div></div>
+      <div class="stat-card"><div class="stat-label">${t('locked_devices')}</div><div class="stat-value">${o.locked}</div></div>
+      <div class="stat-card"><div class="stat-label">${t('this_month')}</div><div class="stat-value">${cur(collection.this_month?.total_collected||0)}</div><div class="stat-sub">${collection.this_month?.number_of_payments||0} ${t('payments')}</div></div>
+      <div class="stat-card"><div class="stat-label">${t('late_fees')}</div><div class="stat-value">${cur(collection.financial?.total_late_fees||0)}</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px" data-testid="dashboard-charts">
-      <div class="card" style="padding:20px"><div class="card-header"><h3>Revenue Trends</h3></div><canvas id="chart-revenue" height="220" data-testid="chart-revenue"></canvas></div>
-      <div class="card" style="padding:20px"><div class="card-header"><h3>Profit Trends</h3></div><canvas id="chart-profit" height="220" data-testid="chart-profit"></canvas></div>
-      <div class="card" style="padding:20px"><div class="card-header"><h3>Collection Rates</h3></div><canvas id="chart-collection" height="220" data-testid="chart-collection"></canvas></div>
-      <div class="card" style="padding:20px"><div class="card-header"><h3>Loan Distribution</h3></div><canvas id="chart-distribution" height="220" data-testid="chart-distribution"></canvas></div>
+      <div class="card" style="padding:20px"><div class="card-header"><h3>${t('revenue_trends')}</h3></div><canvas id="chart-revenue" height="220" data-testid="chart-revenue"></canvas></div>
+      <div class="card" style="padding:20px"><div class="card-header"><h3>${t('profit_trends')}</h3></div><canvas id="chart-profit" height="220" data-testid="chart-profit"></canvas></div>
+      <div class="card" style="padding:20px"><div class="card-header"><h3>${t('collection_rates')}</h3></div><canvas id="chart-collection" height="220" data-testid="chart-collection"></canvas></div>
+      <div class="card" style="padding:20px"><div class="card-header"><h3>${t('loan_distribution')}</h3></div><canvas id="chart-distribution" height="220" data-testid="chart-distribution"></canvas></div>
     </div>
-    <div class="card" style="margin-top:16px"><div class="card-header"><h3>Recent Activity</h3></div>
+    <div class="card" style="margin-top:16px"><div class="card-header"><h3>${t('recent_activity')}</h3></div>
       ${dash.activity_log?.length ? `<table><thead><tr><th>Client</th><th>Action</th><th>Time</th></tr></thead><tbody>
         ${dash.activity_log.map(a => `<tr><td>${a.client_name}</td><td>${a.details}</td><td>${fmtDate(a.timestamp)}</td></tr>`).join('')}
       </tbody></table>` : '<p style="color:var(--text-muted);font-size:13px">No recent activity</p>'}
