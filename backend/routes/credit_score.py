@@ -215,19 +215,19 @@ async def get_credit_scores_overview(
         {"_id": 0, "id": 1, "name": 1, "phone": 1, "credit_score": 1}
     ).to_list(1000)
     
-    # Calculate distribution
-    excellent = sum(1 for c in clients if c.get("credit_score", 500) >= 800)
-    good = sum(1 for c in clients if 650 <= c.get("credit_score", 500) < 800)
-    fair = sum(1 for c in clients if 500 <= c.get("credit_score", 500) < 650)
-    poor = sum(1 for c in clients if 350 <= c.get("credit_score", 500) < 500)
-    very_poor = sum(1 for c in clients if c.get("credit_score", 500) < 350)
+    # Calculate distribution (new scale starting from 0)
+    excellent = sum(1 for c in clients if c.get("credit_score", 0) >= 50)
+    good = sum(1 for c in clients if 25 <= c.get("credit_score", 0) < 50)
+    fair = sum(1 for c in clients if 10 <= c.get("credit_score", 0) < 25)
+    poor = sum(1 for c in clients if 0 < c.get("credit_score", 0) < 10)
+    very_poor = sum(1 for c in clients if c.get("credit_score", 0) <= 0)
     
     # Average score
-    scores = [c.get("credit_score", 500) for c in clients]
-    avg_score = sum(scores) / len(scores) if scores else 500
+    scores = [c.get("credit_score", 0) for c in clients]
+    avg_score = sum(scores) / len(scores) if scores else 0
     
     # Sort by score
-    sorted_clients = sorted(clients, key=lambda c: c.get("credit_score", 500), reverse=True)
+    sorted_clients = sorted(clients, key=lambda c: c.get("credit_score", 0), reverse=True)
     
     return {
         "total_clients": len(clients),
