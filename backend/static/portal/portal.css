@@ -144,3 +144,50 @@ tbody tr:hover { background:rgba(59,130,246,.04); }
 .dropdown-menu.show { display:block !important; }
 .dropdown-item:hover { background:var(--bg-hover); }
 .page-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
+
+
+/* ===== LIVE PAYMENT FEED ===== */
+.live-feed-card { overflow:hidden; }
+.live-dot { width:8px; height:8px; background:#10B981; border-radius:50%; display:inline-block; animation:livePulse 2s ease-in-out infinite; }
+@keyframes livePulse {
+  0%,100% { box-shadow:0 0 0 0 rgba(16,185,129,0.5); opacity:1; }
+  50% { box-shadow:0 0 0 8px rgba(16,185,129,0); opacity:0.8; }
+}
+.live-feed-stats { display:flex; gap:16px; font-size:13px; color:var(--text-muted); }
+.live-stat { display:flex; align-items:center; gap:5px; }
+.live-stat strong { color:#10B981; font-weight:700; }
+.live-stat i { font-size:11px; }
+.live-feed-container { max-height:420px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:#334155 transparent; }
+.live-feed-container::-webkit-scrollbar { width:5px; }
+.live-feed-container::-webkit-scrollbar-thumb { background:#334155; border-radius:3px; }
+.live-feed-loading, .live-feed-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px; }
+.live-feed-item {
+  display:flex; align-items:center; gap:12px; padding:12px 16px;
+  border-bottom:1px solid rgba(30,41,59,0.5); transition:background 0.2s;
+  animation:feedSlideIn 0.4s ease-out both;
+}
+.live-feed-item:hover { background:rgba(30,41,59,0.4); }
+.live-feed-item:last-child { border-bottom:none; }
+@keyframes feedSlideIn {
+  from { opacity:0; transform:translateX(-20px); }
+  to { opacity:1; transform:translateX(0); }
+}
+.feed-item-new {
+  animation:feedFlash 1.5s ease-out;
+  background:rgba(16,185,129,0.08);
+}
+@keyframes feedFlash {
+  0% { background:rgba(16,185,129,0.2); transform:scale(1.01); }
+  100% { background:transparent; transform:scale(1); }
+}
+.feed-icon {
+  width:36px; height:36px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; flex-shrink:0;
+}
+.feed-details { flex:1; min-width:0; }
+.feed-name { font-size:14px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.feed-meta { font-size:12px; color:var(--text-muted); margin-top:2px; text-transform:capitalize; }
+.feed-right { text-align:right; flex-shrink:0; }
+.feed-amount { font-size:15px; font-weight:700; color:#10B981; font-variant-numeric:tabular-nums; }
+.feed-time { font-size:11px; color:var(--text-muted); margin-top:2px; }
