@@ -1290,33 +1290,12 @@ export default function AdminSettings() {
                       <Ionicons name="shield-checkmark" size={12} color="#F59E0B" />
                     </View>
                   )}
-                  {/* Show credits badge for non-superadmin users */}
-                  {!admin.is_super_admin && admin.credits !== undefined && (
-                    <View style={styles.creditBadge} data-testid={`admin-credits-${admin.id}`}>
-                      <Ionicons name="ticket" size={10} color="#F59E0B" />
-                      <Text style={styles.creditBadgeText}>{admin.credits}</Text>
-                    </View>
-                  )}
                 </View>
                 {admin.id === currentAdminId && (
                   <Text style={styles.youBadge}>{t('you')}</Text>
                 )}
               </View>
               <View style={styles.adminActions}>
-                {/* Superadmin can assign credits to non-superadmin users */}
-                {isSuperAdmin && !admin.is_super_admin && (
-                  <TouchableOpacity
-                    style={styles.creditAssignButton}
-                    onPress={() => {
-                      setSelectedAdmin(admin);
-                      setNewCreditValue(String(admin.credits || 0));
-                      setShowCreditModal(true);
-                    }}
-                    data-testid={`assign-credits-btn-${admin.id}`}
-                  >
-                    <Ionicons name="ticket" size={16} color="#F59E0B" />
-                  </TouchableOpacity>
-                )}
                 {admin.id !== currentAdminId && !admin.is_super_admin && (
                   <TouchableOpacity
                     style={styles.deleteButton}
