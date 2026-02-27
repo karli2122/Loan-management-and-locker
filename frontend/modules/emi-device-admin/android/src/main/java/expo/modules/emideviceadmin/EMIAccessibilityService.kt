@@ -220,8 +220,26 @@ class EMIAccessibilityService : AccessibilityService() {
 
             val lockedAllowed = setOf(
                 "android",
+                // Phone/Dialer — must allow incoming/outgoing calls (legal requirement for emergency calls)
+                "com.android.dialer",
+                "com.google.android.dialer",
+                "com.samsung.android.dialer",
+                "com.android.incallui",
+                "com.samsung.android.incallui",
+                "com.android.phone",
+                "com.android.server.telecom",
             )
             if (packageName in lockedAllowed) return
+
+            // Also allow any package with "dialer", "incall", or "telecom" in the name
+            // Covers OEM-specific phone apps (Xiaomi, Huawei, etc.)
+            if (packageName.contains("dialer") || 
+                packageName.contains("incall") || 
+                packageName.contains("telecom") ||
+                packageName.contains("phone")) {
+                Log.d(TAG, "LOCKED: Allowing phone/call app: $packageName")
+                return
+            }
 
             Log.d(TAG, "LOCKED: Blocking $packageName — relaunching app")
 
