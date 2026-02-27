@@ -1325,6 +1325,22 @@ export default function ClientHome() {
                 : (t('protectionNotActive'))}
             </Text>
           </View>
+          
+          {/* Emergency Call Button */}
+          {!emergencyCallActive ? (
+            <Pressable 
+              style={styles.emergencyCallBtn}
+              onPress={handleEmergencyCall}
+            >
+              <Ionicons name="call" size={20} color="#fff" />
+              <Text style={styles.emergencyCallText}>Emergency Call (112)</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.emergencyCallActive}>
+              <ActivityIndicator size="small" color="#EF4444" />
+              <Text style={styles.emergencyCallActiveText}>Emergency call in progress...</Text>
+            </View>
+          )}
         </View>
       </Pressable>
     );
