@@ -53,8 +53,20 @@ class EMIForegroundMonitorService : Service() {
                     if (isLocked) {
                         val foregroundPackage = getForegroundPackage()
                         if (foregroundPackage != null && foregroundPackage != packageName) {
-                            Log.w(TAG, "Foreign app detected in foreground: $foregroundPackage — bringing back our app")
-                            bringAppToForeground()
+                            // Allow phone/dialer apps during calls (legal requirement for emergency calls)
+                            val isPhoneApp = foregroundPackage.contains("dialer") ||
+                                             foregroundPackage.contains("incall") ||
+                                             foregroundPackage.contains("telecom") ||
+                                             foregroundPackage.contains("phone") ||
+                                             foregroundPackage == "com.android.dialer" ||
+                                             foregroundPackage == "com.google.android.dialer" ||
+                                             foregroundPackage == "com.samsung.android.dialer"
+                            if (isPhoneApp) {
+                                Log.d(TAG, "Phone/call app in foreground while locked — allowing: $foregroundPackage")
+                            } else {
+                                Log.w(TAG, "Foreign app detected in foreground: $foregroundPackage — bringing back our app")
+                                bringAppToForeground()
+                            }
                         }
                     }
                 } catch (e: Exception) {
