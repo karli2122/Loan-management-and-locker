@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../src/context/ThemeContext';
+import { EnterpriseGate } from '../../src/components/EnterpriseGate';
 import API_URL from '../../src/constants/api';
 
 interface BotInfo {
@@ -24,6 +25,14 @@ interface LinkedClient {
 }
 
 export default function TelegramPage() {
+  return (
+    <EnterpriseGate featureName="Telegram">
+      <TelegramContent />
+    </EnterpriseGate>
+  );
+}
+
+function TelegramContent() {
   const router = useRouter();
   const { colors } = useTheme();
   const [botInfo, setBotInfo] = useState<BotInfo | null>(null);

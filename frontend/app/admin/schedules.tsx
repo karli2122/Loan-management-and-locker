@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../src/context/ThemeContext';
+import { EnterpriseGate } from '../../src/components/EnterpriseGate';
 import API_URL from '../../src/constants/api';
 
 interface Schedule {
@@ -25,6 +26,14 @@ interface Schedule {
 }
 
 export default function SchedulesPage() {
+  return (
+    <EnterpriseGate featureName="Payment Schedules">
+      <SchedulesContent />
+    </EnterpriseGate>
+  );
+}
+
+function SchedulesContent() {
   const router = useRouter();
   const { colors } = useTheme();
   const [schedules, setSchedules] = useState<Schedule[]>([]);

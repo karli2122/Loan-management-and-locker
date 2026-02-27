@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../src/context/ThemeContext';
+import { EnterpriseGate } from '../../src/components/EnterpriseGate';
 import API_URL from '../../src/constants/api';
 
 interface TeamMember {
@@ -29,6 +30,14 @@ const ROLES = [
 ];
 
 export default function TeamPage() {
+  return (
+    <EnterpriseGate featureName="Team Management">
+      <TeamContent />
+    </EnterpriseGate>
+  );
+}
+
+function TeamContent() {
   const router = useRouter();
   const { colors } = useTheme();
   const [members, setMembers] = useState<TeamMember[]>([]);

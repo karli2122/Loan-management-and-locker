@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTheme } from '../../src/context/ThemeContext';
+import { EnterpriseGate } from '../../src/components/EnterpriseGate';
 import API_URL from '../../src/constants/api';
 
 interface ImportResult {
@@ -19,6 +20,14 @@ interface ImportResult {
 }
 
 export default function BulkImportPage() {
+  return (
+    <EnterpriseGate featureName="Bulk Import">
+      <BulkImportContent />
+    </EnterpriseGate>
+  );
+}
+
+function BulkImportContent() {
   const router = useRouter();
   const { colors } = useTheme();
   const [uploading, setUploading] = useState(false);

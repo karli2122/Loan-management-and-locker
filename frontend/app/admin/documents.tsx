@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../src/context/ThemeContext';
+import { EnterpriseGate } from '../../src/components/EnterpriseGate';
 import API_URL from '../../src/constants/api';
 
 interface Document {
@@ -22,6 +23,14 @@ interface Document {
 }
 
 export default function DocumentsPage() {
+  return (
+    <EnterpriseGate featureName="Documents">
+      <DocumentsContent />
+    </EnterpriseGate>
+  );
+}
+
+function DocumentsContent() {
   const router = useRouter();
   const { colors } = useTheme();
   const [docs, setDocs] = useState<Document[]>([]);
