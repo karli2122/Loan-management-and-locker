@@ -1088,6 +1088,54 @@ class EMIDeviceAdminModule : Module() {
             }
         }
 
+        // Enable Do Not Disturb mode (blocks all notifications from showing)
+        AsyncFunction("enableDndMode") { promise: Promise ->
+            try {
+                val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                if (nm.isNotificationPolicyAccessGranted) {
+                    nm.setInterruptionFilter(android.app.NotificationManager.INTERRUPTION_FILTER_NONE)
+                    Log.d(TAG, "DND mode enabled — all notifications blocked")
+                    promise.resolve("success")
+                } else {
+                    Log.w(TAG, "DND: No notification policy access")
+                    promise.resolve("no_permission")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "enableDndMode error: ${e.message}")
+                promise.resolve("error")
+            }
+        }
+
+        // Disable Do Not Disturb mode (restore normal notifications)
+        AsyncFunction("disableDndMode") { promise: Promise ->
+            try {
+                val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                if (nm.isNotificationPolicyAccessGranted) {
+                    nm.setInterruptionFilter(android.app.NotificationManager.INTERRUPTION_FILTER_ALL)
+                    Log.d(TAG, "DND mode disabled — notifications restored")
+                    promise.resolve("success")
+                } else {
+                    promise.resolve("no_permission")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "disableDndMode error: ${e.message}")
+                promise.resolve("error")
+            }
+        }
+
+        // Cancel all currently displayed notifications
+        AsyncFunction("cancelAllNotifications") { promise: Promise ->
+            try {
+                val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                nm.cancelAll()
+                Log.d(TAG, "All notifications cancelled")
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "cancelAllNotifications error: ${e.message}")
+                promise.resolve("error")
+            }
+        }
+
         // Enable immersive mode — hides status bar and navigation bar completely
         // Also installs a broadcast receiver + visibility listener to auto-re-hide bars
         AsyncFunction("enableImmersiveMode") { promise: Promise ->
