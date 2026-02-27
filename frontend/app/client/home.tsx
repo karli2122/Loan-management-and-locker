@@ -1735,9 +1735,9 @@ export default function ClientHome() {
         <View style={styles.statusCard}>
           {isOffline && (
             <View style={styles.offlineBanner}>
-              <Ionicons name="cloud-offline" size={16} color="#F59E0B" />
+              <ActivityIndicator size="small" color="#F59E0B" />
               <Text style={styles.offlineBannerText}>
-                Offline Mode - Using Cached Data
+                Reconnecting to server...
               </Text>
             </View>
           )}
