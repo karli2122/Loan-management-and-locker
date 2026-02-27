@@ -641,6 +641,24 @@ export default function ClientHome() {
       }
       
       if (!id) {
+        // CRITICAL: Before redirecting to register, check native lock state.
+        // If device is locked in native SharedPreferences, show lock screen instead.
+        const nativeLocked = await devicePolicy.getNativeLockState();
+        if (nativeLocked) {
+          console.log('[Security] No client_id but device is natively locked — enforcing lock screen');
+          setStatus({
+            id: '',
+            name: '',
+            is_locked: true,
+            lock_message: 'Device locked due to pending payment. Contact your lender.',
+            warning_message: '',
+            loan_amount: 0,
+            loan_due_date: null,
+          });
+          wasLocked.current = true;
+          if (isMounted.current) setLoading(false);
+          return;
+        }
         console.log('No client ID found, redirecting to register');
         if (isMounted.current) {
           setLoading(false);
