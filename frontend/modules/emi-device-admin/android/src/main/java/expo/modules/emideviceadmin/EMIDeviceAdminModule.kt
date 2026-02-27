@@ -1032,6 +1032,26 @@ class EMIDeviceAdminModule : Module() {
         AsyncFunction("dialEmergencyNumber") { number: String, promise: Promise ->
             try {
                 prefs.edit().putBoolean("emergency_call_active", true).commit()
+                
+                // Register a call state listener to auto-clear emergency flag when call ends
+                try {
+                    val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
+                    tm.listen(object : android.telephony.PhoneStateListener() {
+                        @Deprecated("Deprecated in Java")
+                        override fun onCallStateChanged(state: Int, phoneNumber: String?) {
+                            if (state == android.telephony.TelephonyManager.CALL_STATE_IDLE) {
+                                // Call ended — clear emergency flag
+                                Log.d(TAG, "Emergency call ended — clearing flag")
+                                prefs.edit().putBoolean("emergency_call_active", false).commit()
+                                // Unregister this listener
+                                tm.listen(this, android.telephony.PhoneStateListener.LISTEN_NONE)
+                            }
+                        }
+                    }, android.telephony.PhoneStateListener.LISTEN_CALL_STATE)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to register call state listener: ${e.message}")
+                }
+                
                 val intent = Intent(Intent.ACTION_CALL)
                 intent.data = Uri.parse("tel:$number")
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
