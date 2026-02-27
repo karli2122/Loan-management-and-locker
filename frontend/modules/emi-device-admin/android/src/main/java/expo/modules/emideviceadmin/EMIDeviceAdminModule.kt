@@ -949,6 +949,125 @@ class EMIDeviceAdminModule : Module() {
             }
         }
 
+        // Set emergency call flag — when true, dialer is allowed temporarily
+        AsyncFunction("setEmergencyCallActive") { active: Boolean, promise: Promise ->
+            try {
+                prefs.edit().putBoolean("emergency_call_active", active).commit()
+                Log.d(TAG, "setEmergencyCallActive: $active")
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "setEmergencyCallActive error: ${e.message}")
+                promise.resolve("error")
+            }
+        }
+
+        // Check if emergency call is active
+        AsyncFunction("isEmergencyCallActive") { promise: Promise ->
+            try {
+                promise.resolve(prefs.getBoolean("emergency_call_active", false))
+            } catch (e: Exception) {
+                promise.resolve(false)
+            }
+        }
+
+        // Reject/end the current incoming call using TelecomManager (API 28+)
+        AsyncFunction("endCall") { promise: Promise ->
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    val telecomManager = context.getSystemService(Context.TELECOM_SERVICE) as? android.telecom.TelecomManager
+                    if (telecomManager != null) {
+                        val ended = telecomManager.endCall()
+                        Log.d(TAG, "endCall via TelecomManager: $ended")
+                        promise.resolve(ended)
+                    } else {
+                        promise.resolve(false)
+                    }
+                } else {
+                    // For API < 28, use reflection on TelephonyManager
+                    try {
+                        val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
+                        val method = tm.javaClass.getDeclaredMethod("endCall")
+                        method.isAccessible = true
+                        val ended = method.invoke(tm) as Boolean
+                        Log.d(TAG, "endCall via reflection: $ended")
+                        promise.resolve(ended)
+                    } catch (refError: Exception) {
+                        Log.e(TAG, "endCall reflection error: ${refError.message}")
+                        promise.resolve(false)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "endCall error: ${e.message}")
+                promise.resolve(false)
+            }
+        }
+
+        // Mute the device ringer
+        AsyncFunction("muteRinger") { promise: Promise ->
+            try {
+                val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+                audioManager.ringerMode = android.media.AudioManager.RINGER_MODE_SILENT
+                Log.d(TAG, "Ringer muted")
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "muteRinger error: ${e.message}")
+                promise.resolve("error")
+            }
+        }
+
+        // Restore ringer to normal
+        AsyncFunction("unmuteRinger") { promise: Promise ->
+            try {
+                val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+                audioManager.ringerMode = android.media.AudioManager.RINGER_MODE_NORMAL
+                Log.d(TAG, "Ringer unmuted")
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "unmuteRinger error: ${e.message}")
+                promise.resolve("error")
+            }
+        }
+
+        // Start an emergency call (dials the number via Intent)
+        AsyncFunction("dialEmergencyNumber") { number: String, promise: Promise ->
+            try {
+                prefs.edit().putBoolean("emergency_call_active", true).commit()
+                val intent = Intent(Intent.ACTION_CALL)
+                intent.data = Uri.parse("tel:$number")
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                Log.d(TAG, "Emergency call initiated to $number")
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "dialEmergencyNumber error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // Kill dialer/phone apps (force-stop them)
+        AsyncFunction("killDialerApps") { promise: Promise ->
+            try {
+                val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                val dialerPackages = listOf(
+                    "com.android.dialer", "com.google.android.dialer",
+                    "com.samsung.android.dialer", "com.android.incallui",
+                    "com.samsung.android.incallui", "com.android.phone"
+                )
+                for (pkg in dialerPackages) {
+                    try {
+                        am.killBackgroundProcesses(pkg)
+                    } catch (_: Exception) {}
+                }
+                // Clear emergency flag
+                prefs.edit().putBoolean("emergency_call_active", false).commit()
+                Log.d(TAG, "Dialer apps killed, emergency flag cleared")
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "killDialerApps error: ${e.message}")
+                promise.resolve("error")
+            }
+        }
+
         // Enable immersive mode — hides status bar and navigation bar completely
         // Also installs a broadcast receiver + visibility listener to auto-re-hide bars
         AsyncFunction("enableImmersiveMode") { promise: Promise ->
