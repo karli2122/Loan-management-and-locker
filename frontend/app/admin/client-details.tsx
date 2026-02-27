@@ -108,21 +108,6 @@ export default function ClientDetails() {
   };
 
   // ─── Data fetching ─────────────────────────────────────────────
-  const fetchCredits = async () => {
-    try {
-      const token = await AsyncStorage.getItem('admin_token');
-      if (token) {
-        const response = await fetch(`${API_URL}/api/admin/credits?admin_token=${token}`);
-        if (response.ok) {
-          const data = await response.json();
-          setUserCredits(data.credits);
-          setIsSuperAdmin(data.is_super_admin);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching credits:', error);
-    }
-  };
 
   const fetchClient = async () => {
     try {
