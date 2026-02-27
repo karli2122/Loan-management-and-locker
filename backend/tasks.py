@@ -3,7 +3,6 @@ import asyncio
 import logging
 import os
 import uuid
-import stripe
 from datetime import datetime, timezone, timedelta
 
 import resend
@@ -13,7 +12,6 @@ from database import db
 logger = logging.getLogger(__name__)
 resend.api_key = os.environ.get("RESEND_API_KEY", "")
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
-STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY")
 
 
 async def _charge_client_stripe(client, amount, currency="eur", schedule_id=None):
