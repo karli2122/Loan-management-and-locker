@@ -50,7 +50,6 @@ export default function ClientDetails() {
   const [actionLoading, setActionLoading] = useState(false);
   const [fetchingPrice, setFetchingPrice] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [userCredits, setUserCredits] = useState<number>(5);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
 
