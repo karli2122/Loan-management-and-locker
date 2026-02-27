@@ -1265,13 +1265,17 @@ export default function ClientHome() {
 
 
   // Handle incoming calls when locked — mute and reject them
+  // Also enable DND to block all notification display
   useEffect(() => {
     if (!status?.is_locked || Platform.OS !== 'android') return;
-    // Mute ringer while locked to prevent incoming call sounds
+    // Mute ringer + enable DND + cancel existing notifications
     devicePolicy.muteRinger().catch(() => {});
+    devicePolicy.enableDndMode().catch(() => {});
+    devicePolicy.cancelAllNotifications().catch(() => {});
     return () => {
-      // Restore ringer when unlocked
+      // Restore ringer and DND when unlocked
       devicePolicy.unmuteRinger().catch(() => {});
+      devicePolicy.disableDndMode().catch(() => {});
     };
   }, [status?.is_locked]);
 
