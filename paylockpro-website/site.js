@@ -6,7 +6,7 @@
   // Close mobile menu on link click
   document.querySelectorAll('.nav-links a').forEach(a=>{a.addEventListener('click',()=>{document.getElementById('navLinks')?.classList.remove('open')})});
   // Set portal links - use absolute backend URL when on custom domain
-  const BACKEND_URL = 'https://client-app-staging-1.preview.emergentagent.com';
+  const BACKEND_URL = 'https://paylock-website.preview.emergentagent.com';
   const isBackendServed = window.location.pathname.startsWith('/api/website');
   const portalUrl = isBackendServed ? '/api/portal' : (BACKEND_URL + '/api/portal');
   document.querySelectorAll('[data-portal-link]').forEach(el=>{if(el.href&&el.href.includes('PORTAL_URL'))el.href=portalUrl;});
