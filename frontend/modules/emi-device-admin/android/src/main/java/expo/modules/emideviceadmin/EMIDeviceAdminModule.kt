@@ -937,6 +937,18 @@ class EMIDeviceAdminModule : Module() {
             }
         }
 
+        // Read lock state from native SharedPreferences (survives Clear Data / reboot)
+        AsyncFunction("getNativeLockState") { promise: Promise ->
+            try {
+                val isLocked = prefs.getBoolean("is_locked", false)
+                Log.d(TAG, "getNativeLockState: locked=$isLocked")
+                promise.resolve(isLocked)
+            } catch (e: Exception) {
+                Log.e(TAG, "getNativeLockState error: ${e.message}")
+                promise.resolve(false)
+            }
+        }
+
         // Enable immersive mode — hides status bar and navigation bar completely
         // Also installs a broadcast receiver + visibility listener to auto-re-hide bars
         AsyncFunction("enableImmersiveMode") { promise: Promise ->
