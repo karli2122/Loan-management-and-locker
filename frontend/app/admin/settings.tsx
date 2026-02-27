@@ -88,12 +88,8 @@ export default function AdminSettings() {
   const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
   const [backupInProgress, setBackupInProgress] = useState(false);
   
-  // Credit system states
-  const [userCredits, setUserCredits] = useState<number>(5);
+  // Super admin state
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [showCreditModal, setShowCreditModal] = useState(false);
-  const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null);
-  const [newCreditValue, setNewCreditValue] = useState('');
   
   // User search state
   const [userSearchQuery, setUserSearchQuery] = useState('');
