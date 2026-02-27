@@ -104,7 +104,7 @@ export default function Dashboard() {
       const adminToken = await AsyncStorage.getItem('admin_token');
       if (!adminToken) return;
       
-      const response = await fetch(`${API_URL}/api/admin/list-with-credits?admin_token=${adminToken}`);
+      const response = await fetch(`${API_URL}/api/admin/list?admin_token=${adminToken}`);
       if (response.ok) {
         const data = await response.json();
         setAdminList(data);
