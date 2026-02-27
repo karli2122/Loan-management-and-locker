@@ -835,61 +835,6 @@ export default function AdminSettings() {
     }
   };
 
-  const handleAssignCredits = async () => {
-    if (!selectedAdmin || !newCreditValue) {
-      Alert.alert(
-        t('error'),
-        t('pleaseEnterCreditsAmount')
-      );
-      return;
-    }
-
-    const credits = parseInt(newCreditValue, 10);
-    if (isNaN(credits) || credits < 0) {
-      Alert.alert(
-        t('error'),
-        t('creditsMustBeAPositiveNumber')
-      );
-      return;
-    }
-
-    setActionLoading(true);
-    try {
-      const response = await fetch(`${API_URL}/api/admin/credits/assign?admin_token=${adminToken}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          target_admin_id: selectedAdmin.id,
-          credits: credits
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || data.error || 'Failed to assign credits');
-      }
-
-      Alert.alert(
-        t('success'),
-        language === 'et' 
-          ? `${credits} krediiti määratud kasutajale ${selectedAdmin.username}` 
-          : `${credits} credits assigned to ${selectedAdmin.username}`
-      );
-
-      setShowCreditModal(false);
-      setSelectedAdmin(null);
-      setNewCreditValue('');
-      await fetchAdminsWithCredits(adminToken!);
-    } catch (error: any) {
-      Alert.alert(
-        t('error'),
-        error.message
-      );
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   const formatBackupDate = (dateStr: string | null) => {
     if (!dateStr) return t('never');
     const date = new Date(dateStr);
