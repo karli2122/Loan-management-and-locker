@@ -360,6 +360,7 @@ export default function ClientHome() {
         if (locked) {
           StatusBar.setHidden(true, 'none');
           await devicePolicy.enableImmersiveMode();
+          await devicePolicy.collapseStatusBar();
           await devicePolicy.startOverlayBlocker();
           await devicePolicy.startKioskMode();
           // Explicitly disable status bar via DPM (Device Owner only - strongest protection)
