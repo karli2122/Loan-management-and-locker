@@ -1,10 +1,13 @@
-"""Client Stripe payment management - Setup, save methods, charge, auto-collect."""
+"""Client Stripe payment management - Setup, charge via checkout, auto-collect."""
 import os
 import uuid
 import logging
-import stripe
 from datetime import datetime, timezone
 from fastapi import APIRouter, Query, HTTPException, Body
+
+from emergentintegrations.payments.stripe.checkout import (
+    StripeCheckout, CheckoutSessionRequest, CheckoutSessionResponse, CheckoutStatusResponse
+)
 from database import db
 from utils.auth import get_admin_id_from_token
 
@@ -12,125 +15,137 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Client Payments"])
 
 STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY")
+BACKEND_URL = os.environ.get("KEEPALIVE_URL", "")
 
 
-def _get_stripe():
+def _get_stripe_checkout(webhook_url=None):
     if not STRIPE_API_KEY:
         raise HTTPException(status_code=500, detail="Stripe not configured")
-    stripe.api_key = STRIPE_API_KEY
-    return stripe
+    wh = webhook_url or f"{BACKEND_URL}/api/webhook/stripe"
+    return StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=wh)
 
 
-@router.post("/clients/{client_id}/setup-payment")
-async def setup_client_payment(client_id: str, admin_token: str = Query(...)):
-    """Create a Stripe Customer + Setup Intent for a client so their card can be saved."""
+@router.post("/clients/{client_id}/create-payment-link")
+async def create_payment_link(client_id: str, admin_token: str = Query(...), data: dict = Body({})):
+    """Create a Stripe Checkout payment link for a client. Used for manual or auto-payment collection."""
     admin_id = await get_admin_id_from_token(admin_token)
-    s = _get_stripe()
 
     client = await db.clients.find_one({"id": client_id, "admin_id": admin_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    # Create or reuse Stripe Customer
-    stripe_cid = client.get("stripe_customer_id")
-    if not stripe_cid:
-        customer = s.Customer.create(
-            name=client.get("name", ""),
-            email=client.get("email") or None,
-            phone=client.get("phone") or None,
-            metadata={"client_id": client_id, "admin_id": admin_id},
-        )
-        stripe_cid = customer.id
-        await db.clients.update_one(
-            {"id": client_id},
-            {"$set": {"stripe_customer_id": stripe_cid}},
-        )
+    amount = float(data.get("amount", client.get("monthly_emi", 0)))
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
 
-    # Create Setup Intent
-    setup_intent = s.SetupIntent.create(
-        customer=stripe_cid,
-        payment_method_types=["card"],
-        metadata={"client_id": client_id, "admin_id": admin_id},
+    currency = data.get("currency", "eur")
+    description = data.get("description", f"Payment - {client.get('name', 'Client')}")
+
+    # Use the portal URL as base for success/cancel
+    origin = BACKEND_URL.rstrip("/")
+    success_url = f"{origin}/api/portal?payment_success=true&session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{origin}/api/portal?payment_cancelled=true"
+
+    sc = _get_stripe_checkout()
+    checkout_req = CheckoutSessionRequest(
+        amount=amount,
+        currency=currency,
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={
+            "client_id": client_id,
+            "admin_id": admin_id,
+            "client_name": client.get("name", ""),
+            "type": "client_payment",
+            "description": description,
+        },
     )
 
+    session: CheckoutSessionResponse = await sc.create_checkout_session(checkout_req)
+
+    # Record payment transaction
+    payment_id = str(uuid.uuid4())
+    await db.payments.insert_one({
+        "id": payment_id,
+        "client_id": client_id,
+        "admin_id": admin_id,
+        "amount": amount,
+        "currency": currency,
+        "status": "pending",
+        "payment_method": "stripe",
+        "stripe_session_id": session.session_id,
+        "source": data.get("source", "manual"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
     return {
-        "client_secret": setup_intent.client_secret,
-        "setup_intent_id": setup_intent.id,
-        "stripe_customer_id": stripe_cid,
+        "payment_id": payment_id,
+        "checkout_url": session.url,
+        "session_id": session.session_id,
+        "amount": amount,
+        "currency": currency,
     }
 
 
-@router.post("/clients/{client_id}/save-payment-method")
-async def save_payment_method(
-    client_id: str,
-    admin_token: str = Query(...),
-    data: dict = Body(...),
-):
-    """After Setup Intent completes, save the payment method ID to the client record."""
+@router.get("/clients/{client_id}/check-payment/{session_id}")
+async def check_client_payment(client_id: str, session_id: str, admin_token: str = Query(...)):
+    """Check status of a client payment checkout session."""
     admin_id = await get_admin_id_from_token(admin_token)
-    s = _get_stripe()
 
-    client = await db.clients.find_one({"id": client_id, "admin_id": admin_id}, {"_id": 0})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+    # Find the payment record
+    payment = await db.payments.find_one(
+        {"stripe_session_id": session_id, "client_id": client_id}, {"_id": 0}
+    )
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
 
-    payment_method_id = data.get("payment_method_id")
-    setup_intent_id = data.get("setup_intent_id")
+    # If already completed, return cached
+    if payment.get("status") == "succeeded":
+        return {"status": "succeeded", "amount": payment["amount"]}
 
-    if not payment_method_id and setup_intent_id:
-        si = s.SetupIntent.retrieve(setup_intent_id)
-        payment_method_id = si.payment_method
+    sc = _get_stripe_checkout()
+    checkout_status: CheckoutStatusResponse = await sc.get_checkout_status(session_id)
 
-    if not payment_method_id:
-        raise HTTPException(status_code=400, detail="payment_method_id required")
+    new_status = "succeeded" if checkout_status.payment_status == "paid" else checkout_status.payment_status
 
-    # Get card details for display
-    pm = s.PaymentMethod.retrieve(payment_method_id)
-    card_info = {}
-    if pm.card:
-        card_info = {
-            "brand": pm.card.brand,
-            "last4": pm.card.last4,
-            "exp_month": pm.card.exp_month,
-            "exp_year": pm.card.exp_year,
-        }
-
-    # Set as default payment method on the Stripe Customer
-    stripe_cid = client.get("stripe_customer_id")
-    if stripe_cid:
-        s.Customer.modify(
-            stripe_cid,
-            invoice_settings={"default_payment_method": payment_method_id},
-        )
-
-    await db.clients.update_one(
-        {"id": client_id},
+    # Update payment record
+    await db.payments.update_one(
+        {"stripe_session_id": session_id},
         {"$set": {
-            "stripe_payment_method_id": payment_method_id,
-            "stripe_card_info": card_info,
-            "auto_pay_enabled": True,
-            "payment_method_updated_at": datetime.now(timezone.utc).isoformat(),
+            "status": new_status,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }},
     )
 
-    return {"message": "Payment method saved", "card": card_info}
+    # If payment succeeded, update client balance
+    if new_status == "succeeded" and payment.get("status") != "succeeded":
+        amount = payment["amount"]
+        await db.clients.update_one(
+            {"id": client_id},
+            {
+                "$inc": {"total_paid": amount, "outstanding_balance": -amount, "total_amount_due": -amount},
+                "$set": {
+                    "last_payment_date": datetime.now(timezone.utc).isoformat(),
+                    "last_payment_amount": amount,
+                    "is_late": False,
+                    "days_overdue": 0,
+                },
+            },
+        )
+        # Notify admin
+        await db.notifications.insert_one({
+            "id": str(uuid.uuid4()),
+            "admin_id": admin_id,
+            "type": "payment_received",
+            "title": "Payment Received",
+            "message": f"Received {amount:.2f} EUR from {payment.get('client_name', 'client')} via Stripe.",
+            "client_id": client_id,
+            "is_read": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        logger.info(f"Payment {session_id} for client {client_id} succeeded: {amount} EUR")
 
-
-@router.get("/clients/{client_id}/payment-methods")
-async def get_payment_methods(client_id: str, admin_token: str = Query(...)):
-    """Get saved payment method info for a client."""
-    admin_id = await get_admin_id_from_token(admin_token)
-
-    client = await db.clients.find_one({"id": client_id, "admin_id": admin_id}, {"_id": 0})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-
-    return {
-        "stripe_customer_id": client.get("stripe_customer_id"),
-        "stripe_payment_method_id": client.get("stripe_payment_method_id"),
-        "card": client.get("stripe_card_info"),
-        "auto_pay_enabled": client.get("auto_pay_enabled", False),
-    }
+    return {"status": new_status, "amount": payment["amount"]}
 
 
 @router.post("/clients/{client_id}/toggle-autopay")
@@ -147,106 +162,74 @@ async def toggle_autopay(client_id: str, admin_token: str = Query(...), data: di
     return {"auto_pay_enabled": enabled}
 
 
-@router.post("/clients/{client_id}/charge")
-async def charge_client(client_id: str, admin_token: str = Query(...), data: dict = Body(...)):
-    """Manually charge a client's saved payment method."""
+@router.get("/clients/{client_id}/payment-methods")
+async def get_payment_methods(client_id: str, admin_token: str = Query(...)):
+    """Get payment info for a client."""
     admin_id = await get_admin_id_from_token(admin_token)
-    s = _get_stripe()
 
     client = await db.clients.find_one({"id": client_id, "admin_id": admin_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    stripe_cid = client.get("stripe_customer_id")
-    pm_id = client.get("stripe_payment_method_id")
-    if not stripe_cid or not pm_id:
-        raise HTTPException(status_code=400, detail="No saved payment method for this client")
-
-    amount = float(data.get("amount", client.get("monthly_emi", 0)))
-    if amount <= 0:
-        raise HTTPException(status_code=400, detail="Amount must be positive")
-
-    currency = data.get("currency", "eur")
-    description = data.get("description", f"PayLock Pro - Payment from {client.get('name', 'Client')}")
-
-    result = await _create_payment_intent(
-        s, stripe_cid, pm_id, amount, currency, description,
-        client_id=client_id, admin_id=admin_id, source="manual"
-    )
-    return result
-
-
-async def _create_payment_intent(
-    s, stripe_customer_id, payment_method_id, amount, currency,
-    description, client_id, admin_id, source="auto"
-):
-    """Create an off-session PaymentIntent and record the result."""
-    payment_id = str(uuid.uuid4())
-    amount_cents = int(round(amount * 100))
-
-    try:
-        intent = s.PaymentIntent.create(
-            amount=amount_cents,
-            currency=currency,
-            customer=stripe_customer_id,
-            payment_method=payment_method_id,
-            off_session=True,
-            confirm=True,
-            description=description,
-            metadata={
-                "client_id": client_id,
-                "admin_id": admin_id,
-                "source": source,
-                "payment_id": payment_id,
-            },
-        )
-        status = intent.status  # "succeeded", "requires_action", "processing"
-        succeeded = status == "succeeded"
-    except stripe.error.CardError as e:
-        status = "failed"
-        succeeded = False
-        intent = None
-        logger.warning(f"Card error charging client {client_id}: {e}")
-    except Exception as e:
-        status = "failed"
-        succeeded = False
-        intent = None
-        logger.error(f"Stripe error charging client {client_id}: {e}")
-
-    # Record payment transaction
-    txn = {
-        "id": payment_id,
-        "client_id": client_id,
-        "admin_id": admin_id,
-        "amount": amount,
-        "currency": currency,
-        "status": status,
-        "stripe_payment_intent_id": intent.id if intent else None,
-        "source": source,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    await db.payments.insert_one(txn)
-
-    # If succeeded, update client balances
-    if succeeded:
-        await db.clients.update_one(
-            {"id": client_id},
-            {
-                "$inc": {"total_paid": amount, "outstanding_balance": -amount, "total_amount_due": -amount},
-                "$set": {
-                    "last_payment_date": datetime.now(timezone.utc).isoformat(),
-                    "last_payment_amount": amount,
-                    "is_late": False,
-                    "days_overdue": 0,
-                },
-            },
-        )
-        logger.info(f"[{source}] Charged {amount} {currency} from client {client_id} - succeeded")
+    # Get recent Stripe payments
+    recent = await db.payments.find(
+        {"client_id": client_id, "payment_method": "stripe"},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(5)
 
     return {
-        "payment_id": payment_id,
-        "status": status,
-        "amount": amount,
-        "currency": currency,
-        "succeeded": succeeded,
+        "auto_pay_enabled": client.get("auto_pay_enabled", False),
+        "recent_stripe_payments": recent,
+        "total_paid_stripe": sum(p["amount"] for p in recent if p.get("status") == "succeeded"),
     }
+
+
+async def create_auto_payment_link(client, amount, currency="eur", schedule_id=None):
+    """Create a checkout session for auto-payment and return the URL.
+    Called by the background task scheduler when auto-charge is enabled."""
+    if not STRIPE_API_KEY or not BACKEND_URL:
+        return None, "stripe_not_configured"
+
+    origin = BACKEND_URL.rstrip("/")
+    success_url = f"{origin}/api/portal?payment_success=true&session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{origin}/api/portal?payment_cancelled=true"
+
+    sc = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{origin}/api/webhook/stripe")
+
+    checkout_req = CheckoutSessionRequest(
+        amount=amount,
+        currency=currency,
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={
+            "client_id": client["id"],
+            "admin_id": client.get("admin_id", ""),
+            "client_name": client.get("name", ""),
+            "schedule_id": schedule_id or "",
+            "type": "auto_payment",
+        },
+    )
+
+    try:
+        session: CheckoutSessionResponse = await sc.create_checkout_session(checkout_req)
+
+        # Record payment
+        payment_id = str(uuid.uuid4())
+        await db.payments.insert_one({
+            "id": payment_id,
+            "client_id": client["id"],
+            "admin_id": client.get("admin_id", ""),
+            "amount": amount,
+            "currency": currency,
+            "status": "pending",
+            "payment_method": "stripe",
+            "stripe_session_id": session.session_id,
+            "source": "auto",
+            "schedule_id": schedule_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+
+        return session.url, "payment_link_created"
+    except Exception as e:
+        logger.error(f"Error creating auto payment link for client {client['id']}: {e}")
+        return None, str(e)
