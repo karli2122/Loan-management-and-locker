@@ -730,12 +730,22 @@ export default function ClientHome() {
         // conflict with overlay apps (like Messenger chat heads) and crash
         // The user can manually request it via the permission card
 
-        // 1. Location permission (in-app runtime dialog)
+        // 1. Location permission — require "Always Allow" (foreground + background)
         if (!location && isMounted.current) {
           try {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status === 'granted') {
               setPermissionStates(prev => ({ ...prev, location: true }));
+              // Now request background location ("Always allow")
+              await new Promise(r => setTimeout(r, 500));
+              try {
+                const bgResult = await Location.requestBackgroundPermissionsAsync();
+                if (bgResult.status === 'granted') {
+                  console.log('Background location permission granted (Always)');
+                }
+              } catch (bgErr) {
+                console.log('Background location permission request failed:', bgErr);
+              }
             }
             await new Promise(r => setTimeout(r, 500));
           } catch (e) {
