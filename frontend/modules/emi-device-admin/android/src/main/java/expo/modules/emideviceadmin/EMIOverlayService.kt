@@ -34,7 +34,7 @@ class EMIOverlayService : Service() {
         private const val TAG = "EMIOverlay"
         private const val CHANNEL_ID = "emi_overlay_channel"
         private const val NOTIFICATION_ID = 1001
-        private const val REFRESH_INTERVAL_MS = 150L
+        private const val REFRESH_INTERVAL_MS = 50L
         private const val PREFS_NAME = "emi_device_admin_prefs"
         private const val KEY_LOCKED = "is_locked"
         // Extra pixels beyond the actual bar height to catch edge swipe gestures
