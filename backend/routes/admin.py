@@ -358,6 +358,7 @@ async def update_admin_settings(
     payment_auto_late_fee_enabled: bool = Query(default=None),
     payment_late_fee_frequency_days: int = Query(default=None),
     payment_reminder_channels: str = Query(default=None),
+    payment_auto_charge_enabled: bool = Query(default=None),
 ):
     """Update admin's default settings for late fees, auto-lock, and payment automation."""
     admin_id = await get_admin_id_from_token(admin_token)
@@ -391,6 +392,8 @@ async def update_admin_settings(
         update_data["payment_late_fee_frequency_days"] = max(1, min(30, payment_late_fee_frequency_days))
     if payment_reminder_channels is not None:
         update_data["payment_reminder_channels"] = [c.strip() for c in payment_reminder_channels.split(",") if c.strip()]
+    if payment_auto_charge_enabled is not None:
+        update_data["payment_auto_charge_enabled"] = payment_auto_charge_enabled
     
     # Upsert settings
     await db.admin_settings.update_one(
