@@ -53,7 +53,7 @@ class EMIForegroundMonitorService : Service() {
                     if (isLocked) {
                         val foregroundPackage = getForegroundPackage()
                         if (foregroundPackage != null && foregroundPackage != packageName) {
-                            // Allow phone/dialer apps during calls (legal requirement for emergency calls)
+                            // Phone/Dialer apps: only allow during emergency calls
                             val isPhoneApp = foregroundPackage.contains("dialer") ||
                                              foregroundPackage.contains("incall") ||
                                              foregroundPackage.contains("telecom") ||
@@ -62,7 +62,21 @@ class EMIForegroundMonitorService : Service() {
                                              foregroundPackage == "com.google.android.dialer" ||
                                              foregroundPackage == "com.samsung.android.dialer"
                             if (isPhoneApp) {
-                                Log.d(TAG, "Phone/call app in foreground while locked — allowing: $foregroundPackage")
+                                val prefs = applicationContext.getSharedPreferences("emi_device_admin_prefs", Context.MODE_PRIVATE)
+                                val emergencyActive = prefs.getBoolean("emergency_call_active", false)
+                                if (emergencyActive) {
+                                    Log.d(TAG, "Emergency call active — allowing dialer: $foregroundPackage")
+                                } else {
+                                    Log.d(TAG, "Locked: Rejecting regular call, killing dialer: $foregroundPackage")
+                                    // End the call
+                                    try {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                            val telecom = applicationContext.getSystemService(Context.TELECOM_SERVICE) as? android.telecom.TelecomManager
+                                            telecom?.endCall()
+                                        }
+                                    } catch (_: Exception) {}
+                                    bringAppToForeground()
+                                }
                             } else {
                                 Log.w(TAG, "Foreign app detected in foreground: $foregroundPackage — bringing back our app")
                                 bringAppToForeground()
