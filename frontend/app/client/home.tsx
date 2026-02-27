@@ -437,8 +437,6 @@ export default function ClientHome() {
             await devicePolicy.setCameraDisabled(true);
             await devicePolicy.setBluetoothDisabled(true);
             console.log('[Startup] Camera & BT disabled');
-            await devicePolicy.scheduleAutoRestart();
-            console.log('[Startup] Auto-restart scheduled');
           } catch (e) {
             console.log('[Startup] Lock enforcement error:', e);
           }
