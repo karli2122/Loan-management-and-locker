@@ -981,12 +981,19 @@ export default function ClientHome() {
   useEffect(() => {
     if (!clientId) return;
 
-    // Poll status every 5 seconds — skip if refresh is in progress
-    intervalRef.current = setInterval(() => {
-      if (!isRefreshingRef.current) {
-        fetchStatus(clientId).catch(() => {});
-      }
-    }, 5000);
+    // Dynamic polling: 3s when offline (aggressive reconnect), 5s when online
+    const getInterval = () => isOffline ? 3000 : 5000;
+    
+    const startPolling = () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = setInterval(() => {
+        if (!isRefreshingRef.current) {
+          fetchStatus(clientId).catch(() => {});
+        }
+      }, getInterval());
+    };
+    
+    startPolling();
 
     // Listen for push notifications — immediately refresh status on lock/unlock/warning
     const notifReceivedSub = Notifications.addNotificationReceivedListener((notification) => {
