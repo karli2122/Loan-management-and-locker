@@ -513,20 +513,28 @@ export default function ClientHome() {
       console.error('Error fetching status:', error);
       setIsOffline(true);
       
-      // On error, check and enforce cached lock state
-      // Only update if we already have a valid status (don't create blank objects)
+      // On error, check and enforce cached lock state (includes native SharedPreferences fallback)
       const cachedState = await devicePolicy.getCachedLockState();
       if (cachedState.isLocked) {
         setStatus(prev => {
-          if (!prev) return prev; // Don't overwrite null with a blank object
+          // Create a locked status even if prev is null (device reboot + API fail scenario)
+          const base = prev || {
+            id: '',
+            name: '',
+            is_locked: false,
+            lock_message: '',
+            warning_message: '',
+            loan_amount: 0,
+            loan_due_date: null,
+          };
           return {
-            ...prev,
+            ...base,
             is_locked: true,
             lock_message: cachedState.lockMessage,
           };
         });
         wasLocked.current = true;
-        console.log('[Error] Enforcing cached lock state');
+        console.log('[Error] Enforcing cached lock state (native fallback)');
       }
     }
   };
