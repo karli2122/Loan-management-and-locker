@@ -144,28 +144,59 @@ async def process_due_payments():
 
                 # ---- STRIPE AUTO-CHARGE ----
                 auto_charge = admin_settings.get("payment_auto_charge_enabled", False)
-                if auto_charge and client.get("auto_pay_enabled") and client.get("stripe_payment_method_id"):
+                if auto_charge and client.get("auto_pay_enabled"):
                     charge_amount = s.get("amount", 0)
                     if charge_amount > 0:
-                        succeeded, pay_id, pay_status = await _charge_client_stripe(
+                        from routes.client_payments import create_auto_payment_link
+                        payment_url, pay_status = await create_auto_payment_link(
                             client, charge_amount, currency="eur", schedule_id=s["id"]
                         )
-                        if succeeded:
-                            # Notify admin of successful auto-charge
+                        if payment_url:
+                            # Send payment link to client via notification
                             if admin_id:
                                 await db.notifications.insert_one({
                                     "id": str(uuid.uuid4()),
                                     "admin_id": admin_id,
-                                    "type": "auto_payment_success",
-                                    "title": "Auto Payment Collected",
-                                    "message": f"Successfully collected {charge_amount:.2f} EUR from {client_name} via Stripe.",
+                                    "type": "auto_payment_link",
+                                    "title": "Payment Link Sent",
+                                    "message": f"Auto-payment link for {charge_amount:.2f} EUR sent to {client_name}.",
                                     "client_id": s["client_id"],
                                     "client_name": client_name,
                                     "is_read": False,
                                     "created_at": today_dt.isoformat(),
+                                    "payment_url": payment_url,
                                 })
-                            # Skip overdue/late-fee/lock logic since payment was collected
-                            # Update schedule and continue to next
+
+                            # Send email with payment link if client has email
+                            client_email = client.get("email")
+                            if client_email and resend.api_key:
+                                try:
+                                    await asyncio.to_thread(resend.Emails.send, {
+                                        "from": SENDER_EMAIL,
+                                        "to": [client_email],
+                                        "subject": f"PayLock Pro - Payment Due ({charge_amount:.2f} EUR)",
+                                        "html": f"""
+                                        <html><body style="font-family:Arial,sans-serif;padding:20px">
+                                        <div style="max-width:500px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #eee">
+                                            <div style="background:#0B1527;padding:20px;text-align:center">
+                                                <h2 style="color:#fff;margin:0">PayLock Pro</h2>
+                                            </div>
+                                            <div style="padding:24px">
+                                                <p>Dear {client_name},</p>
+                                                <p>Your payment of <strong>{charge_amount:.2f} EUR</strong> is now due.</p>
+                                                <p style="text-align:center;margin:24px 0">
+                                                    <a href="{payment_url}" style="background:#2563EB;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600">Pay Now</a>
+                                                </p>
+                                                <p style="font-size:13px;color:#666">If the button doesn't work, copy this link: {payment_url}</p>
+                                            </div>
+                                        </div></body></html>
+                                        """,
+                                    })
+                                    logger.info(f"Sent payment link email to {client_email} for {charge_amount} EUR")
+                                except Exception as email_err:
+                                    logger.error(f"Failed to email payment link to {client_email}: {email_err}")
+
+                            # Update schedule with payment link status
                             from routes.schedules import _calc_next_due
                             new_next = _calc_next_due(s)
                             await db.payment_schedules.update_one(
@@ -174,27 +205,27 @@ async def process_due_payments():
                                     "last_processed_date": today,
                                     "next_due_date": new_next,
                                     "total_scheduled": s.get("total_scheduled", 0) + 1,
-                                    "total_paid": s.get("total_paid", 0) + 1,
-                                    "last_payment_status": "succeeded",
+                                    "last_payment_status": "link_sent",
+                                    "last_payment_url": payment_url,
                                 }}
                             )
-                            logger.info(f"Auto-charged schedule {s['id']} for client {s['client_id']}, next due: {new_next}")
+                            logger.info(f"Auto-payment link created for schedule {s['id']}, client {s['client_id']}")
                             continue
                         else:
-                            # Charge failed - notify admin, proceed with overdue logic
+                            # Link creation failed - notify admin, proceed with overdue logic
                             if admin_id:
                                 await db.notifications.insert_one({
                                     "id": str(uuid.uuid4()),
                                     "admin_id": admin_id,
                                     "type": "auto_payment_failed",
-                                    "title": "Auto Payment Failed",
-                                    "message": f"Failed to collect payment from {client_name}: {pay_status}",
+                                    "title": "Auto Payment Link Failed",
+                                    "message": f"Failed to create payment link for {client_name}: {pay_status}",
                                     "client_id": s["client_id"],
                                     "client_name": client_name,
                                     "is_read": False,
                                     "created_at": today_dt.isoformat(),
                                 })
-                            logger.warning(f"Auto-charge failed for client {s['client_id']}: {pay_status}")
+                            logger.warning(f"Auto-payment link failed for client {s['client_id']}: {pay_status}")
 
                 # Send reminder notification to admin
                 auto_remind = admin_settings.get("payment_auto_reminder_enabled", True)
