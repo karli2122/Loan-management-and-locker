@@ -188,14 +188,6 @@ export default function ClientDetails() {
 
   // ─── Action handlers ──────────────────────────────────────────
   const handleGenerateCode = async () => {
-    if (!isSuperAdmin && userCredits <= 0) {
-      Alert.alert(
-        t('noCredits'),
-        t('youHaveNoCreditsToGenerate'),
-        [{ text: 'OK' }]
-      );
-      return;
-    }
     // Step 1: Ask which lock mode
     Alert.alert(
       t('generateNewKey'),
@@ -217,12 +209,11 @@ export default function ClientDetails() {
   };
 
   const generateCodeWithMode = async (lockMode: string) => {
-    const creditMsg = language === 'et'
-      ? `See kulutab 1 krediiti. Teie saldo: ${isSuperAdmin ? '\u221E' : userCredits}. J\u00e4tkata?`
-      : `This will use 1 credit. Your balance: ${isSuperAdmin ? '\u221E' : userCredits}. Continue?`;
     Alert.alert(
       t('confirm'),
-      creditMsg,
+      language === 'et'
+        ? 'Genereerime uue koodi. Jätkata?'
+        : 'Generate a new code. Continue?',
       [
         { text: t('cancel'), style: 'cancel' },
         {
@@ -236,7 +227,6 @@ export default function ClientDetails() {
               if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error || errorData.detail || 'Failed to generate code'); }
               const data = await response.json();
               if (client) setClient({ ...client, registration_code: data.registration_code, lock_mode: data.lock_mode });
-              if (!isSuperAdmin) setUserCredits(prev => prev - 1);
               const modeLabel = lockMode === 'device_owner' ? 'Device Owner (9-digit)' : 'Device Admin (8-digit)';
               Alert.alert(
                 t('success'),
