@@ -220,24 +220,40 @@ class EMIAccessibilityService : AccessibilityService() {
 
             val lockedAllowed = setOf(
                 "android",
-                // Phone/Dialer — must allow incoming/outgoing calls (legal requirement for emergency calls)
-                "com.android.dialer",
-                "com.google.android.dialer",
-                "com.samsung.android.dialer",
-                "com.android.incallui",
-                "com.samsung.android.incallui",
-                "com.android.phone",
-                "com.android.server.telecom",
             )
             if (packageName in lockedAllowed) return
 
-            // Also allow any package with "dialer", "incall", or "telecom" in the name
-            // Covers OEM-specific phone apps (Xiaomi, Huawei, etc.)
-            if (packageName.contains("dialer") || 
-                packageName.contains("incall") || 
-                packageName.contains("telecom") ||
-                packageName.contains("phone")) {
-                Log.d(TAG, "LOCKED: Allowing phone/call app: $packageName")
+            // Phone/Dialer apps: reject calls unless emergency call is active
+            val isPhoneApp = packageName.contains("dialer") ||
+                             packageName.contains("incall") ||
+                             packageName.contains("telecom") ||
+                             packageName.contains("phone") ||
+                             packageName == "com.android.dialer" ||
+                             packageName == "com.google.android.dialer" ||
+                             packageName == "com.samsung.android.dialer"
+            if (isPhoneApp) {
+                val emergencyActive = prefs.getBoolean("emergency_call_active", false)
+                if (emergencyActive) {
+                    Log.d(TAG, "LOCKED: Emergency call active — allowing: $packageName")
+                    return
+                }
+                // Regular incoming call — reject it and kill dialer
+                Log.d(TAG, "LOCKED: Rejecting incoming call, killing dialer: $packageName")
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        val telecom = applicationContext.getSystemService(Context.TELECOM_SERVICE) as? android.telecom.TelecomManager
+                        telecom?.endCall()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to end call: ${e.message}")
+                }
+                // Mute the ringer
+                try {
+                    val audio = applicationContext.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+                    audio.ringerMode = android.media.AudioManager.RINGER_MODE_SILENT
+                } catch (_: Exception) {}
+                // Bring our app back
+                launchApp()
                 return
             }
 
