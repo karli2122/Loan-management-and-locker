@@ -121,37 +121,59 @@ class OfflineSyncManager {
         throw new Error('No cached data available');
       }
 
-      // Online - fetch from server with AbortController timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-      
-      try {
-        const response = await fetch(`${apiUrl}/api/device/status/${clientId}`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
+      // Online - fetch from server with retry logic for cold starts
+      const maxRetries = 3;
+      const baseTimeout = 12000; // 12s first try (handles cold start)
+      let lastError: Error | null = null;
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch status');
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        const controller = new AbortController();
+        // Increase timeout on retries to give sleeping server time to wake
+        const timeout = baseTimeout + (attempt * 5000);
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+        
+        try {
+          const response = await fetch(`${apiUrl}/api/device/status/${clientId}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          const status = await response.json();
+          
+          if (attempt > 0) {
+            console.log(`[OfflineSync] API recovered on retry ${attempt}`);
+          }
+          
+          // Cache the new status
+          await this.setCachedStatus(clientId, status);
+          
+          // Process pending actions
+          await this.processPendingActions(clientId, apiUrl);
+          
+          return { ...status, offline: false };
+        } catch (fetchError: any) {
+          clearTimeout(timeoutId);
+          lastError = fetchError;
+          
+          if (attempt < maxRetries) {
+            // Wait before retry: 2s, 4s, 8s (exponential backoff)
+            const delay = Math.pow(2, attempt + 1) * 1000;
+            console.log(`[OfflineSync] Fetch failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
         }
-
-        const status = await response.json();
-        
-        // Cache the new status
-        await this.setCachedStatus(clientId, status);
-        
-        // Process pending actions
-        await this.processPendingActions(clientId, apiUrl);
-        
-        return { ...status, offline: false };
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
-        throw fetchError;
       }
+
+      // All retries failed
+      throw lastError || new Error('All retries exhausted');
     } catch (error) {
-      console.error('[OfflineSync] Sync error:', error);
+      console.error('[OfflineSync] Sync error after retries:', error);
       
       // Return cached data if available — include ALL fields for proper UI
       const cached = await this.getCachedStatus(clientId);
