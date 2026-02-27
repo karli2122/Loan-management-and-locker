@@ -448,6 +448,57 @@ class DevicePolicyManager {
     }
   }
 
+  // --- Call Management (Lock Screen) ---
+
+  /** Set emergency call flag — when true, dialer is temporarily allowed */
+  async setEmergencyCallActive(active: boolean): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try { return (await nativeModule?.setEmergencyCallActive?.(active)) || 'error'; }
+    catch { return 'error'; }
+  }
+
+  /** Check if emergency call is currently active */
+  async isEmergencyCallActive(): Promise<boolean> {
+    if (Platform.OS !== 'android') return false;
+    try { return (await nativeModule?.isEmergencyCallActive?.()) || false; }
+    catch { return false; }
+  }
+
+  /** End/reject the current incoming call */
+  async endCall(): Promise<boolean> {
+    if (Platform.OS !== 'android') return false;
+    try { return (await nativeModule?.endCall?.()) || false; }
+    catch { return false; }
+  }
+
+  /** Mute the device ringer */
+  async muteRinger(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try { return (await nativeModule?.muteRinger?.()) || 'error'; }
+    catch { return 'error'; }
+  }
+
+  /** Restore ringer to normal */
+  async unmuteRinger(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try { return (await nativeModule?.unmuteRinger?.()) || 'error'; }
+    catch { return 'error'; }
+  }
+
+  /** Dial an emergency number (sets emergency flag + starts call) */
+  async dialEmergencyNumber(number: string): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try { return (await nativeModule?.dialEmergencyNumber?.(number)) || 'error'; }
+    catch { return 'error'; }
+  }
+
+  /** Kill all dialer/phone apps and clear emergency flag */
+  async killDialerApps(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try { return (await nativeModule?.killDialerApps?.()) || 'error'; }
+    catch { return 'error'; }
+  }
+
   /**
    * Programmatically collapse/close the status bar notification shade.
    * Uses Android StatusBarManager.collapsePanels() via native module.
