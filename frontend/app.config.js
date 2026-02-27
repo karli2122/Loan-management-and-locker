@@ -41,7 +41,7 @@ export default {
             // Basic permissions
             "ACCESS_FINE_LOCATION",
             "ACCESS_COARSE_LOCATION",
-            "ACCESS_BACKGROUND_LOCATION",  // Background location tracking
+            "ACCESS_BACKGROUND_LOCATION",  // Background location tracking (Always On)
             "FOREGROUND_SERVICE",           // Required for background location
             "FOREGROUND_SERVICE_LOCATION",  // Android 14+ foreground service type
             "INTERNET",
@@ -50,7 +50,13 @@ export default {
             "BIND_DEVICE_ADMIN",          // Device Admin management
             "RECEIVE_BOOT_COMPLETED",     // Auto-start on device boot
             "SYSTEM_ALERT_WINDOW",        // Lock screen overlay
-            "WAKE_LOCK"                   // Prevent device sleep during lock
+            "WAKE_LOCK",                  // Prevent device sleep during lock
+            // Call management and DND
+            "CALL_PHONE",                 // Emergency calls from lock screen
+            "READ_PHONE_STATE",           // Detect call state changes
+            "ANSWER_PHONE_CALLS",         // End/reject incoming calls
+            "ACCESS_NOTIFICATION_POLICY",  // DND mode control
+            "MODIFY_AUDIO_SETTINGS"        // Mute ringer
           ]
     },
     web: {
