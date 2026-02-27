@@ -20,7 +20,7 @@ import secrets
 # Use environment variable for backend URL
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://paylock-i18n.preview.emergentagent.com"
+    BASE_URL = "https://paylock-enterprise.preview.emergentagent.com"
 
 # Test credentials
 ADMIN_USERNAME = "karli1987"

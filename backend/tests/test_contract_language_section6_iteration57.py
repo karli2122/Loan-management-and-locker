@@ -22,7 +22,7 @@ except ImportError:
     PDF_EXTRACT_AVAILABLE = False
     print("WARNING: PyPDF2 not available - PDF text extraction tests will be skipped")
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://paylock-i18n.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://paylock-enterprise.preview.emergentagent.com').rstrip('/')
 
 
 class TestContractLanguageAndSection6:

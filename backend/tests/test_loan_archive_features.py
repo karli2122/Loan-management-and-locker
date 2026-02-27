@@ -14,7 +14,7 @@ import os
 import uuid
 from datetime import datetime
 
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://paylock-i18n.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://paylock-enterprise.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 SUPERADMIN_CREDENTIALS = {"username": "karli1987", "password": "nasvakas123"}

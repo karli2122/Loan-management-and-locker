@@ -14,7 +14,7 @@ import requests
 import os
 from datetime import datetime
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://paylock-i18n.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://paylock-enterprise.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_USERNAME = "karli1987"

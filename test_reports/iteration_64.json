@@ -137,7 +137,7 @@
     },
     "website_admin_portal_link": {
       "placeholder_replaced": true,
-      "full_url": "https://paylock-i18n-verify.preview.emergentagent.com/api/portal"
+      "full_url": "https://paylock-enterprise.preview.emergentagent.com/api/portal"
     },
     "language_english": {
       "label": "English (EN)",

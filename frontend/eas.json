@@ -9,7 +9,7 @@
       "credentialsSource": "local",
       "env": {
         "APP_MODE": "admin",
-        "EXPO_PUBLIC_BACKEND_URL": "https://paylock-website.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://paylock-enterprise.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
@@ -22,7 +22,7 @@
       "credentialsSource": "local",
       "env": {
         "APP_MODE": "admin",
-        "EXPO_PUBLIC_BACKEND_URL": "https://paylock-website.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://paylock-enterprise.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
@@ -36,7 +36,7 @@
       "credentialsSource": "local",
       "env": {
         "APP_MODE": "admin",
-        "EXPO_PUBLIC_BACKEND_URL": "https://paylock-website.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://paylock-enterprise.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
@@ -51,7 +51,7 @@
       "credentialsSource": "local",
       "env": {
         "APP_MODE": "client",
-        "EXPO_PUBLIC_BACKEND_URL": "https://paylock-website.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://paylock-enterprise.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
@@ -64,7 +64,7 @@
       "credentialsSource": "local",
       "env": {
         "APP_MODE": "client",
-        "EXPO_PUBLIC_BACKEND_URL": "https://paylock-website.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://paylock-enterprise.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",
@@ -78,7 +78,7 @@
       "credentialsSource": "local",
       "env": {
         "APP_MODE": "client",
-        "EXPO_PUBLIC_BACKEND_URL": "https://paylock-website.preview.emergentagent.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://paylock-enterprise.preview.emergentagent.com"
       },
       "android": {
         "buildType": "apk",

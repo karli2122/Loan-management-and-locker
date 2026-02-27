@@ -47,7 +47,7 @@ Full-stack loan management application called "PayLock Pro" for an Estonian IT c
 
 ## Credentials
 - Admin: username=admin, password=admin123
-- Production URL: https://client-app-staging-1.preview.emergentagent.com
+- Production URL: https://paylock-enterprise.preview.emergentagent.com
 
 ## Integrations
 - MongoDB Atlas, Stripe, Resend, Telegram Bot, Google Drive, Chart.js, EAS
