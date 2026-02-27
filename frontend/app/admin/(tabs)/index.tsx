@@ -257,17 +257,16 @@ export default function Dashboard() {
     if (storedFirst) setFirstName(storedFirst);
     if (role) setUserRole(role);
     
-    // Fetch credits
+    // Fetch super admin status
     if (token) {
       try {
         const response = await fetch(`${API_URL}/api/admin/credits?admin_token=${token}`);
         if (response.ok) {
           const data = await response.json();
-          setUserCredits(data.credits);
           setIsSuperAdmin(data.is_super_admin);
         }
       } catch (error) {
-        console.error('Error fetching credits:', error);
+        console.error('Error fetching admin status:', error);
       }
     }
   };
