@@ -166,7 +166,7 @@ export default function ClientDetails() {
   };
 
   // ─── Effects ───────────────────────────────────────────────────
-  useEffect(() => { fetchClient(); fetchCredits(); }, [id]);
+  useEffect(() => { fetchClient(); }, [id]);
 
   const isModalOpenRef = useRef(false);
   useEffect(() => {
