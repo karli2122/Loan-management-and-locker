@@ -39,7 +39,6 @@ interface Admin {
   username: string;
   role: string;
   is_super_admin: boolean;
-  credits: number;
   first_name?: string;
   last_name?: string;
   created_at: string;
