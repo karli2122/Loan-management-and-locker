@@ -1253,9 +1253,10 @@ export default function ClientHome() {
       <Pressable 
         style={[styles.lockContainer, { paddingTop: 0 }]}
         onPress={() => {
-          // Re-engage immersive mode on any touch — hides status bar if user swiped to reveal
+          // Re-engage immersive mode + collapse status bar on any touch
           if (Platform.OS === 'android') {
             devicePolicy.enableImmersiveMode().catch(() => {});
+            devicePolicy.collapseStatusBar().catch(() => {});
           }
         }}
       >
