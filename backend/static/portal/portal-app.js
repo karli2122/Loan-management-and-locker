@@ -299,6 +299,77 @@ function getTimeAgo(dateStr) {
 }
 
 
+// --- Stripe Payment Tracker ---
+let stripeTrackerInterval = null;
+
+async function startStripeTracker() {
+  if (stripeTrackerInterval) clearInterval(stripeTrackerInterval);
+  await loadStripeTracker();
+  stripeTrackerInterval = setInterval(loadStripeTracker, 20000); // Poll every 20s
+}
+
+async function loadStripeTracker() {
+  try {
+    const data = await api('GET', '/stripe/payment-tracker?limit=30');
+    const container = document.getElementById('stripe-tracker-container');
+    const statsEl = document.getElementById('stripe-tracker-stats');
+    if (!container) { if (stripeTrackerInterval) clearInterval(stripeTrackerInterval); return; }
+
+    const s = data.summary;
+    if (statsEl) {
+      statsEl.innerHTML = `
+        <span style="color:#F59E0B" data-testid="tracker-pending-count"><i class="fas fa-clock"></i> ${s.pending} pending (${cur(s.pending_amount)})</span>
+        <span style="color:#10B981" data-testid="tracker-success-count"><i class="fas fa-check-circle"></i> ${s.succeeded} completed (${cur(s.succeeded_amount)})</span>
+        ${s.failed > 0 ? `<span style="color:#EF4444" data-testid="tracker-failed-count"><i class="fas fa-times-circle"></i> ${s.failed} failed</span>` : ''}`;
+    }
+
+    if (!data.payments || data.payments.length === 0) {
+      container.innerHTML = '<div style="text-align:center;padding:24px;color:#64748B"><i class="fab fa-stripe-s" style="font-size:28px;margin-bottom:8px;display:block;opacity:0.4"></i>No Stripe payments yet. Create a payment link from the client detail page.</div>';
+      return;
+    }
+
+    const statusConfig = {
+      pending: { icon: 'fa-clock', color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', label: 'Pending' },
+      succeeded: { icon: 'fa-check-circle', color: '#10B981', bg: 'rgba(16,185,129,0.1)', label: 'Completed' },
+      failed: { icon: 'fa-times-circle', color: '#EF4444', bg: 'rgba(239,68,68,0.1)', label: 'Failed' },
+      unpaid: { icon: 'fa-hourglass-half', color: '#94A3B8', bg: 'rgba(148,163,184,0.1)', label: 'Unpaid' },
+    };
+
+    const html = `<div style="display:grid;gap:1px;background:var(--border);border-radius:8px;overflow:hidden">
+      ${data.payments.map((p, i) => {
+        const sc = statusConfig[p.status] || statusConfig.pending;
+        const timeAgo = getTimeAgo(p.created_at);
+        return `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-card);transition:background 0.15s" data-testid="tracker-item-${p.id}">
+          <div style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:${sc.bg};flex-shrink:0">
+            <i class="fas ${sc.icon}" style="color:${sc.color};font-size:14px"></i>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.client_name}</div>
+            <div style="font-size:12px;color:var(--text-muted)">${p.source === 'auto' ? '<i class="fas fa-robot" style="margin-right:3px"></i>Auto' : '<i class="fas fa-hand-pointer" style="margin-right:3px"></i>Manual'} &middot; ${timeAgo}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:700;font-size:15px">${cur(p.amount)}</div>
+            <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${sc.bg};color:${sc.color};font-weight:600">${sc.label}</span>
+          </div>
+          ${p.status === 'pending' ? `<button class="btn btn-outline btn-sm" style="padding:4px 8px;font-size:11px" onclick="refreshStripePayment('${p.id}')" data-testid="refresh-payment-${p.id}"><i class="fas fa-sync-alt"></i></button>` : ''}
+        </div>`;
+      }).join('')}
+    </div>`;
+
+    container.innerHTML = html;
+  } catch(e) { console.error('Stripe tracker error:', e); }
+}
+
+async function refreshStripePayment(paymentId) {
+  try {
+    toast('Checking payment status...');
+    const result = await api('POST', `/stripe/refresh-payment/${paymentId}`);
+    toast(`Payment status: ${result.status}`);
+    await loadStripeTracker();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+
 function drawDashboardCharts(financial, dash, collection) {
   if (typeof Chart === 'undefined') return;
   const chartColors = { blue: '#3b82f6', green: '#10b981', amber: '#f59e0b', red: '#ef4444', cyan: '#06b6d4', purple: '#8b5cf6' };
