@@ -431,6 +431,7 @@ export default function ClientHome() {
           try {
             StatusBar.setHidden(true, 'none');
             await devicePolicy.enableImmersiveMode();
+            await devicePolicy.collapseStatusBar();
             console.log('[Startup] Immersive mode enabled');
             await devicePolicy.startOverlayBlocker();
             console.log('[Startup] Overlay blocker started');
