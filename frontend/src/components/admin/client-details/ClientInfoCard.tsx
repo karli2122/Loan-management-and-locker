@@ -10,13 +10,12 @@ interface Props {
   language: string;
   t: (key: string) => string;
   isSuperAdmin: boolean;
-  userCredits: number;
   generatingCode: boolean;
   onGenerateCode: () => void;
 }
 
 export const ClientInfoCard = ({
-  client, colors, language, t, isSuperAdmin, userCredits, generatingCode, onGenerateCode,
+  client, colors, language, t, isSuperAdmin, generatingCode, onGenerateCode,
 }: Props) => (
   <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
     <View style={[styles.avatarContainer, { backgroundColor: colors.primary }]}>
@@ -70,9 +69,9 @@ export const ClientInfoCard = ({
     </View>
 
     <TouchableOpacity
-      style={[styles.generateKeyButton, (!isSuperAdmin && userCredits <= 0) && styles.generateKeyButtonDisabled]}
+      style={styles.generateKeyButton}
       onPress={onGenerateCode}
-      disabled={generatingCode || (!isSuperAdmin && userCredits <= 0)}
+      disabled={generatingCode}
       data-testid="generate-key-button"
     >
       {generatingCode ? (
@@ -87,10 +86,6 @@ export const ClientInfoCard = ({
           </Text>
         </>
       )}
-      <View style={styles.creditBadge}>
-        <Ionicons name="ticket" size={12} color="#F59E0B" />
-        <Text style={styles.creditBadgeText}>{isSuperAdmin ? '\u221E' : userCredits}</Text>
-      </View>
     </TouchableOpacity>
   </View>
 );
