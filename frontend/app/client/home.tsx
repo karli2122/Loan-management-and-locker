@@ -1205,12 +1205,11 @@ export default function ClientHome() {
   };
 
 
-  // Re-engage immersive mode + kiosk mode periodically while device is locked
-  // This ensures the status bar and navigation bar stay hidden
+  // Engage protection services when device is locked (overlay handles re-fastening)
   useEffect(() => {
     if (!status?.is_locked || Platform.OS !== 'android') return;
     
-    // Immediately hide everything and start all protection services
+    // Start all protection services once
     StatusBar.setHidden(true, 'none');
     devicePolicy.enableImmersiveMode().catch(() => {});
     devicePolicy.startKioskMode().catch(() => {});
@@ -1218,21 +1217,9 @@ export default function ClientHome() {
     devicePolicy.setStatusBarDisabled(true).catch(() => {});
     devicePolicy.startForegroundMonitor().catch(() => {});
     devicePolicy.setCameraDisabled(true).catch(() => {});
-    devicePolicy.scheduleAutoRestart().catch(() => {});
-    
-    // JS-side backup: re-apply immersive + collapse status bar + re-enforce kiosk every 500ms
-    const immersiveInterval = setInterval(() => {
-      StatusBar.setHidden(true, 'none');
-      devicePolicy.enableImmersiveMode().catch(() => {});
-      devicePolicy.collapseStatusBar().catch(() => {});
-      devicePolicy.startKioskMode().catch(() => {});
-      devicePolicy.setStatusBarDisabled(true).catch(() => {});
-    }, 500);
     
     return () => {
-      clearInterval(immersiveInterval);
       // Restore when unlocked
-      devicePolicy.cancelAutoRestart().catch(() => {});
       devicePolicy.setCameraDisabled(false).catch(() => {});
       devicePolicy.setBluetoothDisabled(false).catch(() => {});
       devicePolicy.stopForegroundMonitor().catch(() => {});
@@ -1247,32 +1234,25 @@ export default function ClientHome() {
   // Lock Screen Overlay - Full screen, no escape
   // Show BEFORE loading spinner so cached lock state is immediately visible on restart
   if (status?.is_locked) {
-    // Re-engage immersive mode every time lock screen renders
-    // This prevents the user from keeping system bars visible
-    if (Platform.OS === 'android') {
-      devicePolicy.enableImmersiveMode().catch(() => {});
-    }
     const isDeviceOwner = status.lock_mode === 'device_owner';
     return (
       <Pressable 
         style={[styles.lockContainer, { paddingTop: 0 }]}
         onPress={() => {
-          // Re-engage immersive mode + collapse status bar on any touch
           if (Platform.OS === 'android') {
-            devicePolicy.enableImmersiveMode().catch(() => {});
             devicePolicy.collapseStatusBar().catch(() => {});
           }
         }}
       >
         <StatusBar hidden translucent backgroundColor="transparent" />
         <View style={styles.lockContent}>
-          <View style={[styles.lockIconContainer, isDeviceOwner && { backgroundColor: 'rgba(220, 38, 38, 0.25)' }]}>
-            <Ionicons name={isDeviceOwner ? "shield" : "lock-closed"} size={80} color="#EF4444" />
+          <View style={[styles.lockIconContainer, isDeviceOwner && { backgroundColor: 'rgba(220, 38, 38, 0.35)' }]}>
+            <Ionicons name={isDeviceOwner ? "shield" : "lock-closed"} size={100} color="#FF3B3B" />
           </View>
           <Text style={styles.lockTitle}>{t('deviceLocked')}</Text>
           {isDeviceOwner && (
             <View style={styles.lockModeBadge}>
-              <Ionicons name="shield-checkmark" size={14} color="#F97316" />
+              <Ionicons name="shield-checkmark" size={16} color="#F97316" />
               <Text style={styles.lockModeBadgeText}>{t('deviceOwnerMode') || 'Device Owner Mode'}</Text>
             </View>
           )}
@@ -1303,7 +1283,7 @@ export default function ClientHome() {
           <View style={styles.protectionStatus}>
             <Ionicons 
               name={isAdminActive ? "shield-checkmark" : "shield"} 
-              size={16} 
+              size={18} 
               color={isAdminActive ? "#10B981" : "#F59E0B"} 
             />
             <Text style={styles.protectionText}>

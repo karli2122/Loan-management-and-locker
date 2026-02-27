@@ -59,7 +59,15 @@ interface AnalysisResult {
   };
 }
 
-export default function BankAnalyzer() {
+export default function BankAnalyzerPage() {
+  return (
+    <EnterpriseGate featureName="Bank Statement Analyzer">
+      <BankAnalyzerContent />
+    </EnterpriseGate>
+  );
+}
+
+function BankAnalyzerContent() {
   const router = useRouter();
   const { language, t } = useLanguage();
   const { formatAmount, currencySymbol } = useCurrency();
