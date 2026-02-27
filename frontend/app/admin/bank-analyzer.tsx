@@ -222,9 +222,6 @@ export default function BankAnalyzer() {
               {t('uploadBankStatement')}
             </Text>
             <Text style={styles.uploadSubtext}>
-              {t('pdfOrAsiceFiles')}
-            </Text>
-            <Text style={styles.uploadSubtext}>
               {language === 'et' ? 'Laadi üles pangaväljavõte: PDF, CSV, XML või ASICE failid' : 'Upload bank statement: PDF, CSV, XML or ASICE files'}
             </Text>
           </TouchableOpacity>

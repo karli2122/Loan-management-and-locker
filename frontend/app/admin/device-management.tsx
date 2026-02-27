@@ -98,7 +98,7 @@ export default function DeviceManagement() {
             <View style={styles.statIcon}>
               <Ionicons name="phone-portrait" size={28} color="#3B82F6" />
             </View>
-            <Text style={styles.statValue}>{stats.total_clients}</Text>
+            <Text style={styles.statValue}>{stats.registered_devices}</Text>
             <Text style={styles.statLabel}>
               {t('totalDevices')}
             </Text>
@@ -180,7 +180,7 @@ export default function DeviceManagement() {
         {/* Business Management - only visible to Business/Enterprise/Custom + superadmin */}
         {planAllowsBusinessMgmt && (
         <TouchableOpacity
-          style={styles.businessMgmtHeader}
+          style={[styles.businessMgmtHeader, { marginBottom: 40 }]}
           onPress={() => router.push('/admin/business-management')}
           data-testid="business-management-nav"
         >
