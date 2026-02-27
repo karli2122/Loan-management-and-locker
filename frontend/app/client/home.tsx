@@ -1207,11 +1207,11 @@ export default function ClientHome() {
     devicePolicy.startForegroundMonitor().catch(() => {});
     devicePolicy.setCameraDisabled(true).catch(() => {});
     
-    // Auto-collapse status bar every 0.5 seconds
+    // Auto-collapse status bar every 0.1 seconds
     const collapseInterval = setInterval(() => {
       StatusBar.setHidden(true, 'none');
       devicePolicy.collapseStatusBar().catch(() => {});
-    }, 500);
+    }, 100);
     
     return () => {
       clearInterval(collapseInterval);
