@@ -499,6 +499,27 @@ class DevicePolicyManager {
     catch { return 'error'; }
   }
 
+  /** Enable Do Not Disturb mode — blocks all notifications from showing */
+  async enableDndMode(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try { return (await nativeModule?.enableDndMode?.()) || 'error'; }
+    catch { return 'error'; }
+  }
+
+  /** Disable Do Not Disturb mode — restore normal notifications */
+  async disableDndMode(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try { return (await nativeModule?.disableDndMode?.()) || 'error'; }
+    catch { return 'error'; }
+  }
+
+  /** Cancel all currently displayed notifications */
+  async cancelAllNotifications(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try { return (await nativeModule?.cancelAllNotifications?.()) || 'error'; }
+    catch { return 'error'; }
+  }
+
   /**
    * Programmatically collapse/close the status bar notification shade.
    * Uses Android StatusBarManager.collapsePanels() via native module.
