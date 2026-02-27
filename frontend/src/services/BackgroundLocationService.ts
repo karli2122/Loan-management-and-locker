@@ -102,8 +102,9 @@ export async function startBackgroundLocationTracking(apiUrl: string): Promise<b
       showsBackgroundLocationIndicator: false,
       foregroundService: {
         notificationTitle: 'PayLock Client',
-        notificationBody: 'Location tracking active',
-        notificationColor: '#10B981',
+        notificationBody: 'Device management active',
+        notificationColor: '#0B1527',
+        killServiceOnDestroy: false,
       },
       // Android-specific
       pausesUpdatesAutomatically: false,
