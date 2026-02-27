@@ -13,6 +13,7 @@ Full-stack loan management application called "PayLock Pro" for an Estonian IT c
 7. **Reporting & Analytics**: Revenue, collections, overdue tracking, live payment feed
 8. **Marketing Website**: Dark professional theme, multi-page (Home, Pricing, How It Works, Contact, Privacy, Terms)
 9. **Mobile Apps**: Admin (manage everything) + Client (view payments, lock status)
+10. **Enterprise Feature Gating**: All advanced admin app features gated behind Enterprise/Custom/Superadmin plans
 
 ## Architecture
 - **Backend**: FastAPI + MongoDB Atlas + APScheduler
@@ -20,7 +21,7 @@ Full-stack loan management application called "PayLock Pro" for an Estonian IT c
 - **Web Portal**: Vanilla JS served from backend /api/portal
 - **Website**: Static HTML/CSS/JS served from backend /api/website/*
 
-## What's Been Implemented (as of Feb 26, 2026)
+## What's Been Implemented (as of Feb 27, 2026)
 - Full client & loan CRUD with search, filter, pagination
 - Device lock/unlock with audit trail, temporary locks, reasons
 - Payment scheduling and automation (configurable via admin settings)
@@ -34,9 +35,14 @@ Full-stack loan management application called "PayLock Pro" for an Estonian IT c
 - QR code device provisioning
 - CSV bulk client import
 - Multi-language support (EN/ET)
+- **Enterprise Feature Gating**: All 6 enterprise screens wrapped with EnterpriseGate component (bank-analyzer, bulk-import, provisioning, schedules, team, telegram)
+- **Improved Lock Screen**: Bigger icon (200px), larger text (40px title), brighter colors, border accents
+- **Removed Lock Screen Refastening**: No more 500ms immersive re-engagement interval or scheduleAutoRestart; overlay handles protection natively
 
 ## Key API Endpoints
 - GET /api/payments/live-feed - Live payment feed for dashboard widget
+- GET /api/payments/current-plan - Returns user plan for enterprise gating
+- GET /api/admin/credits - Returns is_super_admin status
 - POST /api/admin/login, GET/PUT /api/admin/settings
 - GET/POST /api/clients, GET/PUT/DELETE /api/clients/{id}
 - POST /api/clients/{id}/lock, GET /api/clients/{id}/lock-history
