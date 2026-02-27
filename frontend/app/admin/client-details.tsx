@@ -599,7 +599,6 @@ export default function ClientDetails() {
           colors={colors}
           t={t}
           isSuperAdmin={isSuperAdmin}
-          userCredits={userCredits}
           generatingCode={generatingCode}
           onGenerateCode={handleGenerateCode}
         />
