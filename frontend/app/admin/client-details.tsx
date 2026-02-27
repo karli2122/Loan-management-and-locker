@@ -585,7 +585,7 @@ export default function ClientDetails() {
             refreshing={refreshing}
             onRefresh={async () => {
               setRefreshing(true);
-              try { await fetchClient(); await fetchCredits(); }
+              try { await fetchClient(); }
               finally { setRefreshing(false); }
             }}
             tintColor="#2563EB"
