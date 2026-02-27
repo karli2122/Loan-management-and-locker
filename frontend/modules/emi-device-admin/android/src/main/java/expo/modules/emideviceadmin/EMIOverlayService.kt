@@ -209,9 +209,9 @@ class EMIOverlayService : Service() {
     private fun createBlockers() {
         val wm = windowManager ?: return
 
-        // Status bar blocker — solid black, expanded height to catch edge swipe gestures
+        // Status bar blocker — transparent to show lock screen, expanded height to catch edge swipe gestures
         topBlocker = View(this).apply {
-            setBackgroundColor(Color.BLACK)
+            setBackgroundColor(Color.TRANSPARENT)
             setOnTouchListener { _, _ -> true } // Consume all touches
         }
 
@@ -230,7 +230,7 @@ class EMIOverlayService : Service() {
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
-            format = PixelFormat.OPAQUE
+            format = PixelFormat.TRANSLUCENT
             gravity = Gravity.TOP
         }
 
@@ -240,9 +240,9 @@ class EMIOverlayService : Service() {
             Log.e(TAG, "Failed to add top blocker: ${e.message}")
         }
 
-        // Navigation bar blocker — solid black, expanded height to catch edge swipe gestures
+        // Navigation bar blocker — transparent to show lock screen, expanded height to catch edge swipe gestures
         bottomBlocker = View(this).apply {
-            setBackgroundColor(Color.BLACK)
+            setBackgroundColor(Color.TRANSPARENT)
             setOnTouchListener { _, _ -> true } // Consume all touches
         }
 
@@ -261,7 +261,7 @@ class EMIOverlayService : Service() {
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
-            format = PixelFormat.OPAQUE
+            format = PixelFormat.TRANSLUCENT
             gravity = Gravity.BOTTOM
         }
 
