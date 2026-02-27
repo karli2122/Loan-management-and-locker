@@ -941,6 +941,10 @@ async function renderSettings(el) {
         <div class="form-group"><label><input type="checkbox" id="pa-auto-lock" ${settings.payment_auto_lock_enabled!==false?'checked':''} data-testid="pa-auto-lock"> Auto-lock on overdue (after grace period)</label></div>
         <div class="form-group"><label><input type="checkbox" id="pa-auto-late-fee" ${settings.payment_auto_late_fee_enabled!==false?'checked':''} data-testid="pa-auto-late-fee"> Auto-apply late fees</label></div>
         <div class="form-group"><label>Late fee frequency (days)</label><input id="pa-fee-freq" type="number" min="1" max="30" value="${settings.payment_late_fee_frequency_days||7}" data-testid="pa-fee-freq"></div>
+        <div class="form-group" style="grid-column:span 2;background:rgba(16,185,129,0.08);padding:12px;border-radius:8px;border:1px solid rgba(16,185,129,0.2)">
+          <label style="font-weight:600;color:#10B981"><input type="checkbox" id="pa-auto-charge" ${settings.payment_auto_charge_enabled?'checked':''} data-testid="pa-auto-charge"> <i class="fas fa-credit-card" style="margin-right:4px"></i> Auto-charge saved payment methods (Stripe)</label>
+          <p style="font-size:12px;color:var(--text-muted);margin:4px 0 0 24px">When enabled, clients with saved cards and auto-pay will be charged automatically on their due date.</p>
+        </div>
         <div class="form-group"><label>Reminder channels</label>
           <div style="display:flex;gap:12px;flex-wrap:wrap">
             <label><input type="checkbox" id="pa-ch-push" ${(settings.payment_reminder_channels||['push','email']).includes('push')?'checked':''}> Push</label>
@@ -1003,6 +1007,7 @@ async function saveAutomationSettings() {
       payment_auto_late_fee_enabled: document.getElementById('pa-auto-late-fee').checked,
       payment_late_fee_frequency_days: document.getElementById('pa-fee-freq').value,
       payment_reminder_channels: channels.join(','),
+      payment_auto_charge_enabled: document.getElementById('pa-auto-charge').checked,
     });
     await api('PUT', `/admin/settings?${params.toString()}`);
     toast('Automation settings saved');
