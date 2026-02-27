@@ -199,8 +199,24 @@ class EMIAccessibilityService : AccessibilityService() {
 
         // LOCKED MODE: Block everything except bare system UI
         if (isLocked) {
+            // If systemui opens (notification shade / quick settings), immediately close it
+            if (packageName == "com.android.systemui") {
+                Log.d(TAG, "LOCKED: SystemUI became active (notification shade?) — closing immediately")
+                // GLOBAL_ACTION_BACK closes the notification shade
+                performGlobalAction(GLOBAL_ACTION_BACK)
+                // Also perform it again after a short delay for reliability
+                mainHandler.postDelayed({ performGlobalAction(GLOBAL_ACTION_BACK) }, 100)
+                mainHandler.postDelayed({ performGlobalAction(GLOBAL_ACTION_BACK) }, 300)
+                // Broadcast to re-apply immersive mode
+                try {
+                    sendBroadcast(Intent("expo.modules.emideviceadmin.REAPPLY_IMMERSIVE"))
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to send immersive broadcast: ${e.message}")
+                }
+                return
+            }
+
             val lockedAllowed = setOf(
-                "com.android.systemui",
                 "android",
             )
             if (packageName in lockedAllowed) return
