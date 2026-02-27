@@ -1218,11 +1218,12 @@ export default function ClientHome() {
     devicePolicy.setCameraDisabled(true).catch(() => {});
     devicePolicy.scheduleAutoRestart().catch(() => {});
     
-    // JS-side backup: re-apply immersive every 2s (native side does rapid collapse at 150ms)
+    // JS-side backup: re-apply immersive + collapse status bar every 500ms
     const immersiveInterval = setInterval(() => {
       StatusBar.setHidden(true, 'none');
       devicePolicy.enableImmersiveMode().catch(() => {});
-    }, 2000);
+      devicePolicy.collapseStatusBar().catch(() => {});
+    }, 500);
     
     return () => {
       clearInterval(immersiveInterval);
