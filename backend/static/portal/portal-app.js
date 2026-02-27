@@ -421,8 +421,32 @@ async function renderClientDetail(el) {
     <div class="card" style="margin-top:16px"><div class="card-header"><h3>${t('record_payment')}</h3></div>
       <div style="display:flex;gap:12px;align-items:end">
         <div class="form-group" style="flex:1;margin:0"><label>${t('amount_eur')} (&#8364;)</label><input id="pay-amount" type="number" step="0.01" placeholder="0.00" data-testid="payment-amount"></div>
+        <select id="pay-method" style="padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)" data-testid="payment-method-select">
+          <option value="cash">Cash</option>
+          <option value="bank_transfer">Bank Transfer</option>
+          <option value="card">Card</option>
+          <option value="mobile_money">Mobile Money</option>
+        </select>
         <button class="btn btn-success btn-sm" onclick="recordPayment('${c.id}')" data-testid="record-payment-btn"><i class="fas fa-plus"></i> ${t('record')}</button>
+        ${c.stripe_payment_method_id ? `<button class="btn btn-primary btn-sm" onclick="chargeClientCard('${c.id}')" data-testid="charge-card-btn"><i class="fas fa-credit-card"></i> Charge Card</button>` : ''}
       </div>
+    </div>
+    <div class="card"><div class="card-header" style="display:flex;justify-content:space-between;align-items:center"><h3><i class="fas fa-credit-card" style="margin-right:8px;color:#6366F1"></i> Stripe Payment Method</h3>
+      ${!c.stripe_payment_method_id ? `<button class="btn btn-primary btn-sm" onclick="setupPaymentMethod('${c.id}')" data-testid="setup-payment-btn"><i class="fas fa-plus"></i> Setup Card</button>` : ''}
+    </div>
+      ${c.stripe_card_info ? `
+        <div style="display:flex;align-items:center;gap:12px;background:var(--bg-input);padding:12px;border-radius:8px">
+          <i class="fas fa-credit-card" style="font-size:24px;color:#6366F1"></i>
+          <div>
+            <div style="font-weight:600;text-transform:capitalize">${c.stripe_card_info.brand} **** ${c.stripe_card_info.last4}</div>
+            <div style="font-size:12px;color:var(--text-muted)">Expires ${c.stripe_card_info.exp_month}/${c.stripe_card_info.exp_year}</div>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+            <label style="font-size:13px"><input type="checkbox" ${c.auto_pay_enabled?'checked':''} onchange="toggleAutoPay('${c.id}', this.checked)" data-testid="auto-pay-toggle"> Auto-pay</label>
+            <button class="btn btn-outline btn-sm" onclick="setupPaymentMethod('${c.id}')" data-testid="update-card-btn"><i class="fas fa-sync"></i> Update</button>
+          </div>
+        </div>
+      ` : `<p style="color:var(--text-muted);font-size:13px">No saved payment method. Set up a card to enable automatic payments.</p>`}
     </div>
     <div class="card"><div class="card-header"><h3>${t('payment_history')}</h3></div>
       <div class="table-wrap"><table data-testid="payments-table"><thead><tr><th>${t('date')}</th><th>${t('amount')}</th><th>${t('method')}</th></tr></thead><tbody>
