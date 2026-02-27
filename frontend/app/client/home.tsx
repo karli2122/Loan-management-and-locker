@@ -363,15 +363,9 @@ export default function ClientHome() {
           await devicePolicy.collapseStatusBar();
           await devicePolicy.startOverlayBlocker();
           await devicePolicy.startKioskMode();
-          // Explicitly disable status bar via DPM (Device Owner only - strongest protection)
-          await devicePolicy.setStatusBarDisabled(true);
-          // Start foreground app monitor (prevents switching to other apps)
-          await devicePolicy.startForegroundMonitor();
           // Disable camera and bluetooth while locked
           await devicePolicy.setCameraDisabled(true);
           await devicePolicy.setBluetoothDisabled(true);
-          // Schedule auto-restart in case app is force-killed
-          await devicePolicy.scheduleAutoRestart();
           
           // Device Owner mode: Set as default launcher and lock task packages
           const lockMode = await AsyncStorage.getItem('lock_mode');
@@ -380,8 +374,6 @@ export default function ClientHome() {
             await devicePolicy.setLockTaskPackages(['com.paylock.client']);
           }
         } else {
-          // Cancel auto-restart
-          await devicePolicy.cancelAutoRestart();
           // Re-enable camera and bluetooth
           await devicePolicy.setCameraDisabled(false);
           await devicePolicy.setBluetoothDisabled(false);
