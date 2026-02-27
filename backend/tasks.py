@@ -141,7 +141,62 @@ async def process_due_payments():
                         "payment_auto_late_fee_enabled": True,
                         "payment_late_fee_frequency_days": 7,
                         "payment_reminder_channels": ["push", "email"],
+                        "payment_auto_charge_enabled": False,
                     }
+
+                # ---- STRIPE AUTO-CHARGE ----
+                auto_charge = admin_settings.get("payment_auto_charge_enabled", False)
+                if auto_charge and client.get("auto_pay_enabled") and client.get("stripe_payment_method_id"):
+                    charge_amount = s.get("amount", 0)
+                    if charge_amount > 0:
+                        succeeded, pay_id, pay_status = await _charge_client_stripe(
+                            client, charge_amount, currency="eur", schedule_id=s["id"]
+                        )
+                        if succeeded:
+                            # Notify admin of successful auto-charge
+                            if admin_id:
+                                await db.notifications.insert_one({
+                                    "id": str(uuid.uuid4()),
+                                    "admin_id": admin_id,
+                                    "type": "auto_payment_success",
+                                    "title": "Auto Payment Collected",
+                                    "message": f"Successfully collected {charge_amount:.2f} EUR from {client_name} via Stripe.",
+                                    "client_id": s["client_id"],
+                                    "client_name": client_name,
+                                    "is_read": False,
+                                    "created_at": today_dt.isoformat(),
+                                })
+                            # Skip overdue/late-fee/lock logic since payment was collected
+                            # Update schedule and continue to next
+                            from routes.schedules import _calc_next_due
+                            new_next = _calc_next_due(s)
+                            await db.payment_schedules.update_one(
+                                {"id": s["id"]},
+                                {"$set": {
+                                    "last_processed_date": today,
+                                    "next_due_date": new_next,
+                                    "total_scheduled": s.get("total_scheduled", 0) + 1,
+                                    "total_paid": s.get("total_paid", 0) + 1,
+                                    "last_payment_status": "succeeded",
+                                }}
+                            )
+                            logger.info(f"Auto-charged schedule {s['id']} for client {s['client_id']}, next due: {new_next}")
+                            continue
+                        else:
+                            # Charge failed - notify admin, proceed with overdue logic
+                            if admin_id:
+                                await db.notifications.insert_one({
+                                    "id": str(uuid.uuid4()),
+                                    "admin_id": admin_id,
+                                    "type": "auto_payment_failed",
+                                    "title": "Auto Payment Failed",
+                                    "message": f"Failed to collect payment from {client_name}: {pay_status}",
+                                    "client_id": s["client_id"],
+                                    "client_name": client_name,
+                                    "is_read": False,
+                                    "created_at": today_dt.isoformat(),
+                                })
+                            logger.warning(f"Auto-charge failed for client {s['client_id']}: {pay_status}")
 
                 # Send reminder notification to admin
                 auto_remind = admin_settings.get("payment_auto_reminder_enabled", True)
