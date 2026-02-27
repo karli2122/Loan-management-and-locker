@@ -423,6 +423,20 @@ class DevicePolicyManager {
   }
 
   /**
+   * Read lock state from native SharedPreferences (survives Clear Data / reboot).
+   * This is the most reliable lock state source — AsyncStorage can be wiped.
+   */
+  async getNativeLockState(): Promise<boolean> {
+    if (Platform.OS !== 'android') return false;
+    try {
+      return (await nativeModule?.getNativeLockState?.()) || false;
+    } catch (error) {
+      console.log('Failed to get native lock state:', error);
+      return false;
+    }
+  }
+
+  /**
    * Programmatically collapse/close the status bar notification shade.
    * Uses Android StatusBarManager.collapsePanels() via native module.
    * Fallback: no-op if native method is not available.
