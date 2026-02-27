@@ -162,6 +162,110 @@ async def toggle_autopay(client_id: str, admin_token: str = Query(...), data: di
     return {"auto_pay_enabled": enabled}
 
 
+@router.get("/stripe/payment-tracker")
+async def stripe_payment_tracker(admin_token: str = Query(...), limit: int = Query(default=30)):
+    """Get Stripe payment tracker data - pending, completed, and failed payment links."""
+    admin_id = await get_admin_id_from_token(admin_token)
+
+    # Fetch recent Stripe payments
+    payments = await db.payments.find(
+        {"admin_id": admin_id, "payment_method": "stripe"},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+
+    # Enrich with client names
+    client_ids = list({p["client_id"] for p in payments if p.get("client_id")})
+    clients = {}
+    if client_ids:
+        client_docs = await db.clients.find(
+            {"id": {"$in": client_ids}}, {"_id": 0, "id": 1, "name": 1, "phone": 1}
+        ).to_list(len(client_ids))
+        clients = {c["id"]: c for c in client_docs}
+
+    enriched = []
+    for p in payments:
+        c = clients.get(p.get("client_id"), {})
+        enriched.append({
+            "id": p["id"],
+            "client_id": p.get("client_id"),
+            "client_name": c.get("name", "Unknown"),
+            "client_phone": c.get("phone", ""),
+            "amount": p["amount"],
+            "currency": p.get("currency", "eur"),
+            "status": p["status"],
+            "source": p.get("source", "manual"),
+            "stripe_session_id": p.get("stripe_session_id"),
+            "schedule_id": p.get("schedule_id"),
+            "created_at": p.get("created_at"),
+        })
+
+    # Summary stats
+    pending = [p for p in enriched if p["status"] == "pending"]
+    succeeded = [p for p in enriched if p["status"] == "succeeded"]
+    failed = [p for p in enriched if p["status"] == "failed"]
+
+    return {
+        "payments": enriched,
+        "summary": {
+            "total": len(enriched),
+            "pending": len(pending),
+            "succeeded": len(succeeded),
+            "failed": len(failed),
+            "pending_amount": sum(p["amount"] for p in pending),
+            "succeeded_amount": sum(p["amount"] for p in succeeded),
+            "failed_amount": sum(p["amount"] for p in failed),
+        },
+    }
+
+
+@router.post("/stripe/refresh-payment/{payment_id}")
+async def refresh_stripe_payment(payment_id: str, admin_token: str = Query(...)):
+    """Refresh a specific pending payment's status from Stripe."""
+    admin_id = await get_admin_id_from_token(admin_token)
+
+    payment = await db.payments.find_one(
+        {"id": payment_id, "admin_id": admin_id, "payment_method": "stripe"}, {"_id": 0}
+    )
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+
+    session_id = payment.get("stripe_session_id")
+    if not session_id:
+        return {"status": payment["status"], "message": "No session to check"}
+
+    if payment["status"] == "succeeded":
+        return {"status": "succeeded", "message": "Already completed"}
+
+    sc = _get_stripe_checkout()
+    try:
+        checkout_status: CheckoutStatusResponse = await sc.get_checkout_status(session_id)
+        new_status = "succeeded" if checkout_status.payment_status == "paid" else checkout_status.payment_status
+
+        await db.payments.update_one(
+            {"id": payment_id},
+            {"$set": {"status": new_status, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        )
+
+        # If succeeded, update client balance
+        if new_status == "succeeded" and payment["status"] != "succeeded":
+            amount = payment["amount"]
+            await db.clients.update_one(
+                {"id": payment["client_id"]},
+                {
+                    "$inc": {"total_paid": amount, "outstanding_balance": -amount, "total_amount_due": -amount},
+                    "$set": {
+                        "last_payment_date": datetime.now(timezone.utc).isoformat(),
+                        "last_payment_amount": amount,
+                    },
+                },
+            )
+
+        return {"status": new_status, "message": f"Updated to {new_status}"}
+    except Exception as e:
+        logger.error(f"Error refreshing payment {payment_id}: {e}")
+        return {"status": payment["status"], "message": str(e)}
+
+
 @router.get("/clients/{client_id}/payment-methods")
 async def get_payment_methods(client_id: str, admin_token: str = Query(...)):
     """Get payment info for a client."""
