@@ -214,12 +214,26 @@ async function renderDashboard(el) {
       <div id="live-feed-container" class="live-feed-container">
         <div class="live-feed-loading"><div class="spinner" style="width:24px;height:24px"></div></div>
       </div>
+    </div>
+    <div class="card" style="margin-top:16px" data-testid="stripe-payment-tracker">
+      <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+        <h3 style="display:flex;align-items:center;gap:8px"><i class="fab fa-stripe-s" style="color:#6366F1"></i> Stripe Payment Tracker</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div id="stripe-tracker-stats" style="display:flex;gap:12px;font-size:13px"></div>
+          <button class="btn btn-outline btn-sm" onclick="loadStripeTracker()" data-testid="refresh-tracker-btn"><i class="fas fa-sync-alt"></i></button>
+        </div>
+      </div>
+      <div id="stripe-tracker-container" style="min-height:60px">
+        <div class="live-feed-loading"><div class="spinner" style="width:24px;height:24px"></div></div>
+      </div>
     </div>`;
 
   // Render charts after DOM is ready
   setTimeout(() => drawDashboardCharts(financial, dash, collection), 100);
   // Start live feed
   setTimeout(() => startLiveFeed(), 200);
+  // Start Stripe tracker
+  setTimeout(() => startStripeTracker(), 300);
 }
 
 
