@@ -827,7 +827,6 @@ export default function ClientHome() {
               try { await devicePolicy.startKioskMode(); } catch (e) { console.log('Fresh reg kiosk start error:', e); }
               try { await devicePolicy.startForegroundMonitor(); } catch (e) { console.log('Fresh reg monitor start error:', e); }
               try { await devicePolicy.setStatusBarDisabled(true); } catch (e) { console.log('Fresh reg status bar error:', e); }
-              try { await devicePolicy.scheduleAutoRestart(); } catch (e) { console.log('Fresh reg auto-restart error:', e); }
             }
           } catch (e) {
             console.log('Fresh registration fetchStatus error (non-fatal):', e);
