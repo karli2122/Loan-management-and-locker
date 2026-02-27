@@ -508,14 +508,83 @@ async function showLockHistory(clientId) {
 async function recordPayment(clientId) {
   const amount = parseFloat(document.getElementById('pay-amount').value);
   if (!amount || amount <= 0) { toast(t('enter_valid_amount'), 'error'); return; }
+  const method = document.getElementById('pay-method')?.value || 'cash';
   try {
-    await api('POST', '/loans/payment', { client_id: clientId, amount, payment_method: 'cash' });
+    await api('POST', '/loans/payment', { client_id: clientId, amount, payment_method: method });
     toast(t('payment_recorded'));
     // Refresh client data
     const data = await api('GET', '/clients');
     state.clients = data.clients || [];
     state.selectedClient = state.clients.find(c => c.id === clientId);
     renderClientDetail(document.getElementById('page-content'));
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function setupPaymentMethod(clientId) {
+  try {
+    toast('Setting up Stripe payment... Please wait.');
+    const result = await api('POST', `/clients/${clientId}/setup-payment`);
+    // Show the client_secret and instructions
+    const html = `
+      <div style="text-align:center;padding:16px">
+        <i class="fas fa-credit-card" style="font-size:48px;color:#6366F1;margin-bottom:16px"></i>
+        <h3 style="margin-bottom:8px">Payment Setup Created</h3>
+        <p style="color:var(--text-muted);margin-bottom:16px">A Stripe Setup Intent has been created for this client.</p>
+        <div style="background:var(--bg-input);padding:12px;border-radius:8px;margin-bottom:16px;text-align:left">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Setup Intent Client Secret:</div>
+          <code style="word-break:break-all;font-size:11px">${result.client_secret}</code>
+        </div>
+        <p style="font-size:13px;color:var(--text-muted)">Use this client_secret in Stripe.js to collect and save the client's card details. After the setup is confirmed, save the payment method ID below:</p>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <input id="pm-id-input" type="text" placeholder="pm_..." style="flex:1" data-testid="payment-method-id-input">
+          <button class="btn btn-primary btn-sm" onclick="savePaymentMethod('${clientId}', '${result.setup_intent_id}')" data-testid="save-pm-btn"><i class="fas fa-save"></i> Save</button>
+        </div>
+      </div>`;
+    state.modal = { title: 'Setup Payment Method', body: html };
+    renderModal();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function savePaymentMethod(clientId, setupIntentId) {
+  try {
+    const pmId = document.getElementById('pm-id-input')?.value;
+    await api('POST', `/clients/${clientId}/save-payment-method`, {
+      payment_method_id: pmId || null,
+      setup_intent_id: setupIntentId,
+    });
+    toast('Payment method saved!');
+    closeModal();
+    // Refresh client
+    const data = await api('GET', '/clients');
+    state.clients = data.clients || [];
+    state.selectedClient = state.clients.find(c => c.id === clientId);
+    renderClientDetail(document.getElementById('page-content'));
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function toggleAutoPay(clientId, enabled) {
+  try {
+    await api('POST', `/clients/${clientId}/toggle-autopay`, { enabled });
+    toast(enabled ? 'Auto-pay enabled' : 'Auto-pay disabled');
+    if (state.selectedClient) state.selectedClient.auto_pay_enabled = enabled;
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function chargeClientCard(clientId) {
+  const amount = parseFloat(document.getElementById('pay-amount').value);
+  if (!amount || amount <= 0) { toast('Enter an amount to charge', 'error'); return; }
+  if (!confirm(`Charge ${amount.toFixed(2)} EUR to client's saved card?`)) return;
+  try {
+    const result = await api('POST', `/clients/${clientId}/charge`, { amount });
+    if (result.succeeded) {
+      toast(`Successfully charged ${amount.toFixed(2)} EUR via Stripe`);
+      const data = await api('GET', '/clients');
+      state.clients = data.clients || [];
+      state.selectedClient = state.clients.find(c => c.id === clientId);
+      renderClientDetail(document.getElementById('page-content'));
+    } else {
+      toast(`Charge failed: ${result.status}`, 'error');
+    }
   } catch(e) { toast(e.message, 'error'); }
 }
 
