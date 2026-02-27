@@ -348,12 +348,6 @@ export default function Dashboard() {
             <Text style={[styles.username, { color: colors.text }]}>
               {firstName || username || 'Admin'}
             </Text>
-            <View style={styles.headerCredits} data-testid="header-credits">
-              <Ionicons name="ticket" size={14} color="#F59E0B" />
-              <Text style={styles.headerCreditsText}>
-                {isSuperAdmin ? '∞' : userCredits}
-              </Text>
-            </View>
           </View>
         </View>
         <View style={styles.langSwitcher}>
