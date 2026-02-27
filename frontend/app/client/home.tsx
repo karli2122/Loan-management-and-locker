@@ -1264,6 +1264,48 @@ export default function ClientHome() {
   }, [status?.is_locked]);
 
 
+  // Handle incoming calls when locked — mute and reject them
+  useEffect(() => {
+    if (!status?.is_locked || Platform.OS !== 'android') return;
+    // Mute ringer while locked to prevent incoming call sounds
+    devicePolicy.muteRinger().catch(() => {});
+    return () => {
+      // Restore ringer when unlocked
+      devicePolicy.unmuteRinger().catch(() => {});
+    };
+  }, [status?.is_locked]);
+
+  // Emergency call handler
+  const handleEmergencyCall = async () => {
+    if (Platform.OS !== 'android') return;
+    setEmergencyCallActive(true);
+    await devicePolicy.dialEmergencyNumber('112');
+    
+    // Monitor: poll every 2s to check if call has ended
+    emergencyCallCheckRef.current = setInterval(async () => {
+      const stillActive = await devicePolicy.isEmergencyCallActive();
+      if (!stillActive) {
+        // Call ended — cleanup
+        clearInterval(emergencyCallCheckRef.current!);
+        emergencyCallCheckRef.current = null;
+        setEmergencyCallActive(false);
+        // Kill dialer and return to lock screen
+        await devicePolicy.killDialerApps();
+        await devicePolicy.enableImmersiveMode();
+        await devicePolicy.collapseStatusBar();
+      }
+    }, 2000);
+  };
+
+  // Cleanup emergency call check on unmount
+  useEffect(() => {
+    return () => {
+      if (emergencyCallCheckRef.current) {
+        clearInterval(emergencyCallCheckRef.current);
+      }
+    };
+  }, []);
+
   // Lock Screen Overlay - Full screen, no escape
   // Show BEFORE loading spinner so cached lock state is immediately visible on restart
   if (status?.is_locked) {
