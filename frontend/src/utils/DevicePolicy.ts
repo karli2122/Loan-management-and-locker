@@ -179,12 +179,24 @@ class DevicePolicyManager {
     try {
       const lockState = await AsyncStorage.getItem(LOCK_STATE_KEY);
       const lockMessage = await AsyncStorage.getItem(LOCK_MESSAGE_KEY);
-      return {
-        isLocked: lockState === 'locked',
-        lockMessage: lockMessage || 'Device locked due to pending payment.',
-      };
+      if (lockState === 'locked') {
+        return { isLocked: true, lockMessage: lockMessage || 'Device locked due to pending payment.' };
+      }
+      // Fallback: check native SharedPreferences (survives Clear Data / reboot)
+      const nativeLocked = await this.getNativeLockState();
+      if (nativeLocked) {
+        return { isLocked: true, lockMessage: lockMessage || 'Device locked due to pending payment.' };
+      }
+      return { isLocked: false, lockMessage: '' };
     } catch (error) {
       console.log('Failed to get cached lock state:', error);
+      // Last resort: check native lock state even on error
+      try {
+        const nativeLocked = await this.getNativeLockState();
+        if (nativeLocked) {
+          return { isLocked: true, lockMessage: 'Device locked due to pending payment.' };
+        }
+      } catch {}
       return { isLocked: false, lockMessage: '' };
     }
   }
