@@ -295,8 +295,9 @@ async def keepalive_loop(base_url: str, interval: int):
 
 
 def start_keepalive(app_instance: FastAPI):
-    keepalive_url = os.environ.get(KEEPALIVE_URL_ENV)
-    keepalive_interval = os.environ.get(KEEPALIVE_INTERVAL_ENV)
+    # Try KEEPALIVE_URL first, then fall back to APP_URL (injected by Emergent platform)
+    keepalive_url = os.environ.get(KEEPALIVE_URL_ENV) or os.environ.get("APP_URL")
+    keepalive_interval = os.environ.get(KEEPALIVE_INTERVAL_ENV, "30")
     if not keepalive_url or not keepalive_interval:
         logger.info("Keepalive disabled; set KEEPALIVE_URL and KEEPALIVE_INTERVAL_SECONDS to enable.")
         return
