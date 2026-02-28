@@ -30,9 +30,7 @@ next-env.d.ts
 dist/
 dist
 
-# Environment files
-*.env
-*.env.*
+# Environment files (kept in repo - Emergent auto-manages these during deployment)
 *token.json*
 *credentials.json*
 
