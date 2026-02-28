@@ -489,6 +489,8 @@ async def get_dashboard_analytics(
         query = {"admin_id": admin_id, "is_deleted": {"$ne": True}}
     
     clients = await db.clients.find(query, {"_id": 0, "id": 1, "name": 1, "is_registered": 1, "is_locked": 1, "outstanding_balance": 1, "days_overdue": 1, "loan_amount": 1, "total_paid": 1, "registered_at": 1, "last_tamper_attempt": 1, "device_model": 1}).to_list(1000)
+    
+    # Overview metrics
     total_clients = len(clients)
     registered = sum(1 for c in clients if c.get("is_registered"))
     locked = sum(1 for c in clients if c.get("is_locked"))
