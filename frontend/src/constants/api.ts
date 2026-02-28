@@ -7,14 +7,18 @@ function normalize(url: string) {
   return clean;
 }
 
-export const FALLBACK_BACKEND = 'https://paylock-enterprise.preview.emergentagent.com';
+export const FALLBACK_BACKEND = '';
 
 const rawCandidate =
   process.env.EXPO_PUBLIC_BACKEND_URL ||
   (Constants.expoConfig?.extra as any)?.backendUrl ||
-  FALLBACK_BACKEND;
+  '';
 
-const raw = rawCandidate && rawCandidate.trim() ? rawCandidate : FALLBACK_BACKEND;
+if (!rawCandidate || !rawCandidate.trim()) {
+  console.error('EXPO_PUBLIC_BACKEND_URL is not set — API calls will fail');
+}
+
+const raw = rawCandidate && rawCandidate.trim() ? rawCandidate : '';
 
 export const API_BASE_URL = normalize(raw);
 const API_URL = API_BASE_URL;
