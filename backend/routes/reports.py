@@ -141,7 +141,7 @@ async def get_collection_report(
             target_admin_id = filter_admin_id
     
     query = {"admin_id": target_admin_id, "is_deleted": {"$ne": True}} if target_admin_id else {"is_deleted": {"$ne": True}}
-    clients = await db.clients.find(query, {"_id": 0}).to_list(1000)
+    clients = await db.clients.find(query, {"_id": 0, "id": 1, "name": 1, "loan_amount": 1, "total_paid": 1, "outstanding_balance": 1, "late_fees_accumulated": 1, "days_overdue": 1, "is_deleted": 1}).to_list(1000)
     
     total_disbursed = sum(c.get("loan_amount", 0) for c in clients)
     total_collected = sum(c.get("total_paid", 0) for c in clients)
@@ -281,7 +281,7 @@ async def get_financial_report(
     # Use enterprise scoping
     query = await _get_enterprise_client_query(admin_id)
     
-    clients = await db.clients.find(query, {"_id": 0}).to_list(1000)
+    clients = await db.clients.find(query, {"_id": 0, "id": 1, "loan_amount": 1, "total_paid": 1, "outstanding_balance": 1, "late_fees_accumulated": 1, "processing_fee": 1, "interest_rate": 1, "total_amount_due": 1}).to_list(1000)
     
     # Get all payments
     payment_query = {}
@@ -302,7 +302,7 @@ async def get_financial_report(
         except ValueError:
             end = None
 
-    payments_all = await db.payments.find(payment_query, {"_id": 0}).to_list(10000)
+    payments_all = await db.payments.find(payment_query, {"_id": 0, "client_id": 1, "amount": 1, "payment_date": 1, "payment_method": 1}).to_list(10000)
 
     def in_range(payment):
         payment_date = payment.get("payment_date")
