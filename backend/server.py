@@ -318,20 +318,12 @@ async def startup_event():
     set_database(db)
     await create_indexes()
 
-    # Ensure tesseract is available for OCR (SEB bank statement processing)
-    import shutil, subprocess
-    if not shutil.which("tesseract"):
-        logger.info("Tesseract not found — installing...")
-        try:
-            subprocess.run(
-                ["apt-get", "install", "-y", "tesseract-ocr", "tesseract-ocr-est", "tesseract-ocr-eng"],
-                check=True, capture_output=True, timeout=120
-            )
-            logger.info("Tesseract installed successfully")
-        except Exception as e:
-            logger.warning(f"Tesseract install failed (OCR unavailable): {e}")
-    else:
+    # Check tesseract availability for OCR (SEB bank statement processing)
+    import shutil
+    if shutil.which("tesseract"):
         logger.info("Tesseract available for OCR")
+    else:
+        logger.info("Tesseract not found — OCR features will be unavailable")
     
     # Ensure default loan plan exists
     default_name = "One-Time Simple 50% Monthly"
