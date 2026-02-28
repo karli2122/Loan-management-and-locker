@@ -57,7 +57,14 @@ Full-stack loan management application called "PayLock Pro" for an Estonian IT c
 - `/app/frontend/modules/emi-device-admin/android/.../EMIOverlayService.kt`
 - `/app/backend/static/portal/portal-app.js`
 
+## Deployment Fixes (Feb 28, 2026)
+- **Fixed .gitignore**: Removed 116 malformed `-e` duplicate lines and stopped blocking `.env` files (required for Emergent deployment)
+- **Removed apt-get from startup**: `server.py` no longer runs `apt-get install tesseract-ocr` at startup (blocks/fails in production containers)
+- **Fixed KEEPALIVE_URL**: Updated from dead `paylock-enterprise.preview.emergentagent.com` to current preview URL; added `APP_URL` fallback for production
+- **Current preview URL**: `https://payment-gateway-406.preview.emergentagent.com`
+
 ## Backlog
+- **P0**: Production deployment (user to click Deploy in Emergent UI)
 - **P1**: Portal JS modularization (portal-app.js → modules)
 - **P2**: WhatsApp Business API Integration
 - **P3**: Location heatmap visualization
