@@ -77,6 +77,38 @@ export default function AdminLogin() {
     const creds = { username: username.trim(), password: password.trim() };
 
       const attemptLogin = async (url: string) => {
+        // Retry up to 3 times with backoff for sleeping API
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const controller = new AbortController();
+            const timeout = 12000 + (attempt * 5000); // 12s, 17s, 22s
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              body: JSON.stringify(creds),
+              signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            // If server returned a real response (even error), return it
+            if (res.status !== 502 && res.status !== 503 && res.status !== 504) {
+              return res;
+            }
+            // Server gateway error — API might be waking up, retry
+            if (attempt < 2) {
+              await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+            } else {
+              return res;
+            }
+          } catch (err) {
+            if (attempt < 2) {
+              await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+            } else {
+              throw err;
+            }
+          }
+        }
+        // Should never reach here, but fallback
         return fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
