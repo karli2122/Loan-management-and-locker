@@ -1029,9 +1029,30 @@ class EMIDeviceAdminModule : Module() {
         }
 
         // Start an emergency call (dials the number via Intent)
+        // IMPORTANT: If in lock task (kiosk) mode, we must exit it first so the dialer can open
         AsyncFunction("dialEmergencyNumber") { number: String, promise: Promise ->
             try {
                 prefs.edit().putBoolean("emergency_call_active", true).commit()
+                
+                // Exit kiosk mode if active so dialer can launch
+                val currentActivity = activity
+                if (currentActivity != null) {
+                    val am = currentActivity.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && am.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE) {
+                        try {
+                            // Re-enable status bar for the call
+                            if (dpm.isDeviceOwnerApp(context.packageName)) {
+                                dpm.setStatusBarDisabled(adminComponent, false)
+                            }
+                            currentActivity.stopLockTask()
+                            Log.d(TAG, "dialEmergencyNumber: Exited kiosk mode for emergency call")
+                            // Give system time to process the mode change
+                            Thread.sleep(300)
+                        } catch (e: Exception) {
+                            Log.w(TAG, "dialEmergencyNumber: Failed to exit kiosk: ${e.message}")
+                        }
+                    }
+                }
                 
                 // Register a call state listener to auto-clear emergency flag when call ends
                 try {
@@ -1052,7 +1073,8 @@ class EMIDeviceAdminModule : Module() {
                     Log.e(TAG, "Failed to register call state listener: ${e.message}")
                 }
                 
-                val intent = Intent(Intent.ACTION_CALL)
+                // Use ACTION_DIAL instead of ACTION_CALL to avoid CALL_PHONE permission requirement
+                val intent = Intent(Intent.ACTION_DIAL)
                 intent.data = Uri.parse("tel:$number")
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)

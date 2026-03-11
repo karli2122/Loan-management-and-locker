@@ -1295,6 +1295,19 @@ export default function ClientHome() {
   const handleEmergencyCall = async () => {
     if (Platform.OS !== 'android') return;
     setEmergencyCallActive(true);
+    
+    // CRITICAL: Must exit kiosk mode and re-enable status bar BEFORE dialing
+    // Kiosk mode blocks all other apps (including the dialer) from launching
+    try {
+      await devicePolicy.stopKioskMode();
+      await devicePolicy.setStatusBarDisabled(false);
+      await devicePolicy.disableImmersiveMode();
+      // Small delay to let the system process the mode changes
+      await new Promise(resolve => setTimeout(resolve, 300));
+    } catch (e) {
+      console.log('Failed to exit kiosk for emergency call:', e);
+    }
+    
     await devicePolicy.dialEmergencyNumber('112');
     
     // Monitor: poll every 2s to check if call has ended
@@ -1307,6 +1320,9 @@ export default function ClientHome() {
         setEmergencyCallActive(false);
         // Kill dialer and return to lock screen
         await devicePolicy.killDialerApps();
+        // Re-engage all lock protections
+        await devicePolicy.startKioskMode();
+        await devicePolicy.setStatusBarDisabled(true);
         await devicePolicy.enableImmersiveMode();
         await devicePolicy.collapseStatusBar();
       }

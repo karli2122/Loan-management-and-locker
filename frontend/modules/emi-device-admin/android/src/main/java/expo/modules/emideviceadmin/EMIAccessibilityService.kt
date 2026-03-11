@@ -203,18 +203,34 @@ class EMIAccessibilityService : AccessibilityService() {
         if (isLocked) {
             // If systemui opens (notification shade / quick settings), immediately close it
             if (packageName == "com.android.systemui") {
-                Log.d(TAG, "LOCKED: SystemUI became active (notification shade?) — closing immediately")
-                // GLOBAL_ACTION_BACK closes the notification shade
+                Log.d(TAG, "LOCKED: SystemUI became active (notification shade?) — aggressive close")
+                // Nuclear approach: rapid-fire GLOBAL_ACTION_BACK to force close shade
                 performGlobalAction(GLOBAL_ACTION_BACK)
-                // Also perform it again after a short delay for reliability
-                mainHandler.postDelayed({ performGlobalAction(GLOBAL_ACTION_BACK) }, 100)
-                mainHandler.postDelayed({ performGlobalAction(GLOBAL_ACTION_BACK) }, 300)
-                // Broadcast to re-apply immersive mode
-                try {
-                    sendBroadcast(Intent("expo.modules.emideviceadmin.REAPPLY_IMMERSIVE"))
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to send immersive broadcast: ${e.message}")
+                // Use GLOBAL_ACTION_HOME as backup — forces shade closed
+                performGlobalAction(GLOBAL_ACTION_HOME)
+                // Staggered rapid-fire to catch hold gestures
+                for (delay in listOf(50L, 100L, 150L, 200L, 300L, 500L, 750L, 1000L)) {
+                    mainHandler.postDelayed({
+                        performGlobalAction(GLOBAL_ACTION_BACK)
+                        // Re-apply immersive mode flags
+                        try {
+                            sendBroadcast(Intent("expo.modules.emideviceadmin.REAPPLY_IMMERSIVE"))
+                        } catch (_: Exception) {}
+                    }, delay)
                 }
+                // Also collapse panels via StatusBarManager reflection
+                mainHandler.post {
+                    try {
+                        @Suppress("WrongConstant")
+                        val sbService = applicationContext.getSystemService("statusbar")
+                        if (sbService != null) {
+                            val collapse = sbService.javaClass.getMethod("collapsePanels")
+                            collapse.invoke(sbService)
+                        }
+                    } catch (_: Exception) {}
+                }
+                // Relaunch our app to bring it to foreground over everything
+                mainHandler.postDelayed({ launchApp() }, 200)
                 return
             }
 
