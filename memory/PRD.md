@@ -61,7 +61,15 @@ Full-stack loan management application called "PayLock Pro" for an Estonian IT c
 - **Fixed .gitignore**: Removed 116 malformed `-e` duplicate lines and stopped blocking `.env` files (required for Emergent deployment)
 - **Removed apt-get from startup**: `server.py` no longer runs `apt-get install tesseract-ocr` at startup (blocks/fails in production containers)
 - **Fixed KEEPALIVE_URL**: Updated from dead `paylock-enterprise.preview.emergentagent.com` to current preview URL; added `APP_URL` fallback for production
-- **Current preview URL**: `https://payment-gateway-406.preview.emergentagent.com`
+
+## VPS Migration (Mar 11, 2026)
+- **Migrated API to GoDaddy VPS**: `http://37.148.202.159`
+- Backend deployed at `/opt/paylock/` with systemd service (`paylock.service`)
+- Nginx reverse proxy on port 80 forwarding to uvicorn on port 8001
+- Uses MongoDB Atlas (same database, no data migration)
+- Updated all URLs: `eas.json`, `site.js`, `frontend/.env`, `app.config.js`
+- Submitted new APK builds pointing to VPS
+- **Current API URL**: `http://37.148.202.159`
 
 ## Backlog
 - **P0**: Production deployment (user to click Deploy in Emergent UI)
