@@ -63,13 +63,17 @@ Full-stack loan management application called "PayLock Pro" for an Estonian IT c
 - **Fixed KEEPALIVE_URL**: Updated from dead `paylock-enterprise.preview.emergentagent.com` to current preview URL; added `APP_URL` fallback for production
 
 ## VPS Migration (Mar 11, 2026)
-- **Migrated API to GoDaddy VPS**: `http://37.148.202.159`
+- **Migrated API to GoDaddy VPS**: `https://api.paylock.pro`
 - Backend deployed at `/opt/paylock/` with systemd service (`paylock.service`)
-- Nginx reverse proxy on port 80 forwarding to uvicorn on port 8001
+- Nginx reverse proxy with **SSL via Let's Encrypt** (auto-renewing, expires 2026-06-09)
 - Uses MongoDB Atlas (same database, no data migration)
-- Updated all URLs: `eas.json`, `site.js`, `frontend/.env`, `app.config.js`
-- Submitted new APK builds pointing to VPS
-- **Current API URL**: `http://37.148.202.159`
+- Updated all URLs across: `eas.json` (6 profiles), `site.js`, `frontend/.env`, `app.config.js`
+- All endpoints verified over HTTPS
+- **Current API URL**: `https://api.paylock.pro`
+
+## Client App Lock Screen Fixes (Mar 11, 2026)
+- **Emergency Call Fix**: Kiosk mode was blocking dialer from opening. Now exits kiosk mode + re-enables status bar before dialing, and re-engages all protections after call ends. Changed from ACTION_CALL (requires permission) to ACTION_DIAL.
+- **Status Bar Bypass Fix**: Made accessibility service much more aggressive when SystemUI is detected during lock — rapid-fire GLOBAL_ACTION_BACK (8 staggered delays from 50ms-1000ms), GLOBAL_ACTION_HOME to force-close shade, StatusBarManager.collapsePanels() via reflection, plus forced app relaunch.
 
 ## Backlog
 - **P0**: Production deployment (user to click Deploy in Emergent UI)
