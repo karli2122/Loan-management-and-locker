@@ -81,14 +81,11 @@ export default function AdminSettings() {
   const [editPhone, setEditPhone] = useState('');
   const [editAddress, setEditAddress] = useState('');
   
-  // Google Drive backup states
-  const [googleConnected, setGoogleConnected] = useState(false);
-  const [googleAccount, setGoogleAccount] = useState<string | null>(null);
-  const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
-  const [backupInProgress, setBackupInProgress] = useState(false);
-  
   // Super admin state
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  
+  // Plans & Pricing modal
+  const [showPlansModal, setShowPlansModal] = useState(false);
   
   // User search state
   const [userSearchQuery, setUserSearchQuery] = useState('');
@@ -127,15 +124,6 @@ export default function AdminSettings() {
         await handleAuthError();
         return;
       }
-      
-      // Load Google Drive backup info
-      const googleConnectedStr = await AsyncStorage.getItem('google_drive_connected');
-      const googleAccountStr = await AsyncStorage.getItem('google_drive_account');
-      const lastBackup = await AsyncStorage.getItem('last_backup_date');
-      
-      setGoogleConnected(googleConnectedStr === 'true');
-      setGoogleAccount(googleAccountStr);
-      setLastBackupDate(lastBackup);
       
       setAdminToken(token);
       setCurrentAdminId(adminId);
@@ -739,127 +727,6 @@ export default function AdminSettings() {
     );
   };
 
-  const handleConnectGoogleDrive = async () => {
-    // Use Emergent Google Auth for authentication
-    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-    Alert.alert(
-      t('connectGoogleDrive'),
-      t('doYouWantToConnectGoogle'),
-      [
-        { text: t('cancel'), style: 'cancel' },
-        {
-          text: t('connect'),
-          onPress: async () => {
-            try {
-              const token = await AsyncStorage.getItem('admin_token');
-              // For React Native, we use backend-stored Google account info
-              // The admin's account email is used as the Google Drive account identifier
-              const adminEmail = await AsyncStorage.getItem('admin_email') || `${currentUsername}@paylock.pro`;
-              
-              await AsyncStorage.setItem('google_drive_connected', 'true');
-              await AsyncStorage.setItem('google_drive_account', adminEmail);
-              setGoogleConnected(true);
-              setGoogleAccount(adminEmail);
-              
-              // Update admin record with google_email
-              if (token) {
-                await fetch(`${API_URL}/api/admin/update-profile?admin_token=${token}`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ google_email: adminEmail }),
-                });
-              }
-              
-              Alert.alert(t('success'), t('googleDriveConnectedSuccessfullySimulation'));
-            } catch (error: any) {
-              Alert.alert(t('error'), error.message);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleDisconnectGoogleDrive = async () => {
-    Alert.alert(
-      t('disconnect'),
-      t('areYouSureYouWantTo2'),
-      [
-        { text: t('cancel'), style: 'cancel' },
-        {
-          text: t('disconnect'),
-          style: 'destructive',
-          onPress: async () => {
-            await AsyncStorage.multiRemove([
-              'google_drive_connected',
-              'google_drive_account',
-              'last_backup_date',
-            ]);
-            setGoogleConnected(false);
-            setGoogleAccount(null);
-            setLastBackupDate(null);
-          },
-        },
-      ]
-    );
-  };
-
-  const handleBackupNow = async () => {
-    if (!googleConnected) {
-      Alert.alert(
-        t('error'),
-        t('pleaseConnectGoogleDriveFirst')
-      );
-      return;
-    }
-
-    setBackupInProgress(true);
-    try {
-      const token = await AsyncStorage.getItem('admin_token');
-      if (!token) { await handleAuthError(); return; }
-      
-      const response = await fetch(`${API_URL}/api/backup/create?admin_token=${token}`, {
-        method: 'POST',
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Backup failed');
-      }
-      
-      const data = await response.json();
-      const now = new Date().toISOString();
-      await AsyncStorage.setItem('last_backup_date', now);
-      setLastBackupDate(now);
-      
-      Alert.alert(
-        t('success'),
-        language === 'et' 
-          ? `Varukoopia loodud!\nKliendid: ${data.stats.clients}\nLaenud: ${data.stats.loans}\nMaksed: ${data.stats.payments}` 
-          : `Backup created!\nClients: ${data.stats.clients}\nLoans: ${data.stats.loans}\nPayments: ${data.stats.payments}`
-      );
-    } catch (error: any) {
-      Alert.alert(
-        t('error'),
-        error.message || t('backupFailed')
-      );
-    } finally {
-      setBackupInProgress(false);
-    }
-  };
-
-  const formatBackupDate = (dateStr: string | null) => {
-    if (!dateStr) return t('never');
-    const date = new Date(dateStr);
-    return date.toLocaleString(t('enus'), {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -1057,85 +924,6 @@ export default function AdminSettings() {
                 {t('light')}
               </Text>
             </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Google Drive Backup Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            {t('googleDriveBackup')}
-          </Text>
-          
-          <View style={styles.backupCard}>
-            <View style={styles.backupStatus}>
-              <Ionicons 
-                name={googleConnected ? 'cloud-done' : 'cloud-offline'} 
-                size={32} 
-                color={googleConnected ? '#10B981' : '#64748B'} 
-              />
-              <View style={styles.backupStatusInfo}>
-                <Text style={styles.backupStatusText}>
-                  {googleConnected 
-                    ? (t('connected')) 
-                    : (t('notConnected'))}
-                </Text>
-                {googleConnected && googleAccount && (
-                  <Text style={styles.backupAccountText}>{googleAccount}</Text>
-                )}
-              </View>
-            </View>
-            
-            {googleConnected && (
-              <View style={styles.lastBackupRow}>
-                <Ionicons name="time-outline" size={16} color="#64748B" />
-                <Text style={styles.lastBackupText}>
-                  {t('lastBackup')}
-                  {formatBackupDate(lastBackupDate)}
-                </Text>
-              </View>
-            )}
-            
-            <View style={styles.backupButtons}>
-              {googleConnected ? (
-                <>
-                  <TouchableOpacity
-                    style={[styles.backupButton, styles.backupNowButton]}
-                    onPress={handleBackupNow}
-                    disabled={backupInProgress}
-                  >
-                    {backupInProgress ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <>
-                        <Ionicons name="cloud-upload" size={18} color="#fff" />
-                        <Text style={styles.backupButtonText}>
-                          {t('backupNow')}
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.backupButton, styles.disconnectButton]}
-                    onPress={handleDisconnectGoogleDrive}
-                  >
-                    <Ionicons name="unlink" size={18} color="#EF4444" />
-                    <Text style={[styles.backupButtonText, { color: '#EF4444' }]}>
-                      {t('disconnect')}
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.backupButton, styles.connectButton]}
-                  onPress={handleConnectGoogleDrive}
-                >
-                  <Ionicons name="logo-google" size={18} color="#fff" />
-                  <Text style={styles.backupButtonText}>
-                    {t('connectGoogleDrive')}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
           </View>
         </View>
 
@@ -1367,17 +1155,35 @@ export default function AdminSettings() {
           </View>
         )}
 
-        {/* Plans & Pricing Section */}
+        {/* Plans & Pricing Button */}
         <View style={styles.section} data-testid="plans-section">
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginBottom: 0 }]}>
-              {t('plansAndPricing')}
-            </Text>
-            <View style={{ backgroundColor: colors.primary + '20', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>{t('currentPlan')}: {t(currentSubscription)}</Text>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: colors.surface }]}
+            onPress={() => setShowPlansModal(true)}
+            data-testid="open-plans-btn"
+          >
+            <Ionicons name="pricetags" size={20} color={colors.primary} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[styles.actionButtonText, { color: colors.text }]}>
+                {t('plansAndPricing')}
+              </Text>
+              <Text style={{ color: colors.textMuted, fontSize: 12 }}>{t('currentPlan')}: {t(currentSubscription)}</Text>
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
 
+        {/* Plans & Pricing Modal */}
+        <Modal visible={showPlansModal} animationType="slide" transparent onRequestClose={() => setShowPlansModal(false)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <View style={{ flex: 1, marginTop: 60, backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <Text style={{ color: colors.text, fontSize: 20, fontWeight: '700' }}>{t('plansAndPricing')}</Text>
+                <TouchableOpacity onPress={() => setShowPlansModal(false)}>
+                  <Ionicons name="close" size={24} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView showsVerticalScrollIndicator={false}>
           {[
             { id: 'starter', icon: 'rocket-outline' as const, price: 29, clients: 20, features: ['basicLoanMgmt', 'oneAdmin', 'paymentTracking'] },
             { id: 'business', icon: 'business-outline' as const, price: 79, clients: 200, features: ['deviceLockUnlock', 'autoLock', 'paymentReminders', 'reportsGps', 'bankOcr', 'businessManagement', 'threeAdmins'], popular: true },
@@ -1467,7 +1273,10 @@ export default function AdminSettings() {
               <Text style={{ color: colors.textSecondary, fontSize: 12, marginLeft: 6 }}>{t('smsReminderPricing')}</Text>
             </View>
           </View>
-        </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
 
         {/* Logout Button */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>

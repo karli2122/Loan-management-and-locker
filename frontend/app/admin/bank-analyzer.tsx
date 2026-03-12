@@ -76,6 +76,7 @@ function BankAnalyzerContent() {
   const [error, setError] = useState('');
   const [selectedFileName, setSelectedFileName] = useState('');
   const [sebLikely, setSebLikely] = useState(false);
+  const [forceOcr, setForceOcr] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const isSebText = (text: string) => text.includes('SEB') || text.includes('SEB Pank');
@@ -149,7 +150,7 @@ function BankAnalyzerContent() {
         formData.append('file', { uri, name, type: mimeType } as any);
       }
       const response = await fetch(
-        `${API_URL}/api/bank-statements/analyze?admin_token=${adminToken}`,
+        `${API_URL}/api/bank-statements/analyze?admin_token=${adminToken}${forceOcr ? '&force_ocr=true' : ''}`,
         { method: 'POST', body: formData }
       );
       if (!response.ok) {
@@ -182,7 +183,7 @@ function BankAnalyzerContent() {
       const formData = new FormData();
       formData.append('file', file);
       const response = await fetch(
-        `${API_URL}/api/bank-statements/analyze?admin_token=${adminToken}`,
+        `${API_URL}/api/bank-statements/analyze?admin_token=${adminToken}${forceOcr ? '&force_ocr=true' : ''}`,
         { method: 'POST', body: formData }
       );
       if (!response.ok) {
@@ -220,6 +221,21 @@ function BankAnalyzerContent() {
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        {/* OCR Toggle */}
+        {!result && !uploading && (
+          <TouchableOpacity
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, marginBottom: 12, backgroundColor: forceOcr ? '#1E3A5F' : '#1A2332', borderRadius: 10, borderWidth: 1, borderColor: forceOcr ? '#2563EB' : '#2D3748' }}
+            onPress={() => setForceOcr(!forceOcr)}
+            data-testid="ocr-toggle"
+          >
+            <Ionicons name={forceOcr ? 'checkbox' : 'square-outline'} size={22} color={forceOcr ? '#2563EB' : '#64748B'} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#F8FAFC', fontSize: 14, fontWeight: '600' }}>AI Vision OCR</Text>
+              <Text style={{ color: '#64748B', fontSize: 12 }}>Use AI to read scanned/image-based PDFs</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Upload Area */}
         {!result && !uploading && (
           <TouchableOpacity
