@@ -3,6 +3,7 @@ from fastapi import APIRouter, Query, HTTPException
 from datetime import datetime, timedelta
 from typing import Optional, List
 import secrets
+import uuid
 import logging
 import csv
 import io
@@ -249,6 +250,55 @@ async def generate_registration_code(
         "registration_code": new_code,
         "lock_mode": lock_mode,
         "credits_remaining": credits - 1 if not is_super_admin else "unlimited"
+    }
+
+
+@router.post("/clients/{client_id}/send-warning")
+async def send_warning_to_client(
+    client_id: str,
+    admin_token: str = Query(...),
+    message: str = Query("Payment overdue. Please make your payment immediately to avoid device lock."),
+):
+    """Send a warning message to a client via in-app messaging and push notification."""
+    from datetime import timezone as tz
+    admin_id = await get_admin_id_from_token(admin_token)
+
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    await enforce_client_scope(client, admin_id)
+
+    # Save in-app message
+    msg = {
+        "id": str(uuid.uuid4()),
+        "client_id": client_id,
+        "sender_type": "admin",
+        "sender_id": admin_id,
+        "text": f"WARNING: {message}",
+        "created_at": datetime.now(tz.utc).isoformat(),
+        "read": False,
+        "is_warning": True,
+    }
+    await db.messages.insert_one(msg)
+    msg.pop("_id", None)
+
+    # Send push notification to client device
+    push_token = client.get("expo_push_token")
+    push_sent = False
+    if push_token:
+        push_sent = await send_expo_push_notification(
+            push_token,
+            "Payment Warning",
+            message,
+            {"action": "warning", "client_id": client_id, "is_warning": True},
+        )
+
+    return {
+        "status": "sent",
+        "message_id": msg["id"],
+        "push_sent": push_sent,
+        "client_name": client.get("name", ""),
     }
 
 

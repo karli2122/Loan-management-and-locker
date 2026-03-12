@@ -844,15 +844,83 @@ function renderModal() {
 async function renderLoanPlans(el) {
   const plans = await api('GET', '/loan-plans');
   el.innerHTML = `
-    <div class="page-header"><h2>${t('loan_plans_title')}</h2><p>${t('loan_plans_subtitle')}</p></div>
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:start">
+      <div><h2>${t('loan_plans_title')}</h2><p>${t('loan_plans_subtitle')}</p></div>
+      <button class="btn btn-primary btn-sm" onclick="showCreateLoanPlan()" data-testid="create-plan-btn"><i class="fas fa-plus"></i> New Plan</button>
+    </div>
     <div class="card"><div class="table-wrap"><table data-testid="loan-plans-table">
-      <thead><tr><th>${t('name')}</th><th>${t('interest_rate_col')}</th><th>${t('tenure')}</th><th>${t('processing_fee')}</th><th>${t('late_fee_col')}</th><th>${t('status')}</th></tr></thead>
+      <thead><tr><th>${t('name')}</th><th>${t('interest_rate_col')}</th><th>${t('tenure')}</th><th>${t('processing_fee')}</th><th>${t('late_fee_col')}</th><th>${t('status')}</th><th>Actions</th></tr></thead>
       <tbody>${(Array.isArray(plans)?plans:[]).map(p => `<tr>
         <td><b>${esc(p.name)}</b></td><td>${p.interest_rate}%</td><td>${p.min_tenure_months}-${p.max_tenure_months} mo</td>
         <td>${p.processing_fee_percent}%</td><td>${p.late_fee_percent}%</td>
         <td><span class="badge badge-${p.is_active?'success':'warning'}">${p.is_active?t('active'):t('inactive')}</span></td>
-      </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">${t('no_loan_plans')}</td></tr>`}</tbody>
+        <td class="action-row">
+          <button class="btn btn-ghost btn-sm" onclick='showEditLoanPlan(${JSON.stringify(p).replace(/'/g,"\\'")})' data-testid="edit-plan-${p.id}"><i class="fas fa-edit"></i></button>
+          <button class="btn btn-ghost btn-sm" onclick="deleteLoanPlan('${p.id}')" data-testid="delete-plan-${p.id}"><i class="fas fa-trash" style="color:var(--danger)"></i></button>
+        </td>
+      </tr>`).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">${t('no_loan_plans')}</td></tr>`}</tbody>
     </table></div></div>`;
+}
+
+function showCreateLoanPlan() { showLoanPlanForm(null); }
+
+function showEditLoanPlan(plan) { showLoanPlanForm(plan); }
+
+function showLoanPlanForm(plan) {
+  const isEdit = !!plan;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay'; overlay.id = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal"><h3><i class="fas fa-${isEdit?'edit':'plus'}"></i> ${isEdit?'Edit':'Create'} Loan Plan</h3>
+    <form id="loan-plan-form">
+      <div class="form-group"><label>Plan Name *</label><input id="lp-name" value="${esc(plan?.name||'')}" required data-testid="plan-name"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Interest Rate (%) *</label><input id="lp-rate" type="number" step="0.1" value="${plan?.interest_rate||10}" required data-testid="plan-rate"></div>
+        <div class="form-group"><label>Processing Fee (%)</label><input id="lp-proc" type="number" step="0.1" value="${plan?.processing_fee_percent||2}" data-testid="plan-proc-fee"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Min Tenure (months)</label><input id="lp-min" type="number" min="1" value="${plan?.min_tenure_months||1}" data-testid="plan-min-tenure"></div>
+        <div class="form-group"><label>Max Tenure (months)</label><input id="lp-max" type="number" min="1" value="${plan?.max_tenure_months||60}" data-testid="plan-max-tenure"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Late Fee (%)</label><input id="lp-late" type="number" step="0.1" value="${plan?.late_fee_percent||5}" data-testid="plan-late-fee"></div>
+        <div class="form-group"><label>Grace Days</label><input id="lp-grace" type="number" value="${plan?.grace_period_days||0}" data-testid="plan-grace"></div>
+      </div>
+      <div class="form-group"><label><input type="checkbox" id="lp-active" ${plan?.is_active!==false?'checked':''} data-testid="plan-active"> Active</label></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" data-testid="save-plan-btn"><i class="fas fa-save"></i> ${isEdit?'Update':'Create'}</button>
+      </div>
+    </form></div>`;
+  document.body.appendChild(overlay);
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+  document.getElementById('loan-plan-form').onsubmit = async(e) => {
+    e.preventDefault();
+    const payload = {
+      name: document.getElementById('lp-name').value,
+      interest_rate: parseFloat(document.getElementById('lp-rate').value),
+      processing_fee_percent: parseFloat(document.getElementById('lp-proc').value) || 0,
+      min_tenure_months: parseInt(document.getElementById('lp-min').value) || 1,
+      max_tenure_months: parseInt(document.getElementById('lp-max').value) || 60,
+      late_fee_percent: parseFloat(document.getElementById('lp-late').value) || 0,
+      grace_period_days: parseInt(document.getElementById('lp-grace').value) || 0,
+      is_active: document.getElementById('lp-active').checked,
+    };
+    try {
+      if (isEdit) {
+        await api('PUT', `/loan-plans/${plan.id}`, payload);
+        toast('Loan plan updated');
+      } else {
+        await api('POST', '/loan-plans', payload);
+        toast('Loan plan created');
+      }
+      closeModal(); navigate('loans');
+    } catch(err) { toast(err.message, 'error'); }
+  };
+}
+
+async function deleteLoanPlan(planId) {
+  if (!confirm('Delete this loan plan?')) return;
+  try { await api('DELETE', `/loan-plans/${planId}`); toast('Plan deleted'); navigate('loans'); } catch(e) { toast(e.message, 'error'); }
 }
 
 // Reminders
@@ -1601,6 +1669,7 @@ async function renderBankStatements(el) {
         </div>
         <div style="display:flex;gap:8px;margin-top:8px">
           <button type="submit" class="btn btn-primary btn-sm" data-testid="bs-analyze-btn"><i class="fas fa-brain"></i> Analyze with AI</button>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted)"><input type="checkbox" id="bs-force-ocr" data-testid="bs-force-ocr"> Force OCR (for scanned/image PDFs)</label>
         </div>
       </form>
     </div>
@@ -1666,7 +1735,8 @@ async function renderBankStatements(el) {
     if (bsHidden.value) fd.append('client_id', bsHidden.value);
 
     try {
-      const res = await fetch(`${API_BASE}/bank-statements/analyze?admin_token=${encodeURIComponent(state.token)}${bsHidden.value ? '&client_id=' + encodeURIComponent(bsHidden.value) : ''}`, {
+      const forceOcr = document.getElementById('bs-force-ocr')?.checked ? '&force_ocr=true' : '';
+      const res = await fetch(`${API_BASE}/bank-statements/analyze?admin_token=${encodeURIComponent(state.token)}${bsHidden.value ? '&client_id=' + encodeURIComponent(bsHidden.value) : ''}${forceOcr}`, {
         method: 'POST', body: fd
       });
       const data = await res.json();
@@ -1864,6 +1934,7 @@ async function renderSchedules(el) {
         <td>${s.auto_reminder ? '<span class="badge badge-success">On</span>' : '<span class="badge badge-warning">Off</span>'}</td>
         <td><span class="badge badge-${s.is_active?'success':'warning'}">${s.is_active?'Active':'Paused'}</span></td>
         <td class="action-row">
+          <button class="btn btn-ghost btn-sm" onclick='showEditSchedule(${JSON.stringify(s).replace(/'/g,"\\'")})' data-testid="edit-schedule-${s.id}"><i class="fas fa-edit"></i></button>
           <button class="btn btn-ghost btn-sm" onclick="toggleSchedule('${s.id}',${!s.is_active})" data-testid="toggle-schedule-${s.id}"><i class="fas fa-${s.is_active?'pause':'play'}"></i></button>
           <button class="btn btn-ghost btn-sm" onclick="deleteSchedule('${s.id}')" data-testid="delete-schedule-${s.id}"><i class="fas fa-trash" style="color:var(--danger)"></i></button>
         </td>
@@ -1937,6 +2008,138 @@ async function processScheduledReminders() {
   try {
     const r = await api('POST', '/schedules/process-reminders');
     toast(`Processed ${r.processed} schedules, ${r.reminders_sent} reminders sent`);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function showEditSchedule(sched) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay'; overlay.id = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal"><h3><i class="fas fa-edit"></i> Edit Schedule</h3>
+    <form id="edit-schedule-form">
+      <div class="form-group"><label>Client</label><input value="${esc(sched.client_name||sched.client_id)}" disabled style="opacity:0.6"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Amount</label><input id="es-amount" type="number" step="0.01" value="${sched.amount||''}" data-testid="edit-sched-amount"></div>
+        <div class="form-group"><label>Frequency</label><select id="es-freq" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)" data-testid="edit-sched-freq">
+          <option value="monthly" ${sched.frequency==='monthly'?'selected':''}>Monthly</option>
+          <option value="biweekly" ${sched.frequency==='biweekly'?'selected':''}>Biweekly</option>
+          <option value="weekly" ${sched.frequency==='weekly'?'selected':''}>Weekly</option>
+        </select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Day of Month</label><input id="es-day" type="number" min="1" max="28" value="${sched.day_of_month||1}" data-testid="edit-sched-day"></div>
+        <div class="form-group"><label>Remind Days Before</label><input id="es-remind" type="number" min="0" max="14" value="${sched.reminder_days_before||3}" data-testid="edit-sched-remind"></div>
+      </div>
+      <div class="form-group"><label><input type="checkbox" id="es-auto" ${sched.auto_reminder?'checked':''} data-testid="edit-sched-auto"> Auto-send reminders</label></div>
+      <div class="form-group"><label><input type="checkbox" id="es-active" ${sched.is_active?'checked':''} data-testid="edit-sched-active"> Active</label></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" data-testid="save-edit-sched-btn"><i class="fas fa-save"></i> Update</button>
+      </div>
+    </form></div>`;
+  document.body.appendChild(overlay);
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+  document.getElementById('edit-schedule-form').onsubmit = async(e) => {
+    e.preventDefault();
+    const payload = {
+      frequency: document.getElementById('es-freq').value,
+      day_of_month: parseInt(document.getElementById('es-day').value) || 1,
+      reminder_days_before: parseInt(document.getElementById('es-remind').value) || 3,
+      auto_reminder: document.getElementById('es-auto').checked,
+      is_active: document.getElementById('es-active').checked,
+    };
+    const amt = document.getElementById('es-amount').value;
+    if (amt) payload.amount = parseFloat(amt);
+    try {
+      await api('PUT', `/schedules/${sched.id}`, payload);
+      toast('Schedule updated');
+      closeModal(); navigate('schedules');
+    } catch(err) { toast(err.message, 'error'); }
+  };
+}
+
+// ===================== DEVICE KEY & WARNING & LOAN =====================
+
+async function generateRegKey(clientId, digits) {
+  try {
+    const mode = digits === 9 ? 'device_owner' : 'device_admin';
+    const data = await api('POST', `/clients/${clientId}/generate-code?lock_mode=${mode}`);
+    const codeEl = document.getElementById('reg-code-display');
+    if (codeEl) codeEl.textContent = data.registration_code;
+    toast(`Code generated: ${data.registration_code}` + (data.credits_remaining !== 'unlimited' ? ` (${data.credits_remaining} credits left)` : ''));
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function sendWarning(clientId) {
+  const message = prompt('Warning message to client:', 'Payment overdue. Please make your payment immediately to avoid device lock.');
+  if (!message) return;
+  try {
+    const data = await api('POST', `/clients/${clientId}/send-warning?message=${encodeURIComponent(message)}`);
+    toast(`Warning sent to ${data.client_name}. Push: ${data.push_sent ? 'delivered' : 'no push token'}`);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function showAddLoan(clientId) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay'; overlay.id = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal"><h3><i class="fas fa-plus-circle"></i> Add Loan</h3>
+    <form id="add-loan-form">
+      <div class="form-row">
+        <div class="form-group"><label>Loan Amount (EUR) *</label><input id="nl-amount" type="number" step="0.01" required data-testid="new-loan-amount"></div>
+        <div class="form-group"><label>Interest Rate (% monthly) *</label><input id="nl-rate" type="number" step="0.1" value="5" required data-testid="new-loan-rate"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Down Payment (EUR)</label><input id="nl-down" type="number" step="0.01" value="0" data-testid="new-loan-down"></div>
+        <div class="form-group"><label>Tenure (months) *</label><input id="nl-tenure" type="number" min="1" value="12" required data-testid="new-loan-tenure"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Given Date</label><input id="nl-given" type="date" data-testid="new-loan-given"></div>
+        <div class="form-group"><label>Due Date</label><input id="nl-due" type="date" data-testid="new-loan-due"></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" data-testid="save-loan-btn"><i class="fas fa-save"></i> Create Loan</button>
+      </div>
+    </form></div>`;
+  document.body.appendChild(overlay);
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+  document.getElementById('add-loan-form').onsubmit = async(e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        loan_amount: parseFloat(document.getElementById('nl-amount').value),
+        interest_rate: parseFloat(document.getElementById('nl-rate').value),
+        down_payment: parseFloat(document.getElementById('nl-down').value) || 0,
+        loan_tenure_months: parseInt(document.getElementById('nl-tenure').value),
+      };
+      const g = document.getElementById('nl-given').value;
+      const d = document.getElementById('nl-due').value;
+      if (g) payload.given_date = g;
+      if (d) payload.due_date = d;
+      const result = await api('POST', `/loans/${clientId}/setup`, payload);
+      toast('Loan created! EMI: ' + cur(result.loan_details.monthly_emi) + '/month');
+      closeModal();
+      const data = await api('GET', '/clients');
+      state.clients = data.clients || [];
+      state.selectedClient = state.clients.find(c => c.id === clientId);
+      renderClientDetail(document.getElementById('page-content'));
+    } catch(err) { toast(err.message, 'error'); }
+  };
+}
+
+async function showLoanSchedule(loanId, clientId) {
+  try {
+    const data = await api('GET', `/loans/${clientId}/schedule`);
+    const schedule = data.schedule || [];
+    let html = `<div style="max-height:400px;overflow-y:auto">
+      <div style="display:flex;gap:16px;margin-bottom:12px">
+        <div class="stat-card" style="flex:1;padding:12px"><div class="stat-label">Total Paid</div><div class="stat-value" style="color:var(--success)">${cur(data.total_paid||0)}</div></div>
+        <div class="stat-card" style="flex:1;padding:12px"><div class="stat-label">Outstanding</div><div class="stat-value" style="color:var(--warning)">${cur(data.outstanding_balance||0)}</div></div>
+      </div>
+      <table><thead><tr><th>#</th><th>Due Date</th><th>EMI</th><th>Principal</th><th>Interest</th><th>Balance</th></tr></thead><tbody>
+      ${schedule.map(s => '<tr><td>' + s.month + '</td><td>' + fmtDate(s.due_date) + '</td><td>' + cur(s.emi) + '</td><td>' + cur(s.principal) + '</td><td>' + cur(s.interest) + '</td><td>' + cur(s.balance) + '</td></tr>').join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No schedule</td></tr>'}
+    </tbody></table></div>`;
+    state.modal = { title: 'Payment Schedule', body: html };
+    renderModal();
   } catch(e) { toast(e.message, 'error'); }
 }
 

@@ -328,6 +328,43 @@ def apply_fallback_analysis(analysis: dict, fallback: dict):
     return analysis
 
 
+async def extract_text_with_ai_vision(pdf_bytes: bytes, max_pages: int = 3) -> str:
+    """Use GPT-4 vision to OCR text from PDF page images."""
+    import fitz
+    import base64
+    from emergentintegrations.llm.chat import LlmChat, UserMessage, FileContent
+
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="AI key not configured for OCR")
+
+    images = []
+    with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+        pages = min(doc.page_count, max_pages)
+        for i in range(pages):
+            page = doc.load_page(i)
+            pix = page.get_pixmap(dpi=150)
+            img_bytes = pix.tobytes("png")
+            b64 = base64.b64encode(img_bytes).decode()
+            images.append(FileContent(content_type="image/png", file_content_base64=b64))
+
+    if not images:
+        return ""
+
+    chat = LlmChat(
+        api_key=api_key,
+        session_id=f"ocr-{uuid.uuid4().hex[:8]}",
+        system_message="You are an OCR specialist. Extract ALL text from the bank statement images exactly as they appear. Include numbers, dates, names, amounts, and transaction details. Return the raw extracted text only, no commentary.",
+    ).with_model("openai", "gpt-4.1")
+
+    msg = UserMessage(
+        text="Extract all text from these bank statement page images. Return the complete text content.",
+        file_contents=images,
+    )
+    result = await chat.send_message(msg)
+    return result.strip()
+
+
 async def analyze_with_ai(statement_text: str) -> dict:
     """Send bank statement text to GPT for income/expense analysis."""
     from emergentintegrations.llm.chat import LlmChat, UserMessage
@@ -426,6 +463,7 @@ async def analyze_bank_statement(
     file: UploadFile = File(...),
     admin_token: str = Query(...),
     client_id: str = Query(None),
+    force_ocr: bool = Query(False),
 ):
     """Upload and analyze a bank statement (.pdf, .asice, .csv, or .xml)."""
     admin_id = await get_admin_id_from_token(admin_token)
@@ -468,18 +506,35 @@ async def analyze_bank_statement(
 
     # Extract text from PDF (if we have PDF bytes)
     if pdf_bytes is not None:
+        if force_ocr:
+            # Use AI vision OCR directly
+            try:
+                logger.info("Force OCR mode — using AI vision to extract text from PDF images")
+                statement_text = await extract_text_with_ai_vision(pdf_bytes)
+            except Exception as e:
+                logger.error(f"AI vision OCR failed: {e}")
+                raise HTTPException(status_code=500, detail=f"AI OCR failed: {str(e)}")
+        else:
+            try:
+                loop = asyncio.get_event_loop()
+                statement_text = await asyncio.wait_for(
+                    loop.run_in_executor(None, lambda: extract_text_from_pdf(pdf_bytes, filename=file.filename)),
+                    timeout=90
+                )
+                statement_text = normalize_seb_encoding(statement_text)
+            except asyncio.TimeoutError:
+                raise HTTPException(status_code=408, detail="PDF processing timed out. Please try again.")
+            except Exception as e:
+                logger.error(f"PDF text extraction failed: {e}")
+                raise HTTPException(status_code=400, detail="Could not extract text from PDF. The file may be image-based or corrupted.")
+
+    if not statement_text.strip() and pdf_bytes is not None:
+        # Try AI vision OCR as fallback for scanned/image-based PDFs
         try:
-            loop = asyncio.get_event_loop()
-            statement_text = await asyncio.wait_for(
-                loop.run_in_executor(None, lambda: extract_text_from_pdf(pdf_bytes, filename=file.filename)),
-                timeout=90
-            )
-            statement_text = normalize_seb_encoding(statement_text)
-        except asyncio.TimeoutError:
-            raise HTTPException(status_code=408, detail="PDF processing timed out. Please try again.")
+            logger.info("Text extraction empty, trying AI vision OCR...")
+            statement_text = await extract_text_with_ai_vision(pdf_bytes)
         except Exception as e:
-            logger.error(f"PDF text extraction failed: {e}")
-            raise HTTPException(status_code=400, detail="Could not extract text from PDF. The file may be image-based or corrupted.")
+            logger.error(f"AI vision OCR failed: {e}")
 
     if not statement_text.strip():
         raise HTTPException(status_code=400, detail="No text could be extracted from the PDF. It may be a scanned/image-based document.")
