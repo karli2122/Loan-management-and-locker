@@ -13,7 +13,7 @@ BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
     BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://loan-admin-hub-2.preview.emergentagent.com"
+    BASE_URL = "https://analytics-debug-11.preview.emergentagent.com"
 
 # Superadmin credentials
 SUPERADMIN_USERNAME = "karli1987"

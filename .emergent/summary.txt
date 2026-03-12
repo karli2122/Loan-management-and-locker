@@ -31,144 +31,198 @@
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a full-stack system with a FastAPI backend, a React Native mobile app (client and admin), and a vanilla JS web portal. The entire backend has been successfully migrated from the Emergent preview environment to the user's private VPS, running on Ubuntu with Nginx and a systemd service. The application is live and accessible via HTTPS at .
+A full-stack loan management system (PayLock Pro) with a FastAPI backend, a React Native admin app, a React Native client app, and a vanilla JS web portal. The backend is fully deployed and running on the user's private VPS, accessible via a custom domain with SSL.
 
-In the last session, the agent completed a massive scope of work, including: deploying to the VPS; setting up the custom domain with SSL; fixing critical client app lock screen bugs; modularizing the web portal's JavaScript; and implementing a large suite of new features across the portal (AI risk scoring, bulk messaging, reports), admin app (offline mode, new charts, push notifications), and client app (in-app messaging). All user management changes were also completed.
+In the last session, the agent implemented a large batch of features including a device key generator, editable loan plans, AI-powered OCR for bank statements, a full in-app chat system with push notifications, and an app version-checking mechanism. The system was also integrated with the user's live Stripe account for real payment processing. However, several bugs related to these new features have been reported by the user.
 
 **Last working item**:
--   **Last item agent was working**: The agent was preparing to implement a new batch of feature requests for the web portal and backend. It had just finished exploring the codebase to understand the requirements for adding a device key generator, add loan and warning buttons, editable loan plans/schedules, OCR for the bank statement analyzer, removing hardcoded credentials, and updating the website contact email.
--   **Status**: NOT STARTED
+-   **Last item agent was working**: Investigating why the Profit chart in the admin app's Analytics tab is not displaying data. The agent was inspecting the frontend code in  and was about to check the corresponding backend endpoint ().
+-   **Status**: IN PROGRESS
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?** both. The agent should test backend changes with  and portal UI changes with the  tool. A full regression test using  is recommended after all features are implemented.
+-   **Which testing method agent to use?** both. The backend endpoint  should be tested via . The admin app's analytics page should be checked with the screenshot tool after the fix.
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   There are no known bugs. The current work is entirely feature-driven.
+-   **Issue 1**: Analytics doesn't get profit data. (P0)
+-   **Issue 2**: Device overview count in the admin app is incorrect. (P1)
+-   **Issue 3**: Push notifications are still not working. (P2)
+-   **Issue 4**: Client app chat window is still being overlayed by the Android keyboard/navigation bar. (P2)
+-   **Issue 5**: Bank statement analyzer is not working correctly. (P3)
+
+**Issues Detail**:
+-   **Issue 1: Analytics doesn't get profit data.**
+    -   **Attempted fixes**: None. Investigation just started.
+    -   **Next debug checklist**:
+        1.  Examine the backend code for the  endpoint in  to understand how profit is calculated.
+        2.  Check the database collections (, ) to ensure the data required for the calculation exists.
+        3.  Test the  endpoint directly with  to see what data it returns.
+        4.  Review the frontend code in  to ensure the API response is being correctly processed and rendered by the chart component.
+    -   **Why fix this issue and what will be achieved with the fix?** To provide the admin with critical business intelligence on loan profitability.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** Both.
+    -   **Blocked on other issue**: None.
+
+-   **Issue 2: Device overview count in the admin app is incorrect.**
+    -   **Attempted fixes**: The agent made two backend fixes to the  endpoint to correctly filter out deleted clients. The final backend fix seems correct, but the agent then identified the frontend was sending an  for superadmins, which incorrectly filtered the results. A frontend fix was implemented in  to prevent sending the  for superadmins.
+    -   **Next debug checklist**: This requires a new mobile app build to be deployed and tested by the user. If it still fails, the agent needs to re-verify the logic in both the frontend () and the backend ( endpoint in ).
+    -   **Why fix this issue and what will be achieved with the fix?** To provide an accurate count of active devices in the admin dashboard.
+    -   **Status**: USER VERIFICATION PENDING
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** Frontend.
+    -   **Blocked on other issue**: A new build needs to be submitted.
+
+-   **Issue 3: Push notifications are still not working.**
+    -   **Attempted fixes**: The agent implemented the entire push notification flow. When it failed, the agent added a Test Push Notification button to the admin app. When that failed, the agent fixed the  call by adding an explicit , as required by newer Expo SDKs for EAS builds.
+    -   **Next debug checklist**:
+        1.  Confirm with the user if they have installed the latest build and tapped the Test Push Notification button in the admin settings.
+        2.  If it still fails, check the  database collection to see if any tokens have been registered.
+        3.  Verify the logic in  and  that sends the push notifications.
+    -   **Why fix this issue and what will be achieved with the fix?** Push notifications are critical for alerting admins and clients about new messages and warnings.
+    -   **Status**: USER VERIFICATION PENDING
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** Backend.
+    -   **Blocked on other issue**: A new build needs to be submitted.
+
+-   **Issue 4: Client app chat window is still being overlayed by the Android keyboard/navigation bar.**
+    -   **Attempted fixes**: The agent first tried . When that failed, it changed the UI from a bottom-sheet modal to a full-screen, non-transparent modal using .
+    -   **Next debug checklist**: This fix is in the latest un-tested build. The user needs to install and verify it. If the issue persists, the layout and styling of the chat modal in  needs to be re-examined.
+    -   **Why fix this issue and what will be achieved with the fix?** To make the in-app chat feature usable for clients.
+    -   **Status**: USER VERIFICATION PENDING
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** Frontend.
+    -   **Blocked on other issue**: A new build needs to be submitted.
+
+-   **Issue 5: Bank statement analyzer is not working correctly.**
+    -   **Attempted fixes**: The user reported an error with the analyzer. The agent found the backend was incorrectly converting PDFs to PNGs before sending them to the AI vision model. The fix was to send the raw PDF file content directly as  base64 data.
+    -   **Next debug checklist**: This backend fix has been deployed to the VPS. The user needs to test the feature again. If it fails, check the VPS logs for errors from the  route during analysis.
+    -   **Why fix this issue and what will be achieved with the fix?** This is a key feature for automating payment reconciliation.
+    -   **Status**: USER VERIFICATION PENDING
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** Backend.
+    -   **Blocked on other issue**: None.
 
 **In progress Task List**:
--   **Task 1: Implement Portal and Backend Enhancements (P0)**
-    -   **Where to resume**: Start by implementing the new features requested in the user's last message (Chat Message 564). The agent has already analyzed the relevant files.
-    -   **What will be achieved with this?** This will add significant new functionality to the web portal, improving administrative capabilities and bringing features like OCR analysis online.
-    -   **Status**: NOT STARTED
-    -   **Should Test frontend/backend/both after fix?** Both.
-    -   **Blocked on something**: Nothing.
+-   None.
 
 **Upcoming and Future Tasks**
+-   **Upcoming Tasks**:
+    -   (P0) Submit new Admin and Client app builds containing all the recent bug fixes for analytics, device count, push notifications, and chat UI.
 -   **Future Tasks**:
-    -   WhatsApp Business API Integration.
+    -   (P1) WhatsApp Business API Integration.
 
 **Completed work in this session**
--   **Full Production Deployment to User's VPS**: Migrated the FastAPI backend to the user's Ubuntu VPS, including setting up dependencies, Nginx, and a systemd service for persistence.
--   **Custom Domain & SSL**: Configured the custom domain  and secured it with a Let's Encrypt SSL certificate.
--   **URL Consolidation**: Updated all hardcoded URLs across the entire codebase (backend, mobile apps, portal, website) to use the new production HTTPS domain.
--   **Critical Client App Bug Fixes**:
-    -   Fixed the emergency call button by temporarily exiting kiosk mode to allow the dialer to launch.
-    -   Hardened the lock screen against a double swipe status bar bypass vulnerability by making the accessibility service more aggressive.
--   **Massive Feature Implementation (Phases 1-3)**:
-    -   **Portal Modularization**: Refactored the monolithic  into multiple modules (, , , ).
-    -   **New Portal Features**: Added pages for AI Client Risk Scoring (with Chart.js), Bulk Messaging via Telegram, and Report Exports (PDF/Excel). Also added a searchable client dropdown for document uploads.
-    -   **Admin App Overhaul**: Implemented full offline mode with sync, added new dashboard charts (overdue aging, collection trends), and set up Expo push notifications for due payments.
-    -   **Client App Enhancements**: Added in-app messaging with the admin and multi-language support for lock screen messages.
--   **Auth System Hardening**:
-    -   Modified the JWT system to allow multiple active sessions per user and implemented sliding token expiration to fix the stay logged in issue.
-    -   Removed hardcoded/default  users from the database and prevented their recreation on startup.
-    -   Gated the web portal login to users with Enterprise or Custom plans.
--   **Builds & Sync**: Synced all changes to the production VPS and submitted multiple new client and admin APK builds pointing to the new production domain.
+-   **Live Stripe Integration**: Configured the backend on the VPS to use the user's live Stripe secret key, enabling real payment processing.
+-   **In-App Chat System**: Implemented a full chat feature between clients and admins, with push notifications for new messages.
+-   **App Version Management**: Created a system for the mobile apps to check for new versions from the backend and a portal UI for admins to manage version releases.
+-   **Portal & Backend Features**: Added OCR to the bank statement analyzer, editable loan plans/schedules, and a Send Warning button.
+-   **Bug Fixes**:
+    -   Resolved multiple recurring issues with the device count, superadmin permissions in the portal/admin app, and EAS build failures.
+    -   Implemented several fixes for chat UI keyboard overlap and push notification registration.
+-   **Deployment**: Synced all changes to the user's VPS and submitted numerous new mobile app builds via EAS.
 
 **Earlier issues found/mentioned but not fixed**
--   None.
+-   All known issues are captured in the All Pending/In progress Issue list section. The main recurring problems are related to push notifications and the client chat UI.
 
 **Known issue recurrence from previous fork**
--   None.
+-   None from the previous fork, but within this session, the following issues have recurred after attempted fixes:
+    -   Device management count was incorrect, fixed, and then reported as incorrect again.
+    -   Client chat UI overlay has been fixed multiple times.
+    -   Push notifications have been a persistent problem.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **VPS Deployment**: Manually deployed a FastAPI application to an Ubuntu VPS, including Nginx reverse proxy configuration, systemd service management, and dependency installation.
--   **SSL Configuration**: Used  and Let's Encrypt to provision and auto-renew an SSL certificate for the custom domain.
--   **Web Portal Modularization**: Refactored a large monolithic JavaScript file into a maintainable, multi-file architecture, improving code organization and scalability.
--   **Offline-First React Native**: Implemented robust offline capabilities in the admin app using  for data persistence and  to manage synchronization.
--   **Push Notifications**: Integrated Expo Push Notifications to send alerts from the backend to the admin app.
--   **Advanced Authentication Flow**: Reworked the JWT authentication to support multiple active user sessions and sliding token expiration.
--   **Native Android Security**: Further hardened the Kotlin native modules to patch sophisticated lock screen bypass vulnerabilities.
+-   **VPS Deployment**: Managing a live FastAPI application on an Ubuntu VPS with Nginx and systemd.
+-   **Live Stripe Integration**: Switching from test keys to live user-provided keys for real payment processing.
+-   **In-App Versioning**: System for mobile apps to check for new versions against a backend endpoint.
+-   **Real-time Chat with Push**: A messaging system using FastAPI WebSockets and Expo Push Notifications.
+-   **AI-powered OCR**: Using Emergent LLM Key with a vision model to extract text from PDF documents.
+-   **React Native Keyboard Management**: Using  and Android's .
+-   **EAS Build Debugging**: Troubleshooting and fixing issues with  and syntax errors.
 
 **key DB schema**
--   **admins**:
-    -   : Changed from a single string to an  of strings to support multiple active sessions.
-    -   : A  field ('enterprise', 'custom', 'basic') was added and is now used to control access to the web portal.
+-   **clients**:
+    -   :  added for authenticating chat messages.
+-   **app_versions** (New Collection):
+    -   
+
+**changes in tech stack**
+-   None.
 
 **All files of reference**
--   : Core backend file, modified for new routes and deployment hardening.
--   : Central file for authentication and user management logic.
--   : Previously monolithic file, now refactored to load other modules.
--   : New directory containing the modularized portal features.
--   : The main admin app screen, heavily modified with new features.
--   : The main client app screen, modified for messaging and lock screen fixes.
--   : Native module for lock screen logic.
--   : Native service for enforcing UI policies.
+-   : Contains logic for the broken profit analytics and device count.
+-   : Frontend for the broken profit chart.
+-   : Frontend for device count and superadmin logic.
+-   : Contains the client-side chat UI and push token registration logic, both of which have been problematic.
+-   : Backend logic for sending chat messages and their corresponding push notifications.
+-   : Backend logic for the AI-powered OCR feature.
 
 **Areas that need refactoring**:
--   None. The primary refactoring task (portal modularization) was completed in this session.
+-   None.
 
 **key api endpoints**
--   : New endpoints for fetching chart data.
--   : New endpoints for AI client risk analysis.
--   : New endpoints for sending messages (Telegram, in-app).
--   : New endpoint for downloading reports.
--   : New routes to serve the modularized portal JavaScript files.
+-   : Endpoint for the analytics data (Under investigation).
+-   : Endpoint for dashboard counts (Recently fixed).
+-   : Sends a chat message and triggers a push notification.
+-   : Fetches the latest version information for a mobile app.
+-   : Updates the version information (used by the portal).
+-   : Uploads a bank statement for analysis (modified to support force OCR).
 
 **Critical Info for New Agent**
--   The application is live on the user's VPS. The credentials are in the chat history: IP , user , password . All backend changes must be synced to  on the VPS and the  service must be restarted ().
--   The web portal's frontend code has been modularized. New portal features should be added as new JS files in  and integrated into  and .
--   The immediate priority is to implement the latest batch of feature requests from the user (Chat Message 564), which primarily concern the web portal.
+-   The application is LIVE. All backend changes must be synced to the user's VPS and the  service restarted. SSH credentials are in the previous logs.
+-   The user is waiting on fixes for several issues simultaneously (Analytics, Device Count, Chat, Push). The highest priority is the **Analytics profit data**, as it was the last reported issue.
+-   After fixing the analytics issue, you should propose submitting a new build that includes the analytics fix PLUS all the other pending frontend fixes (device count, chat UI, push notifications) to avoid a slow, one-by-one testing cycle.
+-   The chat UI and push notification issues have been recurring. Be extra thorough in debugging and consider that the previous approaches may have been flawed. Verify token registration in the database and the end-to-end push delivery flow.
 
 **documents and test reports created in this job**
--    (updated with completed features).
+-   
+-   The  file needs to be updated with all the features completed in this session.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User**: Remove test/admin users, make superadmin=custom, gate portal access. - **Status: Completed.**
-2.  **User**: Fix admin app stay logged in. Suggest more features. - **Status: Completed.**
-3.  **User**: Add massive list of features for admin app (offline, charts), client app (messaging), and portal (live charts, bulk sms, reports, risk scoring). - **Status: Completed.**
-4.  **User**: Use expo push, telegram bot, and AI. Do all phases in one go. - **Status: Completed.**
-5.  **User**: Add device key gen, add loan/warning buttons, edit loan plans/schedules, OCR for bank analyzer, remove hardcoded creds, change website email. - **Status: In Progress (This is the current task).**
-6.  **User**:  is the address. Confirmed emergency call button issue. - **Status: Completed (Used for SSL setup).**
-7.  **User**: (DNS) Done. - **Status: Completed (Agent proceeded with SSL setup).**
-8.  **User**: (DNS) Done. - **Status: Completed (Agent confirmed DNS propagation).**
-9.  **User**: Web portal doesn't function properly, upload doc needs dropdown, no bank statement analyzer. - **Status: Completed (Agent fixed both issues).**
-10. **User**: What api is current? - **Status: Completed (Agent provided the latest URL before the final VPS migration).**
+1.  **User**: Analytics doesn't get profit data. - **Status: IN PROGRESS**
+2.  **User**: Device management, device overview still says 1. - **Status: FIXED (Build Pending)**
+3.  **User**: No, device management still says 1. - **Status: Acknowledged**
+4.  **User**: Admin app device management card counts deleted devices. - **Status: Completed**
+5.  **User**: Client app chat still overlayed. Push notifications don't work. Bank analyzer fails. - **Status: FIXED (Build Pending)**
+6.  **User**: Build failed with syntax error. - **Status: Completed**
+7.  **User**: Shared live Stripe key. - **Status: Completed**
+8.  **User**: Asked where to find Stripe key. - **Status: Completed**
+9.  **User**: Asked for other payment options. - **Status: Completed**
+10. **User**: Asked how to withdraw money from Stripe. - **Status: Completed**
 
 **Project Health Check:**
--   **Broken**: None.
+-   **Broken**: Profit analytics data fetching/display.
 -   **Mocked**: None.
--   **Untested**: The latest batch of feature requests (device key generator, OCR, etc.) is not yet implemented.
+-   **Untested**: The latest fixes for the device count display, push notifications, chat UI keyboard overlay, and bank statement analyzer are implemented but have not been confirmed as working by the user because they require a new mobile app build.
 
 **3rd Party Integrations**
 -   MongoDB Atlas (via user's )
+-   **Stripe (Live)**: User's live  key is configured on the backend.
 -   APScheduler
--   Stripe
 -   Resend
 -   Chart.js
 -   Telegram
--   Expo Application Services (EAS)
--   Expo Push Notifications
--    (for offline detection)
--    (for offline data)
+-   Expo Application Services (EAS) & Expo Push Notifications
+-   
+-   
+-   **Emergent LLM Key**: Used for the AI Vision OCR feature.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES
+-   **Testing agent used after significant changes**: YES (once, early in the session)
 -   **Troubleshoot agent used after agent stuck in loop**: NO
 -   **Test files created**: None
--   **Known regressions**: None
+-   **Known regressions**: The device count, chat UI, and push notification features have all regressed or failed after initial implementation and fixes.
 
 **Credentials to test flow:**
 -   **Web Portal / Admin App**:
-    -   Superadmin user:  (password is in the logs or should be confirmed with the user).
-    -   Other users were created but plans need to be set to test access gating.
+    -   Superadmin user:  (password is in the logs or can be reset).
 -   **VPS SSH**:
     -   IP: 
     -   User: 
-    -   Password: 
+    -   Password: (Available in previous session logs)
 
 **What agent forgot to execute**
--   Nothing. The agent successfully completed an extremely large set of complex tasks and is correctly positioned to start the next batch of user requests.</analysis>
+-   The agent did not update the  file after completing the large batch of portal and backend features.
+-   The agent has fallen into a fix-and-build loop for several issues (chat, push notifications) without a deeper, more systematic debugging phase, leading to user frustration and recurring bugs.</analysis>

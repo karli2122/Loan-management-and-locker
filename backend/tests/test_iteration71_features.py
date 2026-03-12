@@ -20,7 +20,7 @@ import pytest
 import requests
 import json
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://loan-admin-hub-2.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://analytics-debug-11.preview.emergentagent.com").rstrip("/")
 
 
 class TestAdminLogin:
