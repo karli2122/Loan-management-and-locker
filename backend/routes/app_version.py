@@ -12,6 +12,14 @@ db = client[os.environ.get("DB_NAME")]
 COLLECTION = "app_versions"
 
 
+def _parse_version(v: str):
+    """Parse a version string like '1.2.3' into a tuple of ints for comparison."""
+    try:
+        return tuple(int(x) for x in v.strip().split("."))
+    except (ValueError, AttributeError):
+        return (0, 0, 0)
+
+
 async def _ensure_defaults():
     """Seed default version entries if they don't exist."""
     for app_type in ("admin", "client"):
@@ -43,11 +51,16 @@ async def check_version(
         return {"update_available": False}
 
     latest_code = record.get("version_code", 1)
-    update_available = current_code < latest_code
+    latest_version = record.get("latest_version", "1.0.0")
+
+    # Check both version code AND version string — either being newer triggers update
+    code_newer = current_code < latest_code
+    version_newer = _parse_version(current_version) < _parse_version(latest_version)
+    update_available = code_newer or version_newer
 
     return {
         "update_available": update_available,
-        "latest_version": record.get("latest_version", "1.0.0"),
+        "latest_version": latest_version,
         "latest_version_code": latest_code,
         "download_url": record.get("download_url", ""),
         "release_notes": record.get("release_notes", ""),
