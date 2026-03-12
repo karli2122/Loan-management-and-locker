@@ -147,8 +147,22 @@ export default function AdminSettings() {
       // Fetch admin settings for late fees and auto-lock
       await fetchAdminSettings(token);
       
-      // Only fetch admin list if user is an admin
-      if (token && role === 'admin') {
+      // Always check if user is superadmin
+      try {
+        const creditsResponse = await fetch(`${API_URL}/api/admin/credits?admin_token=${token}`);
+        if (creditsResponse.ok) {
+          const creditsData = await creditsResponse.json();
+          setIsSuperAdmin(creditsData.is_super_admin === true);
+          // Also update role if superadmin
+          if (creditsData.is_super_admin) {
+            setCurrentUserRole('admin');
+            await AsyncStorage.setItem('admin_role', 'admin');
+          }
+        }
+      } catch (e) { console.error('Credits check failed', e); }
+      
+      // Only fetch admin list if user is an admin or superadmin
+      if (token && (role === 'admin' || role === 'superadmin')) {
         await fetchAdminList(token);
       }
       
@@ -1235,7 +1249,7 @@ export default function AdminSettings() {
         )}
 
         {/* Admin Management Section - Only for Admins */}
-        {currentUserRole === 'admin' && (
+        {(currentUserRole === 'admin' || currentUserRole === 'superadmin' || isSuperAdmin) && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>
