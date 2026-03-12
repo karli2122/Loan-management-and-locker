@@ -75,6 +75,15 @@ Full-stack loan management application called "PayLock Pro" for an Estonian IT c
 - **Emergency Call Fix**: Kiosk mode was blocking dialer from opening. Now exits kiosk mode + re-enables status bar before dialing, and re-engages all protections after call ends. Changed from ACTION_CALL (requires permission) to ACTION_DIAL.
 - **Status Bar Bypass Fix**: Made accessibility service much more aggressive when SystemUI is detected during lock — rapid-fire GLOBAL_ACTION_BACK (8 staggered delays from 50ms-1000ms), GLOBAL_ACTION_HOME to force-close shade, StatusBarManager.collapsePanels() via reflection, plus forced app relaunch.
 
+## Portal Improvements (Mar 12, 2026)
+- **Upload Document**: Replaced raw Client ID text input with searchable client dropdown (fetches clients list, filters by name/phone, shows client details)
+- **Bank Statement Analyzer**: Added full new page to the portal with:
+  - Searchable client dropdown (optional)
+  - File upload for .pdf, .csv, .xml, .asice formats
+  - AI-powered analysis with income/expense breakdown
+  - Analysis history table with view details modal
+  - Connected to existing `/api/bank-statements/analyze` and `/api/bank-statements/history` endpoints
+
 ## Backlog
 - **P0**: Production deployment (user to click Deploy in Emergent UI)
 - **P1**: Portal JS modularization (portal-app.js → modules)

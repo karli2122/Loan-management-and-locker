@@ -93,6 +93,7 @@ const NAV_PERMS = {
   reports: 'reports',
   devices: 'devices',
   documents: 'documents',
+  bank_statements: 'documents',
   import: 'import',
   telegram: 'reminders',
   schedules: 'schedules',
@@ -112,6 +113,7 @@ function renderSidebar() {
     { id:'reports', icon:'fa-chart-bar', label: t('nav_reports') },
     { id:'devices', icon:'fa-mobile-alt', label: t('nav_devices') },
     { id:'documents', icon:'fa-folder-open', label: t('nav_documents') },
+    { id:'bank_statements', icon:'fa-university', label: 'Bank Analyzer' },
     { id:'import', icon:'fa-file-csv', label: t('nav_import') },
     { id:'schedules', icon:'fa-calendar-check', label: t('nav_schedules') },
     { id:'telegram', icon:'fa-paper-plane', label: t('nav_telegram') },
@@ -161,6 +163,7 @@ async function loadPage() {
       case 'reports': await renderReports(el); break;
       case 'devices': await renderDevices(el); break;
       case 'documents': await renderDocuments(el); break;
+      case 'bank_statements': await renderBankStatements(el); break;
       case 'import': await renderImport(el); break;
       case 'telegram': await renderTelegram(el); break;
       case 'team': await renderTeam(el); break;
@@ -1428,7 +1431,13 @@ function showUploadDoc() {
   overlay.className = 'modal-overlay'; overlay.id = 'modal-overlay';
   overlay.innerHTML = `<div class="modal"><h3>Upload Document</h3>
     <form id="upload-doc-form">
-      <div class="form-group"><label>Client ID *</label><input id="ud-client" required data-testid="ud-client-id"></div>
+      <div class="form-group"><label>Client *</label>
+        <div style="position:relative">
+          <input id="ud-client-search" placeholder="Search clients by name..." autocomplete="off" data-testid="ud-client-search" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)">
+          <input type="hidden" id="ud-client" required>
+          <div id="ud-client-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:200px;overflow-y:auto;background:var(--bg-card);border:1px solid var(--border);border-radius:0 0 8px 8px;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.3)"></div>
+        </div>
+      </div>
       <div class="form-row"><div class="form-group"><label>Document Type</label><select id="ud-type" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)" data-testid="ud-type">
         <option value="contract">Contract</option><option value="id_scan">ID Scan</option><option value="proof_of_income">Proof of Income</option><option value="other">Other</option>
       </select></div><div class="form-group"><label>Description</label><input id="ud-desc" data-testid="ud-desc"></div></div>
@@ -1439,11 +1448,48 @@ function showUploadDoc() {
     </form></div>`;
   document.body.appendChild(overlay);
   overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+
+  // Client search dropdown logic
+  let allClients = [];
+  (async () => {
+    try {
+      const data = await api('GET', '/clients');
+      allClients = data.clients || [];
+    } catch(e) { console.error('Failed to load clients:', e); }
+  })();
+
+  const searchInput = document.getElementById('ud-client-search');
+  const dropdown = document.getElementById('ud-client-dropdown');
+  const hiddenInput = document.getElementById('ud-client');
+
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.toLowerCase().trim();
+    if (!q) { dropdown.style.display = 'none'; return; }
+    const matches = allClients.filter(c => c.name.toLowerCase().includes(q) || (c.phone||'').includes(q) || (c.id||'').includes(q)).slice(0, 10);
+    if (matches.length === 0) {
+      dropdown.innerHTML = '<div style="padding:10px;color:var(--text-muted)">No clients found</div>';
+    } else {
+      dropdown.innerHTML = matches.map(c => `<div class="client-dropdown-item" data-id="${c.id}" style="padding:10px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.15s" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'"><b>${esc(c.name)}</b> <span style="color:var(--text-muted);font-size:0.85em">${esc(c.phone||'')} - ${c.id.substring(0,8)}</span></div>`).join('');
+    }
+    dropdown.style.display = 'block';
+  });
+
+  dropdown.addEventListener('click', (e) => {
+    const item = e.target.closest('.client-dropdown-item');
+    if (!item) return;
+    const id = item.dataset.id;
+    const client = allClients.find(c => c.id === id);
+    searchInput.value = client ? client.name : id;
+    hiddenInput.value = id;
+    dropdown.style.display = 'none';
+  });
+
   document.getElementById('upload-doc-form').onsubmit = async(e) => {
     e.preventDefault();
+    if (!hiddenInput.value) { toast('Please select a client', 'error'); return; }
     const fd = new FormData();
     fd.append('admin_token', state.token);
-    fd.append('client_id', document.getElementById('ud-client').value);
+    fd.append('client_id', hiddenInput.value);
     fd.append('doc_type', document.getElementById('ud-type').value);
     fd.append('description', document.getElementById('ud-desc').value);
     fd.append('file', document.getElementById('ud-file').files[0]);
@@ -1461,7 +1507,170 @@ async function deleteDoc(id) {
   try { await api('DELETE', `/documents/${id}`); toast('Document deleted'); navigate('documents'); } catch(e) { toast(e.message, 'error'); }
 }
 
-// ===================== CSV IMPORT =====================
+// ===================== BANK STATEMENT ANALYZER =====================
+async function renderBankStatements(el) {
+  // Load clients and analysis history in parallel
+  let allClients = [];
+  let history = [];
+  try {
+    const [clientData, histData] = await Promise.all([
+      api('GET', '/clients'),
+      api('GET', '/bank-statements/history').catch(() => [])
+    ]);
+    allClients = clientData.clients || [];
+    history = Array.isArray(histData) ? histData : [];
+  } catch(e) { console.error('Bank statements load error:', e); }
+
+  el.innerHTML = `
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:start">
+      <div><h2>Bank Statement Analyzer</h2><p>Upload and analyze bank statements with AI</p></div>
+    </div>
+    <div class="card" data-testid="bs-upload-card">
+      <div class="card-header"><h3><i class="fas fa-file-invoice-dollar"></i> Analyze Statement</h3></div>
+      <form id="bs-analyze-form" style="padding:0 20px 20px">
+        <div class="form-row">
+          <div class="form-group" style="flex:1">
+            <label>Client (optional)</label>
+            <div style="position:relative">
+              <input id="bs-client-search" placeholder="Search clients..." autocomplete="off" data-testid="bs-client-search" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)">
+              <input type="hidden" id="bs-client-id">
+              <div id="bs-client-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:200px;overflow-y:auto;background:var(--bg-card);border:1px solid var(--border);border-radius:0 0 8px 8px;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.3)"></div>
+            </div>
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>Statement File (.pdf, .csv, .xml, .asice)</label>
+            <input id="bs-file" type="file" accept=".pdf,.csv,.xml,.asice" required data-testid="bs-file" style="padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);width:100%">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button type="submit" class="btn btn-primary btn-sm" data-testid="bs-analyze-btn"><i class="fas fa-brain"></i> Analyze with AI</button>
+        </div>
+      </form>
+    </div>
+    <div id="bs-result" style="margin-top:16px"></div>
+    <div class="card" style="margin-top:16px" data-testid="bs-history-card">
+      <div class="card-header"><h3><i class="fas fa-history"></i> Analysis History</h3></div>
+      <div id="bs-history-container">
+        ${history.length > 0 ? `<div class="table-wrap"><table data-testid="bs-history-table">
+          <thead><tr><th>Date</th><th>File</th><th>Client</th><th>Income</th><th>Expenses</th><th>Actions</th></tr></thead>
+          <tbody>${history.map(h => {
+            const a = h.analysis || {};
+            const totalIncome = Array.isArray(a.income_categories) ? a.income_categories.reduce((s,c) => s + (c.total||0), 0) : 0;
+            const totalExpense = Array.isArray(a.expense_categories) ? a.expense_categories.reduce((s,c) => s + (c.total||0), 0) : 0;
+            const clientName = allClients.find(c => c.id === h.client_id)?.name || (h.client_id || '-');
+            return `<tr>
+              <td>${fmtDate(h.analyzed_at)}</td>
+              <td>${esc(h.filename||'Unknown')}</td>
+              <td>${esc(clientName)}</td>
+              <td style="color:var(--success)">${cur(totalIncome)}</td>
+              <td style="color:var(--danger)">${cur(totalExpense)}</td>
+              <td><button class="btn btn-ghost btn-sm" onclick='showBsDetail(${JSON.stringify(h).replace(/'/g,"\\'")})'><i class="fas fa-eye"></i></button></td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>` : '<p style="padding:20px;color:var(--text-muted)">No analyses yet. Upload a bank statement to get started.</p>'}
+      </div>
+    </div>`;
+
+  // Client search dropdown for bank statement form
+  const bsSearch = document.getElementById('bs-client-search');
+  const bsDropdown = document.getElementById('bs-client-dropdown');
+  const bsHidden = document.getElementById('bs-client-id');
+
+  bsSearch.addEventListener('input', () => {
+    const q = bsSearch.value.toLowerCase().trim();
+    if (!q) { bsDropdown.style.display = 'none'; return; }
+    const matches = allClients.filter(c => c.name.toLowerCase().includes(q) || (c.phone||'').includes(q)).slice(0, 10);
+    bsDropdown.innerHTML = matches.length > 0
+      ? matches.map(c => `<div class="client-dropdown-item" data-id="${c.id}" style="padding:10px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.15s" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'"><b>${esc(c.name)}</b> <span style="color:var(--text-muted);font-size:0.85em">${esc(c.phone||'')}</span></div>`).join('')
+      : '<div style="padding:10px;color:var(--text-muted)">No clients found</div>';
+    bsDropdown.style.display = 'block';
+  });
+
+  bsDropdown.addEventListener('click', (e) => {
+    const item = e.target.closest('.client-dropdown-item');
+    if (!item) return;
+    const client = allClients.find(c => c.id === item.dataset.id);
+    bsSearch.value = client ? client.name : item.dataset.id;
+    bsHidden.value = item.dataset.id;
+    bsDropdown.style.display = 'none';
+  });
+
+  // Form submission
+  document.getElementById('bs-analyze-form').onsubmit = async(e) => {
+    e.preventDefault();
+    const file = document.getElementById('bs-file').files[0];
+    if (!file) { toast('Please select a file', 'error'); return; }
+    const resultDiv = document.getElementById('bs-result');
+    resultDiv.innerHTML = '<div class="card" style="padding:30px;text-align:center"><div class="spinner"></div><p style="margin-top:12px;color:var(--text-muted)">Analyzing statement with AI... This may take up to 30 seconds.</p></div>';
+
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('admin_token', state.token);
+    if (bsHidden.value) fd.append('client_id', bsHidden.value);
+
+    try {
+      const res = await fetch(`${API_BASE}/bank-statements/analyze?admin_token=${encodeURIComponent(state.token)}${bsHidden.value ? '&client_id=' + encodeURIComponent(bsHidden.value) : ''}`, {
+        method: 'POST', body: fd
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Analysis failed');
+      renderBsResult(resultDiv, data);
+    } catch(err) { resultDiv.innerHTML = `<div class="card" style="padding:20px"><p class="error-msg"><i class="fas fa-exclamation-triangle"></i> ${esc(err.message)}</p></div>`; }
+  };
+}
+
+function renderBsResult(container, data) {
+  const a = data.analysis || {};
+  const income = Array.isArray(a.income_categories) ? a.income_categories : [];
+  const expenses = Array.isArray(a.expense_categories) ? a.expense_categories : [];
+  const totalIncome = income.reduce((s,c) => s + (c.total||0), 0);
+  const totalExpense = expenses.reduce((s,c) => s + (c.total||0), 0);
+  const netFlow = totalIncome - totalExpense;
+
+  container.innerHTML = `
+    <div class="card" data-testid="bs-result-card">
+      <div class="card-header"><h3><i class="fas fa-chart-pie"></i> Analysis Result — ${esc(data.filename||'')}</h3></div>
+      <div class="stats-grid" style="padding:0 20px">
+        <div class="stat-card" style="border-left:3px solid var(--success)"><div class="stat-label">Total Income</div><div class="stat-value" style="color:var(--success)">${cur(totalIncome)}</div></div>
+        <div class="stat-card" style="border-left:3px solid var(--danger)"><div class="stat-label">Total Expenses</div><div class="stat-value" style="color:var(--danger)">${cur(totalExpense)}</div></div>
+        <div class="stat-card" style="border-left:3px solid ${netFlow >= 0 ? 'var(--success)' : 'var(--danger)'}"><div class="stat-label">Net Cash Flow</div><div class="stat-value" style="color:${netFlow >= 0 ? 'var(--success)' : 'var(--danger)'}">${cur(netFlow)}</div></div>
+      </div>
+      ${a.period ? `<p style="padding:0 20px;color:var(--text-muted)">Period: ${esc(a.period)}</p>` : ''}
+      ${a.account_holder ? `<p style="padding:0 20px;color:var(--text-muted)">Account: ${esc(a.account_holder)}</p>` : ''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:20px">
+        <div>
+          <h4 style="margin-bottom:8px;color:var(--success)"><i class="fas fa-arrow-down"></i> Income Categories</h4>
+          ${income.length > 0 ? `<table><thead><tr><th>Category</th><th>Amount</th><th>Count</th></tr></thead><tbody>
+            ${income.map(c => `<tr><td>${esc(c.category||'Other')}</td><td style="color:var(--success)">${cur(c.total||0)}</td><td>${c.count||'-'}</td></tr>`).join('')}
+          </tbody></table>` : '<p style="color:var(--text-muted)">No income detected</p>'}
+        </div>
+        <div>
+          <h4 style="margin-bottom:8px;color:var(--danger)"><i class="fas fa-arrow-up"></i> Expense Categories</h4>
+          ${expenses.length > 0 ? `<table><thead><tr><th>Category</th><th>Amount</th><th>Count</th></tr></thead><tbody>
+            ${expenses.map(c => `<tr><td>${esc(c.category||'Other')}</td><td style="color:var(--danger)">${cur(c.total||0)}</td><td>${c.count||'-'}</td></tr>`).join('')}
+          </tbody></table>` : '<p style="color:var(--text-muted)">No expenses detected</p>'}
+        </div>
+      </div>
+      ${a.summary ? `<div style="padding:0 20px 20px"><h4 style="margin-bottom:8px"><i class="fas fa-clipboard-list"></i> AI Summary</h4><p style="color:var(--text-muted);line-height:1.6">${esc(a.summary)}</p></div>` : ''}
+    </div>`;
+}
+
+function showBsDetail(data) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay'; overlay.id = 'modal-overlay';
+  const resultDiv = document.createElement('div');
+  resultDiv.style.cssText = 'max-width:900px;max-height:80vh;overflow-y:auto;margin:auto';
+  renderBsResult(resultDiv, data);
+  overlay.innerHTML = `<div class="modal" style="max-width:950px;max-height:85vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3>Analysis Details</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()"><i class="fas fa-times"></i></button>
+    </div>
+    ${resultDiv.innerHTML}
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+}
 async function renderImport(el) {
   el.innerHTML = `
     <div class="page-header"><h2>${t('import_title')}</h2><p>${t('import_subtitle')}</p></div>
