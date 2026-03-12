@@ -40,7 +40,10 @@ export default function DeviceManagement() {
   const fetchStats = async () => {
     try {
       const adminId = await AsyncStorage.getItem('admin_id');
-      const url = adminId 
+      const isSuperStr = await AsyncStorage.getItem('is_super_admin');
+      const isSuperAdmin = isSuperStr === 'true';
+      // Superadmin sees all devices, regular admin sees only their own
+      const url = (!isSuperAdmin && adminId)
         ? `${API_URL}/api/stats?admin_id=${adminId}` 
         : `${API_URL}/api/stats`;
       const response = await fetch(url);
