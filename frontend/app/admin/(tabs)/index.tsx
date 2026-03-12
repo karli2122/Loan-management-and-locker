@@ -21,6 +21,8 @@ import { useTheme } from '../../../src/context/ThemeContext';
 import { LanguagePicker } from '../../../src/components/LanguagePicker';
 import API_URL from '../../../src/constants/api';
 import { LineChart } from 'react-native-chart-kit';
+import * as Notifications from 'expo-notifications';
+import NetInfo from '@react-native-community/netinfo';
 
 
 interface LoanStats {
@@ -93,6 +95,14 @@ export default function Dashboard() {
     data: [],
   });
   const [initialLoading, setInitialLoading] = useState(true);
+  
+  // Push notifications state
+  const [dueTodayCount, setDueTodayCount] = useState(0);
+  
+  // Offline mode state
+  const [isOffline, setIsOffline] = useState(false);
+  const [offlineQueue, setOfflineQueue] = useState<any[]>([]);
+  const [syncingOffline, setSyncingOffline] = useState(false);
   
   // Admin filter state
   const [adminList, setAdminList] = useState<AdminUser[]>([]);
@@ -305,6 +315,100 @@ export default function Dashboard() {
     }
   }, [selectedAdminId]);
 
+  // Push notifications setup
+  useEffect(() => {
+    const setupPushNotifications = async () => {
+      try {
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+        if (existingStatus !== 'granted') {
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        }
+        if (finalStatus === 'granted') {
+          const tokenData = await Notifications.getExpoPushTokenAsync();
+          const adminToken = await AsyncStorage.getItem('admin_token');
+          if (adminToken && tokenData?.data) {
+            fetch(`${API_URL}/api/push/register-token?token=${encodeURIComponent(tokenData.data)}&admin_token=${adminToken}`, { method: 'POST' }).catch(() => {});
+          }
+        }
+      } catch (e) {
+        console.log('Push notification setup skipped:', e);
+      }
+    };
+    setupPushNotifications();
+
+    // Check payments due today
+    const checkDueToday = async () => {
+      try {
+        const adminToken = await AsyncStorage.getItem('admin_token');
+        if (!adminToken) return;
+        const resp = await fetch(`${API_URL}/api/push/due-today?admin_token=${adminToken}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          setDueTodayCount(data.count || 0);
+          if (data.count > 0) {
+            await Notifications.scheduleNotificationAsync({
+              content: { title: 'Payments Due Today', body: `${data.count} payment(s) due today`, sound: 'default' },
+              trigger: null,
+            });
+          }
+        }
+      } catch (e) { console.log('Due today check skipped:', e); }
+    };
+    checkDueToday();
+  }, []);
+
+  // Offline mode: network monitoring + queue sync
+  useEffect(() => {
+    const loadOfflineQueue = async () => {
+      const q = await AsyncStorage.getItem('offline_queue');
+      if (q) setOfflineQueue(JSON.parse(q));
+    };
+    loadOfflineQueue();
+
+    const unsubscribe = NetInfo.addEventListener(state => {
+      const wasOffline = isOffline;
+      const nowOffline = !state.isConnected;
+      setIsOffline(nowOffline);
+      if (wasOffline && !nowOffline) {
+        syncOfflineQueue();
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const addToOfflineQueue = async (action: any) => {
+    const newQueue = [...offlineQueue, { ...action, timestamp: Date.now() }];
+    setOfflineQueue(newQueue);
+    await AsyncStorage.setItem('offline_queue', JSON.stringify(newQueue));
+  };
+
+  const syncOfflineQueue = async () => {
+    if (offlineQueue.length === 0) return;
+    setSyncingOffline(true);
+    const adminToken = await AsyncStorage.getItem('admin_token');
+    let remaining: any[] = [];
+    for (const action of offlineQueue) {
+      try {
+        await fetch(`${API_URL}${action.url}${action.url.includes('?') ? '&' : '?'}admin_token=${adminToken}`, {
+          method: action.method || 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: action.body ? JSON.stringify(action.body) : undefined,
+        });
+      } catch {
+        remaining.push(action);
+      }
+    }
+    setOfflineQueue(remaining);
+    await AsyncStorage.setItem('offline_queue', JSON.stringify(remaining));
+    setSyncingOffline(false);
+    if (remaining.length === 0) {
+      Alert.alert('Sync Complete', 'All offline actions have been synced.');
+      onRefresh();
+    }
+  };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([
@@ -358,6 +462,35 @@ export default function Dashboard() {
         contentContainerStyle={styles.contentContainer}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />}
       >
+        {/* Offline Mode Banner */}
+        {isOffline && (
+          <View style={{ backgroundColor: '#f59e0b', padding: 12, borderRadius: 8, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="cloud-offline" size={20} color="#fff" />
+            <Text style={{ color: '#fff', marginLeft: 8, fontWeight: '600', flex: 1 }}>Offline Mode — Actions will sync when back online</Text>
+            {offlineQueue.length > 0 && (
+              <View style={{ backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+                <Text style={{ color: '#f59e0b', fontWeight: '700', fontSize: 12 }}>{offlineQueue.length}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Syncing Banner */}
+        {syncingOffline && (
+          <View style={{ backgroundColor: '#2563EB', padding: 12, borderRadius: 8, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}>
+            <ActivityIndicator size="small" color="#fff" />
+            <Text style={{ color: '#fff', marginLeft: 8, fontWeight: '600' }}>Syncing offline actions...</Text>
+          </View>
+        )}
+
+        {/* Payments Due Today Alert */}
+        {dueTodayCount > 0 && (
+          <View style={{ backgroundColor: '#ef4444', padding: 12, borderRadius: 8, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }} data-testid="due-today-banner">
+            <Ionicons name="alarm" size={20} color="#fff" />
+            <Text style={{ color: '#fff', marginLeft: 8, fontWeight: '600', flex: 1 }}>{dueTodayCount} payment(s) due today</Text>
+          </View>
+        )}
+
         {/* Admin Filter for Superadmins */}
         {isSuperAdmin && (
           <TouchableOpacity

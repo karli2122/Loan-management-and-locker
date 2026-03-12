@@ -130,6 +130,9 @@ function renderSidebar() {
     { id:'devices', icon:'fa-mobile-alt', label: t('nav_devices') },
     { id:'documents', icon:'fa-folder-open', label: t('nav_documents') },
     { id:'bank_statements', icon:'fa-university', label: 'Bank Analyzer' },
+    { id:'risk_scoring', icon:'fa-shield-alt', label: 'Risk Scoring' },
+    { id:'bulk_messaging', icon:'fa-paper-plane', label: 'Bulk Messaging' },
+    { id:'exports', icon:'fa-file-export', label: 'Exports' },
     { id:'import', icon:'fa-file-csv', label: t('nav_import') },
     { id:'schedules', icon:'fa-calendar-check', label: t('nav_schedules') },
     { id:'telegram', icon:'fa-paper-plane', label: t('nav_telegram') },
@@ -180,6 +183,9 @@ async function loadPage() {
       case 'devices': await renderDevices(el); break;
       case 'documents': await renderDocuments(el); break;
       case 'bank_statements': await renderBankStatements(el); break;
+      case 'risk_scoring': if (window.PLP?.renderRiskScoring) { window.PLP.state.token = state.token; window.PLP.API_BASE = API_BASE; await window.PLP.renderRiskScoring(el); } break;
+      case 'bulk_messaging': if (window.PLP?.renderBulkMessaging) { window.PLP.state.token = state.token; window.PLP.API_BASE = API_BASE; await window.PLP.renderBulkMessaging(el); } break;
+      case 'exports': if (window.PLP?.renderReports) { window.PLP.state.token = state.token; window.PLP.API_BASE = API_BASE; await window.PLP.renderReports(el); } break;
       case 'import': await renderImport(el); break;
       case 'telegram': await renderTelegram(el); break;
       case 'team': await renderTeam(el); break;

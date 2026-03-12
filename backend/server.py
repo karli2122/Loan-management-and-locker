@@ -35,6 +35,9 @@ from routes import (
     paid_loans_router,
     bank_statements_router,
     payments_router,
+    messaging_router,
+    risk_scoring_router,
+    push_notifications_router,
 )
 from routes.backup import router as backup_router
 from routes.provisioning import router as provisioning_router
@@ -127,6 +130,9 @@ app.include_router(exports_router, prefix="/api")
 app.include_router(report_schedules_router)
 app.include_router(contact_router)
 app.include_router(client_payments_router, prefix="/api")
+app.include_router(messaging_router)
+app.include_router(risk_scoring_router)
+app.include_router(push_notifications_router)
 
 
 WEBSITE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "paylockpro-website")
@@ -247,6 +253,19 @@ async def serve_portal_app_js():
         return JSONResponse(status_code=404, content={"error": "Not found"})
     with open(js_path, "r") as f:
         return Response(content=f.read(), media_type="application/javascript")
+
+
+@app.get("/api/portal/{filename:path}")
+async def serve_portal_file(filename: str):
+    """Serve any portal static file."""
+    safe_name = os.path.basename(filename)
+    file_path = os.path.join(os.path.dirname(__file__), "static", "portal", safe_name)
+    if not os.path.exists(file_path):
+        return JSONResponse(status_code=404, content={"error": "Not found"})
+    media = "application/javascript" if safe_name.endswith(".js") else "text/css" if safe_name.endswith(".css") else "text/html"
+    with open(file_path, "r") as f:
+        return Response(content=f.read(), media_type=media)
+
 
 
 @app.get("/api/portal")

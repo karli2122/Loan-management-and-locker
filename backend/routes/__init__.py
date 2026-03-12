@@ -14,6 +14,9 @@ from .credit_score import router as credit_score_router
 from .paid_loans import router as paid_loans_router
 from .bank_statements import router as bank_statements_router
 from .payments import router as payments_router
+from .messaging import router as messaging_router
+from .risk_scoring import router as risk_scoring_router
+from .push_notifications import router as push_notifications_router
 
 __all__ = [
     "admin_router",
@@ -31,4 +34,7 @@ __all__ = [
     "paid_loans_router",
     "bank_statements_router",
     "payments_router",
+    "messaging_router",
+    "risk_scoring_router",
+    "push_notifications_router",
 ]

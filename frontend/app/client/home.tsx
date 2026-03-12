@@ -13,6 +13,8 @@ import {
   BackHandler,
   StatusBar,
   Pressable,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -88,6 +90,12 @@ export default function ClientHome() {
   const maxRetries = 5;
   const [emergencyCallActive, setEmergencyCallActive] = useState(false);
   const emergencyCallCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  // In-app messaging state
+  const [showChat, setShowChat] = useState(false);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [chatMessage, setChatMessage] = useState('');
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const resolveProjectId = useCallback(
     () => Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId,
     []
@@ -1338,6 +1346,49 @@ export default function ClientHome() {
     };
   }, []);
 
+  // In-app messaging functions
+  const fetchMessages = async () => {
+    if (!clientId) return;
+    setLoadingMessages(true);
+    try {
+      const token = await AsyncStorage.getItem('client_device_token');
+      const resp = await fetch(`${API_URL}/api/messages?client_id=${clientId}&client_token=${token}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        setMessages(data.messages || []);
+        // Mark messages as read
+        fetch(`${API_URL}/api/messages/mark-read?client_id=${clientId}&client_token=${token}`, { method: 'POST' }).catch(() => {});
+      }
+    } catch (e) { console.log('Failed to fetch messages:', e); }
+    setLoadingMessages(false);
+  };
+
+  const sendChatMessage = async () => {
+    if (!chatMessage.trim() || !clientId) return;
+    try {
+      const token = await AsyncStorage.getItem('client_device_token');
+      const resp = await fetch(`${API_URL}/api/messages?client_id=${clientId}&text=${encodeURIComponent(chatMessage)}&client_token=${token}`, { method: 'POST' });
+      if (resp.ok) {
+        setChatMessage('');
+        fetchMessages();
+      }
+    } catch (e) { Alert.alert('Error', 'Failed to send message'); }
+  };
+
+  // Multi-language lock screen message
+  const getLockMessage = () => {
+    const msg = status?.lock_message || '';
+    if (!msg) {
+      const lockMessages: Record<string, string> = {
+        en: 'This device has been locked due to overdue payment. Please contact your administrator.',
+        et: 'See seade on lukustatud maksmata arve tõttu. Palun võtke ühendust administraatoriga.',
+        ru: 'Это устройство заблокировано из-за просроченного платежа. Пожалуйста, свяжитесь с администратором.',
+      };
+      return lockMessages[language] || lockMessages.en;
+    }
+    return msg;
+  };
+
   // Lock Screen Overlay - Full screen, no escape
   // Show BEFORE loading spinner so cached lock state is immediately visible on restart
   if (status?.is_locked) {
@@ -1364,7 +1415,7 @@ export default function ClientHome() {
             </View>
           )}
           <Text style={styles.lockMessage}>
-            {status.lock_message || t('defaultLockMessage')}
+            {getLockMessage()}
           </Text>
 
           <View style={styles.lockLoanInfo}>
@@ -1874,6 +1925,60 @@ export default function ClientHome() {
         </View>
         )}
       </ScrollView>
+
+      {/* Chat Floating Button */}
+      <TouchableOpacity
+        style={{ position: 'absolute', bottom: 24, right: 24, backgroundColor: '#10B981', width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
+        onPress={() => { setShowChat(true); fetchMessages(); }}
+        data-testid="chat-fab"
+      >
+        <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
+      </TouchableOpacity>
+
+      {/* Chat Modal */}
+      {showChat && (
+        <Modal visible={showChat} animationType="slide" transparent onRequestClose={() => setShowChat(false)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+            <View style={{ backgroundColor: '#0B1527', borderTopLeftRadius: 20, borderTopRightRadius: 20, height: '70%', padding: 16 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Text style={{ color: '#F8FAFC', fontSize: 18, fontWeight: '700' }}>Message Admin</Text>
+                <TouchableOpacity onPress={() => setShowChat(false)}>
+                  <Ionicons name="close" size={24} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={{ flex: 1, marginBottom: 12 }}>
+                {loadingMessages ? (
+                  <ActivityIndicator size="small" color="#10B981" style={{ marginTop: 20 }} />
+                ) : messages.length === 0 ? (
+                  <Text style={{ color: '#64748B', textAlign: 'center', marginTop: 40 }}>No messages yet. Send a message to your admin.</Text>
+                ) : (
+                  messages.map((msg, i) => (
+                    <View key={msg.id || i} style={{ alignSelf: msg.sender_type === 'client' ? 'flex-end' : 'flex-start', backgroundColor: msg.sender_type === 'client' ? '#10B981' : '#1E3050', padding: 10, borderRadius: 12, marginBottom: 8, maxWidth: '80%' }}>
+                      <Text style={{ color: '#F8FAFC', fontSize: 14 }}>{msg.text}</Text>
+                      <Text style={{ color: msg.sender_type === 'client' ? '#A7F3D0' : '#64748B', fontSize: 10, marginTop: 4 }}>{msg.created_at ? new Date(msg.created_at).toLocaleTimeString() : ''}</Text>
+                    </View>
+                  ))
+                )}
+              </ScrollView>
+
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TextInput
+                  style={{ flex: 1, backgroundColor: '#152035', color: '#F8FAFC', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: '#1E3050' }}
+                  placeholder="Type a message..."
+                  placeholderTextColor="#64748B"
+                  value={chatMessage}
+                  onChangeText={setChatMessage}
+                  onSubmitEditing={sendChatMessage}
+                />
+                <TouchableOpacity onPress={sendChatMessage} style={{ backgroundColor: '#10B981', width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' }}>
+                  <Ionicons name="send" size={20} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }

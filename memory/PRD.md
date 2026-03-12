@@ -92,8 +92,31 @@ Full-stack loan management application called "PayLock Pro" for an Estonian IT c
 - **Sliding token expiration**: Token expiry refreshes on each verify call (30-day rolling window)
 - **Plan field in API responses**: Added `plan` field to login and verify endpoints
 
+## Major Feature Release (Mar 12, 2026)
+
+### Portal — Phase 1
+- **JS Modularization**: Split into `portal-core.js`, `portal-risk.js`, `portal-messaging.js`, `portal-reports.js` + main `portal-app.js`
+- **Risk Scoring Page**: AI-powered client risk analysis with doughnut + bar charts, risk factors, sortable client table
+- **Bulk Messaging Page**: Send Telegram messages to all/overdue/selected clients with templates
+- **Reports & Exports Page**: CSV/PDF/Excel download buttons for clients, payments, collection reports
+- **Real-time Dashboard Charts**: Already had Chart.js, enhanced with animated risk distribution
+- **Role-based Access**: Portal login gated to enterprise/custom plan users only
+
+### Admin App — Phase 2
+- **Push Notifications**: Expo push token registration + "payments due today" local notifications
+- **Offline Mode**: Network monitoring via NetInfo, offline action queue stored in AsyncStorage, auto-sync when back online with status banners
+- **Dashboard Alerts**: Offline banner (yellow), syncing banner (blue), due-today banner (red)
+
+### Client App — Phase 3
+- **In-app Messaging**: Floating chat button + slide-up chat modal for client ↔ admin messaging
+- **Multi-language Lock Screen**: Lock message auto-translates to Estonian (et), English (en), Russian (ru)
+
+### Backend — New APIs
+- `POST/GET /api/messages` — In-app messaging CRUD
+- `GET /api/risk/client/{id}` + `GET /api/risk/overview` — AI risk scoring
+- `POST /api/push/register-token` + `GET /api/push/due-today` + `POST /api/push/bulk-telegram` — Push notifications & bulk messaging
+
 ## Backlog
-- **P0**: Production deployment (user to click Deploy in Emergent UI)
-- **P1**: Portal JS modularization (portal-app.js → modules)
+- **P1**: Add more dashboard charts to admin app (overdue aging bar chart, collection trend line chart)
 - **P2**: WhatsApp Business API Integration
 - **P3**: Location heatmap visualization
