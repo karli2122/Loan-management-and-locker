@@ -26,6 +26,7 @@ export default {
       },
       package: IS_ADMIN_APP ? "com.paylock.admin" : "com.paylock.client",
       versionCode: 1,
+      softwareKeyboardLayoutMode: "resize",
       navigationBarColor: "#152035",
       navigationBarStyle: "dark",
       // Permissions: Admin app needs basic location/network, 

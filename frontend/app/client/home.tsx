@@ -15,6 +15,7 @@ import {
   Pressable,
   Modal,
   TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -1940,8 +1941,9 @@ export default function ClientHome() {
       {/* Chat Modal */}
       {showChat && (
         <Modal visible={showChat} animationType="slide" transparent onRequestClose={() => setShowChat(false)}>
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-            <View style={{ backgroundColor: '#0B1527', borderTopLeftRadius: 20, borderTopRightRadius: 20, height: '80%', paddingTop: 16, paddingHorizontal: 16 }}>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+              <View style={{ backgroundColor: '#0B1527', borderTopLeftRadius: 20, borderTopRightRadius: 20, height: '80%', paddingTop: 16, paddingHorizontal: 16 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <Text style={{ color: '#F8FAFC', fontSize: 18, fontWeight: '700' }}>Message Admin</Text>
                 <TouchableOpacity onPress={() => setShowChat(false)}>
@@ -1964,7 +1966,7 @@ export default function ClientHome() {
                 )}
               </ScrollView>
 
-              <View style={{ flexDirection: 'row', gap: 8, paddingBottom: 32 }}>
+              <View style={{ flexDirection: 'row', gap: 8, paddingBottom: 16 }}>
                 <TextInput
                   style={{ flex: 1, backgroundColor: '#152035', color: '#F8FAFC', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: '#1E3050' }}
                   placeholder="Type a message..."
@@ -1979,6 +1981,7 @@ export default function ClientHome() {
               </View>
             </View>
           </View>
+          </KeyboardAvoidingView>
         </Modal>
       )}
     </SafeAreaView>
