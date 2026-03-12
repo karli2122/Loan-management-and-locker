@@ -70,7 +70,16 @@ function bindLogin() {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ username: document.getElementById('login-user').value, password: document.getElementById('login-pass').value })
       }).then(r=>r.json());
-      if (data.token) { state.token = data.token; state.user = data; localStorage.setItem('plp_token', data.token); toast('Welcome back!'); render(); }
+      if (data.token) {
+        // Check plan - only enterprise or custom can access portal
+        const plan = (data.plan || '').toLowerCase();
+        if (plan !== 'enterprise' && plan !== 'custom') {
+          errEl.textContent = 'Portal access requires Enterprise or Custom plan. Please upgrade your subscription.';
+          errEl.classList.remove('hidden');
+          return;
+        }
+        state.token = data.token; state.user = data; localStorage.setItem('plp_token', data.token); toast('Welcome back!'); render();
+      }
       else { errEl.textContent = data.detail || 'Login failed'; errEl.classList.remove('hidden'); }
     } catch(err) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
   };
@@ -79,6 +88,13 @@ function bindLogin() {
 async function loadUser() {
   try {
     const data = await api('GET', `/admin/verify/${state.token}`);
+    // Check plan - only enterprise or custom can access portal
+    const plan = (data.plan || '').toLowerCase();
+    if (plan !== 'enterprise' && plan !== 'custom') {
+      logout();
+      toast('Portal access requires Enterprise or Custom plan.', 'error');
+      return;
+    }
     state.user = data;
     render();
   } catch { logout(); }

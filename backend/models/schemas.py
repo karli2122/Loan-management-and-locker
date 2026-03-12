@@ -46,6 +46,7 @@ class AdminResponse(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     permissions: Optional[list] = None
+    plan: Optional[str] = None
 
 
 class PasswordChange(BaseModel):

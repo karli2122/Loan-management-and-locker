@@ -84,6 +84,14 @@ Full-stack loan management application called "PayLock Pro" for an Estonian IT c
   - Analysis history table with view details modal
   - Connected to existing `/api/bank-statements/analyze` and `/api/bank-statements/history` endpoints
 
+## Auth & Access Control (Mar 12, 2026)
+- **Removed test users**: Deleted `testapiadmin` and `admin` from database
+- **Superadmin = Custom plan**: Set karli1987 to `plan=custom`, `role=superadmin`
+- **Portal plan gating**: Only `enterprise` or `custom` plan users can access the web portal (checked on login + token verify)
+- **Multi-session support**: Changed token storage from single-token to multi-token per admin (login from app + portal no longer invalidates each other)
+- **Sliding token expiration**: Token expiry refreshes on each verify call (30-day rolling window)
+- **Plan field in API responses**: Added `plan` field to login and verify endpoints
+
 ## Backlog
 - **P0**: Production deployment (user to click Deploy in Emergent UI)
 - **P1**: Portal JS modularization (portal-app.js → modules)

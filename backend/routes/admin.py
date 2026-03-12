@@ -62,10 +62,8 @@ async def register_admin(admin_data: AdminCreate, admin_token: str = Query(defau
     
     token = secrets.token_hex(32)
     expires_at = datetime.utcnow() + timedelta(hours=TOKEN_EXPIRY_HOURS)
-    await db.admin_tokens.update_one(
-        {"admin_id": admin.id},
-        {"$set": {"token": token, "created_at": datetime.utcnow(), "expires_at": expires_at}},
-        upsert=True
+    await db.admin_tokens.insert_one(
+        {"admin_id": admin.id, "token": token, "created_at": datetime.utcnow(), "expires_at": expires_at}
     )
     
     return AdminResponse(
@@ -96,11 +94,12 @@ async def login_admin(login_data: AdminLogin, request: Request = None):
     
     token = secrets.token_hex(32)
     expires_at = datetime.utcnow() + timedelta(hours=TOKEN_EXPIRY_HOURS)
-    await db.admin_tokens.update_one(
-        {"admin_id": admin["id"]},
-        {"$set": {"token": token, "created_at": datetime.utcnow(), "expires_at": expires_at}},
-        upsert=True
+    # Insert new token — allows multiple active sessions per admin (app + portal + other devices)
+    await db.admin_tokens.insert_one(
+        {"admin_id": admin["id"], "token": token, "created_at": datetime.utcnow(), "expires_at": expires_at}
     )
+    # Clean up old expired tokens for this admin
+    await db.admin_tokens.delete_many({"admin_id": admin["id"], "expires_at": {"$lt": datetime.utcnow()}})
     
     # Log login action
     ip_address = request.client.host if request and request.client else None
@@ -111,6 +110,14 @@ async def login_admin(login_data: AdminLogin, request: Request = None):
         ip_address=ip_address
     )
     
+    # Resolve the user's plan
+    user_plan = admin.get("plan", "") or admin.get("subscription_plan", "")
+    if admin.get("is_super_admin", False):
+        user_plan = "custom"
+    elif not user_plan:
+        sub = await db.subscriptions.find_one({"admin_id": admin["id"], "status": "active"}, {"_id": 0})
+        user_plan = sub.get("plan", "starter") if sub else "starter"
+
     return AdminResponse(
         id=admin["id"],
         username=admin["username"],
@@ -120,7 +127,8 @@ async def login_admin(login_data: AdminLogin, request: Request = None):
         token=token,
         first_name=admin.get("first_name"),
         last_name=admin.get("last_name"),
-        permissions=admin.get("permissions", [])
+        permissions=admin.get("permissions", []),
+        plan=user_plan
     )
 
 
@@ -133,6 +141,24 @@ async def verify_admin_token(token: str):
     
     token_doc = await db.admin_tokens.find_one({"token": token})
     admin = await db.admins.find_one({"id": token_doc["admin_id"]}, {"_id": 0, "password_hash": 0})
+    
+    # Sliding expiration: refresh token expiry on each verify call
+    new_expires = datetime.utcnow() + timedelta(hours=TOKEN_EXPIRY_HOURS)
+    await db.admin_tokens.update_one(
+        {"token": token},
+        {"$set": {"expires_at": new_expires}}
+    )
+    
+    # Resolve plan
+    user_plan = ""
+    if admin:
+        user_plan = admin.get("plan", "") or admin.get("subscription_plan", "")
+        if admin.get("is_super_admin", False):
+            user_plan = "custom"
+        elif not user_plan:
+            sub = await db.subscriptions.find_one({"admin_id": admin["id"], "status": "active"}, {"_id": 0})
+            user_plan = sub.get("plan", "starter") if sub else "starter"
+
     return {
         "valid": True,
         "admin_id": token_doc["admin_id"],
@@ -145,6 +171,7 @@ async def verify_admin_token(token: str):
         "first_name": admin.get("first_name") if admin else None,
         "last_name": admin.get("last_name") if admin else None,
         "credits": admin.get("credits", 0) if admin else 0,
+        "plan": user_plan,
     }
 
 
