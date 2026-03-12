@@ -450,12 +450,14 @@ async def get_financial_report(
 @router.get("/stats")
 async def get_stats(admin_id: str = Query(default=None)):
     """Get general statistics with device breakdown."""
-    query = {"admin_id": admin_id} if admin_id else {}
+    base_query = {"is_deleted": {"$nin": [True, None]}}
+    if admin_id:
+        base_query["admin_id"] = admin_id
     
-    total_clients = await db.clients.count_documents(query)
-    registered_clients = await db.clients.count_documents({**query, "is_registered": True})
-    locked_clients = await db.clients.count_documents({**query, "is_locked": True})
-    unlocked_registered = await db.clients.count_documents({**query, "is_registered": True, "is_locked": False})
+    total_clients = await db.clients.count_documents(base_query)
+    registered_clients = await db.clients.count_documents({**base_query, "is_registered": True})
+    locked_clients = await db.clients.count_documents({**base_query, "is_locked": True})
+    unlocked_registered = await db.clients.count_documents({**base_query, "is_registered": True, "is_locked": False})
     
     return {
         "total_clients": total_clients,
