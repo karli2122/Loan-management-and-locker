@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get("KEEPALIVE_URL", "https://paylock-enterprise.preview.emergentagent.com")
+BASE_URL = os.environ.get("KEEPALIVE_URL", "https://loan-admin-hub-2.preview.emergentagent.com")
 
 class TestAdminLogin:
     """Login to get admin token for authenticated tests"""

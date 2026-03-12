@@ -502,14 +502,17 @@ async function renderClientDetail(el) {
   const c = state.selectedClient;
   if (!c) { navigate('clients'); return; }
   const payments = await api('GET', `/loans/payments/${c.id}`).catch(() => []);
+  const loans = await api('GET', `/loans/client/${c.id}`).catch(() => ({ loans: [] }));
+  const clientLoans = loans.loans || loans || [];
   el.innerHTML = `
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:start">
       <div><button class="btn btn-ghost" onclick="navigate('clients')" data-testid="back-to-clients"><i class="fas fa-arrow-left"></i> ${t('back')}</button><h2 style="margin-top:8px">${esc(c.name)}</h2></div>
       <div class="action-row">
         ${c.is_locked ? `<button class="btn btn-success btn-sm" onclick="toggleLock('${c.id}',false)" data-testid="unlock-btn"><i class="fas fa-unlock"></i> ${t('unlock')}</button>` : `<button class="btn btn-danger btn-sm" onclick="toggleLock('${c.id}',true)" data-testid="lock-btn"><i class="fas fa-lock"></i> ${t('lock')}</button>`}
+        <button class="btn btn-warning btn-sm" onclick="sendWarning('${c.id}')" data-testid="warning-btn"><i class="fas fa-exclamation-triangle"></i> Warning</button>
+        <button class="btn btn-primary btn-sm" onclick="showAddLoan('${c.id}')" data-testid="add-loan-btn"><i class="fas fa-plus-circle"></i> Add Loan</button>
         <button class="btn btn-outline btn-sm" onclick="showEditClient('${c.id}')" data-testid="edit-client-btn"><i class="fas fa-edit"></i> ${t('edit')}</button>
         <button class="btn btn-outline btn-sm" onclick="sendReminder('${c.id}','email')" data-testid="send-email-btn"><i class="fas fa-envelope"></i> ${t('email')}</button>
-        <button class="btn btn-outline btn-sm" onclick="sendReminder('${c.id}','whatsapp')" data-testid="send-whatsapp-btn"><i class="fab fa-whatsapp"></i> ${t('whatsapp')}</button>
         <button class="btn btn-outline btn-sm" onclick="downloadContract('${c.id}')" data-testid="download-contract-btn"><i class="fas fa-file-pdf"></i> ${t('contract')}</button>
         <button class="btn btn-outline btn-sm" onclick="showLockHistory('${c.id}')" data-testid="lock-history-btn"><i class="fas fa-history"></i> Lock History</button>
       </div>
@@ -528,6 +531,25 @@ async function renderClientDetail(el) {
       <div class="detail-item"><div class="label">${t('days_overdue')}</div><div class="value" style="color:${(c.days_overdue||0)>0?'var(--danger)':'var(--text)'}">${c.days_overdue||0}</div></div>
       <div class="detail-item"><div class="label">${t('device_col')}</div><div class="value">${c.is_locked?`<span style="color:var(--danger)">${t('locked')}</span>`:c.is_registered?`<span style="color:var(--success)">${t('active_status')}</span>`:t('unregistered')}</div></div>
     </div>
+
+    <div class="card" style="margin-top:16px" data-testid="device-reg-card">
+      <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+        <h3><i class="fas fa-key"></i> Device Registration</h3>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="generateRegKey('${c.id}', 8)" data-testid="gen-key-8"><i class="fas fa-key"></i> Generate 8-digit (Admin)</button>
+          <button class="btn btn-outline btn-sm" onclick="generateRegKey('${c.id}', 9)" data-testid="gen-key-9"><i class="fas fa-shield-alt"></i> Generate 9-digit (Owner)</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:0 20px 16px">
+        <div style="flex:1">
+          <div style="font-size:13px;color:var(--text-muted)">Current Registration Code</div>
+          <div id="reg-code-display" style="font-size:24px;font-weight:700;letter-spacing:4px;font-family:monospace;color:var(--primary-light)">${esc(c.registration_code || 'Not generated')}</div>
+        </div>
+        ${c.registration_code ? `<button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('${esc(c.registration_code)}');toast('Code copied!')"><i class="fas fa-copy"></i> Copy</button>` : ''}
+        <div style="font-size:12px;color:var(--text-muted)">${c.is_registered ? '<span style="color:var(--success)"><i class="fas fa-check-circle"></i> Device registered</span>' : '<span style="color:var(--warning)"><i class="fas fa-clock"></i> Awaiting registration</span>'}</div>
+      </div>
+    </div>
+
     <div class="card" style="margin-top:16px"><div class="card-header"><h3>${t('record_payment')}</h3></div>
       <div style="display:flex;gap:12px;align-items:end">
         <div class="form-group" style="flex:1;margin:0"><label>${t('amount_eur')} (&#8364;)</label><input id="pay-amount" type="number" step="0.01" placeholder="0.00" data-testid="payment-amount"></div>
@@ -541,6 +563,19 @@ async function renderClientDetail(el) {
         ${c.auto_pay_enabled ? `<button class="btn btn-primary btn-sm" onclick="chargeClientCard('${c.id}')" data-testid="charge-card-btn"><i class="fas fa-credit-card"></i> Stripe Pay</button>` : ''}
       </div>
     </div>
+
+    <div class="card"><div class="card-header" style="display:flex;justify-content:space-between;align-items:center"><h3><i class="fas fa-file-invoice-dollar"></i> Active Loans</h3></div>
+      <div class="table-wrap"><table data-testid="client-loans-table"><thead><tr><th>Loan Amount</th><th>Interest</th><th>Remaining</th><th>Status</th><th>Schedule</th></tr></thead><tbody>
+        ${(Array.isArray(clientLoans)?clientLoans:[]).map(l => `<tr>
+          <td><b>${cur(l.amount||l.loan_amount||0)}</b></td>
+          <td>${l.interest_rate||0}%</td>
+          <td style="color:var(--warning)">${cur(l.remaining_amount||0)}</td>
+          <td><span class="badge badge-${l.status==='active'?'success':'warning'}">${l.status||'active'}</span></td>
+          <td><button class="btn btn-ghost btn-sm" onclick="showLoanSchedule('${l.id}','${c.id}')"><i class="fas fa-calendar"></i> View</button></td>
+        </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No loans</td></tr>'}
+      </tbody></table></div>
+    </div>
+
     <div class="card"><div class="card-header" style="display:flex;justify-content:space-between;align-items:center"><h3><i class="fas fa-credit-card" style="margin-right:8px;color:#6366F1"></i> Stripe Payments</h3>
       <button class="btn btn-primary btn-sm" onclick="setupPaymentMethod('${c.id}')" data-testid="create-payment-link-btn"><i class="fas fa-link"></i> Create Payment Link</button>
     </div>

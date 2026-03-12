@@ -1,0 +1,174 @@
+<analysis>**original_problem_statement**: The user initially requested a full-stack loan management application called PayLock Pro. The application has since evolved significantly, with the backend now deployed on a user-provided VPS. The latest user requests focus on adding a substantial number of new features and enhancements to the web portal, admin app, and client app, including offline capabilities, advanced analytics, user management changes, and further UI improvements.
+
+**PRODUCT REQUIREMENTS:**
+1.  **Web Portal Enhancements**:
+    *   Implement a device registration key generator in the client details view.
+    *   Add Add loan and Send Warning buttons to the client details view.
+    *   Implement an interface to edit loan plans.
+    *   Implement an interface to edit payment schedules.
+    *   Enhance the bank statement analyzer to use OCR for text extraction.
+    *   Gated access: Only allow users with Enterprise or Custom plans to log in.
+    *   Modularize the main  file into smaller, feature-specific modules.
+    *   Add new pages for AI-driven Client Risk Scoring, Bulk Messaging, and Report Exports (Excel/PDF).
+2.  **Admin App Features**:
+    *   Implement a full offline mode with automatic data synchronization when connectivity is restored.
+    *   Add a dashboard with charts for collection trends and overdue payment aging.
+    *   Implement push notifications for payments that are due today.
+    *   Fix the stay logged in feature to support multiple sessions and prevent premature logouts.
+3.  **Client App Features**:
+    *   Implement in-app messaging to communicate with the admin.
+    *   Add multi-language support for lock screen messages.
+    *   Fix critical lock screen vulnerabilities (status bar bypass) and bugs (emergency call button not working).
+4.  **User Management & Security**:
+    *   Remove default/test admin users (, ).
+    *   Ensure the  user has access to all  plan features.
+    *   Remove all hardcoded credentials from the applications.
+5.  **Deployment & Infrastructure**:
+    *   Deploy the entire application backend to the user's GoDaddy VPS.
+    *   Set up a custom domain () with a valid SSL (HTTPS) certificate.
+    *   Update the website's contact email to .
+
+**User's preferred language**: English
+
+**what currently exists?**
+The application is a full-stack system with a FastAPI backend, a React Native mobile app (client and admin), and a vanilla JS web portal. The entire backend has been successfully migrated from the Emergent preview environment to the user's private VPS, running on Ubuntu with Nginx and a systemd service. The application is live and accessible via HTTPS at .
+
+In the last session, the agent completed a massive scope of work, including: deploying to the VPS; setting up the custom domain with SSL; fixing critical client app lock screen bugs; modularizing the web portal's JavaScript; and implementing a large suite of new features across the portal (AI risk scoring, bulk messaging, reports), admin app (offline mode, new charts, push notifications), and client app (in-app messaging). All user management changes were also completed.
+
+**Last working item**:
+-   **Last item agent was working**: The agent was preparing to implement a new batch of feature requests for the web portal and backend. It had just finished exploring the codebase to understand the requirements for adding a device key generator, add loan and warning buttons, editable loan plans/schedules, OCR for the bank statement analyzer, removing hardcoded credentials, and updating the website contact email.
+-   **Status**: NOT STARTED
+-   **Agent Testing Done**: N
+-   **Which testing method agent to use?** both. The agent should test backend changes with  and portal UI changes with the  tool. A full regression test using  is recommended after all features are implemented.
+-   **User Testing Done**: N
+
+**All Pending/In progress Issue list**:
+-   There are no known bugs. The current work is entirely feature-driven.
+
+**In progress Task List**:
+-   **Task 1: Implement Portal and Backend Enhancements (P0)**
+    -   **Where to resume**: Start by implementing the new features requested in the user's last message (Chat Message 564). The agent has already analyzed the relevant files.
+    -   **What will be achieved with this?** This will add significant new functionality to the web portal, improving administrative capabilities and bringing features like OCR analysis online.
+    -   **Status**: NOT STARTED
+    -   **Should Test frontend/backend/both after fix?** Both.
+    -   **Blocked on something**: Nothing.
+
+**Upcoming and Future Tasks**
+-   **Future Tasks**:
+    -   WhatsApp Business API Integration.
+
+**Completed work in this session**
+-   **Full Production Deployment to User's VPS**: Migrated the FastAPI backend to the user's Ubuntu VPS, including setting up dependencies, Nginx, and a systemd service for persistence.
+-   **Custom Domain & SSL**: Configured the custom domain  and secured it with a Let's Encrypt SSL certificate.
+-   **URL Consolidation**: Updated all hardcoded URLs across the entire codebase (backend, mobile apps, portal, website) to use the new production HTTPS domain.
+-   **Critical Client App Bug Fixes**:
+    -   Fixed the emergency call button by temporarily exiting kiosk mode to allow the dialer to launch.
+    -   Hardened the lock screen against a double swipe status bar bypass vulnerability by making the accessibility service more aggressive.
+-   **Massive Feature Implementation (Phases 1-3)**:
+    -   **Portal Modularization**: Refactored the monolithic  into multiple modules (, , , ).
+    -   **New Portal Features**: Added pages for AI Client Risk Scoring (with Chart.js), Bulk Messaging via Telegram, and Report Exports (PDF/Excel). Also added a searchable client dropdown for document uploads.
+    -   **Admin App Overhaul**: Implemented full offline mode with sync, added new dashboard charts (overdue aging, collection trends), and set up Expo push notifications for due payments.
+    -   **Client App Enhancements**: Added in-app messaging with the admin and multi-language support for lock screen messages.
+-   **Auth System Hardening**:
+    -   Modified the JWT system to allow multiple active sessions per user and implemented sliding token expiration to fix the stay logged in issue.
+    -   Removed hardcoded/default  users from the database and prevented their recreation on startup.
+    -   Gated the web portal login to users with Enterprise or Custom plans.
+-   **Builds & Sync**: Synced all changes to the production VPS and submitted multiple new client and admin APK builds pointing to the new production domain.
+
+**Earlier issues found/mentioned but not fixed**
+-   None.
+
+**Known issue recurrence from previous fork**
+-   None.
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+-   **VPS Deployment**: Manually deployed a FastAPI application to an Ubuntu VPS, including Nginx reverse proxy configuration, systemd service management, and dependency installation.
+-   **SSL Configuration**: Used  and Let's Encrypt to provision and auto-renew an SSL certificate for the custom domain.
+-   **Web Portal Modularization**: Refactored a large monolithic JavaScript file into a maintainable, multi-file architecture, improving code organization and scalability.
+-   **Offline-First React Native**: Implemented robust offline capabilities in the admin app using  for data persistence and  to manage synchronization.
+-   **Push Notifications**: Integrated Expo Push Notifications to send alerts from the backend to the admin app.
+-   **Advanced Authentication Flow**: Reworked the JWT authentication to support multiple active user sessions and sliding token expiration.
+-   **Native Android Security**: Further hardened the Kotlin native modules to patch sophisticated lock screen bypass vulnerabilities.
+
+**key DB schema**
+-   **admins**:
+    -   : Changed from a single string to an  of strings to support multiple active sessions.
+    -   : A  field ('enterprise', 'custom', 'basic') was added and is now used to control access to the web portal.
+
+**All files of reference**
+-   : Core backend file, modified for new routes and deployment hardening.
+-   : Central file for authentication and user management logic.
+-   : Previously monolithic file, now refactored to load other modules.
+-   : New directory containing the modularized portal features.
+-   : The main admin app screen, heavily modified with new features.
+-   : The main client app screen, modified for messaging and lock screen fixes.
+-   : Native module for lock screen logic.
+-   : Native service for enforcing UI policies.
+
+**Areas that need refactoring**:
+-   None. The primary refactoring task (portal modularization) was completed in this session.
+
+**key api endpoints**
+-   : New endpoints for fetching chart data.
+-   : New endpoints for AI client risk analysis.
+-   : New endpoints for sending messages (Telegram, in-app).
+-   : New endpoint for downloading reports.
+-   : New routes to serve the modularized portal JavaScript files.
+
+**Critical Info for New Agent**
+-   The application is live on the user's VPS. The credentials are in the chat history: IP , user , password . All backend changes must be synced to  on the VPS and the  service must be restarted ().
+-   The web portal's frontend code has been modularized. New portal features should be added as new JS files in  and integrated into  and .
+-   The immediate priority is to implement the latest batch of feature requests from the user (Chat Message 564), which primarily concern the web portal.
+
+**documents and test reports created in this job**
+-    (updated with completed features).
+
+**Last 10 User Messages and any pending HUMAN messages**
+1.  **User**: Remove test/admin users, make superadmin=custom, gate portal access. - **Status: Completed.**
+2.  **User**: Fix admin app stay logged in. Suggest more features. - **Status: Completed.**
+3.  **User**: Add massive list of features for admin app (offline, charts), client app (messaging), and portal (live charts, bulk sms, reports, risk scoring). - **Status: Completed.**
+4.  **User**: Use expo push, telegram bot, and AI. Do all phases in one go. - **Status: Completed.**
+5.  **User**: Add device key gen, add loan/warning buttons, edit loan plans/schedules, OCR for bank analyzer, remove hardcoded creds, change website email. - **Status: In Progress (This is the current task).**
+6.  **User**:  is the address. Confirmed emergency call button issue. - **Status: Completed (Used for SSL setup).**
+7.  **User**: (DNS) Done. - **Status: Completed (Agent proceeded with SSL setup).**
+8.  **User**: (DNS) Done. - **Status: Completed (Agent confirmed DNS propagation).**
+9.  **User**: Web portal doesn't function properly, upload doc needs dropdown, no bank statement analyzer. - **Status: Completed (Agent fixed both issues).**
+10. **User**: What api is current? - **Status: Completed (Agent provided the latest URL before the final VPS migration).**
+
+**Project Health Check:**
+-   **Broken**: None.
+-   **Mocked**: None.
+-   **Untested**: The latest batch of feature requests (device key generator, OCR, etc.) is not yet implemented.
+
+**3rd Party Integrations**
+-   MongoDB Atlas (via user's )
+-   APScheduler
+-   Stripe
+-   Resend
+-   Chart.js
+-   Telegram
+-   Expo Application Services (EAS)
+-   Expo Push Notifications
+-    (for offline detection)
+-    (for offline data)
+
+**Testing status**
+-   **Testing agent used after significant changes**: YES
+-   **Troubleshoot agent used after agent stuck in loop**: NO
+-   **Test files created**: None
+-   **Known regressions**: None
+
+**Credentials to test flow:**
+-   **Web Portal / Admin App**:
+    -   Superadmin user:  (password is in the logs or should be confirmed with the user).
+    -   Other users were created but plans need to be set to test access gating.
+-   **VPS SSH**:
+    -   IP: 
+    -   User: 
+    -   Password: 
+
+**What agent forgot to execute**
+-   Nothing. The agent successfully completed an extremely large set of complex tasks and is correctly positioned to start the next batch of user requests.</analysis>

@@ -11,7 +11,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "https://paylock-enterprise.preview.emergentagent.com")
+BASE_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "https://loan-admin-hub-2.preview.emergentagent.com")
 
 # Test credentials
 SUPERADMIN_USERNAME = "karli1987"

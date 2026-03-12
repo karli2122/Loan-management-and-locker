@@ -7,7 +7,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://paylock-enterprise.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://loan-admin-hub-2.preview.emergentagent.com').rstrip('/')
 
 class TestAuth:
     """Authentication tests to get admin token"""

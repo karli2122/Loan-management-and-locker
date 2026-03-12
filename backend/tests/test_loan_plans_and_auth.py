@@ -21,7 +21,7 @@ import requests
 import uuid
 
 # Use the preview URL from review request
-BASE_URL = "https://paylock-enterprise.preview.emergentagent.com"
+BASE_URL = "https://loan-admin-hub-2.preview.emergentagent.com"
 
 # Test credentials from review request
 TEST_USERNAME = "karli1987"

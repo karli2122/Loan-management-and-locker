@@ -8,7 +8,7 @@ Full-stack loan management application called "PayLock Pro" for an Estonian IT c
 - **Frontend (Mobile)**: Expo React Native (admin + client apps via EAS)
 - **Web Portal**: Vanilla JS served from backend /api/portal
 - **Website**: Static HTML/CSS/JS served from backend /api/website/*
-- **URL**: https://paylock-enterprise.preview.emergentagent.com
+- **URL**: https://loan-admin-hub-2.preview.emergentagent.com
 
 ## Credentials
 - Admin: username=admin, password=admin123
