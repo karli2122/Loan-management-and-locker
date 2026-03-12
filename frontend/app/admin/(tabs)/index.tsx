@@ -19,6 +19,7 @@ import { useLanguage } from '../../../src/context/LanguageContext';
 import { useCurrency } from '../../../src/context/CurrencyContext';
 import { useTheme } from '../../../src/context/ThemeContext';
 import { LanguagePicker } from '../../../src/components/LanguagePicker';
+import { useVersionCheck } from '../../../src/hooks/useVersionCheck';
 import API_URL from '../../../src/constants/api';
 import { LineChart } from 'react-native-chart-kit';
 import * as Notifications from 'expo-notifications';
@@ -54,6 +55,7 @@ export default function Dashboard() {
   const { language, setLanguage, t } = useLanguage();
   const { formatAmount, currencySymbol } = useCurrency();
   const { colors, isDark } = useTheme();
+  const { currentVersion } = useVersionCheck('admin');
   const [loanStats, setLoanStats] = useState<LoanStats>({
     total_clients: 0,
     active_loans: 0,

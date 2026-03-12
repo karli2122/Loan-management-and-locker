@@ -51,6 +51,7 @@ from routes.exports import router as exports_router
 from routes.report_schedules import router as report_schedules_router
 from routes.contact import router as contact_router
 from routes.client_payments import router as client_payments_router
+from routes.app_version import router as app_version_router
 
 # Configure logging
 logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT)
@@ -133,6 +134,7 @@ app.include_router(client_payments_router, prefix="/api")
 app.include_router(messaging_router)
 app.include_router(risk_scoring_router)
 app.include_router(push_notifications_router)
+app.include_router(app_version_router)
 
 
 WEBSITE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "paylockpro-website")

@@ -27,6 +27,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { LanguagePicker } from '../../src/components/LanguagePicker';
+import { useVersionCheck } from '../../src/hooks/useVersionCheck';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
 import { getAutoStartInstructions, getOverlayInstructions, getAccessibilityInstructions } from '../../src/utils/deviceInstructions';
 import OfflineSyncManager from '../../src/services/OfflineSyncManager';
@@ -54,6 +55,7 @@ export default function ClientHome() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
   const { formatAmount } = useCurrency();
+  useVersionCheck('client');
   const [status, setStatus] = useState<ClientStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

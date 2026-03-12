@@ -1183,8 +1183,29 @@ async function generateNFC() {
 async function renderSettings(el) {
   const settings = await api('GET', '/admin/settings');
   const admin = await api('GET', '/admin/credits');
+  let versionHtml = '';
+  if (state.user?.is_super_admin) {
+    try {
+      const versions = await api('GET', '/app-version/list');
+      versionHtml = `<div class="card"><div class="card-header"><h3><i class="fas fa-mobile-alt" style="margin-right:8px;color:var(--primary)"></i> App Version Management</h3></div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Set latest version info. When the app detects a newer version, users see an update prompt.</p>
+        <div class="table-wrap"><table data-testid="app-versions-table">
+          <thead><tr><th>App</th><th>Version</th><th>Code</th><th>Download URL</th><th>Force Update</th><th>Actions</th></tr></thead>
+          <tbody>${(versions||[]).map(v => `<tr>
+            <td><b>${v.app_type === 'admin' ? 'Admin' : 'Client'}</b></td>
+            <td>${esc(v.latest_version)}</td><td>${v.version_code}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(v.download_url||'-')}</td>
+            <td><span class="badge badge-${v.force_update?'danger':'success'}">${v.force_update?'Yes':'No'}</span></td>
+            <td><button class="btn btn-ghost btn-sm" onclick='showEditAppVersion(${JSON.stringify(v).replace(/'/g,"\\'")})' data-testid="edit-version-${v.app_type}"><i class="fas fa-edit"></i></button></td>
+          </tr>`).join('')}
+          </tbody>
+        </table></div>
+      </div>`;
+    } catch(e) { console.warn('Version fetch failed', e); }
+  }
   el.innerHTML = `
     <div class="page-header"><h2>${t('settings_title')}</h2><p>${t('manage_account')}</p></div>
+    ${versionHtml}
     <div class="card"><div class="card-header"><h3>${t('account')}</h3></div>
       <div class="detail-grid">
         <div class="detail-item"><div class="label">${t('role')}</div><div class="value">${admin.is_super_admin?t('super_admin'):t('admin_role')}</div></div>
@@ -1369,6 +1390,43 @@ function setPortalLanguage(lang) {
   localStorage.setItem('plp_language', lang);
   toast(t('language_label') + ': ' + lang.toUpperCase());
   render(); // Re-render entire portal with new language
+}
+
+function showEditAppVersion(ver) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay'; overlay.id = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal"><h3><i class="fas fa-mobile-alt"></i> Edit ${ver.app_type === 'admin' ? 'Admin' : 'Client'} App Version</h3>
+    <form id="edit-version-form">
+      <div class="form-row">
+        <div class="form-group"><label>Version (e.g. 1.1.0) *</label><input id="ev-version" value="${esc(ver.latest_version)}" required data-testid="ev-version"></div>
+        <div class="form-group"><label>Version Code (integer) *</label><input id="ev-code" type="number" min="1" value="${ver.version_code}" required data-testid="ev-code"></div>
+      </div>
+      <div class="form-group"><label>Download URL (APK link)</label><input id="ev-url" value="${esc(ver.download_url||'')}" placeholder="https://expo.dev/.../builds/..." data-testid="ev-url"></div>
+      <div class="form-group"><label>Release Notes</label><textarea id="ev-notes" rows="3" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);resize:vertical" data-testid="ev-notes">${esc(ver.release_notes||'')}</textarea></div>
+      <div class="form-group"><label><input type="checkbox" id="ev-force" ${ver.force_update?'checked':''} data-testid="ev-force"> Force Update (blocks app until updated)</label></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" data-testid="save-version-btn"><i class="fas fa-save"></i> Save</button>
+      </div>
+    </form></div>`;
+  document.body.appendChild(overlay);
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+  document.getElementById('edit-version-form').onsubmit = async(e) => {
+    e.preventDefault();
+    const params = new URLSearchParams({
+      app_type: ver.app_type,
+      latest_version: document.getElementById('ev-version').value,
+      version_code: document.getElementById('ev-code').value,
+      download_url: document.getElementById('ev-url').value,
+      release_notes: document.getElementById('ev-notes').value,
+      force_update: document.getElementById('ev-force').checked,
+    });
+    try {
+      await api('PUT', `/app-version/set?${params.toString()}`);
+      toast(`${ver.app_type} app version updated to v${document.getElementById('ev-version').value}`);
+      closeModal(); navigate('settings');
+    } catch(err) { toast(err.message, 'error'); }
+  };
 }
 
 // ===================== TEAM MANAGEMENT =====================

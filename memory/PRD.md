@@ -16,6 +16,7 @@ Full-stack loan management application with FastAPI backend, React Native mobile
 - VPS deployment with Nginx reverse proxy + systemd service
 - Custom domain `api.paylock.pro` with Let's Encrypt SSL
 - URL consolidation across all apps/portal/website
+- File download endpoint (`/api/download/{filename}`)
 
 ### Web Portal
 - Modularized JS architecture (portal-core, portal-risk, portal-messaging, portal-reports)
@@ -32,39 +33,29 @@ Full-stack loan management application with FastAPI backend, React Native mobile
 - Bulk messaging via Telegram
 - Report exports (PDF/Excel)
 - Document management with searchable client dropdown
-- CSV import
-- Stripe payment links
-- Activity log
+- CSV import, Stripe payment links, Activity log
+- **App Version Management** (Settings page, superadmin only) — set version, code, download URL, force update
+- Superadmin bypasses plan gate for portal access
 
-### Admin App
-- Full offline mode with auto-sync
-- Dashboard charts (overdue aging, collection trends)
-- Expo push notifications for due payments
-- Multi-session JWT auth with sliding expiration
-
-### Client App
-- In-app messaging with admin
-- Multi-language lock screen messages
-- Emergency call button fix (kiosk mode exit)
-- Status bar bypass hardening
+### Mobile Apps
+- **App Version Check**: Both admin and client apps check for updates on startup, show native update prompt with download link
+- Admin: Full offline mode with auto-sync, dashboard charts, Expo push notifications, multi-session JWT auth
+- Client: In-app messaging, multi-language lock screen, emergency call fix, status bar bypass hardening
 
 ### Auth & Security
-- Plan-based portal access gating (enterprise/custom only)
+- Plan-based portal access gating (enterprise/custom only, superadmin always allowed)
 - Removed default/test admin users
 - Superadmin = custom plan features
 
 ## Backlog
 
 ### P1
-- Sync latest code changes to VPS (all iteration 71 features)
-
-### P2
 - WhatsApp Business API Integration
 
-### P3
+### P2
 - Location heatmap visualization
 
 ## Key Credentials
 - VPS: 37.148.202.159, user `karliv`, password `Nasvakas123!`
-- Portal login: `karli1987` / `Nasvakas123!`
+- Portal login: `karli1987` / `nasvakas123`
 - Backend: api.paylock.pro
