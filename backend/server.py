@@ -268,6 +268,17 @@ async def serve_portal_file(filename: str):
 
 
 
+@app.get("/api/download/{filename}")
+async def download_file(filename: str):
+    """Serve a downloadable file from the static directory."""
+    from fastapi.responses import FileResponse
+    safe_name = os.path.basename(filename)
+    file_path = os.path.join(os.path.dirname(__file__), "static", safe_name)
+    if not os.path.exists(file_path):
+        return JSONResponse(status_code=404, content={"error": "File not found"})
+    return FileResponse(file_path, filename=safe_name)
+
+
 @app.get("/api/portal")
 async def serve_portal():
     """Serve the web admin portal."""
