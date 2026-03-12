@@ -961,6 +961,50 @@ export default function AdminSettings() {
               <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           )}
+
+          {/* Test Push Notification */}
+          {isSuperAdmin && (
+            <TouchableOpacity
+              style={[styles.actionButton, { marginTop: 8, backgroundColor: colors.surface }]}
+              onPress={async () => {
+                try {
+                  const { status } = await Notifications.getPermissionsAsync();
+                  if (status !== 'granted') {
+                    const { status: newStatus } = await Notifications.requestPermissionsAsync();
+                    if (newStatus !== 'granted') {
+                      Alert.alert('Error', 'Push notification permission not granted');
+                      return;
+                    }
+                  }
+                  const tokenData = await Notifications.getExpoPushTokenAsync();
+                  const pushToken = tokenData?.data;
+                  if (!pushToken) {
+                    Alert.alert('Error', 'Could not get push token. This only works on a physical device.');
+                    return;
+                  }
+                  // Register token first
+                  await fetch(`${API_URL}/api/push/register-token?token=${encodeURIComponent(pushToken)}&admin_token=${adminToken}`, { method: 'POST' });
+                  // Send test via backend
+                  const res = await fetch(`${API_URL}/api/push/send?admin_token=${adminToken}&title=${encodeURIComponent('Test Notification')}&body=${encodeURIComponent('Push notifications are working!')}&token=${encodeURIComponent(pushToken)}`, { method: 'POST' });
+                  if (res.ok) {
+                    Alert.alert('Success', `Test notification sent!\nYour push token: ${pushToken.slice(0, 30)}...`);
+                  } else {
+                    const err = await res.json();
+                    Alert.alert('Error', err.detail || 'Failed to send test notification');
+                  }
+                } catch (e: any) {
+                  Alert.alert('Error', e.message || 'Push test failed');
+                }
+              }}
+              data-testid="test-push-btn"
+            >
+              <Ionicons name="notifications" size={20} color="#F59E0B" />
+              <Text style={[styles.actionButtonText, { color: colors.text }]}>
+                Test Push Notification
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Language Section */}
