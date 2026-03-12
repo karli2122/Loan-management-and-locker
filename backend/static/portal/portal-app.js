@@ -71,9 +71,9 @@ function bindLogin() {
         body: JSON.stringify({ username: document.getElementById('login-user').value, password: document.getElementById('login-pass').value })
       }).then(r=>r.json());
       if (data.token) {
-        // Check plan - only enterprise or custom can access portal
+        // Check plan - superadmins always allowed, others need enterprise or custom
         const plan = (data.plan || '').toLowerCase();
-        if (plan !== 'enterprise' && plan !== 'custom') {
+        if (!data.is_super_admin && plan !== 'enterprise' && plan !== 'custom') {
           errEl.textContent = 'Portal access requires Enterprise or Custom plan. Please upgrade your subscription.';
           errEl.classList.remove('hidden');
           return;
@@ -88,9 +88,9 @@ function bindLogin() {
 async function loadUser() {
   try {
     const data = await api('GET', `/admin/verify/${state.token}`);
-    // Check plan - only enterprise or custom can access portal
+    // Check plan - superadmins always allowed, others need enterprise or custom
     const plan = (data.plan || '').toLowerCase();
-    if (plan !== 'enterprise' && plan !== 'custom') {
+    if (!data.is_super_admin && plan !== 'enterprise' && plan !== 'custom') {
       logout();
       toast('Portal access requires Enterprise or Custom plan.', 'error');
       return;
