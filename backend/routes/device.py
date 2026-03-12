@@ -19,6 +19,7 @@ async def register_device(registration: DeviceRegistration):
     """Register a device with a registration code.
     8-digit code = Device Admin mode, 9-digit code = Device Owner mode.
     """
+    import uuid
     client = await db.clients.find_one({"registration_code": registration.registration_code})
     if not client:
         raise ValidationException("Invalid registration code")
@@ -30,11 +31,15 @@ async def register_device(registration: DeviceRegistration):
     code = registration.registration_code.strip()
     lock_mode = "device_owner" if len(code) == 9 else "device_admin"
     
+    # Generate a device_token for client-side auth (messaging, etc.)
+    device_token = str(uuid.uuid4())
+    
     await db.clients.update_one(
         {"id": client["id"]},
         {"$set": {
             "device_id": registration.device_id,
             "device_model": registration.device_model,
+            "device_token": device_token,
             "is_registered": True,
             "registered_at": datetime.utcnow(),
             "last_heartbeat": datetime.utcnow(),

@@ -59,6 +59,25 @@ async def register_push_token(token: str = Query(...), device_id: str = Query(No
     return {"status": "registered"}
 
 
+@router.post("/send")
+async def send_push_to_token(admin_token: str = Query(...), title: str = Query("Test"), body: str = Query("Test notification"), token: str = Query(...)):
+    """Send a push notification to a specific Expo push token."""
+    await get_admin_id_from_token(admin_token)
+
+    if not token.startswith("ExponentPushToken"):
+        return {"error": "Invalid push token format"}
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            "https://exp.host/--/api/v2/push/send",
+            json={"to": token, "title": title, "body": body, "sound": "default", "priority": "high"},
+            headers={"Content-Type": "application/json"},
+        )
+        data = resp.json()
+
+    return {"sent": True, "response": data}
+
+
 @router.get("/due-today")
 async def get_payments_due_today(admin_token: str = Query(...)):
     """Get payments due today for push notification."""

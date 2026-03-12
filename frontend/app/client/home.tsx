@@ -1930,7 +1930,7 @@ export default function ClientHome() {
 
       {/* Chat Floating Button */}
       <TouchableOpacity
-        style={{ position: 'absolute', bottom: 24, right: 24, backgroundColor: '#10B981', width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
+        style={{ position: 'absolute', bottom: 90, right: 24, backgroundColor: '#10B981', width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, zIndex: 100 }}
         onPress={() => { setShowChat(true); fetchMessages(); }}
         data-testid="chat-fab"
       >
@@ -1941,7 +1941,7 @@ export default function ClientHome() {
       {showChat && (
         <Modal visible={showChat} animationType="slide" transparent onRequestClose={() => setShowChat(false)}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-            <View style={{ backgroundColor: '#0B1527', borderTopLeftRadius: 20, borderTopRightRadius: 20, height: '70%', padding: 16 }}>
+            <View style={{ backgroundColor: '#0B1527', borderTopLeftRadius: 20, borderTopRightRadius: 20, height: '80%', paddingTop: 16, paddingHorizontal: 16 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <Text style={{ color: '#F8FAFC', fontSize: 18, fontWeight: '700' }}>Message Admin</Text>
                 <TouchableOpacity onPress={() => setShowChat(false)}>
@@ -1964,7 +1964,7 @@ export default function ClientHome() {
                 )}
               </ScrollView>
 
-              <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flexDirection: 'row', gap: 8, paddingBottom: 32 }}>
                 <TextInput
                   style={{ flex: 1, backgroundColor: '#152035', color: '#F8FAFC', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: '#1E3050' }}
                   placeholder="Type a message..."

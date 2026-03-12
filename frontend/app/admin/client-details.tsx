@@ -7,6 +7,10 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -89,6 +93,13 @@ export default function ClientDetails() {
   const [loanHistorySearch, setLoanHistorySearch] = useState('');
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
   const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
+
+  // Chat state
+  const [showChat, setShowChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatText, setChatText] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatScrollRef = useRef<ScrollView>(null);
 
   // ─── Auth helpers ──────────────────────────────────────────────
   const getAdminToken = async () => await AsyncStorage.getItem('admin_token');
@@ -696,6 +707,117 @@ export default function ClientDetails() {
           onAllowUninstall={handleAllowUninstall}
         />
       </ScrollView>
+
+      {/* Chat FAB */}
+      <TouchableOpacity
+        style={{
+          position: 'absolute', bottom: 24, right: 24, backgroundColor: '#10B981',
+          width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center',
+          elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, zIndex: 100,
+        }}
+        onPress={async () => {
+          setShowChat(true);
+          setChatLoading(true);
+          try {
+            const token = await getAdminToken();
+            const resp = await fetch(`${API_URL}/api/messages?client_id=${id}&admin_token=${token}`);
+            if (resp.ok) {
+              const data = await resp.json();
+              setChatMessages(data.messages || []);
+              fetch(`${API_URL}/api/messages/mark-read?client_id=${id}&admin_token=${token}`, { method: 'POST' }).catch(() => {});
+            }
+          } catch (e) { console.log('Chat fetch error', e); }
+          setChatLoading(false);
+          setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: false }), 200);
+        }}
+        data-testid="admin-chat-fab"
+      >
+        <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
+      </TouchableOpacity>
+
+      {/* Chat Modal */}
+      <Modal visible={showChat} animationType="slide" transparent onRequestClose={() => setShowChat(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+            <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, height: '80%', paddingTop: 16, paddingHorizontal: 16 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Text style={{ color: colors.text, fontSize: 18, fontWeight: '700' }}>
+                  Chat with {client?.name || 'Client'}
+                </Text>
+                <TouchableOpacity onPress={() => setShowChat(false)}>
+                  <Ionicons name="close" size={24} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView ref={chatScrollRef} style={{ flex: 1, marginBottom: 12 }} onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: true })}>
+                {chatLoading ? (
+                  <ActivityIndicator size="small" color="#10B981" style={{ marginTop: 20 }} />
+                ) : chatMessages.length === 0 ? (
+                  <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: 40 }}>No messages yet. Start a conversation.</Text>
+                ) : (
+                  chatMessages.map((msg, i) => (
+                    <View key={msg.id || i} style={{
+                      alignSelf: msg.sender_type === 'admin' ? 'flex-end' : 'flex-start',
+                      backgroundColor: msg.sender_type === 'admin' ? '#10B981' : colors.surface,
+                      padding: 10, borderRadius: 12, marginBottom: 8, maxWidth: '80%',
+                    }}>
+                      <Text style={{ color: msg.sender_type === 'admin' ? '#fff' : colors.text, fontSize: 14 }}>{msg.text}</Text>
+                      <Text style={{ color: msg.sender_type === 'admin' ? '#A7F3D0' : colors.textMuted, fontSize: 10, marginTop: 4 }}>
+                        {msg.created_at ? new Date(msg.created_at).toLocaleTimeString() : ''}
+                      </Text>
+                    </View>
+                  ))
+                )}
+              </ScrollView>
+
+              <View style={{ flexDirection: 'row', gap: 8, paddingBottom: 32 }}>
+                <TextInput
+                  style={{ flex: 1, backgroundColor: colors.surface, color: colors.text, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: colors.border }}
+                  placeholder="Type a message..."
+                  placeholderTextColor={colors.textMuted}
+                  value={chatText}
+                  onChangeText={setChatText}
+                  onSubmitEditing={async () => {
+                    if (!chatText.trim()) return;
+                    try {
+                      const token = await getAdminToken();
+                      const resp = await fetch(`${API_URL}/api/messages?client_id=${id}&text=${encodeURIComponent(chatText)}&admin_token=${token}`, { method: 'POST' });
+                      if (resp.ok) {
+                        setChatText('');
+                        const refreshResp = await fetch(`${API_URL}/api/messages?client_id=${id}&admin_token=${token}`);
+                        if (refreshResp.ok) {
+                          const data = await refreshResp.json();
+                          setChatMessages(data.messages || []);
+                        }
+                      }
+                    } catch (e) { Alert.alert('Error', 'Failed to send message'); }
+                  }}
+                />
+                <TouchableOpacity
+                  onPress={async () => {
+                    if (!chatText.trim()) return;
+                    try {
+                      const token = await getAdminToken();
+                      const resp = await fetch(`${API_URL}/api/messages?client_id=${id}&text=${encodeURIComponent(chatText)}&admin_token=${token}`, { method: 'POST' });
+                      if (resp.ok) {
+                        setChatText('');
+                        const refreshResp = await fetch(`${API_URL}/api/messages?client_id=${id}&admin_token=${token}`);
+                        if (refreshResp.ok) {
+                          const data = await refreshResp.json();
+                          setChatMessages(data.messages || []);
+                        }
+                      }
+                    } catch (e) { Alert.alert('Error', 'Failed to send message'); }
+                  }}
+                  style={{ backgroundColor: '#10B981', width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' }}
+                >
+                  <Ionicons name="send" size={20} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Modals */}
       <PaymentModal

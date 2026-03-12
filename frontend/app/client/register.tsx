@@ -136,6 +136,11 @@ export default function ClientRegister() {
       await AsyncStorage.setItem('client_id', clientId);
       await AsyncStorage.setItem('registration_code', code);
       
+      // Store device_token for messaging auth
+      if (data?.device_token) {
+        await AsyncStorage.setItem('client_device_token', data.device_token);
+      }
+      
       // Determine lock mode from code length: 8 = device_admin, 9 = device_owner
       const lockMode = code.length === 9 ? 'device_owner' : 'device_admin';
       await AsyncStorage.setItem('lock_mode', lockMode);
