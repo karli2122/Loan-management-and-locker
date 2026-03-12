@@ -1,122 +1,70 @@
 # PayLock Pro - Product Requirements Document
 
 ## Original Problem Statement
-Full-stack loan management application called "PayLock Pro" for an Estonian IT company. Includes mobile apps (Admin + Client), web admin portal, and marketing website.
+Full-stack loan management application with FastAPI backend, React Native mobile apps (admin + client), and vanilla JS web portal. Deployed to user's VPS at `api.paylock.pro`.
 
-## Architecture
-- **Backend**: FastAPI + MongoDB Atlas + APScheduler (port 8001)
-- **Frontend (Mobile)**: Expo React Native (admin + client apps via EAS)
-- **Web Portal**: Vanilla JS served from backend /api/portal
-- **Website**: Static HTML/CSS/JS served from backend /api/website/*
-- **URL**: https://loan-admin-hub-2.preview.emergentagent.com
+## Core Architecture
+- **Backend**: FastAPI + MongoDB Atlas, deployed on Ubuntu VPS (37.148.202.159)
+- **Admin App**: React Native / Expo (EAS builds)
+- **Client App**: React Native / Expo with device lock capabilities
+- **Web Portal**: Vanilla JS served from `/api/portal` on the backend
+- **Website**: Static HTML at `/api/website`
 
-## Credentials
-- Admin: username=admin, password=admin123
+## Completed Features
 
-## What's Been Implemented (as of Feb 27, 2026)
+### Infrastructure
+- VPS deployment with Nginx reverse proxy + systemd service
+- Custom domain `api.paylock.pro` with Let's Encrypt SSL
+- URL consolidation across all apps/portal/website
 
-### Core Features
-- Full client & loan CRUD, device lock/unlock with audit trail
-- Payment scheduling, automation, background tasks
-- Web portal dashboard with 14+ features, Live Payment Feed, Stripe Payment Tracker
-- Marketing website: 6 pages + ZIP download
-- QR provisioning, CSV import, Multi-language (EN/ET)
-- Enterprise Feature Gating (6 screens)
+### Web Portal
+- Modularized JS architecture (portal-core, portal-risk, portal-messaging, portal-reports)
+- Dashboard with live stats and charts
+- Client management with full CRUD
+- Device registration key generator (8-digit admin / 9-digit owner)
+- Add Loan modal with EMI calculation
+- Send Warning (in-app message + push notification to client)
+- Loan schedule viewer
+- Loan plans CRUD with edit/create/delete modals
+- Payment schedules CRUD with edit modal
+- Bank statement analyzer with AI vision OCR (Force OCR checkbox for scanned PDFs)
+- AI client risk scoring with Chart.js
+- Bulk messaging via Telegram
+- Report exports (PDF/Excel)
+- Document management with searchable client dropdown
+- CSV import
+- Stripe payment links
+- Activity log
 
-### Stripe Payment Automation
-- Real Stripe checkout sessions via emergentintegrations
-- Auto-charge creates & emails payment links when due
-- Payment tracker dashboard widget with real-time status
+### Admin App
+- Full offline mode with auto-sync
+- Dashboard charts (overdue aging, collection trends)
+- Expo push notifications for due payments
+- Multi-session JWT auth with sliding expiration
 
-### Client App Lock Screen (LATEST)
-- **Mute + reject incoming calls** — Ringer muted while locked, AccessibilityService + ForegroundMonitor reject regular calls and kill dialer
-- **Emergency Call button (112)** — Only way to make calls when locked. Sets `emergency_call_active` flag in native SharedPreferences
-- **Emergency call monitoring** — Native PhoneStateListener auto-clears flag when call ends. JS polls every 2s as backup
-- **After emergency call ends** — Flag cleared, dialer killed, lock screen re-engaged
-- **Native getNativeLockState()** — Survives Clear Data / reboot via SharedPreferences
-- **Transparent overlay blockers** — See-through touch protection
-- **Status bar auto-collapse** — 100ms interval
-- **API retry hardening** — 3x retry with backoff (2s→4s→8s), dynamic polling (3s offline / 5s online)
+### Client App
+- In-app messaging with admin
+- Multi-language lock screen messages
+- Emergency call button fix (kiosk mode exit)
+- Status bar bypass hardening
 
-### Key Native Functions (EMIDeviceAdminModule.kt)
-- `setEmergencyCallActive(bool)` / `isEmergencyCallActive()` — Emergency call flag
-- `endCall()` — Reject incoming calls via TelecomManager
-- `muteRinger()` / `unmuteRinger()` — Ringer control while locked
-- `dialEmergencyNumber(number)` — Initiates emergency call + registers call state listener
-- `killDialerApps()` — Force-stops all dialer packages + clears emergency flag
-- `getNativeLockState()` / `setNativeLockState(bool)` — Persistent lock state
-
-### Key Files
-- `/app/backend/server.py`, `/app/backend/tasks.py`, `/app/backend/routes/client_payments.py`
-- `/app/frontend/app/client/home.tsx` — Client app with lock screen, emergency call, retry logic
-- `/app/frontend/src/utils/DevicePolicy.ts` — Native module bridge
-- `/app/frontend/src/services/OfflineSyncManager.ts` — Retry with backoff
-- `/app/frontend/modules/emi-device-admin/android/.../EMIDeviceAdminModule.kt`
-- `/app/frontend/modules/emi-device-admin/android/.../EMIAccessibilityService.kt`
-- `/app/frontend/modules/emi-device-admin/android/.../EMIForegroundMonitorService.kt`
-- `/app/frontend/modules/emi-device-admin/android/.../EMIOverlayService.kt`
-- `/app/backend/static/portal/portal-app.js`
-
-## Deployment Fixes (Feb 28, 2026)
-- **Fixed .gitignore**: Removed 116 malformed `-e` duplicate lines and stopped blocking `.env` files (required for Emergent deployment)
-- **Removed apt-get from startup**: `server.py` no longer runs `apt-get install tesseract-ocr` at startup (blocks/fails in production containers)
-- **Fixed KEEPALIVE_URL**: Updated from dead `paylock-enterprise.preview.emergentagent.com` to current preview URL; added `APP_URL` fallback for production
-
-## VPS Migration (Mar 11, 2026)
-- **Migrated API to GoDaddy VPS**: `https://api.paylock.pro`
-- Backend deployed at `/opt/paylock/` with systemd service (`paylock.service`)
-- Nginx reverse proxy with **SSL via Let's Encrypt** (auto-renewing, expires 2026-06-09)
-- Uses MongoDB Atlas (same database, no data migration)
-- Updated all URLs across: `eas.json` (6 profiles), `site.js`, `frontend/.env`, `app.config.js`
-- All endpoints verified over HTTPS
-- **Current API URL**: `https://api.paylock.pro`
-
-## Client App Lock Screen Fixes (Mar 11, 2026)
-- **Emergency Call Fix**: Kiosk mode was blocking dialer from opening. Now exits kiosk mode + re-enables status bar before dialing, and re-engages all protections after call ends. Changed from ACTION_CALL (requires permission) to ACTION_DIAL.
-- **Status Bar Bypass Fix**: Made accessibility service much more aggressive when SystemUI is detected during lock — rapid-fire GLOBAL_ACTION_BACK (8 staggered delays from 50ms-1000ms), GLOBAL_ACTION_HOME to force-close shade, StatusBarManager.collapsePanels() via reflection, plus forced app relaunch.
-
-## Portal Improvements (Mar 12, 2026)
-- **Upload Document**: Replaced raw Client ID text input with searchable client dropdown (fetches clients list, filters by name/phone, shows client details)
-- **Bank Statement Analyzer**: Added full new page to the portal with:
-  - Searchable client dropdown (optional)
-  - File upload for .pdf, .csv, .xml, .asice formats
-  - AI-powered analysis with income/expense breakdown
-  - Analysis history table with view details modal
-  - Connected to existing `/api/bank-statements/analyze` and `/api/bank-statements/history` endpoints
-
-## Auth & Access Control (Mar 12, 2026)
-- **Removed test users**: Deleted `testapiadmin` and `admin` from database
-- **Superadmin = Custom plan**: Set karli1987 to `plan=custom`, `role=superadmin`
-- **Portal plan gating**: Only `enterprise` or `custom` plan users can access the web portal (checked on login + token verify)
-- **Multi-session support**: Changed token storage from single-token to multi-token per admin (login from app + portal no longer invalidates each other)
-- **Sliding token expiration**: Token expiry refreshes on each verify call (30-day rolling window)
-- **Plan field in API responses**: Added `plan` field to login and verify endpoints
-
-## Major Feature Release (Mar 12, 2026)
-
-### Portal — Phase 1
-- **JS Modularization**: Split into `portal-core.js`, `portal-risk.js`, `portal-messaging.js`, `portal-reports.js` + main `portal-app.js`
-- **Risk Scoring Page**: AI-powered client risk analysis with doughnut + bar charts, risk factors, sortable client table
-- **Bulk Messaging Page**: Send Telegram messages to all/overdue/selected clients with templates
-- **Reports & Exports Page**: CSV/PDF/Excel download buttons for clients, payments, collection reports
-- **Real-time Dashboard Charts**: Already had Chart.js, enhanced with animated risk distribution
-- **Role-based Access**: Portal login gated to enterprise/custom plan users only
-
-### Admin App — Phase 2
-- **Push Notifications**: Expo push token registration + "payments due today" local notifications
-- **Offline Mode**: Network monitoring via NetInfo, offline action queue stored in AsyncStorage, auto-sync when back online with status banners
-- **Dashboard Alerts**: Offline banner (yellow), syncing banner (blue), due-today banner (red)
-
-### Client App — Phase 3
-- **In-app Messaging**: Floating chat button + slide-up chat modal for client ↔ admin messaging
-- **Multi-language Lock Screen**: Lock message auto-translates to Estonian (et), English (en), Russian (ru)
-
-### Backend — New APIs
-- `POST/GET /api/messages` — In-app messaging CRUD
-- `GET /api/risk/client/{id}` + `GET /api/risk/overview` — AI risk scoring
-- `POST /api/push/register-token` + `GET /api/push/due-today` + `POST /api/push/bulk-telegram` — Push notifications & bulk messaging
+### Auth & Security
+- Plan-based portal access gating (enterprise/custom only)
+- Removed default/test admin users
+- Superadmin = custom plan features
 
 ## Backlog
-- **P1**: Add more dashboard charts to admin app (overdue aging bar chart, collection trend line chart)
-- **P2**: WhatsApp Business API Integration
-- **P3**: Location heatmap visualization
+
+### P1
+- Sync latest code changes to VPS (all iteration 71 features)
+
+### P2
+- WhatsApp Business API Integration
+
+### P3
+- Location heatmap visualization
+
+## Key Credentials
+- VPS: 37.148.202.159, user `karliv`, password `Nasvakas123!`
+- Portal login: `karli1987` / `Nasvakas123!`
+- Backend: api.paylock.pro
