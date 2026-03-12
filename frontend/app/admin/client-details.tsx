@@ -819,6 +819,7 @@ export default function ClientDetails() {
             </View>
           </KeyboardAvoidingView>
         </Modal>
+      )}
 
       {/* Modals */}
       <PaymentModal
