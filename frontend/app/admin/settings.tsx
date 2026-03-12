@@ -843,7 +843,7 @@ export default function AdminSettings() {
                       return;
                     }
                   }
-                  const tokenData = await Notifications.getExpoPushTokenAsync();
+                  const tokenData = await Notifications.getExpoPushTokenAsync({ projectId: '7be3aec1-6fef-4200-9987-5868c4320a07' });
                   const pushToken = tokenData?.data;
                   if (!pushToken) {
                     Alert.alert('Error', 'Could not get push token. This only works on a physical device.');

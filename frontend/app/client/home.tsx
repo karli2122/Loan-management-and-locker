@@ -1940,18 +1940,17 @@ export default function ClientHome() {
 
       {/* Chat Modal */}
       {showChat && (
-        <Modal visible={showChat} animationType="slide" transparent onRequestClose={() => setShowChat(false)}>
-          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-              <View style={{ backgroundColor: '#0B1527', borderTopLeftRadius: 20, borderTopRightRadius: 20, height: '80%', paddingTop: 16, paddingHorizontal: 16 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <Modal visible={showChat} animationType="slide" transparent={false} onRequestClose={() => setShowChat(false)}>
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#0B1527' }}>
+            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1E3050' }}>
                 <Text style={{ color: '#F8FAFC', fontSize: 18, fontWeight: '700' }}>Message Admin</Text>
                 <TouchableOpacity onPress={() => setShowChat(false)}>
                   <Ionicons name="close" size={24} color="#94A3B8" />
                 </TouchableOpacity>
               </View>
 
-              <ScrollView style={{ flex: 1, marginBottom: 12 }}>
+              <ScrollView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 12 }}>
                 {loadingMessages ? (
                   <ActivityIndicator size="small" color="#10B981" style={{ marginTop: 20 }} />
                 ) : messages.length === 0 ? (
@@ -1966,7 +1965,7 @@ export default function ClientHome() {
                 )}
               </ScrollView>
 
-              <View style={{ flexDirection: 'row', gap: 8, paddingBottom: 16 }}>
+              <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#1E3050' }}>
                 <TextInput
                   style={{ flex: 1, backgroundColor: '#152035', color: '#F8FAFC', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: '#1E3050' }}
                   placeholder="Type a message..."
@@ -1979,9 +1978,8 @@ export default function ClientHome() {
                   <Ionicons name="send" size={20} color="#fff" />
                 </TouchableOpacity>
               </View>
-            </View>
-          </View>
-          </KeyboardAvoidingView>
+            </KeyboardAvoidingView>
+          </SafeAreaView>
         </Modal>
       )}
     </SafeAreaView>

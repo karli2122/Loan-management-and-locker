@@ -328,7 +328,8 @@ export default function Dashboard() {
           finalStatus = status;
         }
         if (finalStatus === 'granted') {
-          const tokenData = await Notifications.getExpoPushTokenAsync();
+          const projectId = '7be3aec1-6fef-4200-9987-5868c4320a07';
+          const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
           const adminToken = await AsyncStorage.getItem('admin_token');
           if (adminToken && tokenData?.data) {
             fetch(`${API_URL}/api/push/register-token?token=${encodeURIComponent(tokenData.data)}&admin_token=${adminToken}`, { method: 'POST' }).catch(() => {});

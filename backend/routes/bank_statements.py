@@ -329,8 +329,7 @@ def apply_fallback_analysis(analysis: dict, fallback: dict):
 
 
 async def extract_text_with_ai_vision(pdf_bytes: bytes, max_pages: int = 3) -> str:
-    """Use GPT-4 vision to OCR text from PDF page images."""
-    import fitz
+    """Use GPT-4.1 to OCR text from PDF by sending the PDF directly as base64."""
     import base64
     from emergentintegrations.llm.chat import LlmChat, UserMessage, FileContent
 
@@ -338,28 +337,18 @@ async def extract_text_with_ai_vision(pdf_bytes: bytes, max_pages: int = 3) -> s
     if not api_key:
         raise HTTPException(status_code=500, detail="AI key not configured for OCR")
 
-    images = []
-    with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
-        pages = min(doc.page_count, max_pages)
-        for i in range(pages):
-            page = doc.load_page(i)
-            pix = page.get_pixmap(dpi=150)
-            img_bytes = pix.tobytes("png")
-            b64 = base64.b64encode(img_bytes).decode()
-            images.append(FileContent(content_type="image/png", file_content_base64=b64))
-
-    if not images:
-        return ""
+    b64_pdf = base64.b64encode(pdf_bytes).decode()
+    pdf_file = FileContent(content_type="application/pdf", file_content_base64=b64_pdf)
 
     chat = LlmChat(
         api_key=api_key,
         session_id=f"ocr-{uuid.uuid4().hex[:8]}",
-        system_message="You are an OCR specialist. Extract ALL text from the bank statement images exactly as they appear. Include numbers, dates, names, amounts, and transaction details. Return the raw extracted text only, no commentary.",
+        system_message="You are an OCR specialist. Extract ALL text from the bank statement exactly as it appears. Include numbers, dates, names, amounts, and transaction details. Return the raw extracted text only, no commentary.",
     ).with_model("openai", "gpt-4.1")
 
     msg = UserMessage(
-        text="Extract all text from these bank statement page images. Return the complete text content.",
-        file_contents=images,
+        text="Extract all text from this bank statement PDF. Return the complete text content.",
+        file_contents=[pdf_file],
     )
     result = await chat.send_message(msg)
     return result.strip()
