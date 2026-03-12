@@ -63,7 +63,7 @@ async def get_heartbeat_summary(
             target_admin_id = filter_admin_id
     
     now = datetime.utcnow()
-    query = {"is_registered": True, "is_deleted": {"$nin": [True, None]}}
+    query = {"is_registered": True, "is_deleted": {"$ne": True}}
     if target_admin_id:
         query["admin_id"] = target_admin_id
     
@@ -450,7 +450,7 @@ async def get_financial_report(
 @router.get("/stats")
 async def get_stats(admin_id: str = Query(default=None)):
     """Get general statistics with device breakdown."""
-    base_query = {"is_deleted": {"$nin": [True, None]}}
+    base_query = {"is_deleted": {"$ne": True}}
     if admin_id:
         base_query["admin_id"] = admin_id
     
