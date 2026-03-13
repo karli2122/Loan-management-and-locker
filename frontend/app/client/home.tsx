@@ -171,11 +171,8 @@ export default function ClientHome() {
             console.log('Uninstall protection error:', uninstallError);
           }
           
-          // Report admin mode active to backend so admin app shows it
-          const storedId = await AsyncStorage.getItem('client_id');
-          if (storedId) {
-            await reportAdminStatus(storedId, true);
-          }
+          // NOTE: Do NOT report admin status here — let the caller handle it
+          // after explicit user confirmation (prevents premature reporting)
           return true;
         }
         console.log(`Admin check attempt ${attempt}/${maxAttempts} - not active yet`);
@@ -300,10 +297,15 @@ export default function ClientHome() {
                     
                     // Run retry check in background - don't block
                     // Increased to 20 attempts (20 seconds total) to give user more time
-                    checkAdminStatusWithRetry(20, 1000).then(granted => {
+                    checkAdminStatusWithRetry(20, 1000).then(async (granted) => {
                       isRequestingAdmin.current = false;
                       if (granted) {
                         console.log('Admin permission successfully granted!');
+                        // Report admin mode active only after explicit user confirmation
+                        const storedId = await AsyncStorage.getItem('client_id');
+                        if (storedId) {
+                          await reportAdminStatus(storedId, true);
+                        }
                       } else {
                         console.log('Admin not granted after retry period');
                       }
@@ -344,11 +346,11 @@ export default function ClientHome() {
             console.log(`Device Admin active but uninstall protection failed: ${result}`);
           }
           
-          // Report admin mode status to backend
-          const storedId = await AsyncStorage.getItem('client_id');
-          if (storedId) {
-            await reportAdminStatus(storedId, true);
-          }
+          // NOTE: Do NOT auto-report admin_mode_active here.
+          // This branch fires on every app open if the OS reports admin as active,
+          // which can happen from stale state (reinstall over previous install).
+          // Admin status is only reported after explicit user confirmation via the
+          // "Enable Now" or "Yes, Enable" button flows.
         } catch (e) {
           console.log('preventUninstall error:', e);
         }

@@ -40,28 +40,36 @@ Full-stack loan management application with FastAPI backend, React Native mobile
 ### Version Check Update Detection - FIXED & DEPLOYED
 - Added semantic version string comparison
 
-### Push Notifications (5-Bug Fix) - FIXED, NEEDS NEW BUILD
+### Push Notifications (5-Bug Fix) - FIXED, BUILD SUBMITTED
 1. Added `expo-notifications` plugin to `app.config.js`
 2. Moved `initializeNotifications()` to root `_layout.tsx`
 3. Moved `setNotificationHandler` to `app/_layout.tsx`
-4. Added `priority: "high"` and `channelId` to push payloads
+4. Added `priority: "high"` and `channelId` to push payloads (deployed to VPS)
 5. Removed cached push token skip
 
-### Contract Download & Share Buttons - FIXED, NEEDS NEW BUILD
-1. Fixed `Linking` import: replaced dynamic `import('react-native')` with static import (breaks in production EAS builds)
-2. Fixed `expo-file-system` import: changed to `expo-file-system/legacy` (Expo SDK 54 breaking change — default export no longer has `downloadAsync`)
-3. Also fixed same import in `bank-analyzer.tsx`
+### Contract Download & Share - FIXED, BUILD SUBMITTED
+- Fixed `Linking` static import (dynamic import breaks in production)
+- Fixed `expo-file-system` → `expo-file-system/legacy` (SDK 54 breaking change)
 
-## Pending (User Verification Needed)
-- Contract download/share (needs new build)
-- Push notifications (needs new native build)
-- Device overview count (needs new build)
-- Client app chat keyboard overlay (needs new build)
-- Bank statement analyzer (needs user testing)
+### Admin Mode Premature Reporting - FIXED, BUILD SUBMITTED
+- Removed `reportAdminStatus(true)` from `checkAdminStatusWithRetry` retry loop (was firing as soon as native API returned true, even from stale state)
+- Removed `reportAdminStatus(true)` from `else` branch of `checkAndSetupDeviceProtection` (was auto-firing on every app open if native module reported admin active)
+- Now `reportAdminStatus(true)` only fires from explicit user-initiated flows ("Enable Now" and "Yes, Enable" button handlers)
+
+## Builds In Progress
+- Admin APK: https://expo.dev/accounts/karli1987/projects/loans/builds/1a09f1e6-ccc6-4a6d-8fd0-da867af84b40
+- Client APK: https://expo.dev/accounts/karli1987/projects/client/builds/492fc517-edc9-465e-8582-df342223a7a5
+
+## Pending (User Verification After Builds)
+- Push notifications
+- Contract download/share
+- Admin mode reporting
+- Device overview count
+- Client app chat keyboard overlay
+- Bank statement analyzer
 
 ## Backlog
 - (P1) WhatsApp Business API Integration
-- (P1) Submit new Admin and Client app EAS builds
 - (P2) Location heatmap visualization
 
 ## Key Credentials
