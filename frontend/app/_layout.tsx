@@ -3,12 +3,25 @@ import { Slot } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { View, LogBox } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { LanguageProvider } from '../src/context/LanguageContext';
 import { CurrencyProvider } from '../src/context/CurrencyContext';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 import { initializeDiagnostics } from '../src/utils/diagnostics';
+import { initializeNotifications } from '../src/services/BackgroundNotificationService';
 
-// Suppress non-critical warnings that can cause crashes in production
+// Set foreground notification handler at module level (runs before any component mounts)
+// This ensures notifications display correctly app-wide (admin + client sections)
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
 LogBox.ignoreLogs([
   'Non-serializable values were found in the navigation state',
   'Setting a timer for a long period',
@@ -17,7 +30,7 @@ LogBox.ignoreLogs([
 
 function ThemedLayout() {
   const { colors, isDark } = useTheme();
-  
+
   return (
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
@@ -33,6 +46,11 @@ export default function RootLayout() {
 
   React.useEffect(() => {
     initializeDiagnostics();
+    // Register background notification task at app root so it's available
+    // even when the OS wakes the JS runtime for a background push
+    initializeNotifications().catch(e =>
+      console.log('[RootLayout] Notification init:', e)
+    );
     setIsMounted(true);
   }, []);
 

@@ -127,9 +127,6 @@ export default function ClientHome() {
       const token = await getPushToken();
       if (!token) return;
       
-      const stored = await AsyncStorage.getItem('push_token');
-      if (stored === token) return;
-      
       await AsyncStorage.setItem('push_token', token);
       const response = await fetch(`${API_URL}/api/device/push-token`, {
         method: 'POST',

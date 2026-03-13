@@ -69,6 +69,14 @@ export default {
     },
     plugins: [
       "expo-router",
+      [
+        "expo-notifications",
+        {
+          color: "#2563EB",
+          defaultChannel: "default",
+          sounds: []
+        }
+      ],
       "@react-native-community/datetimepicker",
       "expo-font",
       "expo-web-browser",
@@ -91,7 +99,6 @@ export default {
           backgroundColor: "#0B1527"
         }
       ],
-      // emi-device-admin auto-links via expo-module.config.json (no plugin entry needed)
     ],
     experiments: {
       typedRoutes: true

@@ -33,12 +33,15 @@ async def send_expo_push_notification(push_token: str, title: str, body: str, da
     if not push_token:
         return False
     
+    action = (data or {}).get("action", "")
     payload = {
         "to": push_token,
         "sound": "default",
         "title": title,
         "body": body,
-        "data": data or {}
+        "data": data or {},
+        "priority": "high",
+        "channelId": "warnings" if action in ("lock", "unlock", "warning") else "default",
     }
     
     try:
