@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Alert, Linking, Platform } from 'react-native';
 import Constants from 'expo-constants';
+import * as Application from 'expo-application';
 import API_URL from '../constants/api';
 
 const APP_VERSION = Constants.expoConfig?.version || '1.0.0';
-const VERSION_CODE = Constants.expoConfig?.android?.versionCode || 1;
+// Use the actual native build version code (set by EAS autoIncrement),
+// not the static value from app.config.js which stays at 1.
+const VERSION_CODE = Platform.OS === 'android'
+  ? parseInt(Application.nativeBuildVersion || '1', 10)
+  : (Constants.expoConfig?.ios?.buildNumber ? parseInt(Constants.expoConfig.ios.buildNumber, 10) : 1);
 
 interface VersionInfo {
   update_available: boolean;
