@@ -448,11 +448,15 @@ async def get_financial_report(
 
 
 @router.get("/stats")
-async def get_stats(admin_id: str = Query(default=None)):
+async def get_stats(admin_id: str = Query(default=None), admin_token: str = Query(default=None)):
     """Get general statistics with device breakdown."""
-    base_query = {"is_deleted": {"$ne": True}}
-    if admin_id:
-        base_query["admin_id"] = admin_id
+    if admin_token:
+        token_admin_id = await get_admin_id_from_token(admin_token)
+        base_query = await _get_enterprise_client_query(token_admin_id)
+    elif admin_id:
+        base_query = {"admin_id": admin_id, "is_deleted": {"$ne": True}}
+    else:
+        base_query = {"is_deleted": {"$ne": True}}
     
     total_clients = await db.clients.count_documents(base_query)
     registered_clients = await db.clients.count_documents({**base_query, "is_registered": True})

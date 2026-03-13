@@ -39,12 +39,9 @@ export default function DeviceManagement() {
 
   const fetchStats = async () => {
     try {
-      const adminId = await AsyncStorage.getItem('admin_id');
-      const isSuperStr = await AsyncStorage.getItem('is_super_admin');
-      const isSuperAdmin = isSuperStr === 'true';
-      // Superadmin sees all devices, regular admin sees only their own
-      const url = (!isSuperAdmin && adminId)
-        ? `${API_URL}/api/stats?admin_id=${adminId}` 
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      const url = adminToken
+        ? `${API_URL}/api/stats?admin_token=${adminToken}`
         : `${API_URL}/api/stats`;
       const response = await fetch(url);
       const data = await response.json();
@@ -101,7 +98,7 @@ export default function DeviceManagement() {
             <View style={styles.statIcon}>
               <Ionicons name="phone-portrait" size={28} color="#3B82F6" />
             </View>
-            <Text style={styles.statValue}>{stats.registered_devices}</Text>
+            <Text style={styles.statValue}>{stats.total_clients}</Text>
             <Text style={styles.statLabel}>
               {t('totalDevices')}
             </Text>

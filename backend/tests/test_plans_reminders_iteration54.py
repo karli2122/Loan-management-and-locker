@@ -17,7 +17,7 @@ from datetime import datetime
 # Get BASE_URL from environment
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
 if not BASE_URL:
-    BASE_URL = "https://analytics-debug-11.preview.emergentagent.com"
+    BASE_URL = "https://paylock-qa.preview.emergentagent.com"
 
 TEST_PREFIX = "TEST_ITER54_"
 

@@ -978,11 +978,14 @@ export default function ClientHome() {
               } catch (e) { console.log('Notification listener check error:', e); }
               
               setIsAdminActive(admin);
-              const newPermStates = {
+              
+              // For tamper detection: use REAL permission values (not OR'd with cache)
+              // Cache fallback is only for UI during init when native APIs may fail
+              const realPermStates = {
                 batteryOptimization: batteryOpt,
                 overlay: overlay,
                 autoStart: autoStartCached,
-                accessibility: accessibility || accessibilityCached,
+                accessibility: accessibility,
                 location: locationBgPerm,
                 notification: notifPerm,
                 usageStats: usageStatsPerm,
@@ -990,35 +993,65 @@ export default function ClientHome() {
               };
               
               // Detect permission revocation (tampering)
-              // Compare previous cached states with current — if any was true and now false, report
+              // Conditional: if uninstall_allowed is true, allow freely; if false, warn + report
               const prevStatesJson = await AsyncStorage.getItem('permission_states');
               if (prevStatesJson) {
                 const prevStates = JSON.parse(prevStatesJson);
                 const revokedPerms: string[] = [];
-                if (prevStates.accessibility && !newPermStates.accessibility) revokedPerms.push('accessibility');
-                if (prevStates.location && !newPermStates.location) revokedPerms.push('location');
-                if (prevStates.notification && !newPermStates.notification) revokedPerms.push('notification');
-                if (prevStates.overlay && !newPermStates.overlay) revokedPerms.push('overlay');
+                if (prevStates.accessibility && !realPermStates.accessibility) revokedPerms.push('accessibility');
+                if (prevStates.location && !realPermStates.location) revokedPerms.push('location');
+                if (prevStates.notification && !realPermStates.notification) revokedPerms.push('notification');
+                if (prevStates.overlay && !realPermStates.overlay) revokedPerms.push('overlay');
                 
                 if (revokedPerms.length > 0) {
-                  console.log('TAMPER DETECTED: Permissions revoked:', revokedPerms.join(', '));
-                  await reportTamperAttempt(`permission_revoked:${revokedPerms.join(',')}`);
+                  const uninstallAllowed = status?.uninstall_allowed === true;
+                  if (uninstallAllowed) {
+                    // Uninstall is allowed — no tamper report, just log
+                    console.log('Permissions revoked but uninstall is allowed:', revokedPerms.join(', '));
+                  } else {
+                    // Uninstall not allowed — report tamper and show Android system notification
+                    console.log('TAMPER DETECTED: Permissions revoked:', revokedPerms.join(', '));
+                    try {
+                      await Notifications.scheduleNotificationAsync({
+                        content: {
+                          title: t('securityAlert') || 'Security Alert',
+                          body: t('disablingPermissionsWillEraseData') || 'Disabling critical permissions will erase your data. Please re-enable them immediately.',
+                          sound: true,
+                          priority: Notifications.AndroidNotificationPriority.MAX,
+                        },
+                        trigger: null,
+                      });
+                    } catch (notifErr) {
+                      console.log('Tamper notification error:', notifErr);
+                    }
+                    await reportTamperAttempt(`permission_revoked:${revokedPerms.join(',')}`);
+                  }
                 }
               }
               
               // Also detect admin mode revocation
               const wasAdminActive = (await AsyncStorage.getItem('admin_was_active')) === 'true';
               if (wasAdminActive && !admin) {
-                console.log('TAMPER DETECTED: Device Admin was revoked');
-                await reportTamperAttempt('admin_disabled');
+                const uninstallAllowed = status?.uninstall_allowed === true;
+                if (uninstallAllowed) {
+                  console.log('Device Admin revoked but uninstall is allowed');
+                } else {
+                  console.log('TAMPER DETECTED: Device Admin was revoked');
+                  await reportTamperAttempt('admin_disabled');
+                }
               }
               if (admin) await AsyncStorage.setItem('admin_was_active', 'true');
               
+              // For UI display, keep the OR fallback for accessibility
+              const newPermStates = {
+                ...realPermStates,
+                accessibility: accessibility || accessibilityCached,
+              };
               setPermissionStates(newPermStates);
               
-              // Save states to cache
-              if (accessibility) await AsyncStorage.setItem('accessibility_enabled', 'true');
-              await AsyncStorage.setItem('permission_states', JSON.stringify(newPermStates));
+              // Save REAL states to cache (not OR'd) so future comparisons work correctly
+              await AsyncStorage.setItem('accessibility_enabled', accessibility ? 'true' : 'false');
+              await AsyncStorage.setItem('permission_states', JSON.stringify(realPermStates));
               
               // Auto-hide permission tab if all permissions + admin are active
               const allGranted = Object.values(newPermStates).every(Boolean);
@@ -1140,11 +1173,19 @@ export default function ClientHome() {
         // Force immediate lock on tamper attempt
         if (status) {
           await updateLockState(true);
-          Alert.alert(
-            t('securityAlert'),
-            t('tamperingDetectedDeviceHasBeenLocked'),
-            [{ text: t('ok') }]
-          );
+          try {
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: t('securityAlert'),
+                body: t('tamperingDetectedDeviceHasBeenLocked'),
+                sound: true,
+                priority: Notifications.AndroidNotificationPriority.MAX,
+              },
+              trigger: null,
+            });
+          } catch (notifErr) {
+            console.log('Tamper lock notification error:', notifErr);
+          }
         }
       }
     } catch (error) {
@@ -1189,6 +1230,15 @@ export default function ClientHome() {
       console.error('Error clearing warning:', error);
     }
   };
+
+  // Auto-dismiss warning messages 10 seconds after app opens
+  useEffect(() => {
+    if (!status?.warning_message || !clientId) return;
+    const timer = setTimeout(() => {
+      handleClearWarning();
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [status?.warning_message, clientId]);
 
 
   // Engage protection services when device is locked (overlay handles re-fastening)
@@ -1889,18 +1939,36 @@ export default function ClientHome() {
                 </TouchableOpacity>
               </View>
 
-              <ScrollView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 12 }}>
+              <ScrollView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 12 }} contentContainerStyle={{ padding: 10 }}>
                 {loadingMessages ? (
                   <ActivityIndicator size="small" color="#10B981" style={{ marginTop: 20 }} />
                 ) : messages.length === 0 ? (
                   <Text style={{ color: '#64748B', textAlign: 'center', marginTop: 40 }}>No messages yet. Send a message to your admin.</Text>
                 ) : (
-                  messages.map((msg, i) => (
-                    <View key={msg.id || i} style={{ alignSelf: msg.sender_type === 'client' ? 'flex-end' : 'flex-start', backgroundColor: msg.sender_type === 'client' ? '#10B981' : '#1E3050', padding: 10, borderRadius: 12, marginBottom: 8, maxWidth: '80%' }}>
-                      <Text style={{ color: '#F8FAFC', fontSize: 14 }}>{msg.text}</Text>
-                      <Text style={{ color: msg.sender_type === 'client' ? '#A7F3D0' : '#64748B', fontSize: 10, marginTop: 4 }}>{msg.created_at ? new Date(msg.created_at).toLocaleTimeString() : ''}</Text>
-                    </View>
-                  ))
+                  messages.map((msg, i) => {
+                    // Date grouping: show date separator when date changes
+                    const msgDate = msg.created_at ? new Date(msg.created_at).toLocaleDateString() : '';
+                    const prevMsgDate = i > 0 && messages[i - 1].created_at 
+                      ? new Date(messages[i - 1].created_at).toLocaleDateString() 
+                      : '';
+                    const showDateSep = msgDate && msgDate !== prevMsgDate;
+                    
+                    return (
+                      <View key={msg.id || i}>
+                        {showDateSep && (
+                          <View style={{ alignItems: 'center', marginVertical: 12 }}>
+                            <View style={{ backgroundColor: '#152035', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10 }}>
+                              <Text style={{ color: '#64748B', fontSize: 11, fontWeight: '600' }}>{msgDate}</Text>
+                            </View>
+                          </View>
+                        )}
+                        <View style={{ alignSelf: msg.sender_type === 'client' ? 'flex-end' : 'flex-start', backgroundColor: msg.sender_type === 'client' ? '#10B981' : '#1E3050', padding: 10, borderRadius: 12, marginBottom: 8, maxWidth: '80%' }}>
+                          <Text style={{ color: '#F8FAFC', fontSize: 14 }}>{msg.text}</Text>
+                          <Text style={{ color: msg.sender_type === 'client' ? '#A7F3D0' : '#64748B', fontSize: 10, marginTop: 4 }}>{msg.created_at ? new Date(msg.created_at).toLocaleTimeString() : ''}</Text>
+                        </View>
+                      </View>
+                    );
+                  })
                 )}
               </ScrollView>
 

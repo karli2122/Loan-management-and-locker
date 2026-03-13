@@ -711,7 +711,7 @@ export default function ClientDetails() {
       {/* Chat FAB */}
       <TouchableOpacity
         style={{
-          position: 'absolute', bottom: 24, right: 24, backgroundColor: '#10B981',
+          position: 'absolute', bottom: 60, right: 24, backgroundColor: '#10B981',
           width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center',
           elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, zIndex: 100,
         }}
@@ -750,24 +750,42 @@ export default function ClientDetails() {
                   </TouchableOpacity>
                 </View>
 
-                <ScrollView ref={chatScrollRef} style={{ flex: 1, marginBottom: 12 }} onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: true })}>
+                <ScrollView ref={chatScrollRef} style={{ flex: 1, marginBottom: 12 }} contentContainerStyle={{ padding: 10 }} onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: true })}>
                   {chatLoading ? (
                     <ActivityIndicator size="small" color="#10B981" style={{ marginTop: 20 }} />
                   ) : chatMessages.length === 0 ? (
                     <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: 40 }}>No messages yet. Start a conversation.</Text>
                   ) : (
-                    chatMessages.map((msg, i) => (
-                      <View key={msg.id || i} style={{
-                        alignSelf: msg.sender_type === 'admin' ? 'flex-end' : 'flex-start',
-                        backgroundColor: msg.sender_type === 'admin' ? '#10B981' : colors.surface,
-                        padding: 10, borderRadius: 12, marginBottom: 8, maxWidth: '80%',
-                      }}>
-                        <Text style={{ color: msg.sender_type === 'admin' ? '#fff' : colors.text, fontSize: 14 }}>{msg.text}</Text>
-                        <Text style={{ color: msg.sender_type === 'admin' ? '#A7F3D0' : colors.textMuted, fontSize: 10, marginTop: 4 }}>
-                          {msg.created_at ? new Date(msg.created_at).toLocaleTimeString() : ''}
-                        </Text>
-                      </View>
-                    ))
+                    chatMessages.map((msg, i) => {
+                      // Date grouping: show date separator when date changes
+                      const msgDate = msg.created_at ? new Date(msg.created_at).toLocaleDateString() : '';
+                      const prevMsgDate = i > 0 && chatMessages[i - 1].created_at 
+                        ? new Date(chatMessages[i - 1].created_at).toLocaleDateString() 
+                        : '';
+                      const showDateSep = msgDate && msgDate !== prevMsgDate;
+                      
+                      return (
+                        <View key={msg.id || i}>
+                          {showDateSep && (
+                            <View style={{ alignItems: 'center', marginVertical: 12 }}>
+                              <View style={{ backgroundColor: colors.surface, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10 }}>
+                                <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600' }}>{msgDate}</Text>
+                              </View>
+                            </View>
+                          )}
+                          <View style={{
+                            alignSelf: msg.sender_type === 'admin' ? 'flex-end' : 'flex-start',
+                            backgroundColor: msg.sender_type === 'admin' ? '#10B981' : colors.surface,
+                            padding: 10, borderRadius: 12, marginBottom: 8, maxWidth: '80%',
+                          }}>
+                            <Text style={{ color: msg.sender_type === 'admin' ? '#fff' : colors.text, fontSize: 14 }}>{msg.text}</Text>
+                            <Text style={{ color: msg.sender_type === 'admin' ? '#A7F3D0' : colors.textMuted, fontSize: 10, marginTop: 4 }}>
+                              {msg.created_at ? new Date(msg.created_at).toLocaleTimeString() : ''}
+                            </Text>
+                          </View>
+                        </View>
+                      );
+                    })
                   )}
                 </ScrollView>
 
