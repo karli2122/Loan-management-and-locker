@@ -1009,8 +1009,13 @@ export default function ClientHome() {
                     // Uninstall is allowed — no tamper report, just log
                     console.log('Permissions revoked but uninstall is allowed:', revokedPerms.join(', '));
                   } else {
-                    // Uninstall not allowed — report tamper and show Android system notification
+                    // Uninstall not allowed — report tamper, show both in-app alert + system notification
                     console.log('TAMPER DETECTED: Permissions revoked:', revokedPerms.join(', '));
+                    Alert.alert(
+                      t('securityAlert') || 'Security Alert',
+                      t('disablingPermissionsWillEraseData') || 'Disabling critical permissions will erase your data. Please re-enable them immediately.',
+                      [{ text: t('ok') || 'OK' }]
+                    );
                     try {
                       await Notifications.scheduleNotificationAsync({
                         content: {
@@ -1173,6 +1178,11 @@ export default function ClientHome() {
         // Force immediate lock on tamper attempt
         if (status) {
           await updateLockState(true);
+          Alert.alert(
+            t('securityAlert'),
+            t('tamperingDetectedDeviceHasBeenLocked'),
+            [{ text: t('ok') }]
+          );
           try {
             await Notifications.scheduleNotificationAsync({
               content: {
