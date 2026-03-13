@@ -48,8 +48,18 @@ async def send_expo_push_notification(push_token: str, title: str, body: str, da
         async with httpx.AsyncClient(timeout=10) as http_client:
             response = await http_client.post("https://exp.host/--/api/v2/push/send", json=payload)
             if response.status_code >= httpx.codes.BAD_REQUEST:
-                logger.warning(f"Expo push send failed ({response.status_code})")
+                logger.warning(f"Expo push send failed ({response.status_code}): {response.text}")
                 return False
+            # Log the ticket response for debugging delivery issues
+            try:
+                resp_data = response.json()
+                ticket = resp_data.get("data", {})
+                if ticket.get("status") == "error":
+                    logger.warning(f"Expo push ticket error: {ticket.get('message')} [{ticket.get('details', {}).get('error', '')}]")
+                    return False
+                logger.info(f"Expo push sent: status={ticket.get('status')}, id={ticket.get('id', 'n/a')}")
+            except Exception:
+                pass
         return True
     except Exception as exc:
         logger.error(f"Expo push error: {exc}")
