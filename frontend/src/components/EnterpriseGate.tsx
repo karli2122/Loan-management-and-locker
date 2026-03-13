@@ -9,10 +9,12 @@ import { useEnterpriseAccess } from '../hooks/useEnterpriseAccess';
 interface Props {
   children: React.ReactNode;
   featureName: string;
+  requiredPlan?: 'business' | 'enterprise';
+  featureKey?: string;
 }
 
-export function EnterpriseGate({ children, featureName }: Props) {
-  const { hasEnterprise, loading, plan } = useEnterpriseAccess();
+export function EnterpriseGate({ children, featureName, requiredPlan = 'enterprise', featureKey }: Props) {
+  const { hasEnterprise, hasBusiness, loading, plan, canAccess } = useEnterpriseAccess();
   const { colors } = useTheme();
   const router = useRouter();
 
@@ -24,7 +26,16 @@ export function EnterpriseGate({ children, featureName }: Props) {
     );
   }
 
-  if (!hasEnterprise) {
+  const hasAccess = featureKey
+    ? canAccess(featureKey)
+    : requiredPlan === 'business'
+      ? hasBusiness
+      : hasEnterprise;
+
+  if (!hasAccess) {
+    const planLabel = requiredPlan === 'business' ? 'Business' : 'Enterprise';
+    const planColor = requiredPlan === 'business' ? '#2563EB' : '#8B5CF6';
+
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
@@ -36,46 +47,19 @@ export function EnterpriseGate({ children, featureName }: Props) {
         </View>
 
         <View style={styles.gateContent}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="shield-checkmark" size={48} color="#8B5CF6" />
+          <View style={[styles.iconCircle, { backgroundColor: `${planColor}20` }]}>
+            <Ionicons name="shield-checkmark" size={48} color={planColor} />
           </View>
-          <Text style={[styles.gateTitle, { color: colors.text }]}>Enterprise Feature</Text>
+          <Text style={[styles.gateTitle, { color: colors.text }]}>{planLabel} Feature</Text>
           <Text style={styles.gateDesc}>
-            {featureName} is available on the Enterprise and Custom plans.
+            {featureName} is available on the {planLabel} plan and above.
           </Text>
           <Text style={styles.currentPlan}>
             Your current plan: <Text style={styles.planName}>{plan.charAt(0).toUpperCase() + plan.slice(1)}</Text>
           </Text>
 
-          <View style={styles.featureList}>
-            <View style={styles.featureItem}>
-              <Ionicons name="checkmark-circle" size={18} color="#8B5CF6" />
-              <Text style={styles.featureText}>Team Management & Roles</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Ionicons name="checkmark-circle" size={18} color="#8B5CF6" />
-              <Text style={styles.featureText}>Bulk CSV Import</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Ionicons name="checkmark-circle" size={18} color="#8B5CF6" />
-              <Text style={styles.featureText}>Payment Schedules & Automation</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Ionicons name="checkmark-circle" size={18} color="#8B5CF6" />
-              <Text style={styles.featureText}>Document Management</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Ionicons name="checkmark-circle" size={18} color="#8B5CF6" />
-              <Text style={styles.featureText}>Telegram Bot Integration</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Ionicons name="checkmark-circle" size={18} color="#8B5CF6" />
-              <Text style={styles.featureText}>QR Device Provisioning</Text>
-            </View>
-          </View>
-
           <TouchableOpacity
-            style={styles.upgradeBtn}
+            style={[styles.upgradeBtn, { backgroundColor: planColor }]}
             onPress={() => router.push('/admin/settings')}
             data-testid="upgrade-plan-btn"
           >
@@ -95,14 +79,11 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#152035' },
   headerTitle: { fontSize: 18, fontWeight: '700' },
   gateContent: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  iconCircle: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#8B5CF620', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  iconCircle: { width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   gateTitle: { fontSize: 22, fontWeight: '800', marginBottom: 8 },
   gateDesc: { fontSize: 14, color: '#94A3B8', textAlign: 'center', lineHeight: 22, marginBottom: 8 },
   currentPlan: { fontSize: 13, color: '#64748B', marginBottom: 24 },
   planName: { color: '#F59E0B', fontWeight: '700' },
-  featureList: { width: '100%', marginBottom: 28 },
-  featureItem: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12, paddingLeft: 8 },
-  featureText: { fontSize: 14, color: '#CBD5E1' },
-  upgradeBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#7C3AED', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 12 },
+  upgradeBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 12 },
   upgradeBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

@@ -497,3 +497,12 @@ async def apply_settings_to_all_clients(admin_token: str = Query(...)):
             "auto_lock_enabled": settings.get("default_auto_lock_enabled", True)
         }
     }
+
+
+
+@router.get("/admin/feature-access")
+async def get_feature_access(admin_token: str = Query(...)):
+    """Get all features accessible by the admin based on their subscription plan."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    from utils.plan_gating import get_accessible_features
+    return await get_accessible_features(admin_id)

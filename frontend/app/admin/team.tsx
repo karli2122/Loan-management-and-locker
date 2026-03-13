@@ -31,7 +31,7 @@ const ROLES = [
 
 export default function TeamPage() {
   return (
-    <EnterpriseGate featureName="Team Management">
+    <EnterpriseGate featureName="Team Management" requiredPlan="enterprise" featureKey="role_permissions">
       <TeamContent />
     </EnterpriseGate>
   );

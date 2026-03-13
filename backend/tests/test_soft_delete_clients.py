@@ -12,7 +12,7 @@ import uuid
 
 BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://paylock-qa.preview.emergentagent.com"
+    BASE_URL = "https://feature-gating-test.preview.emergentagent.com"
 
 
 class TestAdminAuthAndHealth:

@@ -5,6 +5,7 @@ import logging
 
 from database import db
 from utils.auth import get_admin_id_from_token
+from utils.plan_gating import check_plan_access
 from routes.reports import _get_enterprise_client_query
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ async def get_revenue_forecast(
     factoring in each client's historical payment reliability.
     """
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "revenue_forecast")
     base_query = await _get_enterprise_client_query(admin_id)
 
     clients = await db.clients.find(

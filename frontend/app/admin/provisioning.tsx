@@ -13,7 +13,7 @@ import API_URL from '../../src/constants/api';
 
 export default function ProvisioningPage() {
   return (
-    <EnterpriseGate featureName="Device Provisioning">
+    <EnterpriseGate featureName="Device Provisioning" requiredPlan="enterprise" featureKey="device_owner">
       <ProvisioningContent />
     </EnterpriseGate>
   );

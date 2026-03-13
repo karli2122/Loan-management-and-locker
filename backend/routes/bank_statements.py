@@ -456,6 +456,8 @@ async def analyze_bank_statement(
 ):
     """Upload and analyze a bank statement (.pdf, .asice, .csv, or .xml)."""
     admin_id = await get_admin_id_from_token(admin_token)
+    from utils.plan_gating import check_plan_access
+    await check_plan_access(admin_id, "bank_ocr")
 
     # Validate file type
     filename = file.filename or ""
@@ -593,6 +595,8 @@ async def get_analysis_history(
 ):
     """Get past bank statement analyses."""
     admin_id = await get_admin_id_from_token(admin_token)
+    from utils.plan_gating import check_plan_access
+    await check_plan_access(admin_id, "bank_ocr")
 
     query = {"admin_id": admin_id}
     if client_id:

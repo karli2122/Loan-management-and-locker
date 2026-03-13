@@ -9,6 +9,7 @@ import io
 from database import db
 from utils.auth import get_admin_id_from_token
 from utils.exceptions import AuthorizationException
+from utils.plan_gating import check_plan_access
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Audit Logs"])
@@ -27,6 +28,7 @@ async def get_audit_logs(
 ):
     """Get audit logs with optional filters. Superadmin can see all logs, regular admins see only their own."""
     requester_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(requester_id, "audit_log")
     
     # Check if requester is superadmin
     admin = await db.admins.find_one({"id": requester_id})

@@ -27,7 +27,7 @@ interface Schedule {
 
 export default function SchedulesPage() {
   return (
-    <EnterpriseGate featureName="Payment Schedules">
+    <EnterpriseGate featureName="Payment Schedules" requiredPlan="business" featureKey="reminders">
       <SchedulesContent />
     </EnterpriseGate>
   );

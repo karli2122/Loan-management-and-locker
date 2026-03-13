@@ -11,6 +11,7 @@ import base64
 from database import db
 from utils.auth import get_admin_id_from_token, enforce_client_scope
 from utils.audit import log_audit, AuditAction
+from utils.plan_gating import check_plan_access
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents/vault", tags=["Document Vault"])
@@ -62,6 +63,7 @@ async def upload_document(
 ):
     """Upload a document to the client's vault."""
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "document_vault")
     
     client = await db.clients.find_one({"id": client_id})
     if not client:
@@ -132,6 +134,7 @@ async def list_documents(
 ):
     """List all documents in a client's vault."""
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "document_vault")
     
     client = await db.clients.find_one({"id": client_id})
     if not client:
@@ -160,6 +163,7 @@ async def download_document(
 ):
     """Download a document from the vault (returns base64 encoded content)."""
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "document_vault")
     
     client = await db.clients.find_one({"id": client_id})
     if not client:
@@ -192,6 +196,7 @@ async def delete_document(
 ):
     """Delete a document from the vault."""
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "document_vault")
     
     client = await db.clients.find_one({"id": client_id})
     if not client:

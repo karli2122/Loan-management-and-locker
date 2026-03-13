@@ -5,6 +5,7 @@ import logging
 
 from database import db
 from utils.auth import get_admin_id_from_token
+from utils.plan_gating import check_plan_access
 from routes.reports import _get_enterprise_client_query
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,7 @@ async def get_collection_trends(
 ):
     """Collection efficiency trends - weekly or monthly aggregated."""
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "collection_trends")
     base_query = await _get_enterprise_client_query(admin_id)
     
     now = datetime.now(timezone.utc)
@@ -102,6 +104,7 @@ async def get_risk_score_history(
 ):
     """Track risk score changes over the loan lifecycle for a specific client."""
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "risk_score_tracking")
     
     client = await db.clients.find_one({"id": client_id})
     if not client:
@@ -135,6 +138,7 @@ async def get_risk_score_history(
 async def get_portfolio_health(admin_token: str = Query(...)):
     """Loan portfolio health - NPAs, aging analysis, risk distribution."""
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "portfolio_health")
     base_query = await _get_enterprise_client_query(admin_id)
     
     clients = await db.clients.find(
@@ -213,6 +217,7 @@ async def get_portfolio_health(admin_token: str = Query(...)):
 async def get_comparative_analytics(admin_token: str = Query(...)):
     """Performance comparison across team members."""
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "comparative_analytics")
     
     # Get enterprise members
     admin = await db.admins.find_one({"id": admin_id}, {"_id": 0, "enterprise_id": 1, "is_super_admin": 1})

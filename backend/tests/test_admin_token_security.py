@@ -22,7 +22,7 @@ import os
 import uuid
 
 # Use the public URL for testing
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://paylock-qa.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://feature-gating-test.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 SUPERADMIN_USERNAME = "karli1987"

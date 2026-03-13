@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import API_URL from '../../src/constants/api';
+import { EnterpriseGate } from '../../src/components/EnterpriseGate';
 
 interface AuditLog {
   id: string;
@@ -159,6 +160,7 @@ export default function AuditLogPage() {
   }
 
   return (
+    <EnterpriseGate featureName="Audit Log" requiredPlan="enterprise" featureKey="audit_log">
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
@@ -270,6 +272,7 @@ export default function AuditLogPage() {
         </View>
       </ScrollView>
     </SafeAreaView>
+    </EnterpriseGate>
   );
 }
 

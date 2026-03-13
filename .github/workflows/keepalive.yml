@@ -12,4 +12,4 @@ jobs:
       - name: Ping API
         run: |
           echo "Pinging API..."
-          curl -sf "https://paylock-qa.preview.emergentagent.com/api/health" && echo "OK" || echo "API unreachable"
+          curl -sf "https://feature-gating-test.preview.emergentagent.com/api/health" && echo "OK" || echo "API unreachable"

@@ -8,6 +8,7 @@ import logging
 from database import db
 from utils.auth import get_admin_id_from_token, enforce_client_scope
 from utils.audit import log_audit, AuditAction
+from utils.plan_gating import check_plan_access
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["Loan Restructuring"])
@@ -30,6 +31,7 @@ async def restructure_loan(
     }
     """
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "loan_restructure")
     
     client = await db.clients.find_one({"id": client_id}, {"_id": 0})
     if not client:
@@ -128,6 +130,7 @@ async def get_restructure_history(
 ):
     """Get full restructuring history for a client's loan."""
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "loan_restructure")
     
     client = await db.clients.find_one({"id": client_id})
     if not client:

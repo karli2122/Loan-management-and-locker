@@ -7,6 +7,7 @@ from fastapi import APIRouter, Query, UploadFile, File, Form
 from starlette.responses import JSONResponse
 from database import db
 from utils.auth import get_admin_id_from_token
+from utils.plan_gating import check_plan_access
 
 router = APIRouter(prefix="/api/import", tags=["import"])
 
@@ -23,6 +24,7 @@ async def import_clients_csv(
     name, phone, email, address, birth_number/id_code, loan_amount, interest_rate, loan_duration_months
     """
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "bulk_import")
 
     content = await file.read()
     try:
@@ -161,6 +163,7 @@ async def import_loans_csv(
     client_name/phone, loan_amount, interest_rate, duration_months, emi_amount, start_date
     """
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "bulk_import")
 
     content = await file.read()
     try:

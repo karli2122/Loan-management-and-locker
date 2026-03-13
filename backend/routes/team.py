@@ -10,6 +10,7 @@ from fastapi import APIRouter, Query, Body
 from starlette.responses import JSONResponse
 from database import db
 from utils.auth import get_admin_id_from_token
+from utils.plan_gating import check_plan_access
 
 router = APIRouter(prefix="/api/team", tags=["team"])
 
@@ -86,13 +87,10 @@ async def enterprise_check(admin_token: str = Query(...)):
 async def add_team_member(admin_token: str = Query(...), data: dict = Body(...)):
     """Add a new team member (sub-admin). Enterprise plan required."""
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "role_permissions")
     admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
     if not admin or not admin.get("is_super_admin"):
         return JSONResponse(status_code=403, content={"error": "Only super admins can manage team"})
-
-    has_enterprise = await check_enterprise_plan(admin_id)
-    if not has_enterprise and not admin.get("is_super_admin"):
-        return JSONResponse(status_code=403, content={"error": "Team management requires Enterprise plan"})
 
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()

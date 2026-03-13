@@ -24,7 +24,7 @@ interface Document {
 
 export default function DocumentsPage() {
   return (
-    <EnterpriseGate featureName="Documents">
+    <EnterpriseGate featureName="Documents" requiredPlan="business" featureKey="document_vault">
       <DocumentsContent />
     </EnterpriseGate>
   );

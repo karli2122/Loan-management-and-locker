@@ -61,7 +61,7 @@ interface AnalysisResult {
 
 export default function BankAnalyzerPage() {
   return (
-    <EnterpriseGate featureName="Bank Statement Analyzer">
+    <EnterpriseGate featureName="Bank Statement Analyzer" requiredPlan="enterprise" featureKey="bank_ocr">
       <BankAnalyzerContent />
     </EnterpriseGate>
   );

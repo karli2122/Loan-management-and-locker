@@ -7,6 +7,7 @@ import logging
 
 from database import db
 from utils.auth import get_admin_id_from_token
+from utils.plan_gating import check_plan_access
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/sessions", tags=["Sessions"])
@@ -41,6 +42,7 @@ async def update_session_activity(admin_id: str):
 async def list_sessions(admin_token: str = Query(...)):
     """List all active sessions for the current admin."""
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "session_management")
     
     sessions = await db.admin_sessions.find(
         {"admin_id": admin_id, "is_active": True},
@@ -59,6 +61,7 @@ async def list_sessions(admin_token: str = Query(...)):
 async def revoke_session(session_id: str, admin_token: str = Query(...)):
     """Revoke a specific session."""
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "session_management")
     
     result = await db.admin_sessions.update_one(
         {"id": session_id, "admin_id": admin_id},
@@ -76,6 +79,7 @@ async def revoke_session(session_id: str, admin_token: str = Query(...)):
 async def revoke_all_sessions(admin_token: str = Query(...), keep_current: bool = Query(default=True)):
     """Revoke all sessions (optionally keeping current one)."""
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "session_management")
     
     query = {"admin_id": admin_id, "is_active": True}
     
