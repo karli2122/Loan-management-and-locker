@@ -476,3 +476,280 @@ def _build_report_html(report_type: str, clients: list, now: datetime) -> str:
             This is an automated report from PayLock Pro. Do not reply to this email.
         </div>
     </div></body></html>"""
+
+
+
+async def process_auto_reminders():
+    """Send automated payment reminders via push notifications.
+    
+    Runs every hour, checks all active clients with upcoming/overdue payments.
+    Default schedule: 1 day before, on due date, 1-3 days after (only if unpaid).
+    Configurable per admin in admin_settings.reminder_schedule.
+    """
+    from routes.reminders import send_expo_push_notification
+    
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            today = now.strftime("%Y-%m-%d")
+            
+            # Get all admins with their reminder settings
+            admins = await db.admins.find(
+                {"is_deleted": {"$ne": True}},
+                {"_id": 0, "id": 1, "username": 1}
+            ).to_list(100)
+            
+            for admin in admins:
+                admin_id = admin["id"]
+                settings = await db.admin_settings.find_one({"admin_id": admin_id})
+                
+                # Default reminder schedule: [-1, 0, 1, 2, 3] (days relative to due date)
+                reminder_days = [-1, 0, 1, 2, 3]
+                reminders_enabled = True
+                if settings:
+                    reminders_enabled = settings.get("auto_reminders_enabled", True)
+                    if settings.get("reminder_schedule"):
+                        reminder_days = settings["reminder_schedule"]
+                
+                if not reminders_enabled:
+                    continue
+                
+                # Get all active clients for this admin with outstanding balance
+                clients = await db.clients.find(
+                    {"admin_id": admin_id, "is_deleted": {"$ne": True}, "outstanding_balance": {"$gt": 0}},
+                    {"_id": 0, "id": 1, "name": 1, "next_payment_due": 1, "expo_push_token": 1,
+                     "monthly_emi": 1, "language": 1}
+                ).to_list(500)
+                
+                for client in clients:
+                    push_token = client.get("expo_push_token")
+                    if not push_token:
+                        continue
+                    
+                    due_date_str = client.get("next_payment_due")
+                    if not due_date_str:
+                        continue
+                    
+                    try:
+                        if isinstance(due_date_str, datetime):
+                            due_date = due_date_str.date()
+                        else:
+                            due_date = datetime.strptime(str(due_date_str)[:10], "%Y-%m-%d").date()
+                    except (ValueError, TypeError):
+                        continue
+                    
+                    days_until_due = (due_date - now.date()).days
+                    
+                    # Check if today matches any reminder day
+                    should_remind = False
+                    if days_until_due in reminder_days:
+                        # For after-due reminders (days > 0), only send if still unpaid
+                        if days_until_due <= 0:
+                            should_remind = True
+                        else:
+                            should_remind = True  # overdue, still has balance
+                    
+                    # For overdue 1-3 days: only if the negative day is in schedule
+                    if -days_until_due in [d for d in reminder_days if d > 0] and days_until_due < 0:
+                        should_remind = True
+                    
+                    if not should_remind:
+                        continue
+                    
+                    # Check if already reminded today
+                    existing = await db.auto_reminders_sent.find_one({
+                        "client_id": client["id"],
+                        "date": today,
+                    })
+                    if existing:
+                        continue
+                    
+                    # Build message based on timing
+                    emi = client.get("monthly_emi", 0)
+                    name = client.get("name", "Client")
+                    if days_until_due > 0:
+                        title = "Payment Reminder"
+                        body = f"Hi {name}, your payment of {emi:.2f} EUR is due in {days_until_due} day(s). Please prepare your payment."
+                    elif days_until_due == 0:
+                        title = "Payment Due Today"
+                        body = f"Hi {name}, your payment of {emi:.2f} EUR is due today. Please make your payment to avoid late fees."
+                    else:
+                        overdue_days = abs(days_until_due)
+                        title = "Payment Overdue"
+                        body = f"Hi {name}, your payment of {emi:.2f} EUR is {overdue_days} day(s) overdue. Please pay immediately to avoid device restrictions."
+                    
+                    # Send push notification
+                    sent = await send_expo_push_notification(
+                        push_token, title, body,
+                        {"action": "payment_reminder", "client_id": client["id"], "days_until_due": days_until_due}
+                    )
+                    
+                    if sent:
+                        await db.auto_reminders_sent.insert_one({
+                            "client_id": client["id"],
+                            "admin_id": admin_id,
+                            "date": today,
+                            "days_until_due": days_until_due,
+                            "sent_at": now,
+                        })
+                        logger.info(f"Auto reminder sent to {name} (due in {days_until_due}d)")
+            
+        except Exception as e:
+            logger.error(f"Auto reminder error: {e}")
+        
+        await asyncio.sleep(3600)  # Run every hour
+
+
+async def send_daily_digest():
+    """Send daily digest email to admins. Runs every 30 minutes, checks if it's time to send.
+    
+    Default: 8 AM in the admin's configured timezone.
+    Content: overdue payments, new registrations, tamper alerts, upcoming due dates.
+    """
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            
+            admins = await db.admins.find(
+                {"is_deleted": {"$ne": True}},
+                {"_id": 0, "id": 1, "username": 1, "email": 1}
+            ).to_list(100)
+            
+            for admin in admins:
+                admin_id = admin["id"]
+                admin_email = admin.get("email")
+                if not admin_email:
+                    continue
+                
+                settings = await db.admin_settings.find_one({"admin_id": admin_id})
+                digest_enabled = True
+                digest_hour = 8  # Default 8 AM UTC
+                if settings:
+                    digest_enabled = settings.get("daily_digest_enabled", True)
+                    digest_hour = settings.get("daily_digest_hour", 8)
+                
+                if not digest_enabled:
+                    continue
+                
+                # Check if current hour matches and haven't sent today
+                if now.hour != digest_hour:
+                    continue
+                
+                today_str = now.strftime("%Y-%m-%d")
+                already_sent = await db.daily_digest_sent.find_one({
+                    "admin_id": admin_id,
+                    "date": today_str,
+                })
+                if already_sent:
+                    continue
+                
+                # Gather digest data
+                clients = await db.clients.find(
+                    {"admin_id": admin_id, "is_deleted": {"$ne": True}},
+                    {"_id": 0, "id": 1, "name": 1, "outstanding_balance": 1,
+                     "next_payment_due": 1, "days_overdue": 1, "is_locked": 1,
+                     "created_at": 1, "tamper_attempts": 1, "last_tamper_attempt": 1,
+                     "last_tamper_type": 1, "monthly_emi": 1}
+                ).to_list(500)
+                
+                # Overdue clients
+                overdue = [c for c in clients if c.get("days_overdue", 0) > 0]
+                
+                # New registrations (last 24h)
+                yesterday = now - timedelta(hours=24)
+                new_clients = [c for c in clients if c.get("created_at") and 
+                              (c["created_at"] if isinstance(c["created_at"], datetime) 
+                               else datetime.fromisoformat(str(c["created_at"]).replace("Z", "+00:00"))) > yesterday]
+                
+                # Tamper alerts (last 24h)
+                tamper_clients = [c for c in clients if c.get("last_tamper_attempt") and
+                                 (c["last_tamper_attempt"] if isinstance(c["last_tamper_attempt"], datetime)
+                                  else datetime.fromisoformat(str(c["last_tamper_attempt"]).replace("Z", "+00:00"))) > yesterday]
+                
+                # Upcoming payments (next 3 days)
+                upcoming = []
+                for c in clients:
+                    due = c.get("next_payment_due")
+                    if due:
+                        try:
+                            if isinstance(due, str):
+                                due_dt = datetime.strptime(due[:10], "%Y-%m-%d").date()
+                            elif isinstance(due, datetime):
+                                due_dt = due.date()
+                            else:
+                                continue
+                            days_left = (due_dt - now.date()).days
+                            if 0 <= days_left <= 3:
+                                upcoming.append({**c, "days_left": days_left})
+                        except (ValueError, TypeError):
+                            pass
+                
+                total_outstanding = sum(c.get("outstanding_balance", 0) for c in clients)
+                
+                # Build email
+                overdue_rows = ""
+                for c in overdue[:10]:
+                    overdue_rows += f'<tr><td style="padding:8px;border-bottom:1px solid #eee">{c.get("name","?")}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right">{c.get("days_overdue",0)}d</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right">{c.get("outstanding_balance",0):.2f} EUR</td></tr>'
+                
+                tamper_rows = ""
+                for c in tamper_clients[:5]:
+                    tamper_rows += f'<tr><td style="padding:8px;border-bottom:1px solid #eee">{c.get("name","?")}</td><td style="padding:8px;border-bottom:1px solid #eee">{c.get("last_tamper_type","unknown")}</td></tr>'
+                
+                upcoming_rows = ""
+                for c in upcoming[:10]:
+                    upcoming_rows += f'<tr><td style="padding:8px;border-bottom:1px solid #eee">{c.get("name","?")}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right">in {c.get("days_left",0)}d</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right">{c.get("monthly_emi",0):.2f} EUR</td></tr>'
+                
+                html = f"""<html><body style="margin:0;padding:0;font-family:Arial,sans-serif">
+    <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.1)">
+        <div style="background:#0F172A;padding:24px;text-align:center">
+            <h1 style="color:#fff;margin:0;font-size:22px">PayLock Pro - Daily Digest</h1>
+            <p style="color:#94A3B8;margin:4px 0 0">{now.strftime('%B %d, %Y')}</p>
+        </div>
+        <div style="padding:24px">
+            <div style="display:flex;gap:12px;margin-bottom:24px">
+                <div style="flex:1;background:#FEF2F2;padding:16px;border-radius:8px;text-align:center">
+                    <div style="font-size:24px;font-weight:700;color:#EF4444">{len(overdue)}</div>
+                    <div style="font-size:12px;color:#666">Overdue</div>
+                </div>
+                <div style="flex:1;background:#F0FDF4;padding:16px;border-radius:8px;text-align:center">
+                    <div style="font-size:24px;font-weight:700;color:#10B981">{len(new_clients)}</div>
+                    <div style="font-size:12px;color:#666">New Clients</div>
+                </div>
+                <div style="flex:1;background:#FEF3C7;padding:16px;border-radius:8px;text-align:center">
+                    <div style="font-size:24px;font-weight:700;color:#F59E0B">{len(tamper_clients)}</div>
+                    <div style="font-size:12px;color:#666">Tamper Alerts</div>
+                </div>
+            </div>
+            <p style="color:#666;font-size:14px">Total Outstanding: <strong>{total_outstanding:.2f} EUR</strong></p>
+            {'<h3 style="color:#EF4444;margin-top:24px">Overdue Payments</h3><table style="width:100%;border-collapse:collapse"><tr style="background:#f8f9fa"><th style="padding:8px;text-align:left">Client</th><th style="padding:8px;text-align:right">Days</th><th style="padding:8px;text-align:right">Amount</th></tr>' + overdue_rows + '</table>' if overdue else ''}
+            {'<h3 style="color:#F59E0B;margin-top:24px">Tamper Alerts (24h)</h3><table style="width:100%;border-collapse:collapse"><tr style="background:#f8f9fa"><th style="padding:8px;text-align:left">Client</th><th style="padding:8px;text-align:left">Type</th></tr>' + tamper_rows + '</table>' if tamper_clients else ''}
+            {'<h3 style="color:#2563EB;margin-top:24px">Upcoming Payments</h3><table style="width:100%;border-collapse:collapse"><tr style="background:#f8f9fa"><th style="padding:8px;text-align:left">Client</th><th style="padding:8px;text-align:right">Due</th><th style="padding:8px;text-align:right">Amount</th></tr>' + upcoming_rows + '</table>' if upcoming else ''}
+        </div>
+        <div style="background:#f8f9fa;padding:16px;text-align:center;font-size:12px;color:#999">
+            This is an automated digest from PayLock Pro. Configure in Settings.
+        </div>
+    </div></body></html>"""
+                
+                try:
+                    resend.Emails.send({
+                        "from": SENDER_EMAIL,
+                        "to": admin_email,
+                        "subject": f"PayLock Daily Digest - {len(overdue)} overdue, {len(tamper_clients)} alerts",
+                        "html": html,
+                    })
+                    logger.info(f"Daily digest sent to {admin_email}")
+                except Exception as email_err:
+                    logger.error(f"Failed to send digest to {admin_email}: {email_err}")
+                
+                await db.daily_digest_sent.insert_one({
+                    "admin_id": admin_id,
+                    "date": today_str,
+                    "sent_at": now,
+                    "overdue_count": len(overdue),
+                    "tamper_count": len(tamper_clients),
+                })
+        
+        except Exception as e:
+            logger.error(f"Daily digest error: {e}")
+        
+        await asyncio.sleep(1800)  # Check every 30 minutes

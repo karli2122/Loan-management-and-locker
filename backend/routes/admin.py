@@ -356,9 +356,13 @@ async def get_admin_settings(admin_token: str = Query(...)):
             "payment_auto_late_fee_enabled": True,
             "payment_late_fee_frequency_days": 7,
             "payment_reminder_channels": ["push", "email"],
+            "auto_reminders_enabled": True,
+            "reminder_schedule": [-1, 0, 1, 2, 3],
+            "daily_digest_enabled": True,
+            "daily_digest_hour": 8,
         }
     
-    # Ensure all payment automation fields are present with defaults
+    # Ensure all fields are present with defaults
     defaults = {
         "payment_auto_reminder_enabled": True,
         "payment_auto_reminder_days_before": 3,
@@ -366,6 +370,10 @@ async def get_admin_settings(admin_token: str = Query(...)):
         "payment_auto_late_fee_enabled": True,
         "payment_late_fee_frequency_days": 7,
         "payment_reminder_channels": ["push", "email"],
+        "auto_reminders_enabled": True,
+        "reminder_schedule": [-1, 0, 1, 2, 3],
+        "daily_digest_enabled": True,
+        "daily_digest_hour": 8,
     }
     for k, v in defaults.items():
         if k not in settings:
@@ -386,6 +394,10 @@ async def update_admin_settings(
     payment_late_fee_frequency_days: int = Query(default=None),
     payment_reminder_channels: str = Query(default=None),
     payment_auto_charge_enabled: bool = Query(default=None),
+    auto_reminders_enabled: bool = Query(default=None),
+    reminder_schedule: str = Query(default=None),
+    daily_digest_enabled: bool = Query(default=None),
+    daily_digest_hour: int = Query(default=None),
 ):
     """Update admin's default settings for late fees, auto-lock, and payment automation."""
     admin_id = await get_admin_id_from_token(admin_token)
@@ -421,6 +433,14 @@ async def update_admin_settings(
         update_data["payment_reminder_channels"] = [c.strip() for c in payment_reminder_channels.split(",") if c.strip()]
     if payment_auto_charge_enabled is not None:
         update_data["payment_auto_charge_enabled"] = payment_auto_charge_enabled
+    if auto_reminders_enabled is not None:
+        update_data["auto_reminders_enabled"] = auto_reminders_enabled
+    if reminder_schedule is not None:
+        update_data["reminder_schedule"] = [int(d.strip()) for d in reminder_schedule.split(",") if d.strip().lstrip('-').isdigit()]
+    if daily_digest_enabled is not None:
+        update_data["daily_digest_enabled"] = daily_digest_enabled
+    if daily_digest_hour is not None:
+        update_data["daily_digest_hour"] = max(0, min(23, daily_digest_hour))
     
     # Upsert settings
     await db.admin_settings.update_one(

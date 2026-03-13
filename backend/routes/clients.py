@@ -12,6 +12,7 @@ from database import db
 from models.schemas import Client, ClientCreate, ClientUpdate, BulkOperationRequest
 from utils.auth import get_admin_id_from_token, enforce_client_scope
 from utils.exceptions import ValidationException, AuthenticationException, AuthorizationException
+from utils.audit import log_audit, AuditAction
 from routes.reminders import send_expo_push_notification
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,7 @@ async def create_client(client_data: ClientCreate, admin_token: str = Query(...)
         client_dict["loan_due_date"] = client_data.emi_due_date
         client_dict["next_payment_due"] = client_data.emi_due_date
     await db.clients.insert_one(client_dict)
+    await log_audit(admin_id, AuditAction.CLIENT_CREATE, "client", client.id, client.name, f"Created client with phone {client.phone}")
     return client
 
 
@@ -294,6 +296,8 @@ async def send_warning_to_client(
             {"action": "warning", "client_id": client_id, "is_warning": True},
         )
 
+    await log_audit(admin_id, AuditAction.CLIENT_WARNING, "client", client_id, client.get("name", ""), f"Warning: {message[:100]}")
+
     return {
         "status": "sent",
         "message_id": msg["id"],
@@ -317,6 +321,7 @@ async def allow_uninstall(client_id: str, admin_token: str = Query(...)):
         {"id": client_id},
         {"$set": {"uninstall_allowed": True}}
     )
+    await log_audit(admin_id, AuditAction.CLIENT_ALLOW_UNINSTALL, "client", client_id, client.get("name", ""), "Allowed uninstall")
     
     return {"message": "Uninstall allowed", "client_id": client_id}
 
@@ -342,6 +347,7 @@ async def delete_client(client_id: str, admin_token: str = Query(...)):
             "is_locked": False,
         }}
     )
+    await log_audit(admin_id, AuditAction.CLIENT_DELETE, "client", client_id, client.get("name", ""), "Soft-deleted client")
     
     return {"message": "Client deleted successfully"}
 
@@ -409,6 +415,7 @@ async def lock_client(
         "unlock_after_hours": unlock_after_hours,
         "timestamp": now.isoformat(),
     })
+    await log_audit(admin_id, AuditAction.CLIENT_LOCK, "client", client_id, client.get("name", ""), f"Locked: {reason}")
     
     # Send push notification for instant lock enforcement
     push_token = client.get("expo_push_token")
@@ -461,6 +468,7 @@ async def unlock_client(client_id: str, admin_token: str = Query(...)):
         "reason": "manual_unlock",
         "timestamp": now.isoformat(),
     })
+    await log_audit(admin_id, AuditAction.CLIENT_UNLOCK, "client", client_id, client.get("name", ""), "Manual unlock")
     
     # Send push notification for instant unlock
     push_token = client.get("expo_push_token")

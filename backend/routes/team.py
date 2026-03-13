@@ -15,10 +15,9 @@ router = APIRouter(prefix="/api/team", tags=["team"])
 
 ROLES = {
     "super_admin": {"label": "Super Admin", "permissions": ["all"]},
-    "manager": {"label": "Manager", "permissions": ["clients", "loans", "reminders", "reports", "devices", "contracts", "schedules", "documents", "import"]},
-    "collection_agent": {"label": "Collection Agent", "permissions": ["clients", "loans", "reminders", "contracts"]},
-    "accountant": {"label": "Accountant", "permissions": ["reports", "loans", "clients"]},
-    "viewer": {"label": "Viewer", "permissions": ["clients", "reports"]},
+    "full_admin": {"label": "Full Admin", "permissions": ["clients", "loans", "payments", "reminders", "reports", "devices", "contracts", "schedules", "documents", "import", "settings", "team"]},
+    "collections": {"label": "Collections", "permissions": ["clients", "loans", "payments", "reminders", "contracts"]},
+    "viewer": {"label": "View Only", "permissions": ["clients_read", "reports_read", "loans_read"]},
 }
 
 

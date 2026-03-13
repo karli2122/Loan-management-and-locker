@@ -81,6 +81,7 @@ export default {
       "@react-native-community/datetimepicker",
       "expo-font",
       "expo-web-browser",
+      ...(IS_ADMIN_APP ? [] : []),
       [
         "expo-location",
         {

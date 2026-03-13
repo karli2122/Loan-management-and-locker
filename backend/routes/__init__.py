@@ -17,6 +17,11 @@ from .payments import router as payments_router
 from .messaging import router as messaging_router
 from .risk_scoring import router as risk_scoring_router
 from .push_notifications import router as push_notifications_router
+from .forecasting import router as forecasting_router
+from .loan_restructure import router as loan_restructure_router
+from .sessions import router as sessions_router
+from .analytics import router as analytics_router
+from .document_vault import router as document_vault_router
 
 __all__ = [
     "admin_router",
@@ -37,4 +42,9 @@ __all__ = [
     "messaging_router",
     "risk_scoring_router",
     "push_notifications_router",
+    "forecasting_router",
+    "loan_restructure_router",
+    "sessions_router",
+    "analytics_router",
+    "document_vault_router",
 ]

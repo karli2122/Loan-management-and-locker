@@ -38,6 +38,11 @@ from routes import (
     messaging_router,
     risk_scoring_router,
     push_notifications_router,
+    forecasting_router,
+    loan_restructure_router,
+    sessions_router,
+    analytics_router,
+    document_vault_router,
 )
 from routes.backup import router as backup_router
 from routes.provisioning import router as provisioning_router
@@ -135,6 +140,11 @@ app.include_router(messaging_router)
 app.include_router(risk_scoring_router)
 app.include_router(push_notifications_router)
 app.include_router(app_version_router)
+app.include_router(forecasting_router)
+app.include_router(loan_restructure_router)
+app.include_router(sessions_router)
+app.include_router(analytics_router)
+app.include_router(document_vault_router)
 
 
 WEBSITE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "paylockpro-website")
@@ -379,10 +389,12 @@ async def startup_event():
     start_keepalive(app)
 
     # Start background tasks
-    from tasks import process_due_payments, send_scheduled_reports
+    from tasks import process_due_payments, send_scheduled_reports, process_auto_reminders, send_daily_digest
     asyncio.create_task(process_due_payments())
     asyncio.create_task(send_scheduled_reports())
-    logger.info("Background tasks started (payment scheduler, report emailer)")
+    asyncio.create_task(process_auto_reminders())
+    asyncio.create_task(send_daily_digest())
+    logger.info("Background tasks started (payment scheduler, report emailer, auto reminders, daily digest)")
 
 
 @app.on_event("shutdown")

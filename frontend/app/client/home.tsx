@@ -35,6 +35,7 @@ import OfflineSyncManager from '../../src/services/OfflineSyncManager';
 import { startBackgroundLocationTracking, isBackgroundLocationActive } from '../../src/services/BackgroundLocationService';
 import { initializeNotifications } from '../../src/services/BackgroundNotificationService';
 import API_URL from '../../src/constants/api';
+import * as ScreenCapture from 'expo-screen-capture';
 
 
 interface ClientStatus {
@@ -750,6 +751,15 @@ export default function ClientHome() {
     // Wrap initialization in try-catch to prevent crashes
     const initialize = async () => {
       try {
+        // Prevent screenshots and screen recording on client app
+        if (Platform.OS === 'android') {
+          try {
+            await ScreenCapture.preventScreenCaptureAsync();
+          } catch (scErr) {
+            console.log('Screen capture prevention not available:', scErr);
+          }
+        }
+        
         // Check if this is a fresh registration BEFORE doing anything heavy
         const isFreshRegistration = await AsyncStorage.getItem('fresh_registration');
         

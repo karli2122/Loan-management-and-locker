@@ -147,3 +147,125 @@ async def get_csv_template(admin_token: str = Query(...)):
         content={"template": template},
         headers={"Content-Type": "application/json"}
     )
+
+
+
+@router.post("/loans/csv")
+async def import_loans_csv(
+    admin_token: str = Form(...),
+    file: UploadFile = File(...),
+):
+    """Import loans from a CSV file and set up loans for existing clients.
+    
+    Expected CSV columns (flexible matching):
+    client_name/phone, loan_amount, interest_rate, duration_months, emi_amount, start_date
+    """
+    admin_id = await get_admin_id_from_token(admin_token)
+
+    content = await file.read()
+    try:
+        text = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        try:
+            text = content.decode("latin-1")
+        except Exception:
+            return JSONResponse(status_code=400, content={"error": "Cannot decode file."})
+
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames:
+        return JSONResponse(status_code=400, content={"error": "Empty CSV or no header row"})
+
+    field_map = {}
+    for f in reader.fieldnames:
+        fl = f.strip().lower().replace(" ", "_")
+        if fl in ("client_name", "name", "full_name"):
+            field_map[f] = "client_name"
+        elif fl in ("phone", "phone_number", "mobile"):
+            field_map[f] = "phone"
+        elif fl in ("loan_amount", "amount", "principal"):
+            field_map[f] = "loan_amount"
+        elif fl in ("interest_rate", "rate", "interest"):
+            field_map[f] = "interest_rate"
+        elif fl in ("duration", "months", "duration_months", "tenure", "tenure_months"):
+            field_map[f] = "duration_months"
+        elif fl in ("emi", "emi_amount", "monthly_emi", "monthly_payment"):
+            field_map[f] = "emi_amount"
+        elif fl in ("start_date", "loan_date", "date"):
+            field_map[f] = "start_date"
+
+    imported, skipped, errors = 0, 0, []
+
+    for row_num, row in enumerate(reader, start=2):
+        mapped = {}
+        for csv_col, our_col in field_map.items():
+            val = row.get(csv_col, "").strip()
+            if val:
+                mapped[our_col] = val
+
+        # Find matching client
+        client = None
+        if mapped.get("phone"):
+            client = await db.clients.find_one({"phone": mapped["phone"], "admin_id": admin_id, "is_deleted": {"$ne": True}})
+        if not client and mapped.get("client_name"):
+            client = await db.clients.find_one({"name": mapped["client_name"], "admin_id": admin_id, "is_deleted": {"$ne": True}})
+
+        if not client:
+            errors.append({"row": row_num, "error": f"Client not found: {mapped.get('client_name', mapped.get('phone', '?'))}"})
+            continue
+
+        # Skip if client already has an active loan
+        if client.get("loan_amount", 0) > 0 and client.get("outstanding_balance", 0) > 0:
+            skipped += 1
+            continue
+
+        try:
+            loan_amount = float(mapped.get("loan_amount", 0))
+            interest_rate = float(mapped.get("interest_rate", 0))
+            duration = int(mapped.get("duration_months", 12))
+            emi = float(mapped.get("emi_amount", 0))
+            start_date = mapped.get("start_date", datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+        except (ValueError, TypeError) as e:
+            errors.append({"row": row_num, "error": f"Invalid number: {str(e)}"})
+            continue
+
+        if loan_amount <= 0:
+            errors.append({"row": row_num, "error": "Invalid loan amount"})
+            continue
+
+        total_due = loan_amount * (1 + interest_rate / 100) if interest_rate else loan_amount
+        if emi <= 0:
+            emi = round(total_due / duration, 2) if duration > 0 else total_due
+
+        # Set up the loan
+        loan_update = {
+            "loan_amount": loan_amount,
+            "interest_rate": interest_rate,
+            "monthly_emi": emi,
+            "emi_amount": emi,
+            "total_amount_due": total_due,
+            "outstanding_balance": total_due,
+            "total_paid": 0,
+            "days_overdue": 0,
+            "loan_start_date": start_date,
+            "loan_setup_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.clients.update_one({"id": client["id"]}, {"$set": loan_update})
+        imported += 1
+
+    return {
+        "imported": imported,
+        "skipped": skipped,
+        "errors": errors[:20],
+        "total_rows": imported + skipped + len(errors),
+        "detected_columns": list(field_map.values()),
+    }
+
+
+@router.get("/loans/template")
+async def get_loan_csv_template(admin_token: str = Query(...)):
+    """Get a CSV template for loan import."""
+    await get_admin_id_from_token(admin_token)
+    template = "client_name,phone,loan_amount,interest_rate,duration_months,emi_amount,start_date\n"
+    template += "John Doe,+37255512345,1000,10,12,91.67,2026-04-01\n"
+    template += "Jane Smith,+37255598765,2000,12,24,93.33,2026-04-01\n"
+    return JSONResponse(content={"template": template})

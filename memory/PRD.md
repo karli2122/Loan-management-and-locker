@@ -10,77 +10,111 @@ Full-stack loan management application with FastAPI backend, React Native mobile
 - **Web Portal**: Vanilla JS served from `/api/portal` on the backend
 - **Website**: Static HTML at `/api/website`
 
-## Completed Features
+## Implemented Features
 
 ### Infrastructure
 - VPS deployment with Nginx reverse proxy + systemd service
 - Custom domain `api.paylock.pro` with Let's Encrypt SSL
+- Firebase Cloud Messaging for push notifications
 
-### Web Portal
-- Dashboard with live stats and charts
-- Client management, Device registration key generator, Add Loan, Send Warning
-- Loan plans/payment schedules CRUD
-- Bank statement analyzer with AI vision OCR
-- AI client risk scoring, Bulk messaging, Report exports
-- App Version Management (superadmin)
+### Previous Session Fixes (Verified)
+- Push notifications + FCM: WORKING
+- App versioning (semantic version check): WORKING
+- Profit analytics (includes archived loans): DEPLOYED
+- Device count: FIXED (enterprise-scoped via admin_token)
 
-### Mobile Apps
-- App Version Check with semantic version comparison
-- Admin: Offline mode, dashboard charts, push notifications
-- Client: In-app messaging, multi-language lock screen, device lock
+### Session 2026-03-13 Features
 
-### Auth & Security
-- Plan-based portal access gating, superadmin bypass
+#### Phase 1: Bug Fixes (DEPLOYED)
+- Device count fixed: `/api/stats` enterprise-scoped, shows `total_clients`
+- Tamper detection fixed: real permission values for comparison, two-step warning flow
+- Chat date grouping in both admin and client apps
+- Warning auto-dismiss after 10 seconds
+- Admin chat FAB moved up, padding added
 
-## Recent Changes (2026-03-13)
+#### Phase 2: New Features (DEPLOYED TO VPS + APK BUILDS SUBMITTED)
 
-### Device Count Fix (P0) - FIXED & DEPLOYED
-- `/api/stats` endpoint now supports `admin_token` for enterprise-scoped queries
-- Frontend device-management.tsx shows `total_clients` as "Total Devices" instead of `registered_devices`
-- Verified: returns correct count of 4
+1. **Audit Log System** (P0)
+   - `log_audit()` helper integrated into client CRUD, lock/unlock, warnings, delete
+   - API: `GET /api/audit-logs` with filters
 
-### Tamper Detection Fix (P0) - FIXED, BUILD SUBMITTED
-- Root cause: `accessibility || accessibilityCached` in AppState handler prevented tamper detection (once cached true, always true)
-- Fix: Uses real permission values for tamper comparison, saves both true/false to cache
-- Two-step flow: 1) Warn first (React Native Alert + Android notification), 2) If user ignores and permission still off on next app focus → report tamper + force lock
-- Conditional on `uninstall_allowed` setting: `true` = no warnings, `false` = full tamper flow
+2. **Automated Payment Reminders** (P0)
+   - Background task runs hourly, sends Expo push notifications
+   - Schedule: 1 day before, on due date, 1-3 days after (if unpaid)
+   - Configurable in admin settings: `auto_reminders_enabled`, `reminder_schedule`
 
-### Chat Date Grouping (P1) - IMPLEMENTED, BUILD SUBMITTED
-- Both admin and client chat windows group messages by date with visual separators
+3. **Daily Digest Email** (P1)
+   - Background task, sends via Resend at configured hour (default 8 AM UTC)
+   - Content: overdue payments, new registrations, tamper alerts, upcoming due dates
+   - Configurable: `daily_digest_enabled`, `daily_digest_hour`
 
-### Warning Auto-Dismiss (P2) - IMPLEMENTED, BUILD SUBMITTED
-- Client in-app warning messages auto-dismiss after 10 seconds
+4. **Screenshot/Screen Recording Block** (P1)
+   - `expo-screen-capture` installed, `preventScreenCaptureAsync()` called on init
+   - Only on client app (not admin)
 
-### Admin Chat UI Tweaks (P2) - IMPLEMENTED, BUILD SUBMITTED
-- Chat FAB moved up ~1cm (bottom: 60 instead of 24)
-- Chat window has padding (contentContainerStyle padding: 10)
+5. **Revenue Forecasting** (P2)
+   - API: `GET /api/forecasting/revenue?admin_token=...&days=90`
+   - Weekly forecast with expected vs likely collections
+   - Factors in client payment reliability + overdue status
 
-### Previous Session Fixes (Verified Working)
-- Push notifications with FCM - WORKING
-- App versioning (semantic version check) - WORKING
-- Profit analytics (includes archived loans) - DEPLOYED
+6. **Loan Restructuring/Rescheduling** (P0)
+   - API: `POST /api/loans/{client_id}/restructure` - modify EMI, tenure, rate
+   - API: `GET /api/loans/{client_id}/restructure-history` - full history
+   - Saves original vs new terms, reason, effective date
+
+7. **Role-Based Sub-Admin Permissions** (P0)
+   - 4 roles: super_admin, full_admin, collections, viewer
+   - `viewer`: read-only (clients_read, reports_read, loans_read)
+   - `collections`: clients, loans, payments, reminders, contracts
+   - `full_admin`: all operational permissions
+   - Team CRUD with role assignment
+
+8. **Session Management** (P1)
+   - API: `GET /api/sessions` - list active sessions
+   - API: `DELETE /api/sessions/{id}` - revoke specific session
+   - API: `DELETE /api/sessions` - revoke all sessions
+
+9. **Analytics Suite** (P1)
+   - `GET /api/analytics/collection-trends` - weekly/monthly efficiency
+   - `GET /api/analytics/risk-score-history` - per-client score tracking
+   - `GET /api/analytics/portfolio-health` - NPAs, aging analysis, collection rate
+   - `GET /api/analytics/comparative` - team member performance comparison
+
+10. **Client Document Vault** (P1)
+    - Upload files to VPS `/opt/paylock/documents/{client_id}/`
+    - API: `POST /api/documents/vault/{client_id}/upload` - upload with doc type
+    - API: `GET /api/documents/vault/{client_id}` - list documents
+    - API: `GET /api/documents/vault/{client_id}/{doc_id}/download` - download
+    - API: `DELETE /api/documents/vault/{client_id}/{doc_id}` - delete
+    - Types: id_photo, contract, proof_of_income, other
+
+11. **Bulk Loan Import** (P1)
+    - API: `POST /api/import/loans/csv` - import loans from CSV
+    - Matches clients by name/phone, sets up loan terms
+    - API: `GET /api/import/loans/template` - CSV template
 
 ## Current Builds
-- Admin v6: https://expo.dev/accounts/karli1987/projects/loans/builds/3174f95b-4a78-455d-ab20-6ac17ae82509
-- Client v8: https://expo.dev/accounts/karli1987/projects/client/builds/c4352851-2e6c-4e9b-b8e7-2989504f2076
+- Admin: https://expo.dev/accounts/karli1987/projects/loans/builds/a78a0eb3-84ac-4432-be15-46535455a27c
+- Client: https://expo.dev/accounts/karli1987/projects/client/builds/a2976f38-520e-4c31-83c7-8b942e9f8cdc
 
 ## Pending User Verification
-- Tamper detection two-step flow (Client v8)
-- Device count showing 4 (Admin v6)
-- Chat date grouping (both apps)
-- Warning auto-dismiss (Client v8)
+- Tamper detection two-step flow
+- Screenshot blocking on client
+- All new features accessible via mobile apps
+- Device count showing 4 on admin
 
-## Future/Backlog Tasks
-- (P1) WhatsApp Business API Integration
+## Future/Backlog
+- WhatsApp Business API Integration
+- Risk score history needs frontend UI in admin app
+- Restructuring UI in admin client-details screen
+- Document vault UI in admin client-details screen
+- Session management UI in admin settings
+- Analytics charts in admin dashboard
+- Bulk import UI in admin app
+- Permission enforcement middleware on all routes
+- Risk score auto-tracking on payment events
 
 ## Credentials
 - VPS: 37.148.202.159, user `karliv`, password `Nasvakas123!`
 - Portal login: `karli1987` / `nasvakas123`
 - Backend: api.paylock.pro
-
-## Key Files
-- `backend/routes/reports.py` - Stats endpoint with enterprise scoping
-- `frontend/app/client/home.tsx` - Tamper detection, permission checks, warning auto-dismiss
-- `frontend/app/admin/client-details.tsx` - Chat UI with date grouping
-- `frontend/app/admin/device-management.tsx` - Device count display
-- `frontend/src/context/LanguageContext.tsx` - Translation strings
