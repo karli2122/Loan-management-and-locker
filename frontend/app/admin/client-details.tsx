@@ -11,6 +11,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -20,7 +21,7 @@ import { useLanguage } from '../../src/context/LanguageContext';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import API_URL from '../../src/constants/api';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 import {
@@ -536,8 +537,7 @@ export default function ClientDetails() {
     try {
       const token = await AsyncStorage.getItem('admin_token');
       if (!token) { Alert.alert(t('error'), 'Not authenticated'); return; }
-      const { Linking } = await import('react-native');
-      Linking.openURL(`${API_URL}/api/contracts/${id}/download?admin_token=${token}&language=${language}`);
+      await Linking.openURL(`${API_URL}/api/contracts/${id}/download?admin_token=${token}&language=${language}`);
     } catch (error: any) { Alert.alert(t('error'), error.message); }
   };
 
