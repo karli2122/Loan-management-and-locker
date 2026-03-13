@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "407218351110",
+    "firebase_url": "https://comm-route.firebaseio.com",
+    "project_id": "comm-route",
+    "storage_bucket": "comm-route.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:407218351110:android:44a19618e75a587b9a2787",
+        "android_client_info": {
+          "package_name": "com.paylock.client"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "407218351110-vr3s1jrect9ncr430pigkdldqn834u4i.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJpXDzqASUOTY56g7jL-tei5ItFpAZcy8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "407218351110-vr3s1jrect9ncr430pigkdldqn834u4i.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

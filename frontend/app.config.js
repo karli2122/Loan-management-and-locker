@@ -29,6 +29,7 @@ export default {
       softwareKeyboardLayoutMode: "resize",
       navigationBarColor: "#152035",
       navigationBarStyle: "dark",
+      googleServicesFile: IS_ADMIN_APP ? undefined : "./google-services.json",
       // Permissions: Admin app needs basic location/network, 
       // Client app needs elevated permissions for Device Admin protection
       permissions: IS_ADMIN_APP 
