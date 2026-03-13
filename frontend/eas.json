@@ -21,6 +21,7 @@
     "admin-preview": {
       "distribution": "internal",
       "credentialsSource": "local",
+      "autoIncrement": true,
       "env": {
         "APP_MODE": "admin",
         "EXPO_PUBLIC_BACKEND_URL": "https://api.paylock.pro"
