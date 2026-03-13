@@ -54,6 +54,7 @@ export interface Client {
   created_at: string;
   tamper_attempts: number;
   last_tamper_attempt: string | null;
+  last_tamper_type?: string | null;
   last_reboot: string | null;
   admin_mode_active?: boolean;
   uninstall_allowed?: boolean;

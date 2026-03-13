@@ -64,6 +64,15 @@ export const ClientInfoCard = ({
         </Text>
       </View>
     )}
+    {client.tamper_attempts > 0 && (
+      <View style={[styles.statusBadge, { backgroundColor: '#FEE2E2', borderColor: '#EF4444', borderWidth: 1 }]}>
+        <Ionicons name="warning" size={14} color="#EF4444" />
+        <Text style={[styles.statusText, { color: '#EF4444', fontWeight: '700' }]}>
+          {`${client.tamper_attempts} tamper${client.tamper_attempts > 1 ? 's' : ''}`}
+          {client.last_tamper_type ? ` (${client.last_tamper_type.replace(/_/g, ' ')})` : ''}
+        </Text>
+      </View>
+    )}
     <View style={styles.regCodeRow}>
       {client.registration_code ? (
         <>

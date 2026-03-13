@@ -612,7 +612,7 @@ async def fetch_device_price(client_id: str, admin_token: str = Query(...), forc
 
 
 @router.post("/clients/{client_id}/report-tamper")
-async def report_tamper(client_id: str):
+async def report_tamper(client_id: str, tamper_type: str = Query(default="unknown")):
     """Report a tamper attempt from client device."""
     client = await db.clients.find_one({"id": client_id})
     if not client:
@@ -622,7 +622,10 @@ async def report_tamper(client_id: str):
         {"id": client_id},
         {
             "$inc": {"tamper_attempts": 1},
-            "$set": {"last_tamper_attempt": datetime.utcnow()}
+            "$set": {
+                "last_tamper_attempt": datetime.utcnow(),
+                "last_tamper_type": tamper_type,
+            }
         }
     )
     
@@ -633,13 +636,28 @@ async def report_tamper(client_id: str):
             admin_id=client["admin_id"],
             type="tamper_attempt",
             title="Tamper Attempt Detected",
-            message=f"Client {client['name']} attempted to tamper with the app",
+            message=f"Client {client['name']} tampered: {tamper_type}",
             client_id=client_id,
             client_name=client["name"]
         )
         await db.notifications.insert_one(notification.dict())
+        
+        # Send push notification to admin
+        admin_tokens = await db.push_tokens.find(
+            {"admin_id": client["admin_id"]}, {"_id": 0, "token": 1}
+        ).to_list(10)
+        for tk in admin_tokens:
+            push_token = tk.get("token", "")
+            if push_token.startswith("ExponentPushToken"):
+                from routes.reminders import send_expo_push_notification
+                await send_expo_push_notification(
+                    push_token,
+                    "Tamper Alert",
+                    f"{client['name']}: {tamper_type.replace('_', ' ').replace(':', ' - ')}",
+                    {"action": "tamper", "client_id": client_id}
+                )
     
-    return {"message": "Tamper reported", "client_id": client_id}
+    return {"message": "Tamper reported", "client_id": client_id, "tamper_type": tamper_type}
 
 
 @router.post("/clients/{client_id}/report-reboot")

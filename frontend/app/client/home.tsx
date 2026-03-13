@@ -825,7 +825,7 @@ export default function ClientHome() {
               devicePolicy.isAccessibilityEnabled(),
               devicePolicy.canDrawOverlays(),
               devicePolicy.isIgnoringBatteryOptimizations(),
-              (async () => { const { status } = await Location.getForegroundPermissionsAsync(); return status === 'granted'; })(),
+              (async () => { const { status } = await Location.getBackgroundPermissionsAsync(); return status === 'granted'; })(),
               (async () => { const { status } = await Notifications.getPermissionsAsync(); return status === 'granted'; })(),
             ]);
             
@@ -952,16 +952,16 @@ export default function ClientHome() {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         fetchStatus(clientId).catch(() => {});
         updateLocation(clientId).catch(() => {});
-        // Refresh all protection states on resume (user may have just enabled something)
+        // Refresh all protection states on resume and detect permission revocation
         if (Platform.OS === 'android') {
           (async () => {
             try {
-              const [admin, accessibility, overlay, batteryOpt, locationPerm, notifPerm] = await Promise.all([
+              const [admin, accessibility, overlay, batteryOpt, locationBgPerm, notifPerm] = await Promise.all([
                 devicePolicy.isAdminActive(),
                 devicePolicy.isAccessibilityEnabled(),
                 devicePolicy.canDrawOverlays(),
                 devicePolicy.isIgnoringBatteryOptimizations(),
-                (async () => { const { status } = await Location.getForegroundPermissionsAsync(); return status === 'granted'; })(),
+                (async () => { const { status } = await Location.getBackgroundPermissionsAsync(); return status === 'granted'; })(),
                 (async () => { const { status } = await Notifications.getPermissionsAsync(); return status === 'granted'; })(),
               ]);
               const autoStartCached = (await AsyncStorage.getItem('autostart_enabled')) === 'true';
@@ -983,11 +983,37 @@ export default function ClientHome() {
                 overlay: overlay,
                 autoStart: autoStartCached,
                 accessibility: accessibility || accessibilityCached,
-                location: locationPerm,
+                location: locationBgPerm,
                 notification: notifPerm,
                 usageStats: usageStatsPerm,
                 notificationListener: notifListenerPerm,
               };
+              
+              // Detect permission revocation (tampering)
+              // Compare previous cached states with current — if any was true and now false, report
+              const prevStatesJson = await AsyncStorage.getItem('permission_states');
+              if (prevStatesJson) {
+                const prevStates = JSON.parse(prevStatesJson);
+                const revokedPerms: string[] = [];
+                if (prevStates.accessibility && !newPermStates.accessibility) revokedPerms.push('accessibility');
+                if (prevStates.location && !newPermStates.location) revokedPerms.push('location');
+                if (prevStates.notification && !newPermStates.notification) revokedPerms.push('notification');
+                if (prevStates.overlay && !newPermStates.overlay) revokedPerms.push('overlay');
+                
+                if (revokedPerms.length > 0) {
+                  console.log('TAMPER DETECTED: Permissions revoked:', revokedPerms.join(', '));
+                  await reportTamperAttempt(`permission_revoked:${revokedPerms.join(',')}`);
+                }
+              }
+              
+              // Also detect admin mode revocation
+              const wasAdminActive = (await AsyncStorage.getItem('admin_was_active')) === 'true';
+              if (wasAdminActive && !admin) {
+                console.log('TAMPER DETECTED: Device Admin was revoked');
+                await reportTamperAttempt('admin_disabled');
+              }
+              if (admin) await AsyncStorage.setItem('admin_was_active', 'true');
+              
               setPermissionStates(newPermStates);
               
               // Save states to cache
