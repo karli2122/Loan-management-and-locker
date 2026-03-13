@@ -993,7 +993,7 @@ export default function ClientHome() {
               };
               
               // Detect permission revocation (tampering)
-              // Conditional: if uninstall_allowed is true, allow freely; if false, warn + report
+              // Two-step: 1) warn first, 2) re-check after delay — only report tamper if still revoked
               const prevStatesJson = await AsyncStorage.getItem('permission_states');
               if (prevStatesJson) {
                 const prevStates = JSON.parse(prevStatesJson);
@@ -1006,11 +1006,60 @@ export default function ClientHome() {
                 if (revokedPerms.length > 0) {
                   const uninstallAllowed = status?.uninstall_allowed === true;
                   if (uninstallAllowed) {
-                    // Uninstall is allowed — no tamper report, just log
                     console.log('Permissions revoked but uninstall is allowed:', revokedPerms.join(', '));
                   } else {
-                    // Uninstall not allowed — report tamper, show both in-app alert + system notification
-                    console.log('TAMPER DETECTED: Permissions revoked:', revokedPerms.join(', '));
+                    // Check if this is a first warning or a re-check after warning
+                    const pendingTamperJson = await AsyncStorage.getItem('pending_tamper_check');
+                    if (pendingTamperJson) {
+                      // Second check — user ignored warning, permissions still revoked → report tamper + lock
+                      console.log('TAMPER CONFIRMED: User ignored warning, permissions still revoked:', revokedPerms.join(', '));
+                      await AsyncStorage.removeItem('pending_tamper_check');
+                      await reportTamperAttempt(`permission_revoked:${revokedPerms.join(',')}`);
+                    } else {
+                      // First detection — show warning, schedule re-check
+                      console.log('Permission revoked — showing warning:', revokedPerms.join(', '));
+                      await AsyncStorage.setItem('pending_tamper_check', JSON.stringify({ perms: revokedPerms, at: Date.now() }));
+                      Alert.alert(
+                        t('securityAlert') || 'Security Alert',
+                        t('disablingPermissionsWillEraseData') || 'Disabling critical permissions will erase your data. Please re-enable them immediately.',
+                        [{ text: t('ok') || 'OK' }]
+                      );
+                      try {
+                        await Notifications.scheduleNotificationAsync({
+                          content: {
+                            title: t('securityAlert') || 'Security Alert',
+                            body: t('disablingPermissionsWillEraseData') || 'Disabling critical permissions will erase your data. Please re-enable them immediately.',
+                            sound: true,
+                            priority: Notifications.AndroidNotificationPriority.MAX,
+                          },
+                          trigger: null,
+                        });
+                      } catch (notifErr) {
+                        console.log('Tamper warning notification error:', notifErr);
+                      }
+                    }
+                  }
+                } else {
+                  // All permissions are OK — clear any pending tamper check
+                  await AsyncStorage.removeItem('pending_tamper_check');
+                }
+              }
+              
+              // Also detect admin mode revocation (same two-step logic)
+              const wasAdminActive = (await AsyncStorage.getItem('admin_was_active')) === 'true';
+              if (wasAdminActive && !admin) {
+                const uninstallAllowed = status?.uninstall_allowed === true;
+                if (uninstallAllowed) {
+                  console.log('Device Admin revoked but uninstall is allowed');
+                } else {
+                  const pendingAdminTamper = await AsyncStorage.getItem('pending_admin_tamper');
+                  if (pendingAdminTamper) {
+                    console.log('TAMPER CONFIRMED: User ignored warning, admin still disabled');
+                    await AsyncStorage.removeItem('pending_admin_tamper');
+                    await reportTamperAttempt('admin_disabled');
+                  } else {
+                    console.log('Admin disabled — showing warning');
+                    await AsyncStorage.setItem('pending_admin_tamper', 'true');
                     Alert.alert(
                       t('securityAlert') || 'Security Alert',
                       t('disablingPermissionsWillEraseData') || 'Disabling critical permissions will erase your data. Please re-enable them immediately.',
@@ -1027,23 +1076,12 @@ export default function ClientHome() {
                         trigger: null,
                       });
                     } catch (notifErr) {
-                      console.log('Tamper notification error:', notifErr);
+                      console.log('Admin tamper warning notification error:', notifErr);
                     }
-                    await reportTamperAttempt(`permission_revoked:${revokedPerms.join(',')}`);
                   }
                 }
-              }
-              
-              // Also detect admin mode revocation
-              const wasAdminActive = (await AsyncStorage.getItem('admin_was_active')) === 'true';
-              if (wasAdminActive && !admin) {
-                const uninstallAllowed = status?.uninstall_allowed === true;
-                if (uninstallAllowed) {
-                  console.log('Device Admin revoked but uninstall is allowed');
-                } else {
-                  console.log('TAMPER DETECTED: Device Admin was revoked');
-                  await reportTamperAttempt('admin_disabled');
-                }
+              } else if (admin) {
+                await AsyncStorage.removeItem('pending_admin_tamper');
               }
               if (admin) await AsyncStorage.setItem('admin_was_active', 'true');
               
