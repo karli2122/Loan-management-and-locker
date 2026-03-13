@@ -32,47 +32,55 @@ Full-stack loan management application with FastAPI backend, React Native mobile
 ### Auth & Security
 - Plan-based portal access gating, superadmin bypass
 
-## Recent Bug Fixes (2026-03-13)
+## Recent Changes (2026-03-13)
 
-### Analytics Profit Data (P0) - FIXED & DEPLOYED
-- Fixed to include archived loan data in revenue/interest calculations
+### Device Count Fix (P0) - FIXED & DEPLOYED
+- `/api/stats` endpoint now supports `admin_token` for enterprise-scoped queries
+- Frontend device-management.tsx shows `total_clients` as "Total Devices" instead of `registered_devices`
+- Verified: returns correct count of 4
 
-### Version Check Update Detection - FIXED & DEPLOYED
-- Added semantic version string comparison
+### Tamper Detection Fix (P0) - FIXED, BUILD SUBMITTED
+- Root cause: `accessibility || accessibilityCached` in AppState handler prevented tamper detection (once cached true, always true)
+- Fix: Uses real permission values for tamper comparison, saves both true/false to cache
+- Two-step flow: 1) Warn first (React Native Alert + Android notification), 2) If user ignores and permission still off on next app focus → report tamper + force lock
+- Conditional on `uninstall_allowed` setting: `true` = no warnings, `false` = full tamper flow
 
-### Push Notifications (5-Bug Fix) - FIXED, BUILD SUBMITTED
-1. Added `expo-notifications` plugin to `app.config.js`
-2. Moved `initializeNotifications()` to root `_layout.tsx`
-3. Moved `setNotificationHandler` to `app/_layout.tsx`
-4. Added `priority: "high"` and `channelId` to push payloads (deployed to VPS)
-5. Removed cached push token skip
+### Chat Date Grouping (P1) - IMPLEMENTED, BUILD SUBMITTED
+- Both admin and client chat windows group messages by date with visual separators
 
-### Contract Download & Share - FIXED, BUILD SUBMITTED
-- Fixed `Linking` static import (dynamic import breaks in production)
-- Fixed `expo-file-system` → `expo-file-system/legacy` (SDK 54 breaking change)
+### Warning Auto-Dismiss (P2) - IMPLEMENTED, BUILD SUBMITTED
+- Client in-app warning messages auto-dismiss after 10 seconds
 
-### Admin Mode Premature Reporting - FIXED, BUILD SUBMITTED
-- Removed `reportAdminStatus(true)` from `checkAdminStatusWithRetry` retry loop (was firing as soon as native API returned true, even from stale state)
-- Removed `reportAdminStatus(true)` from `else` branch of `checkAndSetupDeviceProtection` (was auto-firing on every app open if native module reported admin active)
-- Now `reportAdminStatus(true)` only fires from explicit user-initiated flows ("Enable Now" and "Yes, Enable" button handlers)
+### Admin Chat UI Tweaks (P2) - IMPLEMENTED, BUILD SUBMITTED
+- Chat FAB moved up ~1cm (bottom: 60 instead of 24)
+- Chat window has padding (contentContainerStyle padding: 10)
 
-## Builds In Progress
-- Admin APK: https://expo.dev/accounts/karli1987/projects/loans/builds/1a09f1e6-ccc6-4a6d-8fd0-da867af84b40
-- Client APK: https://expo.dev/accounts/karli1987/projects/client/builds/492fc517-edc9-465e-8582-df342223a7a5
+### Previous Session Fixes (Verified Working)
+- Push notifications with FCM - WORKING
+- App versioning (semantic version check) - WORKING
+- Profit analytics (includes archived loans) - DEPLOYED
 
-## Pending (User Verification After Builds)
-- Push notifications
-- Contract download/share
-- Admin mode reporting
-- Device overview count
-- Client app chat keyboard overlay
-- Bank statement analyzer
+## Current Builds
+- Admin v6: https://expo.dev/accounts/karli1987/projects/loans/builds/3174f95b-4a78-455d-ab20-6ac17ae82509
+- Client v8: https://expo.dev/accounts/karli1987/projects/client/builds/c4352851-2e6c-4e9b-b8e7-2989504f2076
 
-## Backlog
+## Pending User Verification
+- Tamper detection two-step flow (Client v8)
+- Device count showing 4 (Admin v6)
+- Chat date grouping (both apps)
+- Warning auto-dismiss (Client v8)
+
+## Future/Backlog Tasks
 - (P1) WhatsApp Business API Integration
-- (P2) Location heatmap visualization
 
-## Key Credentials
+## Credentials
 - VPS: 37.148.202.159, user `karliv`, password `Nasvakas123!`
 - Portal login: `karli1987` / `nasvakas123`
 - Backend: api.paylock.pro
+
+## Key Files
+- `backend/routes/reports.py` - Stats endpoint with enterprise scoping
+- `frontend/app/client/home.tsx` - Tamper detection, permission checks, warning auto-dismiss
+- `frontend/app/admin/client-details.tsx` - Chat UI with date grouping
+- `frontend/app/admin/device-management.tsx` - Device count display
+- `frontend/src/context/LanguageContext.tsx` - Translation strings
