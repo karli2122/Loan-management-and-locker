@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 5.0.0"
+    "version": ">= 5.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "admin-development": {
@@ -49,6 +50,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "credentialsSource": "local",
+      "autoIncrement": true,
       "env": {
         "APP_MODE": "client",
         "EXPO_PUBLIC_BACKEND_URL": "https://api.paylock.pro"
@@ -62,6 +64,7 @@
     "client-preview": {
       "distribution": "internal",
       "credentialsSource": "local",
+      "autoIncrement": true,
       "env": {
         "APP_MODE": "client",
         "EXPO_PUBLIC_BACKEND_URL": "https://api.paylock.pro"
@@ -76,6 +79,7 @@
     "client-production": {
       "distribution": "store",
       "credentialsSource": "local",
+      "autoIncrement": true,
       "env": {
         "APP_MODE": "client",
         "EXPO_PUBLIC_BACKEND_URL": "https://api.paylock.pro"
