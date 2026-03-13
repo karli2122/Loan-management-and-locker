@@ -16,6 +16,7 @@ import { useLanguage } from '../../src/context/LanguageContext';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { LanguagePicker } from '../../src/components/LanguagePicker';
 import API_URL from '../../src/constants/api';
+import { Dimensions } from 'react-native';
 
 
 interface LoanStats {
@@ -44,6 +45,8 @@ export default function Dashboard() {
     collection_rate: 0,
   });
   const [refreshing, setRefreshing] = useState(false);
+  const [portfolioHealth, setPortfolioHealth] = useState<any>(null);
+  const [collectionTrends, setCollectionTrends] = useState<any[]>([]);
   const [username, setUsername] = useState('');
   const [userRole, setUserRole] = useState('user');
 
@@ -76,6 +79,27 @@ export default function Dashboard() {
     }
   };
 
+  const fetchAnalytics = async () => {
+    try {
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      if (!adminToken) return;
+      
+      const [healthResp, trendsResp] = await Promise.all([
+        fetch(`${API_URL}/api/analytics/portfolio-health?admin_token=${adminToken}`),
+        fetch(`${API_URL}/api/analytics/collection-trends?admin_token=${adminToken}&period=monthly&months=6`),
+      ]);
+      
+      if (healthResp.ok) {
+        const data = await healthResp.json();
+        setPortfolioHealth(data);
+      }
+      if (trendsResp.ok) {
+        const data = await trendsResp.json();
+        setCollectionTrends(data.data || []);
+      }
+    } catch (e) { console.log('Analytics fetch error:', e); }
+  };
+
   const loadUserData = async () => {
     const storedUsername = await AsyncStorage.getItem('admin_username');
     const role = await AsyncStorage.getItem('admin_role');
@@ -86,11 +110,12 @@ export default function Dashboard() {
   useEffect(() => {
     loadUserData();
     fetchStats();
+    fetchAnalytics();
   }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchStats();
+    await Promise.all([fetchStats(), fetchAnalytics()]);
     setRefreshing(false);
   }, []);
 
@@ -178,6 +203,92 @@ export default function Dashboard() {
             <Text style={[styles.financialValue, { color: '#F59E0B' }]}>{formatAmount(loanStats.total_outstanding)}</Text>
           </View>
         </View>
+
+        {/* Analytics Section */}
+        {portfolioHealth && (
+          <>
+            <Text style={styles.sectionTitle}>Portfolio Health</Text>
+            <View style={{ backgroundColor: '#152035', borderRadius: 12, padding: 16, marginBottom: 16 }}>
+              {/* NPA & Aging Summary */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                <View style={{ alignItems: 'center', flex: 1 }}>
+                  <Text style={{ color: '#EF4444', fontSize: 22, fontWeight: '700' }}>{portfolioHealth.npa_count}</Text>
+                  <Text style={{ color: '#94A3B8', fontSize: 11 }}>NPAs (90d+)</Text>
+                </View>
+                <View style={{ alignItems: 'center', flex: 1 }}>
+                  <Text style={{ color: '#F59E0B', fontSize: 22, fontWeight: '700' }}>{portfolioHealth.npa_ratio}%</Text>
+                  <Text style={{ color: '#94A3B8', fontSize: 11 }}>NPA Ratio</Text>
+                </View>
+                <View style={{ alignItems: 'center', flex: 1 }}>
+                  <Text style={{ color: '#10B981', fontSize: 22, fontWeight: '700' }}>{portfolioHealth.collection_rate}%</Text>
+                  <Text style={{ color: '#94A3B8', fontSize: 11 }}>Collection Rate</Text>
+                </View>
+              </View>
+              
+              {/* Aging Bars */}
+              <Text style={{ color: '#E2E8F0', fontSize: 13, fontWeight: '600', marginBottom: 8 }}>Aging Analysis</Text>
+              {portfolioHealth.aging_analysis && Object.entries(portfolioHealth.aging_analysis).map(([key, val]: [string, any]) => {
+                const labels: Record<string, string> = { current: 'Current', '1_30_days': '1-30 days', '31_60_days': '31-60 days', '61_90_days': '61-90 days', '90_plus_days': '90+ days' };
+                const barColors: Record<string, string> = { current: '#10B981', '1_30_days': '#3B82F6', '31_60_days': '#F59E0B', '61_90_days': '#F97316', '90_plus_days': '#EF4444' };
+                const maxAmt = Math.max(...Object.values(portfolioHealth.aging_analysis).map((v: any) => v.amount || 0), 1);
+                const barWidth = val.amount > 0 ? Math.max((val.amount / maxAmt) * 100, 5) : 0;
+                return (
+                  <View key={key} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                    <Text style={{ color: '#94A3B8', fontSize: 11, width: 70 }}>{labels[key] || key}</Text>
+                    <View style={{ flex: 1, height: 16, backgroundColor: '#0B1527', borderRadius: 4, overflow: 'hidden', marginHorizontal: 8 }}>
+                      <View style={{ height: 16, width: `${barWidth}%`, backgroundColor: barColors[key] || '#3B82F6', borderRadius: 4 }} />
+                    </View>
+                    <Text style={{ color: '#E2E8F0', fontSize: 11, width: 50, textAlign: 'right' }}>{val.count}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </>
+        )}
+
+        {/* Collection Trends */}
+        {collectionTrends.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Collection Trends</Text>
+            <View style={{ backgroundColor: '#152035', borderRadius: 12, padding: 16, marginBottom: 16 }}>
+              {collectionTrends.slice(-6).map((t, i) => {
+                const maxVal = Math.max(...collectionTrends.slice(-6).map(x => Math.max(x.expected || 0, x.collected || 0)), 1);
+                return (
+                  <View key={i} style={{ marginBottom: 10 }}>
+                    <Text style={{ color: '#94A3B8', fontSize: 11, marginBottom: 4 }}>{t.month || t.start || ''}</Text>
+                    <View style={{ flexDirection: 'row', gap: 4 }}>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ height: 12, backgroundColor: '#0B1527', borderRadius: 3, overflow: 'hidden' }}>
+                          <View style={{ height: 12, width: `${(t.expected / maxVal) * 100}%`, backgroundColor: '#3B82F640', borderRadius: 3 }} />
+                        </View>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ height: 12, backgroundColor: '#0B1527', borderRadius: 3, overflow: 'hidden' }}>
+                          <View style={{ height: 12, width: `${(t.collected / maxVal) * 100}%`, backgroundColor: '#10B981', borderRadius: 3 }} />
+                        </View>
+                      </View>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
+                      <Text style={{ color: '#64748B', fontSize: 10 }}>Expected: {formatAmount(t.expected, 0)}</Text>
+                      <Text style={{ color: '#10B981', fontSize: 10 }}>Collected: {formatAmount(t.collected, 0)}</Text>
+                      <Text style={{ color: t.efficiency >= 80 ? '#10B981' : t.efficiency >= 50 ? '#F59E0B' : '#EF4444', fontSize: 10, fontWeight: '600' }}>{t.efficiency}%</Text>
+                    </View>
+                  </View>
+                );
+              })}
+              <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: '#3B82F640', marginRight: 4 }} />
+                  <Text style={{ color: '#94A3B8', fontSize: 10 }}>Expected</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: '#10B981', marginRight: 4 }} />
+                  <Text style={{ color: '#94A3B8', fontSize: 10 }}>Collected</Text>
+                </View>
+              </View>
+            </View>
+          </>
+        )}
 
         <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
 

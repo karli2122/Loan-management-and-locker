@@ -18,6 +18,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
+import LoanRestructureModal from '../../src/components/admin/LoanRestructureModal';
+import DocumentVaultModal from '../../src/components/admin/DocumentVaultModal';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import API_URL from '../../src/constants/api';
@@ -65,6 +67,8 @@ export default function ClientDetails() {
   const [editDeviceModal, setEditDeviceModal] = useState(false);
   const [editClientModal, setEditClientModal] = useState(false);
   const [editLoanModal, setEditLoanModal] = useState(false);
+  const [restructureModal, setRestructureModal] = useState(false);
+  const [docVaultModal, setDocVaultModal] = useState(false);
 
   // Modal form state
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -706,6 +710,20 @@ export default function ClientDetails() {
           onToggleLock={client.is_locked ? handleUnlock : () => setLockModal(true)}
           onAllowUninstall={handleAllowUninstall}
         />
+
+        {/* Restructure & Documents Buttons */}
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 12, marginBottom: 16, paddingHorizontal: 16 }}>
+          <TouchableOpacity onPress={() => setRestructureModal(true)}
+            style={{ flex: 1, backgroundColor: '#1E3A5F', borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="swap-horizontal" size={18} color="#3B82F6" />
+            <Text style={{ color: '#93C5FD', fontWeight: '600', fontSize: 13, marginLeft: 6 }}>Restructure</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setDocVaultModal(true)}
+            style={{ flex: 1, backgroundColor: '#1E3A5F', borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="folder" size={18} color="#10B981" />
+            <Text style={{ color: '#A7F3D0', fontWeight: '600', fontSize: 13, marginLeft: 6 }}>Documents</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
       {/* Chat FAB */}
@@ -921,6 +939,26 @@ export default function ClientDetails() {
         onFetchPreview={fetchLoanPreview}
         onConfirm={handleSaveLoan}
         onClose={() => { setEditLoanModal(false); setLoanPreview(null); }}
+      />
+
+      {/* Loan Restructure Modal */}
+      <LoanRestructureModal
+        clientId={client?.id || ''}
+        clientName={client?.name || ''}
+        adminToken={adminToken}
+        colors={colors}
+        visible={restructureModal}
+        onClose={() => setRestructureModal(false)}
+      />
+
+      {/* Document Vault Modal */}
+      <DocumentVaultModal
+        clientId={client?.id || ''}
+        clientName={client?.name || ''}
+        adminToken={adminToken}
+        colors={colors}
+        visible={docVaultModal}
+        onClose={() => setDocVaultModal(false)}
       />
     </SafeAreaView>
   );

@@ -13,6 +13,7 @@ from models.schemas import Client, ClientCreate, ClientUpdate, BulkOperationRequ
 from utils.auth import get_admin_id_from_token, enforce_client_scope
 from utils.exceptions import ValidationException, AuthenticationException, AuthorizationException
 from utils.audit import log_audit, AuditAction
+from utils.permissions import check_permission
 from routes.reminders import send_expo_push_notification
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ router = APIRouter(tags=["Clients"])
 @router.post("/clients", response_model=Client)
 async def create_client(client_data: ClientCreate, admin_token: str = Query(...)):
     """Create a new client (without registration key - must be generated manually)."""
-    admin_id = await get_admin_id_from_token(admin_token)
+    admin_id = await check_permission(admin_token, "clients")
     
     client = Client(
         name=client_data.name,
@@ -329,7 +330,7 @@ async def allow_uninstall(client_id: str, admin_token: str = Query(...)):
 @router.delete("/clients/{client_id}")
 async def delete_client(client_id: str, admin_token: str = Query(...)):
     """Soft-delete a client: marks as deleted and allows uninstall so the device can clean up."""
-    admin_id = await get_admin_id_from_token(admin_token)
+    admin_id = await check_permission(admin_token, "clients")
     
     client = await db.clients.find_one({"id": client_id})
     if not client:
@@ -380,7 +381,7 @@ async def lock_client(
     unlock_after_hours: int = Query(default=None, ge=1, le=720),
 ):
     """Lock a client's device with granular reason tracking and optional temporary lock."""
-    admin_id = await get_admin_id_from_token(admin_token)
+    admin_id = await check_permission(admin_token, "clients")
     
     client = await db.clients.find_one({"id": client_id})
     if not client:
@@ -440,7 +441,7 @@ async def lock_client(
 @router.post("/clients/{client_id}/unlock")
 async def unlock_client(client_id: str, admin_token: str = Query(...)):
     """Unlock a client's device and record in audit trail."""
-    admin_id = await get_admin_id_from_token(admin_token)
+    admin_id = await check_permission(admin_token, "clients")
     
     client = await db.clients.find_one({"id": client_id})
     if not client:

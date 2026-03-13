@@ -514,6 +514,18 @@ async def record_payment(
                 admin_id=admin_id
             )
             logger.info(f"Credit score updated for client {client_id}: {credit_score_change:+d} ({credit_score_reason})")
+            # Track risk score history
+            try:
+                await db.risk_score_history.insert_one({
+                    "client_id": client_id,
+                    "score": new_credit_score,
+                    "change": credit_score_change,
+                    "reason": credit_score_reason,
+                    "event": "payment",
+                    "created_at": datetime.utcnow(),
+                })
+            except Exception as rsh_err:
+                logger.error(f"Risk score history error: {rsh_err}")
         except Exception as e:
             logger.error(f"Failed to update credit score for client {client_id}: {e}")
             new_credit_score = client.get("credit_score", 500)

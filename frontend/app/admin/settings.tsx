@@ -28,6 +28,7 @@ import { useLanguage } from '../../src/context/LanguageContext';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import { LanguagePicker } from '../../src/components/LanguagePicker';
+import SessionManagementModal from '../../src/components/admin/SessionManagementModal';
 import { CurrencyPicker } from '../../src/components/CurrencyPicker';
 import API_URL from '../../src/constants/api';
 import devicePolicy from '../../src/utils/DevicePolicy';
@@ -58,6 +59,7 @@ export default function AdminSettings() {
   
   // Modal states
   const [showAddAdmin, setShowAddAdmin] = useState(false);
+  const [showSessionManagement, setShowSessionManagement] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -1095,6 +1097,16 @@ export default function AdminSettings() {
               </TouchableOpacity>
             </View>
 
+            {/* Session Management Button */}
+            <TouchableOpacity
+              onPress={() => setShowSessionManagement(true)}
+              style={{ backgroundColor: '#1E3A5F', borderRadius: 10, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}
+            >
+              <Ionicons name="key-outline" size={18} color="#3B82F6" />
+              <Text style={{ color: '#93C5FD', fontWeight: '600', fontSize: 13, marginLeft: 8, flex: 1 }}>Active Sessions</Text>
+              <Ionicons name="chevron-forward" size={16} color="#64748B" />
+            </TouchableOpacity>
+
             {/* User Search Field */}
             <View style={styles.userSearchContainer}>
               <Ionicons name="search" size={18} color="#64748B" />
@@ -1577,6 +1589,14 @@ export default function AdminSettings() {
           </View>
         </View>
       </Modal>
+
+      {/* Session Management Modal */}
+      <SessionManagementModal
+        adminToken={adminToken}
+        colors={{ text: '#E2E8F0', textMuted: '#64748B', background: '#0B1527', surface: '#152035', border: '#1E3A5F' }}
+        visible={showSessionManagement}
+        onClose={() => setShowSessionManagement(false)}
+      />
 
     </SafeAreaView>
   );
