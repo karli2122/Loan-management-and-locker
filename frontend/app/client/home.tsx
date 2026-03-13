@@ -221,22 +221,10 @@ export default function ClientHome() {
     }
   };
 
-  // Check and setup Device Admin
+  // Check and setup Device Admin — only checks status, does NOT show prompts.
+  // The auto-trigger useEffect (line ~787) is the single place that shows the admin prompt.
   const checkAndSetupDeviceProtection = async () => {
     if (Platform.OS !== 'android') return;
-
-    // Prevent showing multiple prompts if already requesting
-    if (isRequestingAdmin.current) {
-      console.log('Admin request already in progress, skipping...');
-      return;
-    }
-
-    // Don't show prompt more than once every 60 seconds (increased from 30)
-    const now = Date.now();
-    if (now - lastAdminPromptTime < 60000) {
-      console.log('Admin prompt shown recently, skipping...');
-      return;
-    }
 
     try {
       const admin = await devicePolicy.isAdminActive();
@@ -253,13 +241,11 @@ export default function ClientHome() {
         
         if (wasDisabled) {
           console.log('TAMPER DETECTED: Admin was forcefully disabled!');
-          // Report tamper attempt to backend
           const storedId = await AsyncStorage.getItem('client_id');
           if (storedId) {
             await reportTamperAttempt('admin_disabled');
             await reportAdminStatus(storedId, false);
           }
-          // Clear the flag so we don't report it again
           try {
             await devicePolicy.clearTamperFlags();
           } catch (e) {
@@ -267,77 +253,12 @@ export default function ClientHome() {
           }
         }
 
-        console.log('Device Admin not active - prompting user');
-        isRequestingAdmin.current = true;
-        setLastAdminPromptTime(now);
-        
-        // Use a non-dismissable alert for re-activation after tamper
-        const title = t('deviceProtectionRequired');
-        const message = wasDisabled
-          ? (t('deviceAdminWasDisabledThisIs'))
-          : (t('toSecureYourDevicePleaseEnable'));
-
-        // Show alert with both options - not blocking the main thread
-        Alert.alert(
-          title,
-          message,
-          [
-            {
-              text: t('enableNow'),
-              onPress: async () => {
-                try {
-                  const result = await devicePolicy.requestAdmin();
-                  console.log('Device Admin request result:', result);
-                  
-                  // Only start retry if the request was dispatched successfully
-                  if (result !== 'error' && result !== 'error_module_not_available' && result !== 'error_no_activity') {
-                    // Give the system dialog time to appear before starting retry checks
-                    // User needs time to interact with the system admin permission dialog
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    
-                    // Run retry check in background - don't block
-                    // Increased to 20 attempts (20 seconds total) to give user more time
-                    checkAdminStatusWithRetry(20, 1000).then(async (granted) => {
-                      isRequestingAdmin.current = false;
-                      if (granted) {
-                        console.log('Admin permission successfully granted!');
-                        // Report admin mode active only after explicit user confirmation
-                        const storedId = await AsyncStorage.getItem('client_id');
-                        if (storedId) {
-                          await reportAdminStatus(storedId, true);
-                        }
-                      } else {
-                        console.log('Admin not granted after retry period');
-                      }
-                    }).catch(() => {
-                      isRequestingAdmin.current = false;
-                    });
-                  } else {
-                    isRequestingAdmin.current = false;
-                  }
-                } catch (e) {
-                  console.log('Admin request failed:', e);
-                  isRequestingAdmin.current = false;
-                }
-              },
-            },
-            // Add a "Later" option for non-tamper cases to prevent blocking
-            ...(wasDisabled ? [] : [{
-              text: t('later'),
-              style: 'cancel' as const,
-              onPress: () => {
-                isRequestingAdmin.current = false;
-                console.log('User deferred admin permission');
-              },
-            }]),
-          ],
-          { cancelable: !wasDisabled }
-        );
+        // Do NOT show an admin activation prompt here —
+        // the auto-trigger useEffect handles that after ALL permissions are granted.
+        console.log('Device Admin not active — will be prompted by auto-trigger flow');
       } else {
-        // Admin is already active - update state and enable protection
+        // Admin is already active - enable uninstall protection silently
         setIsAdminActive(true);
-        isRequestingAdmin.current = false;
-        // Ensure uninstall protection is enabled and check result
         try {
           const result = await devicePolicy.preventUninstall(true);
           if (result === 'success') {
@@ -345,19 +266,12 @@ export default function ClientHome() {
           } else {
             console.log(`Device Admin active but uninstall protection failed: ${result}`);
           }
-          
-          // NOTE: Do NOT auto-report admin_mode_active here.
-          // This branch fires on every app open if the OS reports admin as active,
-          // which can happen from stale state (reinstall over previous install).
-          // Admin status is only reported after explicit user confirmation via the
-          // "Enable Now" or "Yes, Enable" button flows.
         } catch (e) {
           console.log('preventUninstall error:', e);
         }
       }
     } catch (error) {
       console.error('Device protection setup error:', error);
-      isRequestingAdmin.current = false;
     }
   };
 
