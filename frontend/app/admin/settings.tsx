@@ -152,7 +152,7 @@ export default function AdminSettings() {
       } catch (e) { console.error('Credits check failed', e); }
       
       // Only fetch admin list if user is an admin or superadmin
-      if (token && (role === 'admin' || role === 'superadmin')) {
+      if (token && (role === 'admin' || role === 'superadmin' || creditsData?.is_super_admin)) {
         await fetchAdminList(token);
       }
       
@@ -1082,8 +1082,8 @@ export default function AdminSettings() {
           </View>
         )}
 
-        {/* Admin Management Section - Only for Admins */}
-        {(currentUserRole === 'admin' || currentUserRole === 'superadmin' || isSuperAdmin) && (
+        {/* Admin Management Section - For Admins and Superadmins (NOT regular users) */}
+        {(isSuperAdmin || currentUserRole === 'admin') && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>
@@ -1148,11 +1148,52 @@ export default function AdminSettings() {
                     </View>
                   )}
                 </View>
+                {/* Plan badge */}
+                <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>
+                  {t('plan')}: {(admin as any).subscription_plan || (admin as any).plan || 'starter'}
+                </Text>
                 {admin.id === currentAdminId && (
                   <Text style={styles.youBadge}>{t('you')}</Text>
                 )}
               </View>
               <View style={styles.adminActions}>
+                {/* Plan change - only for other users */}
+                {admin.id !== currentAdminId && !admin.is_super_admin && (
+                  <TouchableOpacity
+                    style={{ marginRight: 8, padding: 4 }}
+                    onPress={() => {
+                      const plans = ['starter', 'professional', 'enterprise'];
+                      const currentPlan = (admin as any).subscription_plan || (admin as any).plan || 'starter';
+                      Alert.alert(
+                        t('changePlan') || 'Change Plan',
+                        `${admin.username} - ${t('currentPlan')}: ${currentPlan}`,
+                        [
+                          ...plans.map(p => ({
+                            text: p.charAt(0).toUpperCase() + p.slice(1),
+                            onPress: async () => {
+                              try {
+                                const res = await fetch(
+                                  `${API_URL}/api/admin/${admin.id}/plan?admin_token=${adminToken}&plan=${p}`,
+                                  { method: 'PUT' }
+                                );
+                                if (res.ok) {
+                                  Alert.alert(t('success'), `Plan updated to ${p}`);
+                                  await fetchAdmins(adminToken!);
+                                } else {
+                                  const err = await res.json();
+                                  Alert.alert(t('error'), err.detail || 'Failed');
+                                }
+                              } catch (e: any) { Alert.alert(t('error'), e.message); }
+                            }
+                          })),
+                          { text: t('cancel'), style: 'cancel' }
+                        ]
+                      );
+                    }}
+                  >
+                    <Ionicons name="pricetags" size={18} color="#2563EB" />
+                  </TouchableOpacity>
+                )}
                 {admin.id !== currentAdminId && !admin.is_super_admin && (
                   <TouchableOpacity
                     style={styles.deleteButton}
@@ -1371,6 +1412,7 @@ export default function AdminSettings() {
                     {t('user2')}
                   </Text>
                 </TouchableOpacity>
+                {isSuperAdmin && (
                 <TouchableOpacity
                   style={[styles.roleButton, newUserRole === 'admin' && styles.roleButtonActive]}
                   onPress={() => setNewUserRole('admin')}
@@ -1384,6 +1426,7 @@ export default function AdminSettings() {
                     {t('admin2')}
                   </Text>
                 </TouchableOpacity>
+                )}
               </View>
             </View>
 

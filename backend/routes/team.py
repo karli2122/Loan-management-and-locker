@@ -1,7 +1,7 @@
-"""Admin Team Management - Enterprise plan feature.
-Superuser creates sub-users under their enterprise. Data sharing model:
-- Superuser sees all enterprise clients + revenue/profits
-- Normal team members see only their own clients
+"""Admin Team Management - User and Admin account management.
+Permission model:
+- Admins: Can create users (team members), manage user plans
+- Super Admins: Can create users + admins, manage user + admin plans
 """
 import uuid
 import hashlib
@@ -21,13 +21,15 @@ ROLES = {
     "viewer": {"label": "View Only", "permissions": ["clients_read", "reports_read", "loans_read"]},
 }
 
+ADMIN_ROLES = {"super_admin", "full_admin"}
+USER_ROLES = {"collections", "viewer"}
+
 
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 
 async def check_enterprise_plan(admin_id: str) -> bool:
-    """Check if admin has enterprise or custom plan."""
     admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
     if not admin:
         return False
@@ -36,7 +38,6 @@ async def check_enterprise_plan(admin_id: str) -> bool:
 
 
 async def get_enterprise_id(admin_id: str) -> str:
-    """Get enterprise_id for an admin. Superusers use their own id, team members use their enterprise_id."""
     admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
     if not admin:
         return admin_id
@@ -44,7 +45,6 @@ async def get_enterprise_id(admin_id: str) -> str:
 
 
 async def get_enterprise_member_ids(enterprise_id: str) -> list:
-    """Get all admin IDs belonging to an enterprise."""
     members = await db.admins.find(
         {"enterprise_id": enterprise_id},
         {"_id": 0, "id": 1}
@@ -57,21 +57,23 @@ async def get_enterprise_member_ids(enterprise_id: str) -> list:
 
 @router.get("/roles")
 async def get_roles(admin_token: str = Query(...)):
-    """Get available roles and permissions."""
-    await get_admin_id_from_token(admin_token)
-    return {"roles": {k: v for k, v in ROLES.items()}}
+    admin_id = await get_admin_id_from_token(admin_token)
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
+    is_super = admin.get("is_super_admin", False) if admin else False
+    # Non-super admins can only see user roles
+    if is_super:
+        return {"roles": {k: v for k, v in ROLES.items()}}
+    return {"roles": {k: v for k, v in ROLES.items() if k in USER_ROLES}}
 
 
 @router.get("/enterprise-check")
 async def enterprise_check(admin_token: str = Query(...)):
-    """Check if current admin has enterprise plan and team management access."""
     admin_id = await get_admin_id_from_token(admin_token)
     admin = await db.admins.find_one({"id": admin_id}, {"_id": 0, "password": 0, "password_hash": 0})
     if not admin:
         return {"has_enterprise": False, "is_super_admin": False}
     is_super = admin.get("is_super_admin", False)
     has_enterprise = await check_enterprise_plan(admin_id)
-    # Team members whose superuser has enterprise also count
     if not has_enterprise and admin.get("enterprise_id"):
         has_enterprise = await check_enterprise_plan(admin.get("enterprise_id"))
     return {
@@ -85,12 +87,21 @@ async def enterprise_check(admin_token: str = Query(...)):
 
 @router.post("/members")
 async def add_team_member(admin_token: str = Query(...), data: dict = Body(...)):
-    """Add a new team member (sub-admin). Enterprise plan required."""
+    """Add a new team member.
+    - Admins can add user-level roles (collections, viewer)
+    - Super admins can add any role including admin-level roles
+    """
     admin_id = await get_admin_id_from_token(admin_token)
-    await check_plan_access(admin_id, "role_permissions")
     admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
-    if not admin or not admin.get("is_super_admin"):
-        return JSONResponse(status_code=403, content={"error": "Only super admins can manage team"})
+    if not admin:
+        return JSONResponse(status_code=404, content={"error": "Admin not found"})
+
+    is_super = admin.get("is_super_admin", False)
+    admin_role = admin.get("role", "viewer")
+
+    # At minimum, need to be full_admin or super_admin to create members
+    if not is_super and admin_role not in ("full_admin", "super_admin"):
+        return JSONResponse(status_code=403, content={"error": "Insufficient permissions to manage team"})
 
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
@@ -100,24 +111,31 @@ async def add_team_member(admin_token: str = Query(...), data: dict = Body(...))
     if role not in ROLES:
         return JSONResponse(status_code=400, content={"error": f"Invalid role. Choose from: {list(ROLES.keys())}"})
 
+    # Non-super admins cannot create admin-level roles
+    if not is_super and role in ADMIN_ROLES:
+        return JSONResponse(status_code=403, content={"error": "Only super admins can create admin-level accounts"})
+
     existing = await db.admins.find_one({"username": username})
     if existing:
         return JSONResponse(status_code=409, content={"error": "Username already exists"})
 
     enterprise_id = admin.get("enterprise_id") or admin_id
+    plan = data.get("subscription_plan", "starter")
 
     member = {
         "id": str(uuid.uuid4()),
         "username": username,
         "password_hash": hash_password(password),
         "role": role,
-        "is_super_admin": False,
+        "is_super_admin": role == "super_admin",
         "permissions": ROLES[role]["permissions"],
         "first_name": data.get("first_name", ""),
         "last_name": data.get("last_name", ""),
         "email": data.get("email", ""),
         "is_active": True,
         "enterprise_id": enterprise_id,
+        "subscription_plan": plan,
+        "plan": plan,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": admin_id,
         "credits": 0,
@@ -129,7 +147,6 @@ async def add_team_member(admin_token: str = Query(...), data: dict = Body(...))
 
 @router.get("/members")
 async def list_team_members(admin_token: str = Query(...)):
-    """List all team members in the enterprise."""
     admin_id = await get_admin_id_from_token(admin_token)
     admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
     if not admin:
@@ -145,17 +162,45 @@ async def list_team_members(admin_token: str = Query(...)):
 
 @router.put("/members/{member_id}")
 async def update_team_member(member_id: str, admin_token: str = Query(...), data: dict = Body(...)):
-    """Update a team member's role or info."""
+    """Update a team member's role, plan, or info.
+    - Admins can update user-level members
+    - Super admins can update any member including plan changes
+    """
     admin_id = await get_admin_id_from_token(admin_token)
     admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
-    if not admin or not admin.get("is_super_admin"):
-        return JSONResponse(status_code=403, content={"error": "Only super admins can manage team"})
+    if not admin:
+        return JSONResponse(status_code=403, content={"error": "Admin not found"})
+
+    is_super = admin.get("is_super_admin", False)
+    admin_role = admin.get("role", "viewer")
+
+    if not is_super and admin_role not in ("full_admin", "super_admin"):
+        return JSONResponse(status_code=403, content={"error": "Insufficient permissions"})
+
+    target = await db.admins.find_one({"id": member_id}, {"_id": 0})
+    if not target:
+        return JSONResponse(status_code=404, content={"error": "Member not found"})
+
+    # Non-super admins cannot modify admin-level members
+    if not is_super and target.get("role") in ADMIN_ROLES:
+        return JSONResponse(status_code=403, content={"error": "Only super admins can modify admin accounts"})
 
     updates = {}
     if "role" in data and data["role"] in ROLES:
-        updates["role"] = data["role"]
-        updates["permissions"] = ROLES[data["role"]]["permissions"]
-        updates["is_super_admin"] = data["role"] == "super_admin"
+        new_role = data["role"]
+        if not is_super and new_role in ADMIN_ROLES:
+            return JSONResponse(status_code=403, content={"error": "Only super admins can assign admin roles"})
+        updates["role"] = new_role
+        updates["permissions"] = ROLES[new_role]["permissions"]
+        updates["is_super_admin"] = new_role == "super_admin"
+
+    # Plan management
+    if "subscription_plan" in data:
+        if not is_super and target.get("role") in ADMIN_ROLES:
+            return JSONResponse(status_code=403, content={"error": "Only super admins can change admin plans"})
+        updates["subscription_plan"] = data["subscription_plan"]
+        updates["plan"] = data["subscription_plan"]
+
     for field in ("first_name", "last_name", "email", "is_active"):
         if field in data:
             updates[field] = data[field]
@@ -171,13 +216,20 @@ async def update_team_member(member_id: str, admin_token: str = Query(...), data
 
 @router.delete("/members/{member_id}")
 async def remove_team_member(member_id: str, admin_token: str = Query(...)):
-    """Remove a team member."""
     admin_id = await get_admin_id_from_token(admin_token)
     admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
-    if not admin or not admin.get("is_super_admin"):
-        return JSONResponse(status_code=403, content={"error": "Only super admins can manage team"})
+    is_super = admin.get("is_super_admin", False) if admin else False
+    admin_role = admin.get("role", "viewer") if admin else "viewer"
+
+    if not is_super and admin_role not in ("full_admin", "super_admin"):
+        return JSONResponse(status_code=403, content={"error": "Insufficient permissions"})
+
     if member_id == admin_id:
         return JSONResponse(status_code=400, content={"error": "Cannot remove yourself"})
+
+    target = await db.admins.find_one({"id": member_id}, {"_id": 0})
+    if not is_super and target and target.get("role") in ADMIN_ROLES:
+        return JSONResponse(status_code=403, content={"error": "Only super admins can remove admin accounts"})
 
     r = await db.admins.delete_one({"id": member_id})
     return {"deleted": r.deleted_count > 0}

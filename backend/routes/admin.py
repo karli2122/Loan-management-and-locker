@@ -18,6 +18,7 @@ from utils.exceptions import (
 )
 from utils.audit import log_audit, AuditAction
 from config import TOKEN_EXPIRY_HOURS
+from routes.sessions import create_session
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Admin"])
@@ -25,7 +26,12 @@ router = APIRouter(tags=["Admin"])
 
 @router.post("/admin/register", response_model=AdminResponse)
 async def register_admin(admin_data: AdminCreate, admin_token: str = Query(default=None)):
-    """Register a new admin. First admin requires no token, subsequent admins require super_admin token."""
+    """Register a new user/admin.
+    - First registration requires no token (becomes super_admin)
+    - Super admins can create admins and users
+    - Admins (full_admin) can create users only
+    - Users cannot create anyone
+    """
     if len(admin_data.password) < 6:
         raise ValidationException("Password must be at least 6 characters")
     
@@ -37,17 +43,32 @@ async def register_admin(admin_data: AdminCreate, admin_token: str = Query(defau
     is_first_admin = admin_count == 0
     is_super_admin = is_first_admin
     
+    creator = None
     if not is_first_admin:
         if not admin_token:
-            raise AuthenticationException("Admin token required to register new admins")
+            raise AuthenticationException("Admin token required to register new users")
         
         token_doc = await db.admin_tokens.find_one({"token": admin_token})
         if not token_doc:
             raise AuthenticationException("Invalid admin token")
         
         creator = await db.admins.find_one({"id": token_doc["admin_id"]})
-        if not creator or not creator.get("is_super_admin", False):
-            raise AuthorizationException("Only super admins can register new admins")
+        if not creator:
+            raise AuthenticationException("Creator admin not found")
+        
+        creator_is_super = creator.get("is_super_admin", False)
+        creator_role = creator.get("role", "viewer")
+        requested_role = admin_data.role or "user"
+        
+        # Users (viewer, collections) cannot create anyone
+        if not creator_is_super and creator_role not in ("admin", "full_admin", "super_admin"):
+            raise AuthorizationException("You do not have permission to create new accounts")
+        
+        # Only super admins can create admin-level accounts
+        if requested_role == "admin" and not creator_is_super:
+            raise AuthorizationException("Only super admins can create admin accounts")
+    
+    enterprise_id = creator.get("enterprise_id") or creator["id"] if creator else None
     
     admin = Admin(
         username=admin_data.username,
@@ -58,7 +79,10 @@ async def register_admin(admin_data: AdminCreate, admin_token: str = Query(defau
         first_name=admin_data.first_name,
         last_name=admin_data.last_name
     )
-    await db.admins.insert_one(admin.dict())
+    admin_dict = admin.dict()
+    if enterprise_id:
+        admin_dict["enterprise_id"] = enterprise_id
+    await db.admins.insert_one(admin_dict)
     
     token = secrets.token_hex(32)
     expires_at = datetime.utcnow() + timedelta(hours=TOKEN_EXPIRY_HOURS)
@@ -103,11 +127,20 @@ async def login_admin(login_data: AdminLogin, request: Request = None):
     
     # Log login action
     ip_address = request.client.host if request and request.client else None
+    user_agent = request.headers.get("user-agent", "") if request else ""
     await log_audit(
         admin_id=admin["id"],
         action_type=AuditAction.LOGIN,
         details=f"Logged in successfully",
         ip_address=ip_address
+    )
+    
+    # Create session record
+    await create_session(
+        admin_id=admin["id"],
+        ip_address=ip_address or "",
+        user_agent=user_agent,
+        device_info=login_data.device_info if hasattr(login_data, 'device_info') else ""
     )
     
     # Resolve the user's plan
@@ -177,14 +210,34 @@ async def verify_admin_token(token: str):
 
 @router.get("/admin/list")
 async def list_admins(admin_token: str = Query(...)):
-    """List all admins (super admin only)."""
+    """List admins/users.
+    - Super admins see all admins
+    - Admins see enterprise members they can manage
+    - Users get 403
+    """
     admin_id = await get_admin_id_from_token(admin_token)
     admin = await db.admins.find_one({"id": admin_id})
     
-    if not admin or not admin.get("is_super_admin", False):
-        raise AuthorizationException("Only super admins can list all admins")
+    if not admin:
+        raise AuthenticationException("Admin not found")
     
-    admins = await db.admins.find({}, {"password_hash": 0, "_id": 0}).to_list(1000)
+    is_super = admin.get("is_super_admin", False)
+    role = admin.get("role", "viewer")
+    
+    # Users cannot see the admin list
+    if not is_super and role not in ("admin", "full_admin", "super_admin"):
+        raise AuthorizationException("You do not have permission to view the user list")
+    
+    if is_super:
+        admins = await db.admins.find({}, {"password_hash": 0, "_id": 0}).to_list(1000)
+    else:
+        # Admins see their enterprise members
+        enterprise_id = admin.get("enterprise_id") or admin_id
+        admins = await db.admins.find(
+            {"$or": [{"enterprise_id": enterprise_id}, {"id": enterprise_id}]},
+            {"password_hash": 0, "_id": 0}
+        ).to_list(1000)
+    
     return admins
 
 
@@ -244,12 +297,22 @@ async def update_profile_alias(data: ProfileUpdate, admin_token: str = Query(...
 
 @router.delete("/admin/{admin_id}")
 async def delete_admin(admin_id: str, admin_token: str = Query(...)):
-    """Delete an admin (super admin only)."""
+    """Delete a user/admin.
+    - Super admins can delete any non-super account
+    - Admins can delete user-level accounts only
+    - Users cannot delete anyone
+    """
     requester_id = await get_admin_id_from_token(admin_token)
     requester = await db.admins.find_one({"id": requester_id})
     
-    if not requester or not requester.get("is_super_admin", False):
-        raise AuthorizationException("Only super admins can delete admins")
+    if not requester:
+        raise AuthenticationException("Requester not found")
+    
+    is_super = requester.get("is_super_admin", False)
+    req_role = requester.get("role", "viewer")
+    
+    if not is_super and req_role not in ("admin", "full_admin", "super_admin"):
+        raise AuthorizationException("You do not have permission to delete accounts")
     
     if admin_id == requester_id:
         raise ValidationException("Cannot delete your own account")
@@ -261,10 +324,53 @@ async def delete_admin(admin_id: str, admin_token: str = Query(...)):
     if target.get("is_super_admin", False):
         raise ValidationException("Cannot delete a super admin")
     
+    # Non-super admins cannot delete admin-level accounts
+    if not is_super and target.get("role") in ("admin", "full_admin", "super_admin"):
+        raise AuthorizationException("Only super admins can delete admin accounts")
+    
     await db.admin_tokens.delete_many({"admin_id": admin_id})
     await db.admins.delete_one({"id": admin_id})
     
     return {"message": "Admin deleted successfully"}
+
+
+@router.put("/admin/{admin_id}/plan")
+async def update_user_plan(admin_id: str, admin_token: str = Query(...), plan: str = Query(...)):
+    """Update a user's subscription plan.
+    - Super admins can change any account's plan
+    - Admins can change user-level accounts' plans only
+    - Users cannot change anyone's plan
+    """
+    requester_id = await get_admin_id_from_token(admin_token)
+    requester = await db.admins.find_one({"id": requester_id})
+    
+    if not requester:
+        raise AuthenticationException("Requester not found")
+    
+    is_super = requester.get("is_super_admin", False)
+    req_role = requester.get("role", "viewer")
+    
+    if not is_super and req_role not in ("admin", "full_admin", "super_admin"):
+        raise AuthorizationException("You do not have permission to manage plans")
+    
+    target = await db.admins.find_one({"id": admin_id})
+    if not target:
+        raise ValidationException("User not found")
+    
+    # Non-super admins cannot change admin-level accounts' plans
+    if not is_super and target.get("role") in ("admin", "full_admin", "super_admin"):
+        raise AuthorizationException("Only super admins can change admin plans")
+    
+    valid_plans = ["starter", "professional", "business", "enterprise", "custom"]
+    if plan not in valid_plans:
+        raise ValidationException(f"Invalid plan. Choose from: {valid_plans}")
+    
+    await db.admins.update_one(
+        {"id": admin_id},
+        {"$set": {"subscription_plan": plan, "plan": plan}}
+    )
+    
+    return {"message": f"Plan updated to {plan}", "admin_id": admin_id, "plan": plan}
 
 
 @router.get("/admin/credits")
