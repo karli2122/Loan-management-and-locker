@@ -479,21 +479,20 @@ async def get_dashboard_analytics(
     admin_token: str = Query(...),
     filter_admin_id: Optional[str] = Query(default=None)
 ):
-    """Get comprehensive dashboard analytics. Superadmins see enterprise data."""
+    """Get comprehensive dashboard analytics. Each admin sees only their own data by default."""
     admin_id = await get_admin_id_from_token(admin_token)
     
     admin = await db.admins.find_one({"id": admin_id})
     is_super_admin = admin.get("is_super_admin", False) if admin else False
     
-    # Use enterprise scoping for superadmins
-    if is_super_admin and not filter_admin_id:
-        query = await _get_enterprise_client_query(admin_id)
-    elif filter_admin_id and is_super_admin:
+    # Dashboard always shows own data unless explicitly filtered
+    if filter_admin_id and is_super_admin:
         if filter_admin_id == "all":
-            query = {"is_deleted": {"$ne": True}}
+            query = await _get_enterprise_client_query(admin_id)
         else:
             query = {"admin_id": filter_admin_id, "is_deleted": {"$ne": True}}
     else:
+        # Default: always show only own clients
         query = {"admin_id": admin_id, "is_deleted": {"$ne": True}}
     
     clients = await db.clients.find(query, {"_id": 0, "id": 1, "name": 1, "is_registered": 1, "is_locked": 1, "outstanding_balance": 1, "days_overdue": 1, "loan_amount": 1, "total_paid": 1, "registered_at": 1, "last_tamper_attempt": 1, "device_model": 1, "interest_rate": 1}).to_list(1000)
@@ -505,20 +504,19 @@ async def get_dashboard_analytics(
     active_loans = sum(1 for c in clients if c.get("outstanding_balance", 0) > 0)
     overdue = sum(1 for c in clients if c.get("days_overdue", 0) > 0)
     
-    # Build admin_id scope for paid_loans query
-    if is_super_admin and not filter_admin_id:
-        enterprise_id = admin.get("enterprise_id") or admin_id
-        members = await db.admins.find({"enterprise_id": enterprise_id}, {"_id": 0, "id": 1}).to_list(100)
-        member_ids = [m["id"] for m in members]
-        if admin_id not in member_ids:
-            member_ids.append(admin_id)
-        paid_loans_query = {"admin_id": {"$in": member_ids}}
-    elif filter_admin_id and is_super_admin:
+    # Build admin_id scope for paid_loans query (match client query scope)
+    if filter_admin_id and is_super_admin:
         if filter_admin_id == "all":
-            paid_loans_query = {}
+            enterprise_id = admin.get("enterprise_id") or admin_id
+            members = await db.admins.find({"enterprise_id": enterprise_id}, {"_id": 0, "id": 1}).to_list(100)
+            member_ids = [m["id"] for m in members]
+            if admin_id not in member_ids:
+                member_ids.append(admin_id)
+            paid_loans_query = {"admin_id": {"$in": member_ids}}
         else:
             paid_loans_query = {"admin_id": filter_admin_id}
     else:
+        # Default: own data only
         paid_loans_query = {"admin_id": admin_id}
     
     # Get all paid/archived loans for revenue and interest calculations

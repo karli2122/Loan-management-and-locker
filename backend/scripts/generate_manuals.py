@@ -1,4 +1,4 @@
-"""Generate PayLock Pro user manuals as PDFs with screenshots."""
+"""Generate PayLock Pro user manuals as PDFs with real screenshots."""
 import os
 from fpdf import FPDF
 
@@ -14,7 +14,6 @@ GRAY = (100, 116, 139)
 WHITE = (255, 255, 255)
 LIGHT_BG = (248, 250, 252)
 GREEN = (16, 185, 129)
-RED = (239, 68, 68)
 
 
 class Manual(FPDF):
@@ -52,7 +51,7 @@ class Manual(FPDF):
         self.cell(0, 8, subtitle, align="C", new_x="LMARGIN", new_y="NEXT")
         self.ln(30)
         self.set_font("Helvetica", "", 10)
-        self.cell(0, 6, "Version 1.2.3  |  March 2026", align="C", new_x="LMARGIN", new_y="NEXT")
+        self.cell(0, 6, "Version 1.2.4  |  March 2026", align="C", new_x="LMARGIN", new_y="NEXT")
         self.cell(0, 6, "PayLock Pro OU  |  Tallinn, Estonia, EU", align="C", new_x="LMARGIN", new_y="NEXT")
         self.cell(0, 6, "support@paylock.pro", align="C", new_x="LMARGIN", new_y="NEXT")
 
@@ -120,8 +119,7 @@ class Manual(FPDF):
         self.multi_cell(0, 5, f"  Tip: {text}", fill=True)
         self.ln(3)
 
-    def screenshot(self, img_name, caption="", width=80):
-        """Insert a screenshot image with optional caption."""
+    def screenshot(self, img_name, caption="", width=70):
         img_path = os.path.join(IMG_DIR, img_name)
         if not os.path.exists(img_path):
             self.set_font("Helvetica", "I", 9)
@@ -129,10 +127,8 @@ class Manual(FPDF):
             self.cell(0, 6, f"[Screenshot: {caption or img_name}]", new_x="LMARGIN", new_y="NEXT")
             self.ln(2)
             return
-        # Check if we need a new page for the image
-        if self.get_y() > 180:
+        if self.get_y() > 140:
             self.add_page()
-        # Center the image
         x_pos = (210 - width) / 2
         self.image(img_path, x=x_pos, w=width)
         if caption:
@@ -161,13 +157,13 @@ class Manual(FPDF):
 
 
 # ============================================================
-# 1. ADMIN APP MANUAL
+# ADMIN APP MANUAL - with 19 real screenshots
 # ============================================================
 def gen_admin():
     pdf = Manual()
     pdf.title_text = "Admin App User Manual"
     pdf.alias_nb_pages()
-    pdf.cover("Admin App", "Complete User Manual")
+    pdf.cover("Admin App", "Complete User Manual with Screenshots")
 
     # TOC
     pdf.add_page()
@@ -175,409 +171,273 @@ def gen_admin():
     pdf.numbered([
         "Getting Started & Login",
         "Dashboard Overview",
-        "Client Management",
-        "Loan Management",
-        "Payment Tracking & Late Fees",
-        "Device Lock & Unlock",
+        "Loans Management",
+        "Transactions & Payments",
+        "Features & Analytics",
         "Reports & Analytics",
-        "Document Vault",
+        "Bank Statement Analyzer",
+        "Audit Log",
+        "Revenue Forecasting",
+        "Loan Plans & Calculator",
+        "Bulk Import & Documents",
+        "Device Management",
+        "Client Management",
+        "Payment Reminders",
         "Settings & User Management",
-        "Team Management & Permissions",
-        "Subscription Plans & Feature Tiers",
-        "Advanced Features (Enterprise)",
+        "Subscription Plans",
         "Security & Tamper Detection",
-        "Troubleshooting & FAQ",
+        "Troubleshooting",
     ])
 
     # Ch 1 - Getting Started
     pdf.add_page()
     pdf.section("1. Getting Started & Login")
-    pdf.body("Download the PayLock Pro Admin app from Expo or install the APK provided by your administrator. The app is available for Android devices running Android 8.0 or later.")
+    pdf.body("Download the PayLock Pro Admin app from Expo or install the APK provided by your administrator. The app is available for Android 8.0+.")
     pdf.subsection("First-Time Setup")
     pdf.numbered([
         "Install the PayLock Pro Admin APK on your Android device.",
         "Open the app - you will see the login screen.",
         "Enter your username and password provided by your Super Admin.",
         "Tap 'Login' to access your dashboard.",
-        "If you are the first user, your account is automatically a Super Admin with full access.",
+        "If you are the first user, your account automatically becomes Super Admin.",
     ])
-    pdf.subsection("Staying Signed In")
-    pdf.body("Toggle 'Stay signed in' on the login screen to remain logged in between app restarts. Your session token is stored securely on the device.")
-    pdf.note("Passwords must be at least 6 characters. Contact your Super Admin if you forget your credentials. Sessions can be revoked remotely from the Settings page.")
-    pdf.tip("Enable push notifications during setup to receive real-time alerts for payments, client activities, and security events.")
+    pdf.note("Passwords must be at least 6 characters. Contact your Super Admin if you forget credentials.")
 
     # Ch 2 - Dashboard
     pdf.add_page()
     pdf.section("2. Dashboard Overview")
-    pdf.body("The dashboard is your command center, displaying real-time metrics for your entire loan portfolio at a glance.")
-    pdf.screenshot("admin_dashboard.png", "Admin Dashboard - Real-time portfolio overview", 70)
-    pdf.subsection("Key Metrics")
-    widths = [50, 70, 70]
-    pdf.table_header(["Metric", "Description", "Action on Tap"], widths)
-    pdf.table_row(["Total Clients", "Number of registered clients", "Opens client list"], widths)
-    pdf.table_row(["Active Loans", "Currently active loan count", "Opens loan overview"], widths, True)
-    pdf.table_row(["Monthly Collections", "Total collected this month", "Opens payment history"], widths)
-    pdf.table_row(["Collection Rate", "% of payments received on time", "Opens analytics"], widths, True)
-    pdf.table_row(["Interest Earned", "Total interest this month", "Opens financial report"], widths)
-    pdf.table_row(["Overdue Amount", "Total overdue across clients", "Opens overdue clients"], widths, True)
+    pdf.body("The dashboard is your command center, showing real-time portfolio metrics at a glance.")
+    pdf.screenshot("screenshot_091727.jpg", "Figure 2.1: Dashboard - Loan Overview (top section)", 65)
+    pdf.body("The top section displays key metrics: Welcome back message, Active Loans count, Overdue clients, Completed loans, Total Collected amount, and Collection Rate percentage.")
+    pdf.screenshot("screenshot_091821.jpg", "Figure 2.2: Dashboard - Charts & Interest (scrolled down)", 65)
+    pdf.body("Scrolling down reveals Interest Earned total, Loans Archived count, Device Heartbeat status, Monthly Interest Income chart, and Monthly Revenue chart showing 6-month trends.")
+    pdf.subsection("Key Metrics Explained")
+    w = [50, 70, 70]
+    pdf.table_header(["Metric", "Description", "Action on Tap"], w)
+    pdf.table_row(["Active Loans", "Currently active loan count", "Opens loan overview"], w)
+    pdf.table_row(["Overdue", "Clients past payment due date", "Opens overdue list"], w, True)
+    pdf.table_row(["Collection Rate", "% payments received on time", "Opens analytics"], w)
+    pdf.table_row(["Interest Earned", "Total interest from all loans", "Shows breakdown"], w, True)
+    pdf.table_row(["Monthly Revenue", "Revenue trend over 6 months", "Interactive chart"], w)
     pdf.ln(2)
-    pdf.subsection("Quick Actions")
-    pdf.bullet([
-        "Add Client - Create a new client record",
-        "Record Payment - Quick payment entry",
-        "Lock/Unlock Device - Immediate device control",
-        "Send Reminder - Push notification to clients",
-    ])
-    pdf.body("The dashboard auto-refreshes every 30 seconds. Pull down to manually refresh.")
+    pdf.note("Each admin sees ONLY their own clients' data on the dashboard. Super admins can use filter_admin_id=all to see enterprise-wide data.")
 
-    # Ch 3 - Client Management
+    # Ch 3 - Loans
     pdf.add_page()
-    pdf.section("3. Client Management")
-    pdf.screenshot("admin_client_list.png", "Client List - Search and manage all clients", 70)
-    pdf.subsection("Adding a New Client")
-    pdf.numbered([
-        "Navigate to the Clients tab in the bottom navigation.",
-        "Tap the '+' button in the top right corner.",
-        "Fill in required client details: full name, phone number.",
-        "Optionally add: email address, physical address, ID number.",
-        "Set the initial device token if provisioning a device.",
-        "Tap 'Save' to create the client record.",
-    ])
-    pdf.subsection("Client Profile Details")
-    pdf.body("Tap any client to view their comprehensive profile including:")
-    pdf.bullet([
-        "Contact information and identification details",
-        "Device status (online/offline, locked/unlocked, last seen)",
-        "Active loans with payment schedules and history",
-        "GPS location history with map view (Professional+ plan)",
-        "Document vault with uploaded files",
-        "Credit score and risk assessment (Enterprise plan)",
-        "In-app messaging and communication log",
-        "Tamper detection alerts and security events",
-    ])
-    pdf.subsection("Searching & Filtering")
-    pdf.body("Use the search bar at the top of the client list to find clients by name, phone number, or email. The list updates in real-time as you type.")
-    pdf.subsection("Client Provisioning Methods")
-    pdf.body("Register client devices using one of these methods:")
-    pdf.bullet([
-        "Manual Code: Client enters a 6-digit registration code in the Client app",
-        "QR Code: Admin generates a QR code, client scans it (Enterprise)",
-        "NFC Tap: Touch devices together for instant enrollment (Enterprise)",
-    ])
-    pdf.subsection("Bulk Import (Enterprise)")
-    pdf.body("Enterprise users can import clients from CSV files. Go to Features > Bulk Import and upload a CSV with columns: name, phone, email, address. The system validates data before import and reports any errors.")
-
-    # Ch 4 - Loan Management
-    pdf.add_page()
-    pdf.section("4. Loan Management")
+    pdf.section("3. Loans Management")
+    pdf.screenshot("screenshot_091835.jpg", "Figure 3.1: Loans List with Given/Archived filter", 65)
+    pdf.body("The Loans tab shows all loans with filter options: 'Given' (active loans) and 'Archived' (completed/paid loans). Each loan card displays client name, amount, status, and progress.")
     pdf.subsection("Creating a Loan")
     pdf.numbered([
         "Open a client's profile from the Clients tab.",
-        "Tap 'New Loan' or the '+' button in the loans section.",
-        "Select a pre-configured loan plan OR enter custom terms.",
-        "Set the principal amount (loan size).",
-        "Choose interest rate and calculation method (flat or day-count).",
-        "Set loan duration and payment frequency (weekly, bi-weekly, monthly).",
-        "Review the auto-generated EMI payment schedule.",
+        "Tap 'New Loan' or the '+' button.",
+        "Set principal amount, interest rate, and duration.",
+        "Choose interest calculation: Flat Rate or Day-Count (reducing balance).",
+        "Set payment frequency: weekly, bi-weekly, or monthly.",
+        "Review the auto-generated EMI schedule.",
         "Tap 'Create Loan' to finalize.",
     ])
-    pdf.subsection("Interest Calculation Methods")
-    pdf.body("PayLock Pro supports two interest calculation methods:")
-    pdf.bullet([
-        "Flat Rate: Interest calculated on the full principal for the entire duration. Simple and predictable.",
-        "Day-Count (Reducing Balance): Interest calculated on the outstanding balance. More fair for early repayments.",
-    ])
-    pdf.subsection("Loan Plans (Professional+)")
-    pdf.body("Pre-configure loan templates under Features > Loan Plans. Each plan defines:")
-    pdf.bullet([
-        "Default interest rate and calculation method",
-        "Standard duration and payment frequency",
-        "Late fee rules and grace periods",
-        "Auto-lock behavior settings",
-    ])
     pdf.subsection("Loan Restructuring (Professional+)")
-    pdf.body("For overdue or troubled loans, use the restructure option:")
-    pdf.numbered([
-        "Open the client's loan details.",
-        "Tap 'Restructure Loan'.",
-        "Modify terms: extend duration, adjust interest, change payment amount.",
-        "Review the new payment schedule.",
-        "Confirm restructuring. A new schedule is generated automatically.",
-    ])
-    pdf.note("Restructured loans are tracked separately in analytics for portfolio health monitoring.")
+    pdf.body("For overdue loans, open the loan details and tap 'Restructure'. Modify terms: extend duration, adjust interest, or change payment amounts. A new schedule is generated automatically.")
 
-    # Ch 5 - Payment Tracking
+    # Ch 4 - Transactions
     pdf.add_page()
-    pdf.section("5. Payment Tracking & Late Fees")
+    pdf.section("4. Transactions & Payments")
+    pdf.screenshot("screenshot_091845.jpg", "Figure 4.1: Transactions with All/Disbursements/Payments filters", 65)
+    pdf.body("The Transactions tab provides a complete financial history with filter tabs: All, Disbursements (loans given), and Payments (received). Each transaction shows date, amount, client, and type.")
     pdf.subsection("Recording a Payment")
     pdf.numbered([
-        "Navigate to the Payments tab or open a client's loan details.",
+        "Navigate to Transactions tab or open a client's loan.",
         "Tap 'Record Payment'.",
-        "Enter the payment amount received.",
-        "Select the payment method (cash, bank transfer, mobile money, Stripe).",
+        "Enter amount received and payment method (cash, bank transfer, mobile money, Stripe).",
         "Add optional notes or reference number.",
-        "Tap 'Confirm' to record the payment.",
+        "Tap 'Confirm' - balance updates automatically.",
     ])
-    pdf.body("The system automatically updates the loan balance, calculates remaining EMIs, and adjusts the device lock status if applicable.")
-    pdf.subsection("Payment Reminders")
-    pdf.body("Automated reminders are sent before each payment due date:")
-    pdf.bullet([
-        "Push notification: 3 days before due date",
-        "Email reminder: 1 day before due date (if email configured)",
-        "SMS reminder: On due date (add-on feature)",
-        "Custom reminder schedules in Features > Payment Reminders",
-    ])
-    pdf.subsection("Late Fee Configuration")
-    pdf.body("Configure late fees in Settings > Late Fee & Auto-lock:")
-    pdf.bullet([
-        "Late Fee Percentage: Applied as a % of the monthly payment amount",
-        "Grace Period: Days after due date before fees apply (default: 3 days)",
-        "Auto-Lock: Automatically lock device when payment is overdue past grace period",
-        "Apply to All: Push settings to all existing clients at once",
-    ])
-    pdf.warning("Late fees compound if multiple payments are missed. Ensure clients are aware of fee structures.")
-    pdf.subsection("Stripe Integration (Enterprise)")
-    pdf.body("Enterprise users can accept online payments via Stripe. Clients receive a payment link and can pay directly with a credit/debit card. Payments are automatically reconciled.")
+    pdf.tip("The system automatically adjusts remaining EMIs and device lock status after payment recording.")
 
-    # Ch 6 - Device Lock
+    # Ch 5 - Features
     pdf.add_page()
-    pdf.section("6. Device Lock & Unlock")
-    pdf.body("The core feature of PayLock Pro - remotely lock client devices when payments are overdue.")
-    pdf.subsection("Manual Lock")
-    pdf.numbered([
-        "Open the client's profile.",
-        "Tap the 'Lock Device' button.",
-        "Enter a custom lock message (displayed on the client's screen).",
-        "Choose lock mode: Standard or Device Owner (Enterprise).",
-        "Confirm the lock action.",
-    ])
-    pdf.body("The client's device will immediately display a full-screen lock message. The client can only make emergency calls (112/911).")
-    pdf.subsection("Manual Unlock")
-    pdf.numbered([
-        "Open the locked client's profile.",
-        "Tap 'Unlock Device'.",
-        "The device unlocks immediately - client regains full access.",
-    ])
-    pdf.subsection("Auto-Lock Rules")
-    pdf.body("Configure automatic locking in Settings or per-client:")
-    pdf.bullet([
-        "Grace Period: Days after missed payment before auto-lock triggers",
-        "Auto-Lock Enabled: Toggle per client or globally",
-        "Lock Escalation: Standard lock -> Device Owner lock (if applicable)",
-    ])
-    pdf.subsection("Device Lock Modes")
-    widths2 = [40, 75, 75]
-    pdf.table_header(["Mode", "Capabilities", "Requirement"], widths2)
-    pdf.table_row(["Standard", "Lock screen, notification block, kiosk", "Device Admin permission"], widths2)
-    pdf.table_row(["Device Owner", "Full control, app whitelist, factory reset protection", "ADB/QR provisioning"], widths2, True)
-    pdf.ln(2)
-    pdf.note("Device Owner mode provides the strongest protection and is recommended for high-value loans.")
+    pdf.section("5. Features & Analytics")
+    pdf.screenshot("features_top.jpg", "Figure 5.1: Features - Analytics section", 65)
+    pdf.body("The Features tab organizes all tools by category. The Analytics section includes Reports, Bank Statement Analyzer, Full Audit Log, and Revenue Forecasting. Features are gated by subscription plan.")
+    pdf.screenshot("features_admin.jpg", "Figure 5.2: Features - Administration section", 65)
+    pdf.body("The Administration section includes Settings, Team Management, Session Management, and Logout. Each feature shows which plan is required (Starter/Professional/Enterprise).")
 
-    # Ch 7 - Reports
+    # Ch 6 - Reports
     pdf.add_page()
-    pdf.section("7. Reports & Analytics")
-    pdf.screenshot("admin_reports.png", "Reports - Financial analytics and data export", 70)
-    pdf.body("Access comprehensive reports from Features > Reports.")
-    pdf.subsection("Available Reports")
+    pdf.section("6. Reports & Analytics")
+    pdf.screenshot("reports_analytics.jpg", "Figure 6.1: Reports & Analytics dashboard", 65)
+    pdf.body("The Reports screen provides comprehensive financial analytics including:")
     pdf.bullet([
-        "Financial Summary: Revenue, principal disbursed, interest earned, profit/loss",
-        "Collection Trends: Payment rates over time with trend charts",
-        "Client Health Scores: Risk distribution across your portfolio",
-        "Monthly Interest Breakdown: Interest earned per client and loan",
-        "Overdue Analysis: Days overdue distribution, recovery rates",
-        "Collection Trends (Professional+): Detailed trend analysis with forecasting",
-        "Revenue Forecasting (Enterprise): AI-predicted future collections",
-        "Portfolio Health / NPA (Enterprise): Non-performing asset tracking",
-        "Risk Score Distribution (Enterprise): Credit risk analytics",
-        "Comparative Analytics (Enterprise): Period-over-period comparisons",
+        "Profit Summary: Total revenue, expenses, and net profit",
+        "Advanced Metrics: Portfolio health indicators and KPIs",
+        "Bad Loans: Non-performing assets and default tracking",
+        "Collection Overview: Payment collection rates and trends",
+        "Financial Breakdown: Detailed income vs. expense analysis",
+        "6-Month Revenue Trend: Visual chart showing monthly revenue",
     ])
     pdf.subsection("Export Options")
-    pdf.body("All reports can be exported in two formats:")
-    pdf.bullet([
-        "PDF: Formatted report with charts, suitable for sharing and printing",
-        "CSV: Raw data export for custom analysis in Excel or other tools",
-    ])
-    pdf.subsection("Scheduled Reports (Enterprise)")
-    pdf.body("Enterprise users can schedule automated email reports:")
-    pdf.bullet([
-        "Daily digest: Summary of previous day's activity",
-        "Weekly report: Comprehensive weekly analytics",
-        "Monthly report: Full monthly financial summary",
-    ])
+    pdf.body("All reports can be exported as PDF (formatted with charts) or CSV (raw data for Excel analysis).")
 
-    # Ch 8 - Document Vault
+    # Ch 7 - Bank Statement
     pdf.add_page()
-    pdf.section("8. Document Vault (Enterprise)")
-    pdf.body("Securely store client documents in the encrypted vault. Access it from a client's profile > Documents tab.")
-    pdf.subsection("Uploading Documents")
-    pdf.numbered([
-        "Open a client's profile.",
-        "Navigate to the Documents tab.",
-        "Tap 'Upload' and select a file from your device (max 10MB).",
-        "Choose the document type: ID photo, contract, proof of income, bank statement, or other.",
-        "Add a description for easy identification.",
-        "Tap 'Upload' - the file is encrypted and stored securely.",
-    ])
-    pdf.subsection("Supported File Types")
-    pdf.bullet([
-        "Images: JPG, PNG, HEIF",
-        "Documents: PDF",
-        "Maximum file size: 10MB per file",
-    ])
-    pdf.subsection("Bank Statement OCR (Enterprise)")
-    pdf.body("Enterprise users can upload bank statements and use AI-powered OCR to automatically extract:")
+    pdf.section("7. Bank Statement Analyzer (Enterprise)")
+    pdf.screenshot("bank_statement.jpg", "Figure 7.1: Bank Statement Analyzer with AI Vision OCR", 65)
+    pdf.body("Enterprise users can upload bank statements for AI-powered analysis. The Bank Statement Analyzer uses Vision OCR to automatically extract:")
     pdf.bullet([
         "Transaction history and patterns",
-        "Income verification",
-        "Balance trends",
+        "Income verification and verification",
+        "Balance trends over time",
         "Expense categorization",
     ])
-    pdf.note("Documents are stored on the server with encryption at rest. Only authorized admins can view client documents.")
-
-    # Ch 9 - Settings
-    pdf.add_page()
-    pdf.section("9. Settings & User Management")
-    pdf.screenshot("admin_settings.png", "Settings - Account and team management", 70)
-    pdf.subsection("Your Account")
-    pdf.body("Manage your personal account from Settings:")
-    pdf.bullet([
-        "Edit Profile: Update your name, email, phone, and address",
-        "Change Password: Update your login credentials (min 6 characters)",
-        "Current Plan: View your subscription tier and features",
+    pdf.numbered([
+        "Navigate to Features > Bank Statement Analyzer.",
+        "Toggle AI Vision OCR on for enhanced accuracy.",
+        "Tap 'Upload Bank Statement' and select a PDF or image.",
+        "Wait for the AI to process and extract data.",
+        "Review extracted information and save to client profile.",
     ])
-    pdf.subsection("User Management")
-    pdf.body("Manage your team from Settings > User Management. The system enforces strict role-based access:")
-    pdf.ln(1)
-    widths3 = [35, 55, 55, 45]
-    pdf.table_header(["Role", "Can Create", "Can Manage", "Sees"], widths3)
-    pdf.table_row(["Super Admin", "Admins + Users", "Everyone", "All team members"], widths3)
-    pdf.table_row(["Admin", "Users only", "Own created users", "Self + own users"], widths3, True)
-    pdf.table_row(["Viewer", "Nobody", "Nobody", "Self only"], widths3)
-    pdf.table_row(["Collections", "Nobody", "Nobody", "Self only"], widths3, True)
+
+    # Ch 8 - Audit Log
+    pdf.add_page()
+    pdf.section("8. Full Audit Log (Enterprise)")
+    pdf.screenshot("audit_log.jpg", "Figure 8.1: Audit Log with activity tracking", 65)
+    pdf.body("The Audit Log tracks every action performed in the system. It shows statistics for the last 7 days including total actions, action types, and admin activity counts.")
+    pdf.bullet([
+        "Login events with timestamps and IP addresses",
+        "Client creation, modification, and deletion",
+        "Loan creation, payment recording, and restructuring",
+        "Device lock/unlock actions",
+        "Settings changes and team management actions",
+        "Document uploads and deletions",
+    ])
+    pdf.note("Audit logs are retained for 90 days. Export logs as CSV for long-term storage.")
+
+    # Ch 9 - Revenue Forecasting
+    pdf.add_page()
+    pdf.section("9. Revenue Forecasting (Enterprise)")
+    pdf.screenshot("revenue_forecasting.jpg", "Figure 9.1: Revenue Forecasting with time period filters", 65)
+    pdf.body("AI-powered revenue predictions based on historical payment data. Select forecast periods: 30, 60, 90, 180, or 365 days.")
+    pdf.subsection("Forecast Metrics")
+    pdf.bullet([
+        "Expected Collections: Total amount expected based on payment schedules",
+        "Likely Collections: Adjusted estimate based on historical payment behavior",
+        "Active Clients: Number of clients with active loans",
+        "Reliability Score: Confidence level of the forecast",
+    ])
+
+    # Ch 10 - Loan Plans & Calculator
+    pdf.add_page()
+    pdf.section("10. Loan Plans & Calculator")
+    pdf.screenshot("screenshot_092005.jpg", "Figure 10.1: Loan Plans management", 65)
+    pdf.body("Pre-configure loan templates under Features > Loan Plans. Each plan defines default interest rate, duration, payment frequency, and late fee rules.")
+    pdf.screenshot("screenshot_092011.jpg", "Figure 10.2: Loan Calculator", 65)
+    pdf.body("The built-in Loan Calculator helps you quickly estimate EMI amounts. Enter Principal Amount, Annual Interest Rate (%), and Tenure (months), then tap 'Calculate' to see the payment schedule breakdown.")
+
+    # Ch 11 - Bulk Import & Documents
+    pdf.add_page()
+    pdf.section("11. Bulk Import & Document Vault")
+    pdf.screenshot("screenshot_092016.jpg", "Figure 11.1: Bulk Import clients from CSV", 65)
+    pdf.body("Enterprise users can bulk import clients from CSV files. The CSV should contain columns: name, phone, email, address. The system validates data before import and reports errors.")
+    pdf.screenshot("screenshot_092021.jpg", "Figure 11.2: Document Vault with search", 65)
+    pdf.body("The Document Vault provides encrypted storage for client documents. Search by client name or ID, upload files up to 10MB (JPG, PNG, PDF), and categorize by type: ID, contract, proof of income, or bank statement.")
+
+    # Ch 12 - Device Management
+    pdf.add_page()
+    pdf.section("12. Device Management")
+    pdf.screenshot("screenshot_092029.jpg", "Figure 12.1: Device Management dashboard", 65)
+    pdf.body("The Device Management screen provides an overview of all registered client devices with quick action buttons. Monitor device status, lock/unlock remotely, and track heartbeat connectivity.")
+    pdf.subsection("Device Lock Modes")
+    w2 = [40, 75, 75]
+    pdf.table_header(["Mode", "Capabilities", "Requirement"], w2)
+    pdf.table_row(["Standard", "Lock screen, kiosk mode, notification block", "Device Admin permission"], w2)
+    pdf.table_row(["Device Owner", "Full control, factory reset protection", "ADB/QR provisioning"], w2, True)
     pdf.ln(2)
-    pdf.subsection("Creating a New User")
-    pdf.numbered([
-        "Go to Settings > User Management.",
-        "Tap the '+' button.",
-        "Fill in: First Name, Last Name, Username, Password.",
-        "Select role: User (default) or Admin (Super Admin only).",
-        "Tap 'Add' to create the account.",
-    ])
-    pdf.subsection("Changing a User's Plan")
-    pdf.numbered([
-        "Find the user in the User Management list.",
-        "Tap the plan icon (tag icon) next to their name.",
-        "Select the new plan: Starter, Professional, or Enterprise.",
-        "The change takes effect immediately.",
-    ])
-    pdf.warning("Admins can only manage users they created. Super Admins can manage everyone.")
-    pdf.subsection("Active Sessions (Enterprise)")
-    pdf.body("Monitor and revoke active login sessions from Settings > Active Sessions. Each session shows login time, IP address, and device info. Revoke suspicious sessions immediately.")
 
-    # Ch 10 - Team
+    # Ch 13 - Client Management
     pdf.add_page()
-    pdf.section("10. Team Management & Permissions")
-    pdf.body("PayLock Pro uses a hierarchical permission system to ensure data security and proper access control.")
-    pdf.subsection("Role Hierarchy")
-    pdf.body("Permissions flow downward - each role includes all permissions of lower roles:")
+    pdf.section("13. Client Management")
+    pdf.screenshot("clients_list.jpg", "Figure 13.1: Client list with search", 65)
+    pdf.body("The Clients tab shows all your registered clients with search functionality. Each client card displays name, phone, loan status, and device status.")
+    pdf.subsection("Adding a New Client")
     pdf.numbered([
-        "Super Admin: Full system access. Can create/delete admins. Manages all users and plans. Access to audit logs, diagnostics, and all enterprise features.",
-        "Full Admin: Can create users (not admins). Manages only users they created. Access to most features based on subscription plan.",
-        "Collections: Can view clients and loans, record payments, send reminders. Cannot modify settings or manage team.",
-        "Viewer: Read-only access to client data and reports. Cannot make any changes.",
+        "Navigate to the Clients tab.",
+        "Tap the '+' button in the top right corner.",
+        "Fill in: full name (required), phone number (required).",
+        "Optionally: email, address, ID number.",
+        "Set device token if provisioning.",
+        "Tap 'Save' to create the client.",
     ])
-    pdf.subsection("Enterprise Team Features")
+
+    # Ch 14 - Payment Reminders
+    pdf.add_page()
+    pdf.section("14. Payment Reminders")
+    pdf.screenshot("payment_reminders.jpg", "Figure 14.1: Payment Reminders with status filters", 65)
+    pdf.body("The Payment Reminders screen organizes upcoming and overdue payments with color-coded filters:")
     pdf.bullet([
-        "Unlimited team members (Enterprise plan)",
-        "Role-based permissions with granular control",
-        "Audit log tracking all user actions",
-        "Session management with remote revocation",
+        "Overdue (Red): Payments past due date - requires immediate attention",
+        "Today (Yellow): Payments due today",
+        "Soon (Blue): Payments due within the next 3 days",
+        "Upcoming (Green): Payments due within the next 7 days",
     ])
+    pdf.body("Tap any reminder to send a push notification to the client or record a payment.")
 
-    # Ch 11 - Subscription Plans
+    # Ch 15 - Settings
     pdf.add_page()
-    pdf.section("11. Subscription Plans & Feature Tiers")
-    pdf.body("PayLock Pro offers three subscription tiers designed for different business sizes:")
+    pdf.section("15. Settings & User Management")
+    pdf.screenshot("settings_account.jpg", "Figure 15.1: Settings - Account, Plan, Profile, Preferences", 65)
+    pdf.body("The Settings screen provides account management. Your Account section shows profile details, current subscription plan, and preferences for language, currency, and theme.")
+    pdf.screenshot("settings_latefee.jpg", "Figure 15.2: Settings - Late Fee, Auto-Lock, User Management", 65)
+    pdf.body("Configure Late Fee & Auto-Lock settings globally. The User Management section shows all team members with their roles and plan assignments.")
+    pdf.subsection("User Management Scoping")
+    w3 = [35, 55, 55, 45]
+    pdf.table_header(["Role", "Can Create", "Can Manage", "Sees"], w3)
+    pdf.table_row(["Super Admin", "Admins + Users", "Everyone", "All members"], w3)
+    pdf.table_row(["Admin", "Users only", "Own users only", "Self + own users"], w3, True)
+    pdf.table_row(["Viewer", "Nobody", "Nobody", "Self only"], w3)
+    pdf.ln(2)
+    pdf.warning("Admins can only manage (change plan, delete) users they created. Super Admins can manage everyone.")
+
+    # Ch 16 - Plans
+    pdf.add_page()
+    pdf.section("16. Subscription Plans")
     pdf.subsection("Starter ($29/month)")
-    pdf.bullet(["Up to 25 clients", "Push notifications", "Basic analytics dashboard", "Email reminders", "Loan calculator", "1 admin user"])
+    pdf.bullet(["Up to 25 clients", "Push notifications & email reminders", "Basic analytics dashboard", "Loan calculator", "1 admin user"])
     pdf.subsection("Professional ($79/month)")
-    pdf.bullet(["Up to 200 clients", "Everything in Starter +", "Device lock & unlock", "Client messaging (Telegram, WhatsApp)", "PDF contract generation", "Automated payment scheduling", "Auto-lock after grace period", "Late fee automation", "Team management (3 members)", "GPS location tracking", "Advanced reports (PDF & CSV)", "Loan plans & restructuring", "Collection trends analysis"])
+    pdf.bullet(["Up to 200 clients", "Everything in Starter +", "Device lock & unlock", "Client messaging (Telegram, WhatsApp)", "PDF contract generation", "Auto-lock & late fee automation", "Team management (3 members)", "GPS tracking, Advanced reports, Loan plans"])
     pdf.subsection("Enterprise ($199/month)")
-    pdf.bullet(["Unlimited clients & team members", "Everything in Professional +", "QR & NFC provisioning", "Device Owner mode (full device control)", "Bank statement OCR (AI-powered)", "Document vault with encryption", "Stripe payment integration", "Scheduled email reports", "Portfolio health & NPA tracking", "Risk score tracking & credit scoring", "Daily digest email", "Session management", "Role-based permissions & audit log", "Comparative analytics & revenue forecasting", "Bulk import/export", "Full REST API access", "Priority support with SLA"])
-    pdf.subsection("Custom Plan")
-    pdf.body("For large organizations with specific needs, contact sales@paylock.pro for a tailored plan with custom pricing, dedicated support, and white-label options.")
+    pdf.bullet(["Unlimited clients & team", "Everything in Professional +", "QR & NFC provisioning, Device Owner mode", "Bank statement OCR (AI), Document vault", "Stripe payments, Scheduled reports", "Full audit log, Risk scoring", "Revenue forecasting, Bulk import/export", "REST API access, Priority support"])
 
-    # Ch 12 - Advanced
+    # Ch 17 - Security
     pdf.add_page()
-    pdf.section("12. Advanced Features (Enterprise)")
-    pdf.subsection("Device Owner Mode")
-    pdf.body("The most powerful device control mode. Requires ADB provisioning or factory reset with QR code. Enables:")
-    pdf.bullet([
-        "Factory reset protection - device cannot be reset without admin approval",
-        "App whitelisting - only approved apps can run",
-        "Custom launcher - PayLock becomes the default home screen",
-        "Kiosk mode - device is restricted to a single app",
-        "SIM lock - prevents SIM card changes",
-    ])
-    pdf.subsection("Credit Scoring")
-    pdf.body("AI-powered credit scoring based on payment history, device usage patterns, and financial data. Scores update automatically and are visible in client profiles.")
-    pdf.subsection("REST API Access")
-    pdf.body("Full programmatic access to all PayLock features:")
-    pdf.bullet([
-        "Base URL: https://api.paylock.pro/api/",
-        "Authentication: Token-based (via /api/admin/login)",
-        "Full CRUD for clients, loans, and payments",
-        "Device control endpoints",
-        "Rate limit: 1000 requests/minute",
-        "API docs: https://api.paylock.pro/api/docs",
-    ])
-
-    # Ch 13 - Security
-    pdf.add_page()
-    pdf.section("13. Security & Tamper Detection")
-    pdf.body("PayLock Pro includes multiple layers of security to prevent tampering with the client app.")
+    pdf.section("17. Security & Tamper Detection")
+    pdf.body("PayLock Pro includes multiple security layers to prevent client device tampering.")
     pdf.subsection("Permission Monitoring")
-    pdf.body("The client app monitors all 8 critical permissions. If any permission is revoked via device settings:")
+    pdf.body("The client app monitors 8 critical permissions. If any permission is revoked via device settings:")
     pdf.numbered([
-        "First detection: Full-screen Security Alert + push notification warning",
-        "Second detection (permission still revoked): Tamper reported to server + device data wipe initiated",
+        "First detection: Full-screen Security Alert + push notification warning.",
+        "Second detection (permission still revoked): Tamper reported to server + device data wipe initiated.",
     ])
-    pdf.warning("Data wipe is irreversible. Ensure clients understand the consequences of tampering with app permissions.")
+    pdf.warning("Data wipe is irreversible. Ensure clients understand consequences of tampering.")
     pdf.subsection("Admin Mode Protection")
-    pdf.body("If Device Admin mode is deactivated:")
-    pdf.numbered([
-        "Immediate Security Alert dialog appears",
-        "Push notification sent",
-        "If not re-enabled: tamper reported + factory reset",
-    ])
-    pdf.subsection("Additional Security Measures")
-    pdf.bullet([
-        "Screenshot blocking: Client app prevents screen capture",
-        "Reboot detection: App re-locks device after reboot if payment is overdue",
-        "Offline enforcement: Lock state persists even without internet",
-        "Clear data protection: Client ID backed up externally, restored on data clear",
-        "Foreground monitoring: Detects attempts to switch away from lock screen",
-        "Status bar blocking: Prevents notification shade from being pulled down when locked",
-    ])
+    pdf.body("If Device Admin is deactivated: immediate Security Alert, push notification, and if not re-enabled: tamper report + factory reset.")
 
-    # Ch 14 - Troubleshooting
+    # Ch 18 - Troubleshooting
     pdf.add_page()
-    pdf.section("14. Troubleshooting & FAQ")
+    pdf.section("18. Troubleshooting & FAQ")
     pdf.subsection("Cannot Login")
-    pdf.bullet(["Verify username and password are correct (case-sensitive).", "Check internet connection.", "If locked out, contact your Super Admin to reset your password.", "Check if your session was revoked in Active Sessions."])
-    pdf.subsection("Device Not Responding to Lock/Unlock")
-    pdf.bullet(["Verify the client device has PayLock Client app installed.", "Check that the device has internet connectivity.", "Ensure all 8 permissions are granted on the client device.", "Check device admin is active on the client device.", "Try sending a push notification to verify connectivity.", "If using Device Owner mode, verify ADB provisioning was completed."])
-    pdf.subsection("Payments Not Syncing")
-    pdf.bullet(["Pull down to refresh the dashboard.", "Check your internet connection.", "Verify the payment was recorded correctly.", "Check the audit log for any errors."])
+    pdf.bullet(["Verify username/password (case-sensitive).", "Check internet connection.", "Contact Super Admin to reset password."])
+    pdf.subsection("Device Not Responding")
+    pdf.bullet(["Verify client app is installed.", "Check device internet connectivity.", "Ensure all 8 permissions are granted.", "Check device admin is active."])
     pdf.subsection("Contact Support")
-    pdf.body("Email: support@paylock.pro\nWebsite: https://paylock.pro/contact\n\nResponse times:\n- Starter: Within 48 hours\n- Professional: Within 24 hours\n- Enterprise: Within 4 hours (SLA)")
+    pdf.body("Email: support@paylock.pro\nWebsite: paylock.pro/contact\nStarter: 48h | Professional: 24h | Enterprise: 4h SLA")
 
     pdf.output(os.path.join(OUT_DIR, "PayLockPro_Admin_Manual.pdf"))
-    print("Admin manual generated with screenshots.")
+    print("Admin manual generated with 19 real screenshots.")
 
 
 # ============================================================
-# 2. CLIENT APP MANUAL
+# CLIENT APP MANUAL - detailed text instructions only
 # ============================================================
 def gen_client():
     pdf = Manual()
@@ -597,16 +457,18 @@ def gen_client():
         "Device Lock & What to Expect",
         "In-App Messaging",
         "Security & Protection",
+        "Emergency Features",
+        "Language & Accessibility",
         "FAQ & Troubleshooting",
     ])
 
     # Ch 1
     pdf.add_page()
     pdf.section("1. Introduction")
-    pdf.body("The PayLock Pro Client app is installed on your device as part of a loan agreement with your lender. This manual explains how the app works, what permissions it needs, and what happens during the loan period.")
+    pdf.body("The PayLock Pro Client app is installed on your device as part of a loan agreement. This manual explains how the app works, what permissions it needs, and what happens during the loan period.")
     pdf.subsection("What the App Does")
     pdf.bullet([
-        "Displays your loan status and payment information",
+        "Displays your loan status and payment schedule",
         "Sends payment reminders before due dates",
         "Allows your lender to manage device access based on payment status",
         "Tracks device location for compliance purposes",
@@ -614,448 +476,449 @@ def gen_client():
     ])
     pdf.subsection("What the App Does NOT Do")
     pdf.bullet([
-        "Does not access your personal files, photos, or messages",
-        "Does not record audio or video",
-        "Does not share your data with third parties",
-        "Does not charge you any fees",
+        "Does NOT access your personal files, photos, or messages",
+        "Does NOT record audio or video",
+        "Does NOT share data with third parties",
+        "Does NOT charge you any fees",
     ])
-    pdf.note("The app requires certain permissions to function properly. These permissions are part of your loan agreement and cannot be changed while the loan is active.")
+    pdf.note("The app requires certain permissions to function. These are part of your loan agreement and cannot be changed while the loan is active.")
 
     # Ch 2
     pdf.add_page()
     pdf.section("2. Installation & Setup")
-    pdf.body("Your lender will provide you with the app installation in one of these ways:")
     pdf.subsection("Installation Methods")
     pdf.bullet([
         "Direct APK: Your lender sends you a download link. Tap to install.",
-        "QR Code Scan: Your lender shows you a QR code. Scan it with your camera to begin setup.",
-        "NFC Tap: Touch your device to your lender's device for instant enrollment.",
+        "QR Code Scan: Your lender shows a QR code. Scan with camera to begin setup.",
+        "NFC Tap: Touch your device to lender's device for instant enrollment.",
     ])
     pdf.subsection("System Requirements")
     pdf.bullet([
         "Android 8.0 (Oreo) or later",
         "Active internet connection (WiFi or mobile data)",
-        "At least 100MB free storage space",
+        "At least 100MB free storage",
     ])
-    pdf.warning("Do not uninstall or disable the app without your lender's permission. Tampering with the app may result in data loss.")
+    pdf.subsection("Step-by-Step Installation")
+    pdf.numbered([
+        "Receive the APK file or link from your lender.",
+        "If prompted, enable 'Install from unknown sources' in Android settings.",
+        "Tap the APK file to begin installation.",
+        "Tap 'Install' when prompted by the system.",
+        "Wait for installation to complete (usually 30-60 seconds).",
+        "Tap 'Open' to launch the app.",
+    ])
+    pdf.warning("Do not uninstall or disable the app without your lender's permission. Tampering may result in data loss.")
 
     # Ch 3
+    pdf.add_page()
     pdf.section("3. Registration Process")
+    pdf.body("After installation, you need to register your device with your lender's system.")
     pdf.numbered([
-        "Open the app after installation.",
-        "You will see the registration screen.",
-        "Enter the activation code provided by your lender.",
-        "Your name and loan details will appear for confirmation.",
-        "Tap 'Register' to complete activation.",
-        "The app will guide you through permission setup.",
+        "Open the PayLock Pro Client app.",
+        "The registration screen appears with a code entry field.",
+        "Enter the activation code provided by your lender (usually 6-8 characters).",
+        "Your name and loan details appear for confirmation.",
+        "Review the information carefully - ensure your name is correct.",
+        "Tap 'Register' to complete device activation.",
+        "The app transitions to the permission setup screen.",
     ])
-    pdf.note("Keep your activation code safe. You may need it if you reset your device.")
+    pdf.note("Keep your activation code safe. You may need it if you reset your device or switch to a new phone.")
+    pdf.tip("If registration fails, check your internet connection and verify the activation code with your lender.")
 
     # Ch 4
     pdf.add_page()
     pdf.section("4. Granting Permissions")
-    pdf.screenshot("client_home_screen.png", "Permission Setup - Grant all 8 required permissions", 70)
-    pdf.body("After registration, the app requires 8 permissions for proper operation. Each permission card on the screen shows its status (green = granted, red = not granted).")
-    pdf.subsection("Permission Details")
+    pdf.body("The app requires 8 permissions for proper operation. After registration, you'll see a permission setup screen with 8 cards arranged in a 2-column grid. Each card shows a green checkmark (granted) or red X (not granted).")
+    pdf.subsection("The 8 Required Permissions")
     pdf.ln(1)
-    widths4 = [40, 75, 75]
-    pdf.table_header(["Permission", "Why It's Needed", "How to Grant"], widths4)
-    pdf.table_row(["Battery", "Keeps app running in background", "Tap card > Allow unrestricted"], widths4)
-    pdf.table_row(["Overlay", "Shows lock screen & reminders", "Tap card > Toggle ON"], widths4, True)
-    pdf.table_row(["Auto Start", "Restarts app after device reboot", "Tap card > Follow instructions"], widths4)
-    pdf.table_row(["Accessibility", "Enables device management", "Tap card > Enable service"], widths4, True)
-    pdf.table_row(["Location", "Compliance monitoring", "Tap card > Allow Always"], widths4)
-    pdf.table_row(["Notification", "Receives payment reminders", "Tap card > Allow"], widths4, True)
-    pdf.table_row(["Usage Stats", "Security monitoring", "Tap card > Toggle ON"], widths4)
-    pdf.table_row(["Notif. Listener", "Ensures alerts aren't dismissed", "Tap card > Enable"], widths4, True)
+    w4 = [30, 55, 55, 50]
+    pdf.table_header(["#", "Permission", "Why Needed", "How to Grant"], w4)
+    pdf.table_row(["1", "Battery", "Keeps app running", "Tap > Allow unrestricted"], w4)
+    pdf.table_row(["2", "Overlay", "Shows lock screen", "Tap > Toggle ON"], w4, True)
+    pdf.table_row(["3", "Auto Start", "Restarts after reboot", "Tap > Follow instructions"], w4)
+    pdf.table_row(["4", "Accessibility", "Device management", "Tap > Enable service"], w4, True)
+    pdf.table_row(["5", "Location", "Compliance tracking", "Tap > Allow Always"], w4)
+    pdf.table_row(["6", "Notification", "Payment reminders", "Tap > Allow"], w4, True)
+    pdf.table_row(["7", "Usage Stats", "Security monitoring", "Tap > Toggle ON"], w4)
+    pdf.table_row(["8", "Notif. Listener", "Ensures alerts work", "Tap > Enable"], w4, True)
     pdf.ln(2)
     pdf.subsection("Device Admin Activation")
-    pdf.body("After all 8 permissions are granted, the app will ask you to activate Device Admin mode. This is the final step:")
+    pdf.body("After all 8 permissions are granted, the app asks to activate Device Admin mode:")
     pdf.numbered([
-        "A dialog appears asking to enable Device Admin.",
+        "A dialog appears: 'Enable Device Admin?'",
+        "Read the explanation of what Device Admin allows.",
         "Tap 'Yes, Enable' to activate.",
-        "The app confirms activation with a green checkmark.",
+        "Green checkmark confirms activation.",
         "Setup is complete - the app runs in the background.",
     ])
-    pdf.warning("Once permissions are locked by your lender, attempting to disable them from device settings will trigger a security alert. If permissions remain disabled, your device data will be wiped.")
+    pdf.warning("Once permissions are locked by your lender, disabling them from device settings will trigger a security alert. If permissions remain disabled, your device data will be wiped.")
 
     # Ch 5
     pdf.add_page()
     pdf.section("5. Understanding the Home Screen")
-    pdf.body("After setup is complete, the home screen shows your current status:")
-    pdf.subsection("Status Indicators")
+    pdf.body("After setup, the home screen shows your current status with several information sections.")
+    pdf.subsection("Status Elements")
     pdf.bullet([
-        "Welcome Message: Your name and account status",
-        "Protection Status: Green shield = fully protected, Yellow = permissions missing",
-        "Device Status: Shows if your device is currently locked or unlocked",
-        "Loan Information: Next payment date, amount due, total remaining",
-        "Warning Messages: Important notices from your lender (auto-dismiss after 10 seconds)",
+        "Welcome Message: Your name and account status at the top",
+        "Protection Status: Green shield = fully protected | Yellow = permissions missing",
+        "Device Status: Shows if device is locked or unlocked",
+        "Permission Cards: 8 cards showing each permission status (green/red)",
+        "Device Admin Toggle: Shows admin mode status (active/inactive)",
+        "Warning Banner: Important notices from lender (auto-dismiss after 10 seconds)",
     ])
-    pdf.subsection("Pull to Refresh")
-    pdf.body("Swipe down on the home screen to manually refresh your status. The app also auto-refreshes every 5 seconds.")
+    pdf.subsection("Refreshing Your Status")
+    pdf.body("The app auto-refreshes every 5 seconds. You can also swipe down to manually refresh and get the latest status from the server.")
     pdf.subsection("Language Selection")
-    pdf.body("Change the app language using the language picker in the top right corner. Available languages: English, Estonian, Russian.")
+    pdf.body("Change the app language using the picker in the top right corner. Available: English, Estonian (Eesti), Russian.")
 
     # Ch 6
+    pdf.add_page()
     pdf.section("6. Payment Information")
-    pdf.body("The home screen displays your loan status:")
+    pdf.body("Your loan details are displayed on the home screen when available:")
     pdf.bullet([
-        "Loan Amount: Total loan principal",
+        "Loan Amount: Total principal borrowed",
         "Outstanding Balance: Remaining amount to pay",
         "Monthly EMI: Your regular payment amount",
         "Next Due Date: When your next payment is expected",
+        "Interest Rate: Annual percentage rate on your loan",
+        "Payment History: List of all recorded payments",
     ])
     pdf.body("Make payments directly to your lender using their specified method (cash, bank transfer, mobile money). Once your lender records the payment, your status updates automatically within minutes.")
-    pdf.tip("Pay on time to avoid device locking and late fees. Set a personal reminder for 2-3 days before your due date.")
+    pdf.tip("Pay on time to avoid device locking and late fees. Set a personal reminder 2-3 days before your due date.")
+    pdf.subsection("Understanding Late Fees")
+    pdf.body("If payment is not received by the due date:")
+    pdf.numbered([
+        "Grace period begins (typically 3 days) - no fees yet.",
+        "After grace period: late fee is applied (% of monthly payment).",
+        "If still unpaid: device may be automatically locked.",
+        "Late fees compound with each missed payment.",
+    ])
 
     # Ch 7
     pdf.add_page()
     pdf.section("7. Device Lock & What to Expect")
-    pdf.screenshot("client_lock_screen.png", "Lock Screen - Displayed when payment is overdue", 70)
-    pdf.body("If a payment is overdue past the grace period, your lender may lock your device. Here's what happens:")
+    pdf.body("If a payment is overdue past the grace period, your lender may lock your device.")
     pdf.subsection("When Your Device is Locked")
     pdf.bullet([
-        "A full-screen lock message appears - you cannot use other apps",
-        "Your lender's custom message explains the reason",
-        "Pending payment amount and due date are displayed",
-        "Status bar and navigation are blocked",
-        "You CAN still make emergency calls (112/911) via the button at the bottom",
+        "A full-screen lock message appears with a dark red/black background",
+        "Large lock icon and 'Device Locked' text displayed prominently",
+        "Custom message from your lender explains the reason",
+        "Pending payment amount and due date are shown",
+        "Status bar and navigation are completely blocked",
+        "You CANNOT use other apps, make calls (except emergency), or access settings",
+        "Emergency call button (112/911) is available at the bottom of the screen",
     ])
-    pdf.subsection("How to Unlock")
+    pdf.subsection("How to Get Unlocked")
     pdf.numbered([
-        "Contact your lender to arrange payment.",
-        "Make the required payment.",
-        "Your lender confirms payment receipt in their system.",
-        "Your device unlocks automatically within minutes.",
+        "Contact your lender to arrange payment (use another phone if needed).",
+        "Make the required payment through agreed method.",
+        "Your lender confirms payment in their system.",
+        "Device unlocks automatically within minutes.",
+        "You regain full access to all apps and functions.",
     ])
-    pdf.subsection("Temporary Unlock")
-    pdf.body("In some cases, your lender may grant a temporary unlock while payment is being processed. Contact your lender to request this.")
-    pdf.warning("Do not try to force-restart your device to bypass the lock. The lock persists across reboots and even works offline.")
+    pdf.subsection("What WON'T Work to Bypass the Lock")
+    pdf.bullet([
+        "Restarting the device - lock persists across reboots",
+        "Clearing app data - protection is backed up externally",
+        "Turning off internet - lock works offline",
+        "Force stopping the app - it auto-restarts",
+        "Pulling down notification shade - blocked when locked",
+    ])
+    pdf.warning("Do NOT attempt to factory reset your device. If Device Owner mode is active, factory reset is blocked. If somehow successful, your device data will be permanently lost.")
 
     # Ch 8
     pdf.add_page()
     pdf.section("8. In-App Messaging")
-    pdf.body("If your lender has enabled messaging, you can communicate directly through the app:")
+    pdf.body("If your lender has enabled messaging, you can communicate directly through the app.")
     pdf.numbered([
-        "Tap the chat icon on the home screen.",
-        "Type your message in the text field.",
-        "Tap 'Send' to deliver the message.",
-        "Your lender will see the message and can respond.",
+        "Tap the chat/message icon on the home screen.",
+        "Type your message in the text field at the bottom.",
+        "Tap 'Send' to deliver.",
+        "Your lender sees the message and can respond.",
+        "Messages sync across sessions and are stored on the server.",
     ])
-    pdf.body("Messages are stored on the server and synchronized across sessions. Your lender may also communicate via Telegram or WhatsApp if configured.")
+    pdf.body("Your lender may also contact you via Telegram or WhatsApp if those integrations are configured.")
+    pdf.tip("Use messaging to request payment extensions, report issues, or ask questions about your loan.")
 
     # Ch 9
+    pdf.add_page()
     pdf.section("9. Security & Protection")
-    pdf.body("The app includes several security features to ensure the loan agreement is maintained:")
-    pdf.subsection("Permission Monitoring")
-    pdf.body("The app monitors all granted permissions. If you navigate to device settings and disable any permission:")
+    pdf.body("The app includes security features to maintain the loan agreement.")
+    pdf.subsection("What Happens If You Disable Permissions")
+    pdf.body("If you go to your phone's Settings and disable any of the 8 required permissions:")
     pdf.numbered([
+        "The app detects the change when you return to the app.",
         "A full-screen Security Alert dialog appears immediately.",
         "A push notification is sent as a warning.",
-        "You should re-enable the permission immediately.",
-        "If the permission remains disabled, a data wipe will be triggered.",
+        "You must re-enable the permission in device Settings immediately.",
+        "If the permission remains disabled on the next app check: the app reports tampering to the server and initiates a DATA WIPE of the device.",
     ])
-    pdf.subsection("What Triggers Security Alerts")
+    pdf.subsection("What Triggers Security Responses")
     pdf.bullet([
-        "Disabling any of the 8 required permissions",
+        "Disabling ANY of the 8 required permissions from device settings",
         "Deactivating Device Admin mode",
-        "Attempting to uninstall the app (when blocked)",
+        "Attempting to uninstall the app (when uninstall is blocked)",
         "Clearing app data or cache",
-        "Factory resetting the device (Device Owner mode prevents this)",
+        "Factory resetting (Device Owner mode prevents this)",
     ])
-    pdf.warning("Tampering with the app or its permissions will result in a security response including potential data wipe. Always contact your lender before making any changes.")
+    pdf.warning("TAMPERING WITH THE APP OR ITS PERMISSIONS WILL RESULT IN A DATA WIPE. This means ALL data on your device will be permanently erased. Always contact your lender before making any changes to app permissions.")
 
     # Ch 10
     pdf.add_page()
-    pdf.section("10. FAQ & Troubleshooting")
-    pdf.subsection("Can I uninstall the app?")
-    pdf.body("The app can only be uninstalled with your lender's permission. Contact your lender to discuss uninstallation after your loan is fully repaid.")
-    pdf.subsection("My device is locked but I made a payment")
-    pdf.body("Contact your lender to confirm payment receipt. Once confirmed, your device will be unlocked within minutes automatically.")
-    pdf.subsection("The app is draining my battery")
-    pdf.body("The app is optimized for minimal battery usage (less than 2% per day). If you experience issues, ensure battery optimization exemption is granted (this is one of the 8 permissions). Do not force-stop the app as it needs to run in background.")
-    pdf.subsection("I'm not receiving notifications")
-    pdf.body("Check that notification permissions are granted in both the app and device settings. Ensure the app is not being killed by your device's battery saver. Some Chinese manufacturers (Huawei, Xiaomi, Oppo) have aggressive battery management - follow the Auto Start permission instructions.")
-    pdf.subsection("I changed phones")
-    pdf.body("Contact your lender. They will need to:")
-    pdf.numbered([
-        "Remove the old device from your account.",
-        "Provide a new activation code for your new phone.",
-        "Help you set up the app on the new device.",
-    ])
-    pdf.subsection("The app crashed")
-    pdf.body("If the app crashes, it will restart automatically. If it keeps crashing:")
+    pdf.section("10. Emergency Features")
+    pdf.subsection("Emergency Calls")
+    pdf.body("Even when your device is locked, you can always make emergency calls:")
     pdf.bullet([
-        "Restart your device",
-        "Check for app updates from your lender",
-        "Contact your lender for a replacement APK if needed",
+        "Tap the 'Emergency Call' button at the bottom of the lock screen.",
+        "This dials your local emergency number (112 in Europe, 911 in US).",
+        "Emergency calls are NEVER blocked by the app.",
     ])
-    pdf.subsection("Contact Support")
-    pdf.body("For technical issues: support@paylock.pro\nFor payment issues: Contact your lender directly\n\nWhen reporting issues, please provide: your name, lender name, device model, and a description of the problem.")
+    pdf.subsection("SOS Contact")
+    pdf.body("If you're in a situation where you need help, the emergency call feature is always accessible regardless of lock or payment status.")
+
+    # Ch 11
+    pdf.section("11. Language & Accessibility")
+    pdf.body("The app supports multiple languages to ensure accessibility:")
+    pdf.bullet([
+        "English: Full interface in English",
+        "Eesti (Estonian): Complete Estonian translation",
+        "Russian: Full Russian translation",
+    ])
+    pdf.body("To change language: tap the language picker icon (flag/globe) in the top right corner of the home screen. The entire interface updates immediately.")
+
+    # Ch 12
+    pdf.add_page()
+    pdf.section("12. FAQ & Troubleshooting")
+    pdf.subsection("Can I uninstall the app?")
+    pdf.body("Only with your lender's permission after your loan is fully repaid.")
+    pdf.subsection("My device is locked but I made a payment")
+    pdf.body("Contact your lender to confirm receipt. Unlock happens automatically within minutes after confirmation.")
+    pdf.subsection("The app is draining my battery")
+    pdf.body("The app uses less than 2% battery per day. Ensure battery optimization exemption is granted (Permission #1). Do not force-stop the app.")
+    pdf.subsection("I'm not receiving notifications")
+    pdf.body("Check notification permissions in both app and device settings. Some manufacturers (Huawei, Xiaomi, Oppo) have aggressive battery management - follow Auto Start instructions.")
+    pdf.subsection("I changed phones")
+    pdf.body("Contact your lender to: 1) Remove old device, 2) Get new activation code, 3) Set up app on new phone.")
+    pdf.subsection("The app crashed")
+    pdf.body("It restarts automatically. If persistent: restart device, check for updates from lender, or request replacement APK.")
+    pdf.subsection("Contact")
+    pdf.body("Technical: support@paylock.pro\nPayment issues: Contact your lender directly\nInclude: your name, lender name, device model, problem description.")
 
     pdf.output(os.path.join(OUT_DIR, "PayLockPro_Client_Manual.pdf"))
-    print("Client manual generated with screenshots.")
+    print("Client manual generated (detailed text instructions).")
 
 
 # ============================================================
-# 3. WEB PORTAL MANUAL
+# WEB PORTAL MANUAL - with real portal screenshots
 # ============================================================
 def gen_portal():
     pdf = Manual()
     pdf.title_text = "Web Portal User Manual"
     pdf.alias_nb_pages()
-    pdf.cover("Web Portal", "Complete User Manual")
+    pdf.cover("Web Portal", "Complete User Manual with Screenshots")
 
     pdf.add_page()
     pdf.section("Table of Contents")
     pdf.numbered([
-        "Accessing the Portal",
+        "Accessing the Portal & Login",
         "Dashboard Overview",
         "Client Management",
-        "Loan Management",
-        "Payment Processing",
+        "Reports & Analytics",
         "Device Management",
-        "Reports & Exports",
-        "Settings & Administration",
-        "API Access (Enterprise)",
+        "Document Vault",
+        "Team Management",
+        "Exports & Data",
+        "Device Configuration (QR/NFC)",
+        "Additional Portal Features",
         "Keyboard Shortcuts & Tips",
     ])
 
     # Ch 1
     pdf.add_page()
-    pdf.section("1. Accessing the Portal")
-    pdf.body("The PayLock Pro Web Portal provides full access to all features through a web browser.")
-    pdf.subsection("Login")
-    pdf.numbered([
-        "Open your web browser (Chrome, Firefox, Safari, or Edge).",
-        "Navigate to: https://api.paylock.pro/api/portal",
-        "Enter your admin username and password.",
-        "Click 'Login' to access the dashboard.",
-    ])
+    pdf.section("1. Accessing the Portal & Login")
+    pdf.screenshot("portal_login.png", "Figure 1.1: Portal Login screen", 140)
+    pdf.body("Open your browser and navigate to your PayLock Pro portal URL (e.g., https://your-server.com/api/portal). Enter your admin username and password, then click 'Logi sisse' (Login).")
     pdf.subsection("Supported Browsers")
-    pdf.bullet([
-        "Google Chrome 90+ (recommended)",
-        "Mozilla Firefox 90+",
-        "Safari 15+",
-        "Microsoft Edge 90+",
-    ])
-    pdf.note("The web portal uses the same credentials as the mobile admin app. All data is synchronized in real-time across both platforms.")
-    pdf.tip("Bookmark the portal URL for quick access. You can also create a home screen shortcut on mobile browsers.")
+    pdf.bullet(["Chrome 90+ (recommended)", "Firefox 90+", "Safari 15+", "Edge 90+"])
+    pdf.note("The portal uses the same credentials as the mobile admin app. All data syncs in real-time between both platforms.")
 
     # Ch 2
     pdf.add_page()
     pdf.section("2. Dashboard Overview")
-    pdf.screenshot("portal_dashboard.png", "Web Portal Dashboard - Comprehensive portfolio view", 160)
-    pdf.body("The web dashboard provides a comprehensive, at-a-glance view of your loan portfolio with interactive charts and real-time data.")
-    pdf.subsection("Dashboard Components")
+    pdf.screenshot("portal_dashboard_real.png", "Figure 2.1: Portal Dashboard - Real-time portfolio metrics", 160)
+    pdf.body("The dashboard shows real-time metrics for your portfolio:")
     pdf.bullet([
-        "Metric Cards: Total clients, active loans, overdue accounts, monthly revenue",
-        "Revenue Chart: Interactive line chart showing monthly collections trend",
-        "Collection Rate: Visual gauge showing on-time payment percentage",
-        "Recent Activity: Live feed of latest payments, client registrations, and device events",
-        "Quick Actions: Buttons for common tasks (Add Client, Record Payment, Generate Report)",
-        "Device Status Summary: Count of online, offline, and locked devices",
+        "KLIENDID KOKKU (Total Clients): Number of registered clients",
+        "KOKKU KOGUTUD (Total Collected): Total payments received",
+        "TASUMATA (Unpaid): Outstanding balance across all loans",
+        "TAHTAJA ULETANUD (Overdue): Number of overdue clients",
+        "VALJASTATUD (Disbursed): Total loan amount given out",
+        "LUKUSTATUD SEADMED (Locked Devices): Currently locked device count",
+        "SEE KUU (This Month): Monthly collection amount",
+        "VIIVISTTARASU (Late Fees): Total late fees accrued",
     ])
+    pdf.body("Below the metrics, Revenue Trends and Profit Trends charts show 6-month financial history.")
 
     # Ch 3
+    pdf.add_page()
     pdf.section("3. Client Management")
-    pdf.screenshot("portal_client_detail.png", "Client Detail Page - Full client profile and controls", 160)
-    pdf.subsection("Adding Clients")
+    pdf.screenshot("portal_clients_real.png", "Figure 3.1: Client list with status indicators", 160)
+    pdf.body("The Clients page displays all clients in a table with columns: Name, Phone, Loan Amount, Outstanding Balance, Status (Active/Overdue/Paid), and Device Status (Active/Locked).")
+    pdf.subsection("Adding a Client")
     pdf.numbered([
-        "Click 'Add Client' from the sidebar or dashboard quick action.",
-        "Fill in the client form: name (required), phone (required), email, address.",
-        "Optionally set initial device token for provisioning.",
-        "Click 'Create Client' to save.",
+        "Click '+ Lisa klient' (Add Client) button at the top.",
+        "Fill in: Name (required), Phone (required), Email, Address.",
+        "Click 'Create' to save.",
     ])
-    pdf.subsection("Client Search & Filters")
-    pdf.body("Use the powerful search and filter system to find clients quickly:")
+    pdf.subsection("Client Actions")
+    pdf.body("Click the eye icon on any client to view their full profile:")
     pdf.bullet([
-        "Text search: Name, phone number, or email",
-        "Status filter: Active, Locked, Overdue, Completed",
-        "Sort by: Name, loan amount, last payment, registration date",
-    ])
-    pdf.subsection("Client Profile Actions")
-    pdf.body("From a client's profile page, you can:")
-    pdf.bullet([
-        "View and edit contact information",
-        "Create new loans or modify existing ones",
-        "Record payments and view full payment history",
-        "Lock/unlock their device remotely with custom messages",
-        "Upload documents to their encrypted vault",
-        "View GPS location history on an interactive map",
-        "Send messages via in-app chat, Telegram, or WhatsApp",
-        "View credit score and risk assessment",
-        "Access tamper detection logs and security events",
+        "Contact details and identification",
+        "Active loans with payment schedules",
+        "Payment history with dates and methods",
+        "Device status with lock/unlock controls",
+        "GPS location on interactive map",
+        "Document vault",
+        "Communication log",
     ])
 
     # Ch 4
     pdf.add_page()
-    pdf.section("4. Loan Management")
-    pdf.subsection("Creating a Loan")
-    pdf.numbered([
-        "Navigate to a client's profile.",
-        "Click 'Create Loan' in the loans section.",
-        "Select a pre-configured loan plan or enter custom terms.",
-        "Set principal amount, interest rate, and calculation method.",
-        "Choose duration and payment frequency.",
-        "Review the auto-generated EMI payment schedule.",
-        "Click 'Create' to finalize the loan.",
+    pdf.section("4. Reports & Analytics")
+    pdf.screenshot("portal_reports_real.png", "Figure 4.1: Reports with financial metrics and export options", 160)
+    pdf.body("Navigate to Aruanded (Reports) in the sidebar. The reports page shows comprehensive financial data with tabs for Financial, Client, and Revenue analysis.")
+    pdf.subsection("Metrics Displayed")
+    pdf.bullet([
+        "KOKKU VALJASTATUD: Total disbursed across all loans",
+        "KOKKU KOGUTUD: Total collected from all payments",
+        "TASUMATA: Total outstanding balance",
+        "KOGUMISMAAR: Collection rate percentage",
+        "TEENITUD INTRESS: Total interest earned",
+        "VIIVISTTARASU: Total late fees",
+        "LEPINGUTASUD: Contract fees",
+        "KOGUTULU: Total revenue (collections + fees + interest)",
     ])
-    pdf.subsection("Loan Status Tracking")
-    widths5 = [35, 75, 80]
-    pdf.table_header(["Status", "Description", "Actions Available"], widths5)
-    pdf.table_row(["Active", "Loan is current, payments on time", "Record payment, modify terms"], widths5)
-    pdf.table_row(["Overdue", "One or more payments past due", "Record payment, lock device, send reminder"], widths5, True)
-    pdf.table_row(["Defaulted", "Multiple missed payments", "Restructure, escalate, legal action"], widths5)
-    pdf.table_row(["Completed", "Loan fully repaid", "Generate completion certificate"], widths5, True)
-    pdf.table_row(["Restructured", "Terms have been modified", "Track new schedule"], widths5)
-    pdf.ln(2)
+    pdf.subsection("Export Options")
+    pdf.body("Click 'Ekspordi PDF' for formatted reports or 'Ekspordi CSV' for raw data export.")
 
     # Ch 5
-    pdf.section("5. Payment Processing")
-    pdf.body("Record and track payments through the web portal.")
-    pdf.subsection("Recording Payments")
-    pdf.numbered([
-        "Navigate to Payments section or client's loan view.",
-        "Click 'Record Payment'.",
-        "Enter amount, select payment method, add reference number.",
-        "Click 'Confirm' to save.",
-    ])
-    pdf.subsection("Payment Methods Supported")
+    pdf.add_page()
+    pdf.section("5. Device Management")
+    pdf.screenshot("portal_devices_real.png", "Figure 5.1: Device monitoring with connectivity status", 160)
+    pdf.body("The Seadmed (Devices) page shows all registered devices organized by connectivity status:")
     pdf.bullet([
-        "Cash: Manual recording with optional receipt",
-        "Bank Transfer: Record with transaction reference",
-        "Stripe: Online card payment with automatic reconciliation (Enterprise)",
-        "Mobile Money: Record with provider reference",
+        "SEES (Online): Devices seen in last 30 minutes",
+        "HOIATUS (Warning): Devices last seen 30-120 minutes ago",
+        "KRIITILINE (Critical): Devices not seen for over 120 minutes",
     ])
+    pdf.body("The table shows: Client name, Device model (e.g., Samsung Galaxy A50), Last seen timestamp, and Lock status (Avatud=Open, Lukustatud=Locked).")
+    pdf.subsection("Quick Actions")
+    pdf.body("Click any device row to access: Lock/Unlock controls, GPS location, Heartbeat history, Permission status.")
 
     # Ch 6
     pdf.add_page()
-    pdf.section("6. Device Management")
-    pdf.subsection("Lock/Unlock Controls")
-    pdf.body("Manage client devices directly from the web portal:")
+    pdf.section("6. Document Vault")
+    pdf.screenshot("portal_documents_real.png", "Figure 6.1: Document vault with upload and search", 160)
+    pdf.body("The Dokumendihoidla (Document Vault) provides encrypted storage for client files.")
+    pdf.subsection("Uploading Documents")
     pdf.numbered([
-        "Go to a client's profile.",
-        "Click 'Lock Device' or 'Unlock Device'.",
-        "For locking: Enter a custom message that will display on the client's screen.",
-        "Confirm the action.",
+        "Click 'Lae dokument ules' (Upload Document) button.",
+        "Select a file from your computer (max 10MB).",
+        "Choose the client and document type.",
+        "Click 'Upload' to store securely.",
     ])
-    pdf.subsection("Auto-Lock Configuration")
-    pdf.body("Set up automatic device locking rules:")
-    pdf.bullet([
-        "Grace period: Days after missed payment before auto-lock",
-        "Lock message template: Default message for auto-locked devices",
-        "Escalation rules: Standard lock to Device Owner lock",
-        "Bulk lock/unlock: Manage multiple devices simultaneously",
-    ])
-    pdf.subsection("Device Monitoring")
-    pdf.body("The portal shows real-time device status:")
-    pdf.bullet([
-        "Online/Offline indicator with last seen timestamp",
-        "Lock status (locked/unlocked)",
-        "Admin mode status (active/inactive)",
-        "Permission compliance (all permissions granted?)",
-        "Last GPS location on map",
-        "Tamper detection events log",
-    ])
+    pdf.body("Search documents by client ID or name. Supported types: JPG, PNG, PDF. The vault shows total document count, total size, and contract count.")
 
     # Ch 7
     pdf.add_page()
-    pdf.section("7. Reports & Exports")
-    pdf.body("Generate comprehensive reports from the Reports section in the sidebar.")
-    pdf.subsection("Report Types")
-    pdf.bullet([
-        "Financial Summary: Revenue, principal disbursed, interest earned, profit/loss",
-        "Collection Trends: Payment rates and trends over time",
-        "Client Analytics: Health scores, risk distribution, demographics",
-        "Portfolio Health: NPA ratios, risk scoring, exposure analysis (Enterprise)",
-        "Revenue Forecast: AI-predicted future collections (Enterprise)",
-        "Comparative Analytics: Period-over-period comparisons (Enterprise)",
+    pdf.section("7. Team Management")
+    pdf.screenshot("portal_team_real.png", "Figure 7.1: Team management with role assignments", 160)
+    pdf.body("The Meeskond (Team) page shows all team members with their username, name, role, email, status, and last activity.")
+    pdf.subsection("Adding Team Members")
+    pdf.numbered([
+        "Click 'Lisa liige' (Add Member) button.",
+        "Fill in: Username, First Name, Last Name, Password.",
+        "Select role: Super Admin, Admin, Collections, or Viewer.",
+        "Click 'Add' to create the account.",
     ])
-    pdf.subsection("Export Formats")
-    pdf.bullet([
-        "PDF: Formatted reports with charts and summaries",
-        "CSV: Raw data for Excel, Google Sheets, or custom analysis",
-    ])
-    pdf.subsection("Scheduled Reports (Enterprise)")
-    pdf.body("Set up automated email reports delivered to your inbox:")
-    pdf.bullet([
-        "Daily digest: Previous day's summary",
-        "Weekly report: Week's comprehensive analytics",
-        "Monthly report: Full monthly financial summary with comparisons",
-    ])
+    pdf.subsection("Role Permissions")
+    w5 = [40, 75, 75]
+    pdf.table_header(["Role", "Capabilities", "Management"], w5)
+    pdf.table_row(["Super Admin", "Full access to all features", "Can manage all users"], w5)
+    pdf.table_row(["Admin", "All features per plan", "Only own created users"], w5, True)
+    pdf.table_row(["Collections", "View clients, record payments", "No team management"], w5)
+    pdf.table_row(["Viewer", "Read-only access", "No management"], w5, True)
+    pdf.ln(2)
 
     # Ch 8
     pdf.add_page()
-    pdf.section("8. Settings & Administration")
-    pdf.subsection("User Management")
-    pdf.body("Manage your team from the Settings page:")
+    pdf.section("8. Exports & Data")
+    pdf.screenshot("portal_exports_real.png", "Figure 8.1: Export options for Clients, Payments, and Collections", 160)
+    pdf.body("The Exports page provides one-click data export in multiple formats:")
+    pdf.subsection("Available Reports")
     pdf.bullet([
-        "Create new team members with specific roles",
-        "Change user plans (Starter/Professional/Enterprise)",
-        "Deactivate or delete accounts",
-        "Monitor active sessions and revoke unauthorized access",
+        "Clients Report: Client data with loan status, payment history, risk scores (CSV, PDF, Excel)",
+        "Payments Report: Detailed payment history with dates, amounts, and status (CSV, PDF)",
+        "Collection Report: Collection rates, overdue trends, and financial summary (CSV, PDF)",
     ])
-    pdf.subsection("Permission Model")
-    pdf.body("The web portal enforces the same permission model as the mobile app:")
-    pdf.bullet([
-        "Super Admins: Full access, can manage all users and admins",
-        "Admins: Can create and manage only users they created",
-        "Viewers: Read-only access to assigned data",
-        "Collections: Can view clients and record payments",
-    ])
-    pdf.subsection("Late Fee & Auto-Lock Settings")
-    pdf.body("Configure global defaults that apply to all new clients:")
-    pdf.bullet([
-        "Late fee percentage (% of monthly payment)",
-        "Grace period days (before late fee applies)",
-        "Auto-lock enabled/disabled toggle",
-        "'Apply to All' button to push settings to existing clients",
-    ])
-    pdf.subsection("Subscription Management")
-    pdf.body("View and upgrade your subscription plan from Settings > Plans & Pricing. Payments are processed securely through Stripe.")
+    pdf.tip("Export reports regularly for offline backup and external analysis in Excel or Google Sheets.")
 
     # Ch 9
     pdf.add_page()
-    pdf.section("9. API Access (Enterprise)")
-    pdf.body("Enterprise customers have full REST API access for custom integrations and automation.")
-    pdf.subsection("Getting Started")
+    pdf.section("9. Device Configuration (QR/NFC)")
+    pdf.screenshot("portal_settings_real.png", "Figure 9.1: QR code and NFC configuration", 160)
+    pdf.body("The Seadistamine (Configuration) page allows generating QR codes and NFC tags for device provisioning.")
+    pdf.subsection("QR Code Setup")
     pdf.numbered([
-        "Obtain your API token by logging in via POST /api/admin/login",
-        "Include the token in requests as admin_token query parameter",
-        "Use the base URL: https://api.paylock.pro/api/",
-        "Refer to API docs at: https://api.paylock.pro/api/docs",
+        "Enter your WiFi SSID (network name).",
+        "Enter WiFi password.",
+        "Verify the Server URL points to your PayLock API.",
+        "Click 'Genereeri QR-kood' (Generate QR Code).",
+        "Show the QR code to the client device for automatic setup.",
     ])
-    pdf.subsection("Available Endpoints")
-    widths6 = [30, 60, 100]
-    pdf.table_header(["Method", "Endpoint", "Description"], widths6)
-    pdf.table_row(["POST", "/api/admin/login", "Authenticate and get token"], widths6)
-    pdf.table_row(["GET", "/api/clients", "List all clients"], widths6, True)
-    pdf.table_row(["POST", "/api/clients", "Create a new client"], widths6)
-    pdf.table_row(["GET", "/api/clients/{id}", "Get client details"], widths6, True)
-    pdf.table_row(["POST", "/api/loans", "Create a new loan"], widths6)
-    pdf.table_row(["POST", "/api/payments", "Record a payment"], widths6, True)
-    pdf.table_row(["POST", "/api/device/lock", "Lock a device"], widths6)
-    pdf.table_row(["POST", "/api/device/unlock", "Unlock a device"], widths6, True)
-    pdf.table_row(["GET", "/api/analytics/*", "Access analytics data"], widths6)
-    pdf.ln(2)
-    pdf.note("Rate limit: 1000 requests per minute. Contact support for higher limits.")
+    pdf.subsection("NFC Tag")
+    pdf.body("Switch to the 'NFC silt' tab to configure NFC enrollment tags for tap-to-enroll device provisioning (Enterprise feature).")
 
     # Ch 10
-    pdf.section("10. Keyboard Shortcuts & Tips")
-    pdf.subsection("Productivity Tips")
+    pdf.add_page()
+    pdf.section("10. Additional Portal Features")
+    pdf.subsection("Sidebar Navigation")
+    pdf.body("The full sidebar menu provides access to all portal features:")
     pdf.bullet([
-        "Use browser bookmarks for quick access to specific client profiles",
-        "Right-click client names to open in new tab for comparison",
-        "Use Ctrl+F to search within any page",
-        "Export reports regularly for offline backup",
-        "Set up scheduled reports to stay informed without logging in",
+        "Juhtpaneel - Dashboard overview",
+        "Kliendid - Client management",
+        "Laenuplaanid - Loan plan templates",
+        "Meeldetuletused - Payment reminders",
+        "Aruanded - Reports & analytics",
+        "Seadmed - Device management",
+        "Dokumendid - Document vault",
+        "Bank Analyzer - AI bank statement analysis",
+        "Risk Scoring - Client risk assessment",
+        "Bulk Messaging - Mass notification sending",
+        "Exports - Data export (CSV, PDF, Excel)",
+        "CSV Import - Bulk client import",
+        "Ajakavad - Payment schedules",
+        "Telegram - Messaging integration",
+        "Meeskond - Team management",
+        "Tegevuslogi - Activity/audit log",
+        "Seadistamine - Device QR/NFC configuration",
+        "Seaded - Account settings",
     ])
-    pdf.subsection("Mobile Access")
-    pdf.body("The web portal is fully responsive and works on mobile browsers. Add it to your home screen for app-like access when the admin app is not available.")
+    pdf.subsection("Responsive Design")
+    pdf.body("The portal is fully responsive and works on mobile browsers. Add it to your home screen for app-like access.")
+
+    # Ch 11
+    pdf.section("11. Keyboard Shortcuts & Tips")
+    pdf.bullet([
+        "Use browser bookmarks for quick client profile access",
+        "Right-click client names to open in new tabs",
+        "Ctrl+F to search within any page",
+        "Export reports regularly for offline backup",
+        "Set up scheduled reports to stay informed without logging in (Enterprise)",
+    ])
 
     pdf.output(os.path.join(OUT_DIR, "PayLockPro_WebPortal_Manual.pdf"))
-    print("Web Portal manual generated with screenshots.")
+    print("Web Portal manual generated with real screenshots.")
 
 
 if __name__ == "__main__":
