@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Modal, TextInput, ScrollView, Alert, ActivityIndicator, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import API_URL from '../../src/constants/api';
+import API_URL from '../../constants/api';
 
 interface Props {
   clientId: string;

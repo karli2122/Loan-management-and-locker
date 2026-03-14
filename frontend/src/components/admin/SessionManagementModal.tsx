@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import API_URL from '../../src/constants/api';
+import API_URL from '../../constants/api';
 
 interface Props {
   adminToken: string;
