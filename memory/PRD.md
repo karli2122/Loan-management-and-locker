@@ -29,6 +29,7 @@ Full-stack loan management application "PayLock Pro" with tiered subscription mo
 - Data wipe on confirmed tampering (wipeData native method added)
 - Admin mode protection with same alert + wipe flow
 - Screenshot blocking, reboot detection, offline enforcement
+- **Permission Warning Dialog (v1.2.5)**: Shows alert when app goes to background with protection enabled
 
 ### User Management Scoping (v1.2.4)
 - Admins see/manage ONLY users they created (`created_by` filter)
@@ -51,10 +52,11 @@ Full-stack loan management application "PayLock Pro" with tiered subscription mo
 - **Backend**: `/api/admin/feature-access` endpoint returns plan and accessible features
 - **Backend**: `check_plan_access()` middleware enforces plan restrictions on protected routes
 - **Backend**: 403 responses for unauthorized feature access with clear error messages
-- **Frontend**: Dashboard fetches plan features and conditionally renders UI components
-- **Frontend**: Plan badge shows current tier with "Upgrade" button for starter users
-- **Frontend**: Locked overlay for Professional+ features (Heartbeat, Interest Earned, Charts)
-- **Testing**: 100% pass rate on backend (9 tests) and frontend visual verification
+- **Frontend Dashboard**: Plan badge and conditional rendering for Professional+ features
+- **Frontend Loans Screen**: Credit scoring badges hidden for non-enterprise users
+- **Frontend Client Details**: Restructure (Pro+) and Documents (Ent+) buttons with locked states
+- **Frontend Settings**: Team Management section with locked state and upgrade button
+- **Client App**: Permission warning dialog when app goes to background
 
 #### Feature Tiers Implemented:
 - **Starter**: clients, loans, payments, notifications, calculator, reminders
@@ -62,22 +64,27 @@ Full-stack loan management application "PayLock Pro" with tiered subscription mo
 - **Enterprise**: device_owner, custom_launcher, credit_scoring, audit_log, revenue_forecast, portfolio_health, risk_score_tracking, comparative_analytics, session_management, role_permissions, screenshot_block, tamper_detection, bank_ocr, document_vault, bulk_import, daily_digest, scheduled_reports, stripe_integration, qr_provisioning, nfc_provisioning, api_access
 
 ## Current Version
-- v1.2.4, Build #25
-- Client APK: `21e386f1-f167-4333-affe-909c8484d36f`
-- Admin APK: `7d8ec299-e7ad-496e-9e64-f5f55abf1177`
+- v1.2.5, Build #26
+- Previous Client APK: `21e386f1-f167-4333-affe-909c8484d36f` (v1.2.4)
+- Previous Admin APK: `7d8ec299-e7ad-496e-9e64-f5f55abf1177` (v1.2.4)
+- **NEW APKs NEEDED**: Build v1.2.5 APKs via EAS
 
-## Key Files Modified This Session
-- `frontend/app/admin/(tabs)/index.tsx` - Dashboard with plan-based UI gating
-- `backend/utils/plan_gating.py` - Feature-to-plan mapping (already existed, verified)
-- `backend/routes/admin.py` - `/api/admin/feature-access` endpoint (already existed, verified)
-- `backend/routes/reports.py` - Heartbeat and dashboard_analytics with plan checks (already existed, verified)
+## Key Files Modified This Session (v1.2.5)
+- `frontend/app/admin/(tabs)/loans.tsx` - Credit scoring badge gating
+- `frontend/app/admin/client-details.tsx` - Restructure/Documents button gating with locked states
+- `frontend/app/admin/settings.tsx` - Team management section gating with locked state + upgrade button
+- `frontend/app/client/home.tsx` - Permission warning dialog on app background
+- `frontend/version.json` - Bumped to v1.2.5 Build #26
 
-## Test Users Created
+## Test Users
+- `karli1987` / `nasvakas123` - Super Admin (custom/enterprise access)
 - `starter_test` / `starter123` - Starter plan user for testing feature restrictions
-- Test verified: All Professional+ features properly locked for this user
+
+## Test Report
+- `/app/test_reports/iteration_78.json` - 100% pass rate, all feature gating verified
 
 ## Prioritized Backlog
-- P0: Deploy feature gating changes to production VPS, build new APKs (v1.2.5)
+- P1: Build new APKs (v1.2.5) via EAS (no backend deploy needed - frontend changes only)
 - P1: User verification of feature gating on real devices
 - P2: Stabilization - no new features planned
 
