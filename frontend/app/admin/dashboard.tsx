@@ -7,6 +7,7 @@ import {
   ScrollView,
   RefreshControl,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -14,10 +15,9 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { useCurrency } from '../../src/context/CurrencyContext';
-import { LanguagePicker } from '../../src/components/LanguagePicker';
 import API_URL from '../../src/constants/api';
-import { Dimensions } from 'react-native';
 
+const { width: SCREEN_W } = Dimensions.get('window');
 
 interface LoanStats {
   total_clients: number;
@@ -32,83 +32,61 @@ interface LoanStats {
 
 export default function Dashboard() {
   const router = useRouter();
-  const { language, setLanguage, t } = useLanguage();
+  const { t } = useLanguage();
   const { formatAmount } = useCurrency();
   const [loanStats, setLoanStats] = useState<LoanStats>({
-    total_clients: 0,
-    active_loans: 0,
-    completed_loans: 0,
-    overdue_clients: 0,
-    total_disbursed: 0,
-    total_collected: 0,
-    total_outstanding: 0,
-    collection_rate: 0,
+    total_clients: 0, active_loans: 0, completed_loans: 0,
+    overdue_clients: 0, total_disbursed: 0, total_collected: 0,
+    total_outstanding: 0, collection_rate: 0,
   });
   const [refreshing, setRefreshing] = useState(false);
   const [portfolioHealth, setPortfolioHealth] = useState<any>(null);
   const [collectionTrends, setCollectionTrends] = useState<any[]>([]);
   const [username, setUsername] = useState('');
-  const [userRole, setUserRole] = useState('user');
 
   const fetchStats = async () => {
     try {
       const adminToken = await AsyncStorage.getItem('admin_token');
-      if (!adminToken) {
-        console.error('Admin token not found');
-        return;
-      }
+      if (!adminToken) return;
       const response = await fetch(`${API_URL}/api/reports/collection?admin_token=${adminToken}`);
-      if (!response.ok) {
-        console.error('Reports API error:', response.status);
-        return;
-      }
+      if (!response.ok) return;
       const data = await response.json();
-      
       setLoanStats({
-        total_clients: data.total_clients || 0,
-        active_loans: data.active_loans || 0,
-        completed_loans: data.completed_loans || 0,
-        overdue_clients: data.overdue_loans || 0,
-        total_disbursed: data.total_disbursed || 0,
-        total_collected: data.total_collected || 0,
-        total_outstanding: data.total_outstanding || 0,
-        collection_rate: data.collection_rate || 0,
+        total_clients: data.total_clients || data.overview?.total_clients || 0,
+        active_loans: data.active_loans || data.overview?.active_loans || 0,
+        completed_loans: data.completed_loans || data.overview?.completed_loans || 0,
+        overdue_clients: data.overdue_loans || data.overview?.overdue_clients || 0,
+        total_disbursed: data.total_disbursed || data.financial?.total_disbursed || 0,
+        total_collected: data.total_collected || data.financial?.total_collected || 0,
+        total_outstanding: data.total_outstanding || data.financial?.total_outstanding || 0,
+        collection_rate: data.collection_rate || data.financial?.collection_rate || 0,
       });
-    } catch (error) {
-      console.error('Failed to fetch stats:', error);
-    }
+    } catch (e) { console.log(e); }
   };
 
   const fetchAnalytics = async () => {
     try {
       const adminToken = await AsyncStorage.getItem('admin_token');
       if (!adminToken) return;
-      
       const [healthResp, trendsResp] = await Promise.all([
-        fetch(`${API_URL}/api/analytics/portfolio-health?admin_token=${adminToken}`),
-        fetch(`${API_URL}/api/analytics/collection-trends?admin_token=${adminToken}&period=monthly&months=6`),
+        fetch(`${API_URL}/api/analytics/portfolio-health?admin_token=${adminToken}`).catch(() => null),
+        fetch(`${API_URL}/api/analytics/collection-trends?admin_token=${adminToken}&period=monthly&months=6`).catch(() => null),
       ]);
-      
-      if (healthResp.ok) {
-        const data = await healthResp.json();
-        setPortfolioHealth(data);
-      }
-      if (trendsResp.ok) {
+      if (healthResp?.ok) setPortfolioHealth(await healthResp.json());
+      if (trendsResp?.ok) {
         const data = await trendsResp.json();
         setCollectionTrends(data.data || []);
       }
-    } catch (e) { console.log('Analytics fetch error:', e); }
-  };
-
-  const loadUserData = async () => {
-    const storedUsername = await AsyncStorage.getItem('admin_username');
-    const role = await AsyncStorage.getItem('admin_role');
-    if (storedUsername) setUsername(storedUsername);
-    if (role) setUserRole(role);
+    } catch (e) { console.log(e); }
   };
 
   useEffect(() => {
-    loadUserData();
+    (async () => {
+      const storedUsername = await AsyncStorage.getItem('admin_username');
+      const firstName = await AsyncStorage.getItem('admin_first_name');
+      if (firstName) setUsername(firstName);
+      else if (storedUsername) setUsername(storedUsername);
+    })();
     fetchStats();
     fetchAnalytics();
   }, []);
@@ -119,535 +97,258 @@ export default function Dashboard() {
     setRefreshing(false);
   }, []);
 
-  const handleLogout = async () => {
-    Alert.alert(t('logout'), t('logoutConfirm'), [
-      { text: t('cancel'), style: 'cancel' },
-      {
-        text: t('logout'),
-        style: 'destructive',
-        onPress: async () => {
-          await AsyncStorage.multiRemove(['admin_token', 'admin_id', 'admin_username']);
-          router.replace('/');
-        },
-      },
-    ]);
+  const statCards = [
+    { label: t('activeLoans'), value: loanStats.active_loans, icon: 'trending-up', color: '#3B82F6', bg: '#1E3A5F' },
+    { label: t('overdue'), value: loanStats.overdue_clients, icon: 'alert-circle', color: '#EF4444', bg: '#3D1F1F' },
+    { label: t('completed'), value: loanStats.completed_loans, icon: 'checkmark-circle', color: '#10B981', bg: '#1F3D2E' },
+    { label: t('collected'), value: formatAmount(loanStats.total_collected, 0), icon: 'cash', color: '#F59E0B', bg: '#3D3D1F' },
+  ];
+
+  const agingLabels: Record<string, string> = {
+    current: t('current') || 'Current',
+    '1_30_days': '1-30d',
+    '31_60_days': '31-60d',
+    '61_90_days': '61-90d',
+    '90_plus_days': '90d+',
+  };
+  const agingColors: Record<string, string> = {
+    current: '#10B981', '1_30_days': '#3B82F6', '31_60_days': '#F59E0B',
+    '61_90_days': '#F97316', '90_plus_days': '#EF4444',
   };
 
+  const quickActions = [
+    { icon: 'people', color: '#2563EB', label: t('viewClients'), route: '/admin/clients' },
+    { icon: 'bar-chart', color: '#06B6D4', label: t('reports'), route: '/admin/reports' },
+    { icon: 'phone-portrait', color: '#F59E0B', label: t('deviceManagement'), route: '/admin/device-management' },
+    { icon: 'notifications', color: '#EF4444', label: t('paymentReminders'), route: '/admin/payment-reminders' },
+  ];
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={s.container} edges={[]}>
+      <View style={s.header}>
         <View>
-          <Text style={styles.greeting}>{t('welcomeBack')}</Text>
-          <Text style={styles.username}>{username || 'Admin'}</Text>
+          <Text style={s.greeting}>{t('welcomeBack')}</Text>
+          <Text style={s.username}>{username || 'Admin'}</Text>
         </View>
-        <View style={styles.headerRight}>
-          <LanguagePicker compact colors={colors} />
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={24} color="#EF4444" />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={s.settingsBtn} onPress={() => router.push('/admin/settings')} data-testid="dashboard-settings-btn">
+          <Ionicons name="settings-outline" size={22} color="#94A3B8" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
-        style={styles.content}
+        style={s.scroll}
+        contentContainerStyle={s.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />}
       >
-        <Text style={styles.sectionTitle}>{t('loanOverview')}</Text>
-
-        <View style={styles.statsGrid}>
-          <View style={[styles.statCard, { backgroundColor: '#1E3A5F' }]}>
-            <View style={styles.statIcon}>
-              <Ionicons name="trending-up" size={28} color="#3B82F6" />
+        {/* Stats Grid */}
+        <View style={s.statsGrid}>
+          {statCards.map((c, i) => (
+            <View key={i} style={[s.statCard, { backgroundColor: c.bg }]} data-testid={`stat-card-${i}`}>
+              <Ionicons name={c.icon as any} size={24} color={c.color} />
+              <Text style={s.statValue}>{c.value}</Text>
+              <Text style={s.statLabel}>{c.label}</Text>
             </View>
-            <Text style={styles.statValue}>{loanStats.active_loans}</Text>
-            <Text style={styles.statLabel}>{t('activeLoans')}</Text>
+          ))}
+        </View>
+
+        {/* Financial Strip */}
+        <View style={s.finStrip}>
+          <View style={s.finItem}>
+            <Text style={s.finLabel}>{t('collectionRate')}</Text>
+            <Text style={[s.finValue, { color: '#10B981' }]}>{loanStats.collection_rate.toFixed(1)}%</Text>
           </View>
-
-          <View style={[styles.statCard, { backgroundColor: '#3D1F1F' }]}>
-            <View style={styles.statIcon}>
-              <Ionicons name="alert-circle" size={28} color="#EF4444" />
-            </View>
-            <Text style={styles.statValue}>{loanStats.overdue_clients}</Text>
-            <Text style={styles.statLabel}>{t('overdue')}</Text>
+          <View style={s.finDivider} />
+          <View style={s.finItem}>
+            <Text style={s.finLabel}>{t('totalDisbursed')}</Text>
+            <Text style={s.finValue}>{formatAmount(loanStats.total_disbursed)}</Text>
           </View>
-
-          <View style={[styles.statCard, { backgroundColor: '#1F3D2E' }]}>
-            <View style={styles.statIcon}>
-              <Ionicons name="checkmark-circle" size={28} color="#10B981" />
-            </View>
-            <Text style={styles.statValue}>{loanStats.completed_loans}</Text>
-            <Text style={styles.statLabel}>{t('completed')}</Text>
-          </View>
-
-          <View style={[styles.statCard, { backgroundColor: '#3D3D1F' }]}>
-            <View style={styles.statIcon}>
-              <Ionicons name="cash" size={28} color="#F59E0B" />
-            </View>
-            <Text style={styles.statValue}>{formatAmount(loanStats.total_collected, 0)}</Text>
-            <Text style={styles.statLabel}>{t('collected')}</Text>
+          <View style={s.finDivider} />
+          <View style={s.finItem}>
+            <Text style={s.finLabel}>{t('outstanding')}</Text>
+            <Text style={[s.finValue, { color: '#F59E0B' }]}>{formatAmount(loanStats.total_outstanding)}</Text>
           </View>
         </View>
 
-        {/* Financial Summary */}
-        <View style={styles.financialSummary}>
-          <View style={styles.financialRow}>
-            <Text style={styles.financialLabel}>{t('collectionRate')}</Text>
-            <Text style={[styles.financialValue, { color: '#10B981' }]}>{loanStats.collection_rate.toFixed(1)}%</Text>
-          </View>
-          <View style={styles.financialRow}>
-            <Text style={styles.financialLabel}>{t('totalDisbursed')}</Text>
-            <Text style={styles.financialValue}>{formatAmount(loanStats.total_disbursed)}</Text>
-          </View>
-          <View style={styles.financialRow}>
-            <Text style={styles.financialLabel}>{t('outstanding')}</Text>
-            <Text style={[styles.financialValue, { color: '#F59E0B' }]}>{formatAmount(loanStats.total_outstanding)}</Text>
-          </View>
-        </View>
-
-        {/* Analytics Section */}
+        {/* Portfolio Health */}
         {portfolioHealth && (
-          <>
-            <Text style={styles.sectionTitle}>Portfolio Health</Text>
-            <View style={{ backgroundColor: '#152035', borderRadius: 12, padding: 16, marginBottom: 16 }}>
-              {/* NPA & Aging Summary */}
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-                <View style={{ alignItems: 'center', flex: 1 }}>
-                  <Text style={{ color: '#EF4444', fontSize: 22, fontWeight: '700' }}>{portfolioHealth.npa_count}</Text>
-                  <Text style={{ color: '#94A3B8', fontSize: 11 }}>NPAs (90d+)</Text>
-                </View>
-                <View style={{ alignItems: 'center', flex: 1 }}>
-                  <Text style={{ color: '#F59E0B', fontSize: 22, fontWeight: '700' }}>{portfolioHealth.npa_ratio}%</Text>
-                  <Text style={{ color: '#94A3B8', fontSize: 11 }}>NPA Ratio</Text>
-                </View>
-                <View style={{ alignItems: 'center', flex: 1 }}>
-                  <Text style={{ color: '#10B981', fontSize: 22, fontWeight: '700' }}>{portfolioHealth.collection_rate}%</Text>
-                  <Text style={{ color: '#94A3B8', fontSize: 11 }}>Collection Rate</Text>
-                </View>
-              </View>
-              
-              {/* Aging Bars */}
-              <Text style={{ color: '#E2E8F0', fontSize: 13, fontWeight: '600', marginBottom: 8 }}>Aging Analysis</Text>
-              {portfolioHealth.aging_analysis && Object.entries(portfolioHealth.aging_analysis).map(([key, val]: [string, any]) => {
-                const labels: Record<string, string> = { current: 'Current', '1_30_days': '1-30 days', '31_60_days': '31-60 days', '61_90_days': '61-90 days', '90_plus_days': '90+ days' };
-                const barColors: Record<string, string> = { current: '#10B981', '1_30_days': '#3B82F6', '31_60_days': '#F59E0B', '61_90_days': '#F97316', '90_plus_days': '#EF4444' };
-                const maxAmt = Math.max(...Object.values(portfolioHealth.aging_analysis).map((v: any) => v.amount || 0), 1);
-                const barWidth = val.amount > 0 ? Math.max((val.amount / maxAmt) * 100, 5) : 0;
-                return (
-                  <View key={key} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                    <Text style={{ color: '#94A3B8', fontSize: 11, width: 70 }}>{labels[key] || key}</Text>
-                    <View style={{ flex: 1, height: 16, backgroundColor: '#0B1527', borderRadius: 4, overflow: 'hidden', marginHorizontal: 8 }}>
-                      <View style={{ height: 16, width: `${barWidth}%`, backgroundColor: barColors[key] || '#3B82F6', borderRadius: 4 }} />
-                    </View>
-                    <Text style={{ color: '#E2E8F0', fontSize: 11, width: 50, textAlign: 'right' }}>{val.count}</Text>
-                  </View>
-                );
-              })}
+          <View style={s.card}>
+            <View style={s.cardHeader}>
+              <Ionicons name="pulse" size={18} color="#8B5CF6" />
+              <Text style={s.cardTitle}>{t('portfolioHealth') || 'Portfolio Health'}</Text>
             </View>
-          </>
+            <View style={s.healthRow}>
+              <View style={s.healthItem}>
+                <Text style={[s.healthVal, { color: '#EF4444' }]}>{portfolioHealth.npa_count}</Text>
+                <Text style={s.healthLabel}>NPAs</Text>
+              </View>
+              <View style={s.healthItem}>
+                <Text style={[s.healthVal, { color: '#F59E0B' }]}>{portfolioHealth.npa_ratio}%</Text>
+                <Text style={s.healthLabel}>NPA Ratio</Text>
+              </View>
+              <View style={s.healthItem}>
+                <Text style={[s.healthVal, { color: '#10B981' }]}>{portfolioHealth.collection_rate}%</Text>
+                <Text style={s.healthLabel}>{t('collectionRate')}</Text>
+              </View>
+            </View>
+            {portfolioHealth.aging_analysis && (
+              <View style={s.agingSection}>
+                <Text style={s.agingTitle}>{t('agingAnalysis') || 'Aging Analysis'}</Text>
+                {Object.entries(portfolioHealth.aging_analysis).map(([key, val]: [string, any]) => {
+                  const maxAmt = Math.max(...Object.values(portfolioHealth.aging_analysis).map((v: any) => v.amount || 0), 1);
+                  const pct = val.amount > 0 ? Math.max((val.amount / maxAmt) * 100, 4) : 0;
+                  return (
+                    <View key={key} style={s.agingRow}>
+                      <Text style={s.agingLabel}>{agingLabels[key] || key}</Text>
+                      <View style={s.agingBarBg}>
+                        <View style={[s.agingBar, { width: `${pct}%`, backgroundColor: agingColors[key] || '#3B82F6' }]} />
+                      </View>
+                      <Text style={s.agingCount}>{val.count}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
         )}
 
         {/* Collection Trends */}
         {collectionTrends.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>Collection Trends</Text>
-            <View style={{ backgroundColor: '#152035', borderRadius: 12, padding: 16, marginBottom: 16 }}>
-              {collectionTrends.slice(-6).map((t, i) => {
-                const maxVal = Math.max(...collectionTrends.slice(-6).map(x => Math.max(x.expected || 0, x.collected || 0)), 1);
-                return (
-                  <View key={i} style={{ marginBottom: 10 }}>
-                    <Text style={{ color: '#94A3B8', fontSize: 11, marginBottom: 4 }}>{t.month || t.start || ''}</Text>
-                    <View style={{ flexDirection: 'row', gap: 4 }}>
-                      <View style={{ flex: 1 }}>
-                        <View style={{ height: 12, backgroundColor: '#0B1527', borderRadius: 3, overflow: 'hidden' }}>
-                          <View style={{ height: 12, width: `${(t.expected / maxVal) * 100}%`, backgroundColor: '#3B82F640', borderRadius: 3 }} />
-                        </View>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <View style={{ height: 12, backgroundColor: '#0B1527', borderRadius: 3, overflow: 'hidden' }}>
-                          <View style={{ height: 12, width: `${(t.collected / maxVal) * 100}%`, backgroundColor: '#10B981', borderRadius: 3 }} />
-                        </View>
-                      </View>
-                    </View>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
-                      <Text style={{ color: '#64748B', fontSize: 10 }}>Expected: {formatAmount(t.expected, 0)}</Text>
-                      <Text style={{ color: '#10B981', fontSize: 10 }}>Collected: {formatAmount(t.collected, 0)}</Text>
-                      <Text style={{ color: t.efficiency >= 80 ? '#10B981' : t.efficiency >= 50 ? '#F59E0B' : '#EF4444', fontSize: 10, fontWeight: '600' }}>{t.efficiency}%</Text>
+          <View style={s.card}>
+            <View style={s.cardHeader}>
+              <Ionicons name="analytics" size={18} color="#3B82F6" />
+              <Text style={s.cardTitle}>{t('collectionTrends') || 'Collection Trends'}</Text>
+            </View>
+            {collectionTrends.slice(-6).map((tr, i) => {
+              const maxVal = Math.max(...collectionTrends.slice(-6).map(x => Math.max(x.expected || 0, x.collected || 0)), 1);
+              const eff = tr.efficiency || 0;
+              const effColor = eff >= 80 ? '#10B981' : eff >= 50 ? '#F59E0B' : '#EF4444';
+              return (
+                <View key={i} style={s.trendRow}>
+                  <View style={s.trendHeader}>
+                    <Text style={s.trendMonth}>{tr.month || tr.start || ''}</Text>
+                    <View style={[s.effBadge, { backgroundColor: `${effColor}20` }]}>
+                      <Text style={[s.effText, { color: effColor }]}>{eff}%</Text>
                     </View>
                   </View>
-                );
-              })}
-              <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 8 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: '#3B82F640', marginRight: 4 }} />
-                  <Text style={{ color: '#94A3B8', fontSize: 10 }}>Expected</Text>
+                  <View style={s.trendBars}>
+                    <View style={s.trendBarRow}>
+                      <View style={s.trendBarBg}>
+                        <View style={[s.trendBar, { width: `${(tr.expected / maxVal) * 100}%`, backgroundColor: '#3B82F640' }]} />
+                      </View>
+                      <Text style={s.trendBarLabel}>{formatAmount(tr.expected, 0)}</Text>
+                    </View>
+                    <View style={s.trendBarRow}>
+                      <View style={s.trendBarBg}>
+                        <View style={[s.trendBar, { width: `${(tr.collected / maxVal) * 100}%`, backgroundColor: '#10B981' }]} />
+                      </View>
+                      <Text style={[s.trendBarLabel, { color: '#10B981' }]}>{formatAmount(tr.collected, 0)}</Text>
+                    </View>
+                  </View>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: '#10B981', marginRight: 4 }} />
-                  <Text style={{ color: '#94A3B8', fontSize: 10 }}>Collected</Text>
-                </View>
-              </View>
+              );
+            })}
+            <View style={s.legendRow}>
+              <View style={s.legendItem}><View style={[s.legendDot, { backgroundColor: '#3B82F640' }]} /><Text style={s.legendText}>{t('expected') || 'Expected'}</Text></View>
+              <View style={s.legendItem}><View style={[s.legendDot, { backgroundColor: '#10B981' }]} /><Text style={s.legendText}>{t('collected') || 'Collected'}</Text></View>
             </View>
-          </>
+          </View>
         )}
 
-        <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
-
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/admin/clients')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#2563EB' }]}>
-              <Ionicons name="people" size={24} color="#fff" />
-            </View>
-            <Text style={styles.actionTitle}>{t('viewClients')}</Text>
-            <Text style={styles.actionDescription}>{t('viewAndManageClients')}</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/admin/device-management')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#F59E0B' }]}>
-              <Ionicons name="phone-portrait" size={24} color="#fff" />
-            </View>
-            <Text style={styles.actionTitle}>{t('deviceManagement')}</Text>
-            <Text style={styles.actionDescription}>{t('lockunlockDevices')}</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
-
-          {userRole === 'admin' && (
-            <TouchableOpacity
-              style={styles.actionCard}
-              onPress={() => router.push('/admin/settings')}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: '#8B5CF6' }]}>
-                <Ionicons name="settings" size={24} color="#fff" />
-              </View>
-              <Text style={styles.actionTitle}>{t('settings')}</Text>
-              <Text style={styles.actionDescription}>{t('adminManagement')}</Text>
-              <Ionicons name="chevron-forward" size={20} color="#64748B" />
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/admin/reports')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#06B6D4' }]}>
-              <Ionicons name="bar-chart" size={24} color="#fff" />
-            </View>
-            <Text style={styles.actionTitle}>{t('reports')}</Text>
-            <Text style={styles.actionDescription}>{t('financialAnalyticsReports')}</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/admin/loan-plans')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#EC4899' }]}>
-              <Ionicons name="pricetag" size={24} color="#fff" />
-            </View>
-            <Text style={styles.actionTitle}>{t('loanPlans')}</Text>
-            <Text style={styles.actionDescription}>{t('manageLoanPlans')}</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/admin/calculator')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#14B8A6' }]}>
-              <Ionicons name="calculator" size={24} color="#fff" />
-            </View>
-            <Text style={styles.actionTitle}>{t('loanCalculator')}</Text>
-            <Text style={styles.actionDescription}>{t('calculateLoanPayments')}</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/admin/payment-reminders')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#EF4444' }]}>
-              <Ionicons name="notifications" size={24} color="#fff" />
-            </View>
-            <Text style={styles.actionTitle}>{t('paymentReminders')}</Text>
-            <Text style={styles.actionDescription}>{t('sendPaymentReminders')}</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/admin/notifications')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#3B82F6' }]}>
-              <Ionicons name="mail" size={24} color="#fff" />
-            </View>
-            <Text style={styles.actionTitle}>{t('notifications')}</Text>
-            <Text style={styles.actionDescription}>{t('viewNotifications')}</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/admin/client-map')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#059669' }]}>
-              <Ionicons name="map" size={24} color="#fff" />
-            </View>
-            <Text style={styles.actionTitle}>{t('clientMap')}</Text>
-            <Text style={styles.actionDescription}>{t('viewClientLocations')}</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
-
-          {/* Enterprise Features */}
-          <View style={styles.enterpriseHeader}>
-            <Ionicons name="shield-checkmark" size={16} color="#8B5CF6" />
-            <Text style={styles.enterpriseTitle}>Enterprise</Text>
+        {/* Empty state for analytics */}
+        {!portfolioHealth && collectionTrends.length === 0 && (
+          <View style={s.emptyAnalytics}>
+            <Ionicons name="analytics-outline" size={40} color="#334155" />
+            <Text style={s.emptyTitle}>{t('analyticsComingSoon') || 'Analytics will appear here'}</Text>
+            <Text style={s.emptyDesc}>{t('analyticsEmptyDesc') || 'Data will populate as clients make payments'}</Text>
           </View>
+        )}
 
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/admin/schedules')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#7C3AED' }]}>
-              <Ionicons name="calendar" size={24} color="#fff" />
-            </View>
-            <Text style={styles.actionTitle}>Payment Schedules</Text>
-            <Text style={styles.actionDescription}>Manage automated payment schedules</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/admin/documents')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#0891B2' }]}>
-              <Ionicons name="folder" size={24} color="#fff" />
-            </View>
-            <Text style={styles.actionTitle}>Documents</Text>
-            <Text style={styles.actionDescription}>Client document management</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/admin/bulk-import')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#D97706' }]}>
-              <Ionicons name="cloud-upload" size={24} color="#fff" />
-            </View>
-            <Text style={styles.actionTitle}>Bulk Import</Text>
-            <Text style={styles.actionDescription}>Import clients from CSV</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/admin/team')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#4F46E5' }]}>
-              <Ionicons name="people-circle" size={24} color="#fff" />
-            </View>
-            <Text style={styles.actionTitle}>Team Management</Text>
-            <Text style={styles.actionDescription}>Manage team members &amp; roles</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/admin/telegram')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#0088CC' }]}>
-              <Ionicons name="paper-plane" size={24} color="#fff" />
-            </View>
-            <Text style={styles.actionTitle}>Telegram</Text>
-            <Text style={styles.actionDescription}>Bot integration &amp; reminders</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push('/admin/provisioning')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#DC2626' }]}>
-              <Ionicons name="qr-code" size={24} color="#fff" />
-            </View>
-            <Text style={styles.actionTitle}>Device Provisioning</Text>
-            <Text style={styles.actionDescription}>QR code for device enrollment</Text>
-            <Ionicons name="chevron-forward" size={20} color="#64748B" />
-          </TouchableOpacity>
+        {/* Quick Actions */}
+        <Text style={s.sectionTitle}>{t('quickActions')}</Text>
+        <View style={s.quickGrid}>
+          {quickActions.map((a, i) => (
+            <TouchableOpacity key={i} style={s.quickCard} onPress={() => router.push(a.route as any)} data-testid={`quick-action-${i}`}>
+              <View style={[s.quickIcon, { backgroundColor: `${a.color}20` }]}>
+                <Ionicons name={a.icon as any} size={22} color={a.color} />
+              </View>
+              <Text style={s.quickLabel}>{a.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0B1527',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#152035',
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  langSwitcher: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  langButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: '#152035',
-  },
-  langButtonActive: {
-    backgroundColor: '#2563EB',
-  },
-  langText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#94A3B8',
-  },
-  langTextActive: {
-    color: '#fff',
-  },
-  greeting: {
-    fontSize: 14,
-    color: '#94A3B8',
-  },
-  username: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  logoutButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#152035',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 16,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  statCard: {
-    width: '48%',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-  },
-  statIcon: {
-    marginBottom: 12,
-  },
-  statValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  statLabel: {
-    fontSize: 13,
-    color: '#94A3B8',
-    marginTop: 4,
-  },
-  actionsContainer: {
-    gap: 12,
-  },
-  actionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#152035',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#1E3050',
-  },
-  actionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  actionTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  actionDescription: {
-    position: 'absolute',
-    left: 76,
-    bottom: 16,
-    fontSize: 12,
-    color: '#64748B',
-  },
-  financialSummary: {
-    backgroundColor: '#152035',
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: '#1E3050',
-  },
-  financialRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1E3050',
-  },
-  financialLabel: {
-    fontSize: 14,
-    color: '#94A3B8',
-  },
-  financialValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  enterpriseHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 16,
-    marginBottom: 4,
-  },
-  enterpriseTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#8B5CF6',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0B1527' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#152035' },
+  greeting: { fontSize: 13, color: '#64748B' },
+  username: { fontSize: 22, fontWeight: '800', color: '#F8FAFC', marginTop: 2 },
+  settingsBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#152035', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#1E3050' },
+  scroll: { flex: 1 },
+  scrollContent: { padding: 16 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#E2E8F0', marginBottom: 12, marginTop: 8 },
+
+  // Stats
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  statCard: { width: (SCREEN_W - 42) / 2, borderRadius: 14, padding: 16 },
+  statValue: { fontSize: 28, fontWeight: '800', color: '#F8FAFC', marginTop: 8 },
+  statLabel: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+
+  // Financial strip
+  finStrip: { flexDirection: 'row', backgroundColor: '#152035', borderRadius: 14, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#1E3050' },
+  finItem: { flex: 1, alignItems: 'center' },
+  finLabel: { fontSize: 11, color: '#64748B', marginBottom: 4 },
+  finValue: { fontSize: 15, fontWeight: '700', color: '#F8FAFC' },
+  finDivider: { width: 1, backgroundColor: '#1E3050', marginHorizontal: 8 },
+
+  // Card
+  card: { backgroundColor: '#152035', borderRadius: 14, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#1E3050' },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  cardTitle: { fontSize: 15, fontWeight: '700', color: '#E2E8F0' },
+
+  // Health
+  healthRow: { flexDirection: 'row', marginBottom: 16 },
+  healthItem: { flex: 1, alignItems: 'center' },
+  healthVal: { fontSize: 22, fontWeight: '800' },
+  healthLabel: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
+
+  // Aging
+  agingSection: { borderTopWidth: 1, borderTopColor: '#1E3050', paddingTop: 12 },
+  agingTitle: { fontSize: 12, fontWeight: '600', color: '#94A3B8', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+  agingRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  agingLabel: { color: '#94A3B8', fontSize: 11, width: 55 },
+  agingBarBg: { flex: 1, height: 14, backgroundColor: '#0B1527', borderRadius: 4, overflow: 'hidden', marginHorizontal: 8 },
+  agingBar: { height: 14, borderRadius: 4 },
+  agingCount: { color: '#E2E8F0', fontSize: 12, fontWeight: '600', width: 30, textAlign: 'right' },
+
+  // Trends
+  trendRow: { marginBottom: 14 },
+  trendHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  trendMonth: { color: '#94A3B8', fontSize: 12, fontWeight: '500' },
+  effBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  effText: { fontSize: 11, fontWeight: '700' },
+  trendBars: { gap: 4 },
+  trendBarRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  trendBarBg: { flex: 1, height: 10, backgroundColor: '#0B1527', borderRadius: 3, overflow: 'hidden' },
+  trendBar: { height: 10, borderRadius: 3 },
+  trendBarLabel: { color: '#64748B', fontSize: 10, width: 55, textAlign: 'right' },
+  legendRow: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#1E3050' },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendDot: { width: 10, height: 10, borderRadius: 3 },
+  legendText: { color: '#94A3B8', fontSize: 11 },
+
+  // Empty
+  emptyAnalytics: { alignItems: 'center', backgroundColor: '#152035', borderRadius: 14, padding: 32, marginBottom: 16, borderWidth: 1, borderColor: '#1E3050' },
+  emptyTitle: { color: '#94A3B8', fontSize: 14, fontWeight: '600', marginTop: 12 },
+  emptyDesc: { color: '#475569', fontSize: 12, marginTop: 4, textAlign: 'center' },
+
+  // Quick actions
+  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  quickCard: { width: (SCREEN_W - 42) / 2, backgroundColor: '#152035', borderRadius: 14, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#1E3050' },
+  quickIcon: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  quickLabel: { color: '#E2E8F0', fontSize: 13, fontWeight: '600', textAlign: 'center' },
 });

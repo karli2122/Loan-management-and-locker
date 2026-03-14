@@ -496,7 +496,7 @@ async def get_dashboard_analytics(
     else:
         query = {"admin_id": admin_id, "is_deleted": {"$ne": True}}
     
-    clients = await db.clients.find(query, {"_id": 0, "id": 1, "name": 1, "is_registered": 1, "is_locked": 1, "outstanding_balance": 1, "days_overdue": 1, "loan_amount": 1, "total_paid": 1, "registered_at": 1, "last_tamper_attempt": 1, "device_model": 1}).to_list(1000)
+    clients = await db.clients.find(query, {"_id": 0, "id": 1, "name": 1, "is_registered": 1, "is_locked": 1, "outstanding_balance": 1, "days_overdue": 1, "loan_amount": 1, "total_paid": 1, "registered_at": 1, "last_tamper_attempt": 1, "device_model": 1, "interest_rate": 1}).to_list(1000)
     
     # Overview metrics
     total_clients = len(clients)
@@ -507,7 +507,12 @@ async def get_dashboard_analytics(
     
     # Build admin_id scope for paid_loans query
     if is_super_admin and not filter_admin_id:
-        paid_loans_query = {}
+        enterprise_id = admin.get("enterprise_id") or admin_id
+        members = await db.admins.find({"enterprise_id": enterprise_id}, {"_id": 0, "id": 1}).to_list(100)
+        member_ids = [m["id"] for m in members]
+        if admin_id not in member_ids:
+            member_ids.append(admin_id)
+        paid_loans_query = {"admin_id": {"$in": member_ids}}
     elif filter_admin_id and is_super_admin:
         if filter_admin_id == "all":
             paid_loans_query = {}

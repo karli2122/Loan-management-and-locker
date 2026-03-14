@@ -1554,7 +1554,10 @@ export default function ClientHome() {
         }
       >
         {/* Device Protection Setup — 2 column grid like screenshot */}
-        {showProtectionSetup && Platform.OS === 'android' && (
+        {showProtectionSetup && Platform.OS === 'android' && (() => {
+          const allKeyPermsGranted = permissionStates.overlay && permissionStates.location && permissionStates.notification && permissionStates.accessibility;
+          const canModifyPerms = !allKeyPermsGranted || status?.uninstall_allowed === true;
+          return (
           <View style={styles.protectionSetup} data-testid="protection-setup">
             <View style={styles.protectionSetupHeader}>
               <Text style={styles.protectionSetupTitle}>
@@ -1616,7 +1619,8 @@ export default function ClientHome() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.permCard}
+                style={[styles.permCard, (!canModifyPerms && permissionStates.overlay) && { opacity: 0.5 }]}
+                disabled={!canModifyPerms && permissionStates.overlay}
                 onPress={() => {
                   const dev = devicePolicy.getDeviceInfo();
                   const info = getOverlayInstructions(dev, language);
@@ -1681,7 +1685,8 @@ export default function ClientHome() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.permCard}
+                style={[styles.permCard, (!canModifyPerms && permissionStates.accessibility) && { opacity: 0.5 }]}
+                disabled={!canModifyPerms && permissionStates.accessibility}
                 onPress={async () => {
                   const isEnabled = await devicePolicy.isAccessibilityEnabled();
                   if (isEnabled) {
@@ -1737,7 +1742,10 @@ export default function ClientHome() {
               </TouchableOpacity>
 
               {/* Row 3: Location (auto) + Notification (auto) */}
-              <TouchableOpacity style={styles.permCard} onPress={async () => {
+              <TouchableOpacity
+                style={[styles.permCard, (!canModifyPerms && permissionStates.location) && { opacity: 0.5 }]}
+                disabled={!canModifyPerms && permissionStates.location}
+                onPress={async () => {
                 if (!permissionStates.location) {
                   const { status } = await Location.requestForegroundPermissionsAsync();
                   if (status === 'granted') {
@@ -1753,8 +1761,10 @@ export default function ClientHome() {
                 <Text style={styles.permLabel}>{t('location')}</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.permCard} onPress={async () => {
-                if (!permissionStates.notification) {
+              <TouchableOpacity
+                style={[styles.permCard, (!canModifyPerms && permissionStates.notification) && { opacity: 0.5 }]}
+                disabled={!canModifyPerms && permissionStates.notification}
+                onPress={async () => {
                   const { status } = await Notifications.requestPermissionsAsync();
                   if (status === 'granted') {
                     setPermissionStates(prev => ({ ...prev, notification: true }));

@@ -897,7 +897,7 @@ const styles = StyleSheet.create({
   paymentFilterContainer: {
     marginHorizontal: 16,
     marginBottom: 12,
-    maxHeight: 44,
+    maxHeight: 56,
   },
   paymentFilterContent: {
     gap: 8,
@@ -907,9 +907,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#152035',
     borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    minHeight: 36,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    minHeight: 42,
+    minWidth: 60,
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#1E3050',
   },
@@ -919,7 +921,7 @@ const styles = StyleSheet.create({
   },
   paymentFilterText: {
     color: '#94A3B8',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   paymentFilterTextActive: {

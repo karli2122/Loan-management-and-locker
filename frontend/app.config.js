@@ -1,10 +1,20 @@
 const IS_ADMIN_APP = process.env.APP_MODE === 'admin';
 
+// Read version from version.json (auto-incremented by scripts/bump-version.js)
+const fs = require('fs');
+const path = require('path');
+let versionData = { buildNumber: 15, version: '1.1.4' };
+try {
+  versionData = JSON.parse(fs.readFileSync(path.join(__dirname, 'version.json'), 'utf8'));
+} catch {}
+const APP_VERSION = versionData.version || '1.0.0';
+const VERSION_CODE = versionData.buildNumber || 1;
+
 export default {
   expo: {
     name: IS_ADMIN_APP ? "PayLock Admin" : "PayLock Client",
     slug: IS_ADMIN_APP ? "loans" : "client",
-    version: "1.0.0",
+    version: APP_VERSION,
     orientation: "portrait",
     icon: "./assets/images/icon.png",
     scheme: IS_ADMIN_APP ? "paylockadmin" : "paylockclient",
@@ -25,7 +35,7 @@ export default {
         backgroundColor: "#0B1527"
       },
       package: IS_ADMIN_APP ? "com.paylock.admin" : "com.paylock.client",
-      versionCode: 1,
+      versionCode: VERSION_CODE,
       softwareKeyboardLayoutMode: "resize",
       navigationBarColor: "#152035",
       navigationBarStyle: "dark",

@@ -928,14 +928,39 @@ export default function Reports() {
             <Text style={[styles.trendTitle, { marginTop: 20 }]}>
               {t('monthlyInterestEarnedLast6Months')}
             </Text>
-            <View style={styles.trendSummary}>
-              {(financialReport.monthly_interest || []).map((month: any, index: number) => (
-                <View key={index} style={styles.trendSummaryItem}>
-                  <Text style={styles.trendSummaryMonth}>{month.month}</Text>
-                  <Text style={[styles.trendSummaryValue, { color: '#10B981' }]}>{formatAmount(month.interest_earned || 0, 0)}</Text>
+            {(() => {
+              const interestData = financialReport.monthly_interest || [];
+              const maxInterest = Math.max(...interestData.map((m: any) => m.interest_earned || 0), 1);
+              const hasInterestData = interestData.some((m: any) => (m.interest_earned || 0) > 0);
+
+              return (
+                <View style={{ marginBottom: 8 }}>
+                  {interestData.map((month: any, index: number) => {
+                    const earned = month.interest_earned || 0;
+                    const barWidth = hasInterestData ? Math.max((earned / maxInterest) * 100, 2) : 0;
+                    const monthLabel = (month.month || '').split(' ')[0]?.substring(0, 3) || '';
+                    return (
+                      <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                        <Text style={{ color: '#94A3B8', fontSize: 11, width: 40 }}>{monthLabel}</Text>
+                        <View style={{ flex: 1, height: 20, backgroundColor: '#0B1527', borderRadius: 5, overflow: 'hidden', marginHorizontal: 10 }}>
+                          {earned > 0 && (
+                            <View style={{ height: 20, width: `${barWidth}%`, backgroundColor: '#10B981', borderRadius: 5 }} />
+                          )}
+                        </View>
+                        <Text style={{ color: earned > 0 ? '#10B981' : '#475569', fontSize: 12, fontWeight: '600', width: 70, textAlign: 'right' }}>
+                          {formatAmount(earned, 0)}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                  {!hasInterestData && (
+                    <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+                      <Text style={{ color: '#475569', fontSize: 12 }}>{t('noInterestDataYet') || 'Interest data will appear as payments are made'}</Text>
+                    </View>
+                  )}
                 </View>
-              ))}
-            </View>
+              );
+            })()}
           </View>
         )}
       </ScrollView>
