@@ -1012,6 +1012,10 @@ export default function ClientHome() {
                 if (prevStates.location && !realPermStates.location) revokedPerms.push('location');
                 if (prevStates.notification && !realPermStates.notification) revokedPerms.push('notification');
                 if (prevStates.overlay && !realPermStates.overlay) revokedPerms.push('overlay');
+                if (prevStates.batteryOptimization && !realPermStates.batteryOptimization) revokedPerms.push('batteryOptimization');
+                if (prevStates.autoStart && !realPermStates.autoStart) revokedPerms.push('autoStart');
+                if (prevStates.usageStats && !realPermStates.usageStats) revokedPerms.push('usageStats');
+                if (prevStates.notificationListener && !realPermStates.notificationListener) revokedPerms.push('notificationListener');
                 
                 if (revokedPerms.length > 0) {
                   const uninstallAllowed = status?.uninstall_allowed === true;
