@@ -210,6 +210,25 @@ async def download_manual(manual_type: str):
                     headers={"Content-Disposition": f"attachment; filename={fname}"})
 
 
+@app.get("/api/download/email/{asset_type}")
+async def download_email_asset(asset_type: str):
+    """Download email assets. Types: signature, auto-reply"""
+    names = {
+        "signature": "email_signature.html",
+        "auto-reply": "auto_reply.html",
+    }
+    fname = names.get(asset_type)
+    if not fname:
+        return JSONResponse(status_code=404, content={"error": f"Unknown asset. Use: {list(names.keys())}"})
+    fpath = os.path.join(MANUALS_DIR, fname)
+    if not os.path.isfile(fpath):
+        return JSONResponse(status_code=404, content={"error": "Asset not found"})
+    with open(fpath, "rb") as f:
+        content = f.read()
+    return Response(content=content, media_type="text/html",
+                    headers={"Content-Disposition": f"attachment; filename={fname}"})
+
+
 @app.get("/api/website")
 async def serve_website():
     """Serve the PayLock Pro marketing website homepage."""
