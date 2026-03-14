@@ -6,6 +6,7 @@ import logging
 
 from database import db
 from utils.auth import get_admin_id_from_token
+from utils.plan_gating import check_plan_access
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Reports"])
@@ -49,6 +50,7 @@ async def get_heartbeat_summary(
 ):
     """Get heartbeat monitoring summary with severity breakdown. Superadmins can filter by admin."""
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "heartbeat")
     
     # Check if requester is superadmin for filtering capability
     admin = await db.admins.find_one({"id": admin_id})
@@ -481,6 +483,7 @@ async def get_dashboard_analytics(
 ):
     """Get comprehensive dashboard analytics. Each admin sees only their own data by default."""
     admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "dashboard_analytics")
     
     admin = await db.admins.find_one({"id": admin_id})
     is_super_admin = admin.get("is_super_admin", False) if admin else False

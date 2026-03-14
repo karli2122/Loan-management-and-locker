@@ -16,7 +16,7 @@ import os
 import uuid
 import time
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://paylock-fixes.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://subscription-tier-1.preview.emergentagent.com").rstrip("/")
 
 # Test data prefixes for cleanup
 TEST_PREFIX = f"TEST_{uuid.uuid4().hex[:6]}"

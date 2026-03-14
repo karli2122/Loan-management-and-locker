@@ -1,0 +1,54 @@
+{
+  "summary": "Plan Gating Feature Testing - Iteration 77. Verified subscription plan-based feature gating for PayLock Pro. Backend: 9/9 tests passed (100%). Frontend: Feature gating UI correctly shows locked/unlocked states based on plan.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_plan_gating_iteration77.py",
+    "/app/test_reports/pytest/plan_gating_iteration77_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_plan_gating_iteration77.py"
+  ],
+  "success_rate": {
+    "backend": "100% (9/9 tests passed)",
+    "frontend": "100% (visual verification passed)"
+  },
+  "test_credentials": {
+    "superadmin": "karli1987 / nasvakas123 (token: 8ec5e0c6e05c8dcfc2f3ea5c924fe0a118f7807412937334425e095a5ae08720)",
+    "starter_user": "starter_test / starter123 (token: 16c94e3ccd4d46ee7860448e364a38630f4bb5b6638bcb9f9d6b6fe9267b8afa)"
+  },
+  "features_verified": {
+    "backend_feature_access_endpoint": {
+      "superadmin_returns_custom_plan": "PASS - returns plan='custom' with all features enabled",
+      "starter_returns_starter_plan": "PASS - returns plan='starter' with limited features"
+    },
+    "backend_api_gating": {
+      "heartbeat_blocked_for_starter": "PASS - returns 403 with proper error message",
+      "heartbeat_allowed_for_superadmin": "PASS - returns 200 with data",
+      "dashboard_analytics_blocked_for_starter": "PASS - returns 403 with proper error message",
+      "dashboard_analytics_allowed_for_superadmin": "PASS - returns 200 with data"
+    },
+    "frontend_ui_gating": {
+      "starter_plan_badge": "PASS - shows 'Starter Plan' with Upgrade button",
+      "starter_heartbeat_locked": "PASS - heartbeat card shows lock overlay with 'Professional Plan' text",
+      "starter_interest_card_locked": "PASS - interest earned card shows lock overlay with 'Professional Plan' text",
+      "superadmin_custom_plan_badge": "PASS - shows 'Custom Plan' without upgrade button",
+      "superadmin_heartbeat_unlocked": "PASS - heartbeat card shows actual data (1 Online, 0 Warning, 1 Critical)",
+      "superadmin_interest_card_unlocked": "PASS - interest earned card shows €321.31 total interest, 8 loans archived",
+      "superadmin_charts_visible": "PASS - Monthly Interest Income and Monthly Revenue charts rendered"
+    }
+  },
+  "seed_data_creation": "None - used existing test users (starter_test, karli1987)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Plan gating is fully functional. Starter users see locked UI elements for Professional+ features and get 403 on restricted APIs. Superadmin/custom plan users have full access. Key test IDs in frontend: plan-badge, heartbeat-card, heartbeat-card-locked, interest-earned-card, interest-earned-card-locked, revenue-chart, interest-trend-chart. Note: React Native web may not preserve data-testid attributes, use visual verification or text-based selectors."
+}

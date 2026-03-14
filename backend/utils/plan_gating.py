@@ -30,6 +30,10 @@ FEATURE_PLANS = {
     "late_fee": "professional",
     "loan_restructure": "professional",
     "team_management": "professional",
+    "heartbeat": "professional",
+    "dashboard_analytics": "professional",
+    "interest_summary": "professional",
+    "device_management": "professional",
 
     # Enterprise features
     "device_owner": "enterprise",
@@ -60,15 +64,17 @@ PLAN_HIERARCHY = {"starter": 0, "professional": 1, "business": 1, "enterprise": 
 
 
 async def get_admin_plan(admin_id: str) -> str:
-    """Get the subscription plan for an admin."""
+    """Get the subscription plan for an admin. Plan field is the authority."""
     admin = await db.admins.find_one(
         {"id": admin_id},
-        {"_id": 0, "subscription_plan": 1, "plan": 1, "is_super_admin": 1, "enterprise_id": 1}
+        {"_id": 0, "subscription_plan": 1, "plan": 1, "enterprise_id": 1}
     )
     if not admin:
         return "starter"
-    if admin.get("is_super_admin"):
-        return "custom"
+    # Check own plan first
+    own_plan = admin.get("subscription_plan") or admin.get("plan")
+    if own_plan:
+        return own_plan
     # If team member, inherit plan from enterprise owner
     enterprise_id = admin.get("enterprise_id")
     if enterprise_id and enterprise_id != admin_id:
@@ -78,33 +84,12 @@ async def get_admin_plan(admin_id: str) -> str:
         )
         if owner:
             return owner.get("subscription_plan") or owner.get("plan", "starter")
-    return admin.get("subscription_plan") or admin.get("plan", "starter")
+    return "starter"
 
 
 async def check_plan_access(admin_id: str, feature: str) -> bool:
     """Check if admin's plan allows access to a feature. Returns True or raises."""
-    admin = await db.admins.find_one(
-        {"id": admin_id},
-        {"_id": 0, "subscription_plan": 1, "plan": 1, "is_super_admin": 1, "enterprise_id": 1}
-    )
-    if not admin:
-        raise AuthorizationException("Admin not found")
-
-    # Super admins always have access
-    if admin.get("is_super_admin"):
-        return True
-
-    plan = admin.get("subscription_plan") or admin.get("plan", "starter")
-
-    # Team members inherit their enterprise owner's plan
-    enterprise_id = admin.get("enterprise_id")
-    if enterprise_id and enterprise_id != admin_id:
-        owner = await db.admins.find_one(
-            {"id": enterprise_id},
-            {"_id": 0, "subscription_plan": 1, "plan": 1}
-        )
-        if owner:
-            plan = owner.get("subscription_plan") or owner.get("plan", "starter")
+    plan = await get_admin_plan(admin_id)
 
     required_plan = FEATURE_PLANS.get(feature, "starter")
     admin_level = PLAN_HIERARCHY.get(plan, 0)

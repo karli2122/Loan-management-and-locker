@@ -11,7 +11,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "https://paylock-fixes.preview.emergentagent.com")
+BASE_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "https://subscription-tier-1.preview.emergentagent.com")
 
 # Test credentials
 SUPERADMIN_USERNAME = "karli1987"

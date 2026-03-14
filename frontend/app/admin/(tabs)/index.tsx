@@ -50,6 +50,11 @@ interface AdminUser {
   last_name?: string;
 }
 
+interface PlanFeatures {
+  plan: string;
+  features: { [key: string]: boolean };
+}
+
 export default function Dashboard() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
@@ -110,6 +115,14 @@ export default function Dashboard() {
   const [adminList, setAdminList] = useState<AdminUser[]>([]);
   const [selectedAdminId, setSelectedAdminId] = useState<string | null>(null);
   const [showAdminFilter, setShowAdminFilter] = useState(false);
+  
+  // Plan-based feature gating state
+  const [planFeatures, setPlanFeatures] = useState<PlanFeatures>({ plan: 'starter', features: {} });
+  
+  // Helper function to check feature access
+  const hasFeature = (featureName: string): boolean => {
+    return planFeatures.features[featureName] === true;
+  };
 
   const fetchAdminList = async () => {
     try {
@@ -260,6 +273,23 @@ export default function Dashboard() {
     }
   };
 
+  const fetchPlanFeatures = async () => {
+    try {
+      const adminToken = await AsyncStorage.getItem('admin_token');
+      if (!adminToken) return;
+      const response = await fetch(`${API_URL}/api/admin/feature-access?admin_token=${adminToken}`);
+      if (response.ok) {
+        const data = await response.json();
+        setPlanFeatures({
+          plan: data.plan || 'starter',
+          features: data.features || {},
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch plan features:', error);
+    }
+  };
+
   const loadUserData = async () => {
     const storedUsername = await AsyncStorage.getItem('admin_username');
     const role = await AsyncStorage.getItem('admin_role');
@@ -293,6 +323,7 @@ export default function Dashboard() {
           fetchHeartbeat(selectedAdminId),
           fetchRevenueChart(selectedAdminId),
           fetchInterestSummary(),
+          fetchPlanFeatures(),
         ]);
       } finally {
         setInitialLoading(false);
@@ -420,6 +451,7 @@ export default function Dashboard() {
       fetchHeartbeat(selectedAdminId),
       fetchRevenueChart(selectedAdminId),
       fetchInterestSummary(),
+      fetchPlanFeatures(),
     ]);
     setRefreshing(false);
   }, [selectedAdminId]);
@@ -485,6 +517,29 @@ export default function Dashboard() {
             <Text style={{ color: '#fff', marginLeft: 8, fontWeight: '600' }}>Syncing offline actions...</Text>
           </View>
         )}
+
+        {/* Plan Badge */}
+        <View style={[styles.planBadgeContainer, { backgroundColor: colors.surface, borderColor: colors.border }]} data-testid="plan-badge">
+          <View style={styles.planBadgeContent}>
+            <Ionicons 
+              name={planFeatures.plan === 'enterprise' ? 'diamond' : planFeatures.plan === 'professional' ? 'star' : 'ribbon'} 
+              size={18} 
+              color={planFeatures.plan === 'enterprise' ? '#8B5CF6' : planFeatures.plan === 'professional' ? '#F59E0B' : '#3B82F6'} 
+            />
+            <Text style={[styles.planBadgeText, { color: colors.text }]}>
+              {planFeatures.plan.charAt(0).toUpperCase() + planFeatures.plan.slice(1)} Plan
+            </Text>
+          </View>
+          {planFeatures.plan === 'starter' && (
+            <TouchableOpacity 
+              style={styles.upgradePlanBtn}
+              onPress={() => router.push('/admin/subscription')}
+              data-testid="upgrade-plan-btn"
+            >
+              <Text style={styles.upgradePlanBtnText}>{t('upgrade') || 'Upgrade'}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* Payments Due Today Alert */}
         {dueTodayCount > 0 && (
@@ -655,55 +710,78 @@ export default function Dashboard() {
           </View>
         </View>
 
-        {/* Interest Earned from Archived Loans */}
-        <View style={[styles.interestCard, { backgroundColor: colors.surface, borderColor: colors.border }]} data-testid="interest-earned-card">
-          <View style={styles.interestCardHeader}>
-            <Ionicons name="trending-up" size={20} color="#10B981" />
-            <Text style={[styles.interestCardTitle, { color: colors.text }]}>
-              {t('interestEarned')}
-            </Text>
-          </View>
-          <View style={styles.interestCardBody}>
-            <View style={styles.interestMainStat}>
-              <Text style={[styles.interestMainValue, { color: '#10B981' }]} data-testid="total-interest-value">
-                {formatAmount(interestSummary.total_interest_earned)}
-              </Text>
-              <Text style={[styles.interestMainLabel, { color: colors.textMuted }]}>
-                {t('totalInterestEarned')}
+        {/* Interest Earned from Archived Loans - Professional+ */}
+        {hasFeature('interest_summary') ? (
+          <View style={[styles.interestCard, { backgroundColor: colors.surface, borderColor: colors.border }]} data-testid="interest-earned-card">
+            <View style={styles.interestCardHeader}>
+              <Ionicons name="trending-up" size={20} color="#10B981" />
+              <Text style={[styles.interestCardTitle, { color: colors.text }]}>
+                {t('interestEarned')}
               </Text>
             </View>
-            <View style={[styles.interestDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.interestSubStats}>
-              <View style={styles.interestSubStat}>
-                <Text style={[styles.interestSubValue, { color: '#2563EB' }]} data-testid="month-interest-value">
-                  {formatAmount(interestSummary.current_month_interest)}
+            <View style={styles.interestCardBody}>
+              <View style={styles.interestMainStat}>
+                <Text style={[styles.interestMainValue, { color: '#10B981' }]} data-testid="total-interest-value">
+                  {formatAmount(interestSummary.total_interest_earned)}
                 </Text>
-                <Text style={[styles.interestSubLabel, { color: colors.textMuted }]}>
-                  {t('thisMonth2')}
-                </Text>
-              </View>
-              <View style={styles.interestSubStat}>
-                <Text style={[styles.interestSubValue, { color: colors.text }]} data-testid="total-archived-count">
-                  {interestSummary.total_loans_archived}
-                </Text>
-                <Text style={[styles.interestSubLabel, { color: colors.textMuted }]}>
-                  {t('loansArchived')}
+                <Text style={[styles.interestMainLabel, { color: colors.textMuted }]}>
+                  {t('totalInterestEarned')}
                 </Text>
               </View>
-              <View style={styles.interestSubStat}>
-                <Text style={[styles.interestSubValue, { color: '#F59E0B' }]} data-testid="month-archived-count">
-                  {interestSummary.current_month_loans_archived}
-                </Text>
-                <Text style={[styles.interestSubLabel, { color: colors.textMuted }]}>
-                  {t('thisMonth2')}
+              <View style={[styles.interestDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.interestSubStats}>
+                <View style={styles.interestSubStat}>
+                  <Text style={[styles.interestSubValue, { color: '#2563EB' }]} data-testid="month-interest-value">
+                    {formatAmount(interestSummary.current_month_interest)}
+                  </Text>
+                  <Text style={[styles.interestSubLabel, { color: colors.textMuted }]}>
+                    {t('thisMonth2')}
+                  </Text>
+                </View>
+                <View style={styles.interestSubStat}>
+                  <Text style={[styles.interestSubValue, { color: colors.text }]} data-testid="total-archived-count">
+                    {interestSummary.total_loans_archived}
+                  </Text>
+                  <Text style={[styles.interestSubLabel, { color: colors.textMuted }]}>
+                    {t('loansArchived')}
+                  </Text>
+                </View>
+                <View style={styles.interestSubStat}>
+                  <Text style={[styles.interestSubValue, { color: '#F59E0B' }]} data-testid="month-archived-count">
+                    {interestSummary.current_month_loans_archived}
+                  </Text>
+                  <Text style={[styles.interestSubLabel, { color: colors.textMuted }]}>
+                    {t('thisMonth2')}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <View style={[styles.interestCard, { backgroundColor: colors.surface, borderColor: colors.border, opacity: 0.6 }]} data-testid="interest-earned-card-locked">
+            <View style={styles.featureLockedOverlay}>
+              <Ionicons name="lock-closed" size={24} color="#fff" />
+              <Text style={styles.featureLockedText}>Professional Plan</Text>
+            </View>
+            <View style={styles.interestCardHeader}>
+              <Ionicons name="trending-up" size={20} color="#10B981" />
+              <Text style={[styles.interestCardTitle, { color: colors.text }]}>
+                {t('interestEarned')}
+              </Text>
+            </View>
+            <View style={styles.interestCardBody}>
+              <View style={styles.interestMainStat}>
+                <Text style={[styles.interestMainValue, { color: '#10B981' }]}>---</Text>
+                <Text style={[styles.interestMainLabel, { color: colors.textMuted }]}>
+                  {t('totalInterestEarned')}
                 </Text>
               </View>
             </View>
           </View>
-        </View>
+        )}
 
-        {/* Interest Trend Chart */}
-        {interestTrend.labels.length > 0 && (
+        {/* Interest Trend Chart - Professional+ */}
+        {hasFeature('interest_summary') && interestTrend.labels.length > 0 && (
           <View style={[styles.chartContainer, { backgroundColor: colors.surface, borderColor: colors.border }]} data-testid="interest-trend-chart">
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               {t('monthlyInterestIncome')}
@@ -742,53 +820,87 @@ export default function Dashboard() {
           </View>
         )}
 
-        {/* Heartbeat Monitoring Card */}
-        <TouchableOpacity
-          style={[styles.heartbeatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => router.push('/admin/device-management')}
-          activeOpacity={0.8}
-          data-testid="heartbeat-card"
-        >
-          <View style={styles.heartbeatHeader}>
-            <View style={styles.heartbeatTitleRow}>
-              <Ionicons name="pulse" size={20} color="#10B981" />
-              <Text style={[styles.heartbeatTitle, { color: colors.text }]}>
-                {t('deviceHeartbeat')}
+        {/* Heartbeat Monitoring Card - Professional+ */}
+        {hasFeature('heartbeat') ? (
+          <TouchableOpacity
+            style={[styles.heartbeatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => router.push('/admin/device-management')}
+            activeOpacity={0.8}
+            data-testid="heartbeat-card"
+          >
+            <View style={styles.heartbeatHeader}>
+              <View style={styles.heartbeatTitleRow}>
+                <Ionicons name="pulse" size={20} color="#10B981" />
+                <Text style={[styles.heartbeatTitle, { color: colors.text }]}>
+                  {t('deviceHeartbeat')}
+                </Text>
+              </View>
+              <Text style={[styles.heartbeatSubtitle, { color: colors.textMuted }]}>
+                {heartbeat.total_registered} {t('registered2')}
               </Text>
             </View>
-            <Text style={[styles.heartbeatSubtitle, { color: colors.textMuted }]}>
-              {heartbeat.total_registered} {t('registered2')}
-            </Text>
+            <View style={styles.heartbeatGrid}>
+              <View style={styles.heartbeatItem}>
+                <View style={[styles.heartbeatDot, { backgroundColor: '#10B981' }]} />
+                <Text style={[styles.heartbeatCount, { color: colors.text }]}>{heartbeat.online_count}</Text>
+                <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{t('online')}</Text>
+              </View>
+              <View style={styles.heartbeatItem}>
+                <View style={[styles.heartbeatDot, { backgroundColor: '#F59E0B' }]} />
+                <Text style={[styles.heartbeatCount, { color: colors.text }]}>{heartbeat.warning_count}</Text>
+                <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{t('warning')}</Text>
+              </View>
+              <View style={styles.heartbeatItem}>
+                <View style={[styles.heartbeatDot, { backgroundColor: '#EF4444' }]} />
+                <Text style={[styles.heartbeatCount, { color: colors.text }]}>{heartbeat.critical_count}</Text>
+                <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{t('critical')}</Text>
+              </View>
+            </View>
+            {heartbeat.critical_count > 0 && (
+              <View style={[styles.heartbeatAlert, { borderTopColor: colors.border }]}>
+                <Ionicons name="warning" size={14} color="#EF4444" />
+                <Text style={styles.heartbeatAlertText}>
+                  {heartbeat.critical_count} {t('devicesUnresponsive2h')}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.heartbeatCard, { backgroundColor: colors.surface, borderColor: colors.border, opacity: 0.6 }]} data-testid="heartbeat-card-locked">
+            <View style={styles.featureLockedOverlay}>
+              <Ionicons name="lock-closed" size={24} color="#fff" />
+              <Text style={styles.featureLockedText}>Professional Plan</Text>
+            </View>
+            <View style={styles.heartbeatHeader}>
+              <View style={styles.heartbeatTitleRow}>
+                <Ionicons name="pulse" size={20} color="#10B981" />
+                <Text style={[styles.heartbeatTitle, { color: colors.text }]}>
+                  {t('deviceHeartbeat')}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.heartbeatGrid}>
+              <View style={styles.heartbeatItem}>
+                <View style={[styles.heartbeatDot, { backgroundColor: '#10B981' }]} />
+                <Text style={[styles.heartbeatCount, { color: colors.text }]}>--</Text>
+                <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{t('online')}</Text>
+              </View>
+              <View style={styles.heartbeatItem}>
+                <View style={[styles.heartbeatDot, { backgroundColor: '#F59E0B' }]} />
+                <Text style={[styles.heartbeatCount, { color: colors.text }]}>--</Text>
+                <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{t('warning')}</Text>
+              </View>
+              <View style={styles.heartbeatItem}>
+                <View style={[styles.heartbeatDot, { backgroundColor: '#EF4444' }]} />
+                <Text style={[styles.heartbeatCount, { color: colors.text }]}>--</Text>
+                <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{t('critical')}</Text>
+              </View>
+            </View>
           </View>
-          <View style={styles.heartbeatGrid}>
-            <View style={styles.heartbeatItem}>
-              <View style={[styles.heartbeatDot, { backgroundColor: '#10B981' }]} />
-              <Text style={[styles.heartbeatCount, { color: colors.text }]}>{heartbeat.online_count}</Text>
-              <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{t('online')}</Text>
-            </View>
-            <View style={styles.heartbeatItem}>
-              <View style={[styles.heartbeatDot, { backgroundColor: '#F59E0B' }]} />
-              <Text style={[styles.heartbeatCount, { color: colors.text }]}>{heartbeat.warning_count}</Text>
-              <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{t('warning')}</Text>
-            </View>
-            <View style={styles.heartbeatItem}>
-              <View style={[styles.heartbeatDot, { backgroundColor: '#EF4444' }]} />
-              <Text style={[styles.heartbeatCount, { color: colors.text }]}>{heartbeat.critical_count}</Text>
-              <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{t('critical')}</Text>
-            </View>
-          </View>
-          {heartbeat.critical_count > 0 && (
-            <View style={[styles.heartbeatAlert, { borderTopColor: colors.border }]}>
-              <Ionicons name="warning" size={14} color="#EF4444" />
-              <Text style={styles.heartbeatAlertText}>
-                {heartbeat.critical_count} {t('devicesUnresponsive2h')}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        )}
 
-        {/* Monthly Revenue Trend Chart */}
-        {revenueChart.labels.length > 0 && (
+        {/* Monthly Revenue Trend Chart - Professional+ */}
+        {hasFeature('dashboard_analytics') && revenueChart.labels.length > 0 && (
           <View style={[styles.chartContainer, { backgroundColor: colors.surface, borderColor: colors.border }]} data-testid="revenue-chart">
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               {t('monthlyRevenue')}
@@ -1248,5 +1360,58 @@ const styles = StyleSheet.create({
   },
   interestSubLabel: {
     fontSize: 11,
+  },
+  // Plan Badge styles
+  planBadgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#152035',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#1E3050',
+  },
+  planBadgeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  planBadgeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  upgradePlanBtn: {
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  upgradePlanBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  // Feature locked overlay styles
+  featureLockedOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  featureLockedText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
   },
 });
