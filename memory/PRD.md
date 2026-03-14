@@ -64,14 +64,19 @@ Full-stack loan management application with FastAPI backend, React Native mobile
 - Comparative analytics, Audit log, Revenue forecasting, Tamper detection, Screenshot block
 
 ## Builds & Deployments
-- **Admin APK**: https://expo.dev/accounts/karli1987/projects/loans/builds/dc6e375c-0e15-4f93-9109-2d540910fdfc
-- **Client APK**: https://expo.dev/accounts/karli1987/projects/client/builds/e833da39-eb23-4d78-b342-c2bcee3f3e2c
+- **Admin APK v1.2.0**: https://expo.dev/artifacts/eas/h8xg5L53LRTMTEpSVDSqve.apk
+- **Client APK v1.2.0**: https://expo.dev/artifacts/eas/r96RMTH1gXzRUxZnmdXauj.apk
 - **Website ZIP**: `/app/paylockpro-website.zip` + available at download endpoint
 - **Backend**: Deployed to VPS (37.148.202.159), service running
+- **Website download**: `https://api.paylock.pro/api/download/website`
 
 ## Test Reports
 - `/app/test_reports/iteration_73.json` - Feature gating: 39/39 passed (100%)
 - `/app/test_reports/iteration_74.json` - Plan gating + website update: 13/13 passed (100%)
+
+## Contact Form
+- Backend endpoint: `POST /api/contact` sends email to `support@paylock.pro` via Resend
+- Frontend form on `contact.html` POSTs to `https://api.paylock.pro/api/contact`
 
 ## Key Files
 - `backend/utils/plan_gating.py` - Feature-to-plan mapping and access checks

@@ -1785,8 +1785,7 @@ export default function ClientHome() {
                   } else {
                     await devicePolicy.openNotificationSettings();
                   }
-                }
-              }}
+                }}
               data-testid="perm-notification-card"
               >
                 <View style={[styles.permCircle, permissionStates.notification ? styles.permOk : styles.permBad]}>
@@ -1911,7 +1910,7 @@ export default function ClientHome() {
               </Text>
             </View>
           </View>
-        )}
+        )})()}
 
         {/* Collapsed banner when protection setup is hidden */}
         {!showProtectionSetup && !protectionComplete && Platform.OS === 'android' && (

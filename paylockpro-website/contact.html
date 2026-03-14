@@ -88,10 +88,20 @@
 </footer>
 <script src="site.js"></script>
 <script>
-function handleContact(e){
+async function handleContact(e){
   e.preventDefault();
-  document.getElementById('contactForm').style.display='none';
-  document.getElementById('contactSuccess').style.display='block';
+  var f=e.target;
+  var btn=f.querySelector('button[type="submit"]');
+  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Sending...';
+  try{
+    var res=await fetch('https://api.paylock.pro/api/contact',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:f.querySelector('input[type="text"]').value,email:f.querySelector('input[type="email"]').value,subject:f.querySelector('select').value,message:f.querySelector('textarea').value})
+    });
+    var d=await res.json();
+    if(d.success){f.style.display='none';document.getElementById('contactSuccess').style.display='block';}
+    else{alert('Failed to send: '+(d.error||'Unknown error'));btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i> Send Message';}
+  }catch(err){alert('Network error. Please try again.');btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i> Send Message';}
 }
 </script>
 </body>

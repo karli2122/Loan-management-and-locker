@@ -8,7 +8,7 @@ router = APIRouter(tags=["contact"])
 
 resend.api_key = os.environ.get("RESEND_API_KEY", "")
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
-CONTACT_EMAIL = "paylockpro@gmail.com"
+CONTACT_EMAIL = "support@paylock.pro"
 
 
 @router.post("/api/contact")
