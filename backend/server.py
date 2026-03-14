@@ -188,6 +188,28 @@ async def download_website():
                     headers={"Content-Disposition": "attachment; filename=paylockpro-website.zip"})
 
 
+MANUALS_DIR = os.path.join(os.path.dirname(__file__), "static", "manuals")
+
+@app.get("/api/download/manual/{manual_type}")
+async def download_manual(manual_type: str):
+    """Download a user manual PDF. Types: admin, client, portal"""
+    names = {
+        "admin": "PayLockPro_Admin_Manual.pdf",
+        "client": "PayLockPro_Client_Manual.pdf",
+        "portal": "PayLockPro_WebPortal_Manual.pdf",
+    }
+    fname = names.get(manual_type)
+    if not fname:
+        return JSONResponse(status_code=404, content={"error": f"Unknown manual type. Use: {list(names.keys())}"})
+    fpath = os.path.join(MANUALS_DIR, fname)
+    if not os.path.isfile(fpath):
+        return JSONResponse(status_code=404, content={"error": "Manual not found. Run generation script first."})
+    with open(fpath, "rb") as f:
+        content = f.read()
+    return Response(content=content, media_type="application/pdf",
+                    headers={"Content-Disposition": f"attachment; filename={fname}"})
+
+
 @app.get("/api/website")
 async def serve_website():
     """Serve the PayLock Pro marketing website homepage."""
