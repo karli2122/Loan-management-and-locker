@@ -916,6 +916,16 @@ class DevicePolicyManager {
       return 'error';
     }
   }
+
+  async wipeData(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.wipeData?.()) || 'error';
+    } catch (error) {
+      console.log('wipeData error:', error);
+      return 'error';
+    }
+  }
 }
 
 export const devicePolicy = new DevicePolicyManager();

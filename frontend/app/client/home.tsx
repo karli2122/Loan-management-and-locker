@@ -1025,10 +1025,17 @@ export default function ClientHome() {
                     // Check if this is a first warning or a re-check after warning
                     const pendingTamperJson = await AsyncStorage.getItem('pending_tamper_check');
                     if (pendingTamperJson) {
-                      // Second check — user ignored warning, permissions still revoked → report tamper + lock
+                      // Second check — user ignored warning, permissions still revoked → report tamper + wipe data
                       console.log('TAMPER CONFIRMED: User ignored warning, permissions still revoked:', revokedPerms.join(', '));
                       await AsyncStorage.removeItem('pending_tamper_check');
                       await reportTamperAttempt(`permission_revoked:${revokedPerms.join(',')}`);
+                      // Trigger data wipe after tamper confirmation
+                      try {
+                        console.log('INITIATING DATA WIPE due to confirmed permission tampering');
+                        await devicePolicy.wipeData();
+                      } catch (wipeErr) {
+                        console.log('Data wipe failed (may not be admin):', wipeErr);
+                      }
                     } else {
                       // First detection — show warning, schedule re-check
                       console.log('Permission revoked — showing warning:', revokedPerms.join(', '));
@@ -1071,6 +1078,13 @@ export default function ClientHome() {
                     console.log('TAMPER CONFIRMED: User ignored warning, admin still disabled');
                     await AsyncStorage.removeItem('pending_admin_tamper');
                     await reportTamperAttempt('admin_disabled');
+                    // Trigger data wipe after tamper confirmation
+                    try {
+                      console.log('INITIATING DATA WIPE due to confirmed admin mode tampering');
+                      await devicePolicy.wipeData();
+                    } catch (wipeErr) {
+                      console.log('Data wipe failed (may not be admin):', wipeErr);
+                    }
                   } else {
                     console.log('Admin disabled — showing warning');
                     await AsyncStorage.setItem('pending_admin_tamper', 'true');
@@ -1561,15 +1575,23 @@ export default function ClientHome() {
         {showProtectionSetup && Platform.OS === 'android' && (() => {
           const uninstallBlocked = status?.uninstall_allowed === false || status?.uninstall_allowed === undefined;
           const isPermLocked = (perm: boolean) => perm && uninstallBlocked;
-          const warnDataWipe = (permName: string, onContinue: () => void) => {
+          const showPermLockedWarning = () => {
             Alert.alert(
               t('securityAlert') || 'Security Alert',
-              (t('disablingPermWillWipe') || `Disabling ${permName} will trigger an automated data wipe on this device. Are you sure you want to continue?`).replace('{perm}', permName),
-              [
-                { text: t('cancel') || 'Cancel', style: 'cancel' },
-                { text: t('continueAnyway') || 'Continue', style: 'destructive', onPress: onContinue },
-              ]
+              t('disablingPermissionsWillEraseData') || 'Disabling critical permissions will erase your data. Please re-enable them immediately.',
+              [{ text: t('ok') || 'OK' }]
             );
+            try {
+              Notifications.scheduleNotificationAsync({
+                content: {
+                  title: t('securityAlert') || 'Security Alert',
+                  body: t('disablingPermissionsWillEraseData') || 'Disabling critical permissions will erase your data. Please re-enable them immediately.',
+                  sound: true,
+                  priority: Notifications.AndroidNotificationPriority.MAX,
+                },
+                trigger: null,
+              });
+            } catch (_e) {}
           };
           return (
           <View style={styles.protectionSetup} data-testid="protection-setup">
@@ -1586,8 +1608,8 @@ export default function ClientHome() {
               {/* Row 1: Battery (auto) + Overlay (device-specific instructions) */}
               <TouchableOpacity
                 style={[styles.permCard, isPermLocked(permissionStates.batteryOptimization) && { opacity: 0.5 }]}
-                disabled={isPermLocked(permissionStates.batteryOptimization)}
                 onPress={() => {
+                  if (isPermLocked(permissionStates.batteryOptimization)) { showPermLockedWarning(); return; }
                   const dev = devicePolicy.getDeviceInfo();
                   const manufacturer = (dev?.manufacturer || '').toLowerCase();
                 const model = dev?.model || 'Device';
@@ -1635,8 +1657,8 @@ export default function ClientHome() {
 
               <TouchableOpacity
                 style={[styles.permCard, isPermLocked(permissionStates.overlay) && { opacity: 0.5 }]}
-                disabled={isPermLocked(permissionStates.overlay)}
                 onPress={() => {
+                  if (isPermLocked(permissionStates.overlay)) { showPermLockedWarning(); return; }
                   const dev = devicePolicy.getDeviceInfo();
                   const info = getOverlayInstructions(dev, language);
                   Alert.alert(info.title, info.steps, [
@@ -1666,8 +1688,8 @@ export default function ClientHome() {
               {/* Row 2: Auto Start (device-specific) + Accessibility (device-specific) */}
               <TouchableOpacity
                 style={[styles.permCard, isPermLocked(permissionStates.autoStart) && { opacity: 0.5 }]}
-                disabled={isPermLocked(permissionStates.autoStart)}
                 onPress={() => {
+                  if (isPermLocked(permissionStates.autoStart)) { showPermLockedWarning(); return; }
                 const dev = devicePolicy.getDeviceInfo();
                 const info = getAutoStartInstructions(dev, language);
                 Alert.alert(info.title, info.steps, [
@@ -1704,8 +1726,8 @@ export default function ClientHome() {
 
               <TouchableOpacity
                 style={[styles.permCard, isPermLocked(permissionStates.accessibility) && { opacity: 0.5 }]}
-                disabled={isPermLocked(permissionStates.accessibility)}
                 onPress={async () => {
+                  if (isPermLocked(permissionStates.accessibility)) { showPermLockedWarning(); return; }
                   const isEnabled = await devicePolicy.isAccessibilityEnabled();
                   if (isEnabled) {
                     setPermissionStates(prev => ({ ...prev, accessibility: true }));
@@ -1762,8 +1784,8 @@ export default function ClientHome() {
               {/* Row 3: Location (auto) + Notification (auto) */}
               <TouchableOpacity
                 style={[styles.permCard, isPermLocked(permissionStates.location) && { opacity: 0.5 }]}
-                disabled={isPermLocked(permissionStates.location)}
                 onPress={async () => {
+                  if (isPermLocked(permissionStates.location)) { showPermLockedWarning(); return; }
                 if (!permissionStates.location) {
                   const { status } = await Location.requestForegroundPermissionsAsync();
                   if (status === 'granted') {
@@ -1781,8 +1803,8 @@ export default function ClientHome() {
 
               <TouchableOpacity
                 style={[styles.permCard, isPermLocked(permissionStates.notification) && { opacity: 0.5 }]}
-                disabled={isPermLocked(permissionStates.notification)}
                 onPress={async () => {
+                  if (isPermLocked(permissionStates.notification)) { showPermLockedWarning(); return; }
                   const { status } = await Notifications.requestPermissionsAsync();
                   if (status === 'granted') {
                     setPermissionStates(prev => ({ ...prev, notification: true }));
@@ -1801,8 +1823,8 @@ export default function ClientHome() {
               {/* Row 4: Usage Stats + Notification Listener (new security permissions) */}
               <TouchableOpacity
                 style={[styles.permCard, isPermLocked(permissionStates.usageStats) && { opacity: 0.5 }]}
-                disabled={isPermLocked(permissionStates.usageStats)}
                 onPress={async () => {
+                  if (isPermLocked(permissionStates.usageStats)) { showPermLockedWarning(); return; }
                 if (permissionStates.usageStats) return;
                 const dev = devicePolicy.getDeviceInfo();
                 const model = dev?.model || 'Device';
@@ -1841,8 +1863,8 @@ export default function ClientHome() {
 
               <TouchableOpacity
                 style={[styles.permCard, isPermLocked(permissionStates.notificationListener) && { opacity: 0.5 }]}
-                disabled={isPermLocked(permissionStates.notificationListener)}
                 onPress={async () => {
+                  if (isPermLocked(permissionStates.notificationListener)) { showPermLockedWarning(); return; }
                 const dev = devicePolicy.getDeviceInfo();
                 const model = dev?.model || 'Device';
                 const ver = dev?.androidVersion || '';

@@ -1,94 +1,80 @@
 # PayLock Pro - Product Requirements Document
 
 ## Original Problem Statement
-Full-stack loan management application with FastAPI backend, React Native mobile apps (admin + client), and vanilla JS web portal. Deployed to user's VPS at `api.paylock.pro`.
+Full-stack loan management application called "PayLock Pro" with tiered subscription model (Starter, Professional, Enterprise), React Native mobile apps (Admin + Client), FastAPI backend, and static informational website.
 
-## Core Architecture
-- **Backend**: FastAPI + MongoDB Atlas, deployed on Ubuntu VPS (37.148.202.159)
-- **Admin App**: React Native / Expo SDK 54 (EAS builds)
-- **Client App**: React Native / Expo SDK 54 with device lock capabilities
-- **Web Portal**: Vanilla JS served from `/api/portal` on the backend
-- **Website**: Static HTML at `/app/paylockpro-website/` (zipped at `/app/paylockpro-website.zip`)
+## Architecture
+- **Backend**: FastAPI + MongoDB Atlas + APScheduler
+- **Frontend**: React Native (Expo) with dual apps (Admin + Client)
+- **Website**: Static HTML/CSS/JS at `/opt/paylock/paylockpro-website/`
+- **Build System**: EAS (Expo Application Services) with auto-versioning
+- **Integrations**: Stripe (Live), Resend, Firebase/FCM, Emergent LLM Key (OCR)
 
-## Subscription Plans & Feature Gating (Updated 2026-03-14)
+## What's Been Implemented
+### Core Features (Complete)
+- Three-tier subscription: Starter ($29), Professional ($79), Enterprise ($199)
+- Full RBAC: Super Admin, Admin, Collections, Viewer roles
+- Client management, loan creation, payment tracking
+- Device lock/unlock (Standard + Device Owner modes)
+- Push notifications via FCM
+- Document vault with encryption
+- Reports & analytics with PDF/CSV export
+- GPS location tracking
+- In-app messaging (Telegram/WhatsApp integration)
+- Stripe payment processing
+- Bank statement OCR (AI-powered, Enterprise)
+- Credit scoring & risk assessment
+- Loan restructuring
+- Automated payment reminders & late fees
+- Session management with remote revocation
+- Audit logging
 
-### Plan Hierarchy
-- **Starter** (level 0): Up to 25 clients, Push notifications, Basic analytics dashboard, Email reminders, Loan calculator
-- **Professional** (level 1, replaces "Business"): Up to 200 clients, Everything in Starter + Device lock & unlock, Client messaging, PDF contract generation, Automated payment scheduling, Auto-lock after grace period, Late fee automation, Team management (3 members), GPS location tracking, Advanced reports (PDF & CSV), Loan plans, Collection trends, Loan restructure
-- **Enterprise** (level 2): Unlimited clients, Everything in Professional + Unlimited team members, QR provisioning, Device Owner mode, NFC provisioning, Bank statement OCR, Document vault, Stripe payment integration, Scheduled email reports, Portfolio health (NPA), Risk score tracking, Daily digest mail, Session management, Role-based permissions, Credit scoring system, Bulk import/export, Full REST API access, Priority support & SLA
-- **Custom** (level 3): Super admin access - all features
+### Security Features (Complete)
+- 8-permission monitoring on client device
+- Tamper detection: Full-screen alert + push notification on first detection
+- Data wipe on confirmed tampering (permission revocation or admin mode deactivation)
+- Screenshot blocking, reboot detection, offline enforcement
+- Status bar blocking when locked
 
-### Backend Gating
-- Centralized plan checking in `backend/utils/plan_gating.py`
-- `check_plan_access(admin_id, feature)` raises 403 for unauthorized access
-- `GET /api/admin/feature-access` endpoint for frontend to query
-- Applied to all premium route endpoints
-- Both "business" and "professional" supported at level 1 for backward compatibility
+### User Management Scoping (v1.2.4 - March 14, 2026)
+- Admins can only see/manage users they created (`created_by` field)
+- Super admins can see and manage all users in the enterprise
+- Role definitions updated to handle both naming conventions (admin/full_admin, superadmin/super_admin)
+- Delete/update operations enforce created_by ownership for non-super admins
 
-### Frontend Gating
-- `useEnterpriseAccess` hook with `canAccess(feature)` function and `hasProfessional` alias
-- `EnterpriseGate` component with `requiredPlan` and `featureKey` props (supports 'professional' | 'business' | 'enterprise')
-- Features tab shows plan badges (Professional/Enterprise) on premium features
-- Plan indicator displays "Professional" for both "business" and "professional" DB values
+### Asset Generation (Complete)
+- PDF user manuals with AI-generated screenshots:
+  - Admin App Manual (20 pages, 4 screenshots)
+  - Client App Manual (10 pages, 2 screenshots)
+  - Web Portal Manual (11 pages, 2 screenshots)
+- Email signature and auto-reply HTML templates
+- Download endpoints: `/api/download/manual/{admin|client|portal}`
 
-## Client App Permission Locking (Updated 2026-03-14)
-- When `uninstall_allowed` is false AND a permission is already granted, the permission card is disabled (opacity: 0.5, non-interactive)
-- Applied to ALL 8 permissions: battery, overlay, autoStart, accessibility, location, notification, usageStats, notificationListener
-- Tamper detection already in place shows data wipe warning if permissions are revoked via system settings
+## Current Version
+- v1.2.4, Build #25
+- Client APK build: `21e386f1-f167-4333-affe-909c8484d36f`
+- Admin APK build: `7d8ec299-e7ad-496e-9e64-f5f55abf1177`
 
-## Website (Updated 2026-03-14)
-- **Home (index.html)**: Core features section + Full feature list (18 cards) + Security section + Integrations row + CTA
-- **Pricing (pricing.html)**: 3 tiers - Starter ($29/mo), Professional ($79/mo), Enterprise ($199/mo) with detailed feature lists + FAQ
-- **How It Works (how-it-works.html)**: 6-step walkthrough + 9 platform capability cards
-- **Download**: `https://api.paylock.pro/api/download/website` or preview URL equivalent
+## Key API Endpoints
+- `POST /api/admin/login` - Admin authentication
+- `POST /api/admin/register` - Register (first user = super admin)
+- `POST /api/team/members` - Add team member
+- `GET /api/team/members` - List team members (scoped by role)
+- `PUT /api/team/members/{id}` - Update member
+- `DELETE /api/team/members/{id}` - Remove member
+- `GET /api/download/manual/{type}` - Download PDF manuals
 
-## All Implemented Features
+## Database
+- MongoDB Atlas: `mongodb+srv://...@paylock.fgtu4o7.mongodb.net/`
+- DB Name: `paylock`
+- Key collections: `admins`, `admin_tokens`, `clients`, `loans`, `payments`
 
-### Core (Starter)
-- Client management, Loan management, Payments & EMI tracking
-- Push notifications, Email reminders, Calculator
+## Deployment
+- Production VPS: User's server with SSH access
+- Website: `/opt/paylock/paylockpro-website/`
+- Backend deployed via supervisor
 
-### Professional Features
-- Device lock & unlock, Client messaging (Telegram, WhatsApp)
-- PDF contract generation, Automated payment scheduling
-- Auto-lock after grace period, Late fee automation
-- Team management (3 members), GPS location tracking
-- Advanced reports (PDF & CSV), Loan plans, Collection trends, Loan restructure
-
-### Enterprise Features
-- Unlimited team members, QR provisioning, Device Owner mode, NFC provisioning
-- Bank statement OCR (AI), Document vault, Stripe payment integration
-- Scheduled email reports, Portfolio health (NPA), Risk score tracking
-- Daily digest mail, Session management, Role-based permissions
-- Credit scoring system, Bulk import/export, REST API access
-- Comparative analytics, Audit log, Revenue forecasting, Tamper detection, Screenshot block
-
-## Builds & Deployments
-- **Admin APK v1.2.0**: https://expo.dev/artifacts/eas/h8xg5L53LRTMTEpSVDSqve.apk
-- **Client APK v1.2.0**: https://expo.dev/artifacts/eas/r96RMTH1gXzRUxZnmdXauj.apk
-- **Website ZIP**: `/app/paylockpro-website.zip` + available at download endpoint
-- **Backend**: Deployed to VPS (37.148.202.159), service running
-- **Website download**: `https://api.paylock.pro/api/download/website`
-
-## Test Reports
-- `/app/test_reports/iteration_73.json` - Feature gating: 39/39 passed (100%)
-- `/app/test_reports/iteration_76.json` - Permissions + sessions + vault: 17/17 passed (100%)
-
-## Permission Model (Updated 2026-03-14)
-- **Super Admin**: Can create admins + users, manage all plans, delete any non-super account
-- **Admin** (role=admin/full_admin): Can create users only, manage user plans, delete user-level accounts
-- **Users** (viewer/collections): Cannot create, manage plans, or delete anyone
-- Plan management: `PUT /api/admin/{id}/plan?admin_token=TOKEN&plan=PLAN`
-- Frontend: Settings page shows user management for admins+, hides "Admin" role toggle for non-super admins, shows plan change button per user
-
-## Key Files
-- `backend/utils/plan_gating.py` - Feature-to-plan mapping and access checks
-- `backend/routes/admin.py` - Feature access endpoint
-- `frontend/src/hooks/useEnterpriseAccess.ts` - Frontend plan hook
-- `frontend/src/components/EnterpriseGate.tsx` - Plan gate component
-- `frontend/app/admin/(tabs)/features.tsx` - Features tab with plan badges
-- `frontend/app/client/home.tsx` - Client app with permission locking
-- `paylockpro-website/` - Static website (pricing, home, how-it-works, contact)
-
-## 3rd Party Integrations
-- MongoDB Atlas, Stripe (Live), APScheduler, Resend, Chart.js, Expo/EAS, Firebase/FCM, Emergent LLM Key (AI Vision OCR)
+## Prioritized Backlog
+- P0: Monitor and deliver APK builds (client + admin)
+- P1: Final user verification on device
+- P2: Stabilization phase - no new features planned

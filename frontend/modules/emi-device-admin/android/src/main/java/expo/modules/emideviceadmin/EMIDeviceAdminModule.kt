@@ -1544,6 +1544,25 @@ class EMIDeviceAdminModule : Module() {
                 promise.resolve("error: ${e.message}")
             }
         }
+
+        AsyncFunction("wipeData") { promise: Promise ->
+            try {
+                val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+                val adminComponent = ComponentName(context, EMIDeviceAdminReceiver::class.java)
+                
+                if (!dpm.isAdminActive(adminComponent)) {
+                    promise.resolve("not_admin")
+                    return@AsyncFunction
+                }
+                
+                Log.w(TAG, "WIPE DATA: Initiating factory reset due to tamper detection")
+                dpm.wipeData(0)
+                promise.resolve("success")
+            } catch (e: Exception) {
+                Log.e(TAG, "wipeData error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
     }
 
     // ===================== IMMERSIVE MODE HELPERS =====================

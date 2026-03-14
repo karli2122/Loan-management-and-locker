@@ -16,13 +16,16 @@ router = APIRouter(prefix="/api/team", tags=["team"])
 
 ROLES = {
     "super_admin": {"label": "Super Admin", "permissions": ["all"]},
+    "superadmin": {"label": "Super Admin", "permissions": ["all"]},
     "full_admin": {"label": "Full Admin", "permissions": ["clients", "loans", "payments", "reminders", "reports", "devices", "contracts", "schedules", "documents", "import", "settings", "team"]},
+    "admin": {"label": "Admin", "permissions": ["clients", "loans", "payments", "reminders", "reports", "devices", "contracts", "schedules", "documents", "import", "settings", "team"]},
     "collections": {"label": "Collections", "permissions": ["clients", "loans", "payments", "reminders", "contracts"]},
     "viewer": {"label": "View Only", "permissions": ["clients_read", "reports_read", "loans_read"]},
+    "user": {"label": "User", "permissions": ["clients_read", "reports_read", "loans_read"]},
 }
 
-ADMIN_ROLES = {"super_admin", "full_admin"}
-USER_ROLES = {"collections", "viewer"}
+ADMIN_ROLES = {"super_admin", "superadmin", "full_admin", "admin"}
+USER_ROLES = {"collections", "viewer", "user"}
 
 
 def hash_password(password: str) -> str:
@@ -99,8 +102,8 @@ async def add_team_member(admin_token: str = Query(...), data: dict = Body(...))
     is_super = admin.get("is_super_admin", False)
     admin_role = admin.get("role", "viewer")
 
-    # At minimum, need to be full_admin or super_admin to create members
-    if not is_super and admin_role not in ("full_admin", "super_admin"):
+    # At minimum, need to be an admin-level role to create members
+    if not is_super and admin_role not in ADMIN_ROLES:
         return JSONResponse(status_code=403, content={"error": "Insufficient permissions to manage team"})
 
     username = data.get("username", "").strip()
@@ -152,8 +155,16 @@ async def list_team_members(admin_token: str = Query(...)):
     if not admin:
         return JSONResponse(status_code=404, content={"error": "Admin not found"})
 
+    is_super = admin.get("is_super_admin", False)
     enterprise_id = admin.get("enterprise_id") or admin_id
-    query = {"$or": [{"enterprise_id": enterprise_id}, {"id": enterprise_id}]}
+
+    if is_super:
+        # Super admins see everyone in the enterprise
+        query = {"$or": [{"enterprise_id": enterprise_id}, {"id": enterprise_id}]}
+    else:
+        # Regular admins only see themselves + users they created
+        query = {"$or": [{"created_by": admin_id}, {"id": admin_id}]}
+
     members = await db.admins.find(query, {"_id": 0, "password_hash": 0, "password": 0}).sort("created_at", -1).to_list(100)
     for m in members:
         m["role_label"] = ROLES.get(m.get("role", "viewer"), {}).get("label", m.get("role", "Unknown"))
@@ -174,7 +185,7 @@ async def update_team_member(member_id: str, admin_token: str = Query(...), data
     is_super = admin.get("is_super_admin", False)
     admin_role = admin.get("role", "viewer")
 
-    if not is_super and admin_role not in ("full_admin", "super_admin"):
+    if not is_super and admin_role not in ADMIN_ROLES:
         return JSONResponse(status_code=403, content={"error": "Insufficient permissions"})
 
     target = await db.admins.find_one({"id": member_id}, {"_id": 0})
@@ -185,6 +196,10 @@ async def update_team_member(member_id: str, admin_token: str = Query(...), data
     if not is_super and target.get("role") in ADMIN_ROLES:
         return JSONResponse(status_code=403, content={"error": "Only super admins can modify admin accounts"})
 
+    # Non-super admins can only manage users they created
+    if not is_super and target.get("created_by") != admin_id:
+        return JSONResponse(status_code=403, content={"error": "You can only manage users you created"})
+
     updates = {}
     if "role" in data and data["role"] in ROLES:
         new_role = data["role"]
@@ -192,7 +207,7 @@ async def update_team_member(member_id: str, admin_token: str = Query(...), data
             return JSONResponse(status_code=403, content={"error": "Only super admins can assign admin roles"})
         updates["role"] = new_role
         updates["permissions"] = ROLES[new_role]["permissions"]
-        updates["is_super_admin"] = new_role == "super_admin"
+        updates["is_super_admin"] = new_role in ("super_admin", "superadmin")
 
     # Plan management
     if "subscription_plan" in data:
@@ -221,7 +236,7 @@ async def remove_team_member(member_id: str, admin_token: str = Query(...)):
     is_super = admin.get("is_super_admin", False) if admin else False
     admin_role = admin.get("role", "viewer") if admin else "viewer"
 
-    if not is_super and admin_role not in ("full_admin", "super_admin"):
+    if not is_super and admin_role not in ADMIN_ROLES:
         return JSONResponse(status_code=403, content={"error": "Insufficient permissions"})
 
     if member_id == admin_id:
@@ -230,6 +245,10 @@ async def remove_team_member(member_id: str, admin_token: str = Query(...)):
     target = await db.admins.find_one({"id": member_id}, {"_id": 0})
     if not is_super and target and target.get("role") in ADMIN_ROLES:
         return JSONResponse(status_code=403, content={"error": "Only super admins can remove admin accounts"})
+
+    # Non-super admins can only delete users they created
+    if not is_super and target and target.get("created_by") != admin_id:
+        return JSONResponse(status_code=403, content={"error": "You can only delete users you created"})
 
     r = await db.admins.delete_one({"id": member_id})
     return {"deleted": r.deleted_count > 0}

@@ -204,10 +204,7 @@ async def download_manual(manual_type: str):
     fpath = os.path.join(MANUALS_DIR, fname)
     if not os.path.isfile(fpath):
         return JSONResponse(status_code=404, content={"error": "Manual not found. Run generation script first."})
-    with open(fpath, "rb") as f:
-        content = f.read()
-    return Response(content=content, media_type="application/pdf",
-                    headers={"Content-Disposition": f"attachment; filename={fname}"})
+    return FileResponse(fpath, media_type="application/pdf", filename=fname)
 
 
 @app.get("/api/download/email/{asset_type}")
