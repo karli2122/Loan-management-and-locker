@@ -59,6 +59,7 @@ export default function ClientDetails() {
   const [refreshing, setRefreshing] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
+  const [adminToken, setAdminToken] = useState<string>('');
 
   // Modal visibility
   const [warningModal, setWarningModal] = useState(false);
@@ -133,6 +134,7 @@ export default function ClientDetails() {
         router.back();
         return;
       }
+      setAdminToken(token);
       const response = await fetch(`${API_URL}/api/clients/${id}?admin_token=${token}`);
       if (response.status === 401) { handleAuthFailure(); return; }
       if (!response.ok) throw new Error('Client not found');

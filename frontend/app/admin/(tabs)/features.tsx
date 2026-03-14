@@ -78,7 +78,7 @@ export default function FeaturesTab() {
         { key: 'reports', icon: 'bar-chart', color: '#06B6D4', titleKey: 'reports', descKey: 'financialAnalyticsReports', route: '/admin/reports', requiredPlan: 'starter' },
         { key: 'bank_ocr', icon: 'document-text', color: '#10B981', titleKey: 'bankStatementAnalyzer', descKey: 'aipoweredIncomeexpenseAnalysis', route: '/admin/bank-analyzer', featureGateKey: 'bank_ocr', requiredPlan: 'enterprise', testId: 'bank-analyzer-link' },
         { key: 'audit_log', icon: 'shield-checkmark', color: '#8B5CF6', titleKey: 'auditLog', descKey: 'trackAllAdminActions', route: '/admin/audit-log', featureGateKey: 'audit_log', requiredPlan: 'enterprise', testId: 'audit-log-link' },
-        { key: 'revenue_forecast', icon: 'trending-up', color: '#F97316', titleKey: 'revenueForecast', descKey: 'forecastFutureCollections', route: '/admin/reports', featureGateKey: 'revenue_forecast', requiredPlan: 'enterprise', testId: 'revenue-forecast-link' },
+        { key: 'revenue_forecast', icon: 'trending-up', color: '#F97316', titleKey: 'revenueForecast', descKey: 'forecastFutureCollections', route: '/admin/revenue-forecast', featureGateKey: 'revenue_forecast', requiredPlan: 'enterprise', testId: 'revenue-forecast-link' },
       ],
     },
     {
@@ -88,7 +88,6 @@ export default function FeaturesTab() {
         { key: 'calculator', icon: 'calculator', color: '#14B8A6', titleKey: 'loanCalculator', descKey: 'calculateLoanPayments', route: '/admin/calculator', requiredPlan: 'starter' },
         { key: 'bulk_import', icon: 'cloud-upload', color: '#3B82F6', titleKey: 'bulkImport', descKey: 'importClientsLoansFromCsv', route: '/admin/bulk-import', featureGateKey: 'bulk_import', requiredPlan: 'business', testId: 'bulk-import-link' },
         { key: 'document_vault', icon: 'folder-open', color: '#06B6D4', titleKey: 'documentVault', descKey: 'secureClientDocumentStorage', route: '/admin/documents', featureGateKey: 'document_vault', requiredPlan: 'business', testId: 'documents-link' },
-        { key: 'loan_restructure', icon: 'swap-horizontal', color: '#F59E0B', titleKey: 'loanRestructuring', descKey: 'modifyLoanTermsAndSchedules', route: '/admin/client-details', featureGateKey: 'loan_restructure', requiredPlan: 'business', testId: 'restructure-link' },
       ],
     },
     {
@@ -103,7 +102,7 @@ export default function FeaturesTab() {
       items: [
         { key: 'settings', icon: 'settings', color: '#8B5CF6', titleKey: 'settings', descKey: 'userManagementSettings', route: '/admin/settings', requiredPlan: 'starter' },
         { key: 'role_permissions', icon: 'people', color: '#2563EB', titleKey: 'teamManagement', descKey: 'manageTeamRolesPermissions', route: '/admin/team', featureGateKey: 'role_permissions', requiredPlan: 'enterprise', testId: 'team-link' },
-        { key: 'session_management', icon: 'key', color: '#EF4444', titleKey: 'sessionManagement', descKey: 'viewAndRevokeActiveSessions', route: '/admin/settings', featureGateKey: 'session_management', requiredPlan: 'enterprise', testId: 'sessions-link' },
+        { key: 'session_management', icon: 'key', color: '#EF4444', titleKey: 'sessionManagement', descKey: 'viewAndRevokeActiveSessions', route: '/admin/session-management', featureGateKey: 'session_management', requiredPlan: 'enterprise', testId: 'sessions-link' },
       ],
     },
   ];

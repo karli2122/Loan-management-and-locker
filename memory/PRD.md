@@ -10,7 +10,7 @@ Full-stack loan management application with FastAPI backend, React Native mobile
 - **Web Portal**: Vanilla JS served from `/api/portal` on the backend
 - **Website**: Static HTML at `/app/paylockpro-website/` (zipped at `/app/paylockpro-website.zip`)
 
-## Subscription Plans & Feature Gating (Implemented)
+## Subscription Plans & Feature Gating (Complete)
 
 ### Plan Hierarchy
 - **Starter** (level 0): Basic loan management, payments, client management
@@ -20,58 +20,55 @@ Full-stack loan management application with FastAPI backend, React Native mobile
 
 ### Backend Gating
 - Centralized plan checking in `backend/utils/plan_gating.py`
-- `check_plan_access(admin_id, feature)` raises AuthorizationException with 403 for unauthorized access
-- `get_accessible_features(admin_id)` returns full feature map for frontend
+- `check_plan_access(admin_id, feature)` raises 403 for unauthorized access
 - `GET /api/admin/feature-access` endpoint for frontend to query
-- Applied to all premium route endpoints (analytics, bulk_import, restructuring, document_vault, sessions, forecasting, audit_logs, bank_statements, team)
+- Applied to all premium route endpoints
 
 ### Frontend Gating
-- `useEnterpriseAccess` hook updated for 3-tier plan support (returns `plan`, `hasBusiness`, `hasEnterprise`, `canAccess()`)
-- `EnterpriseGate` component accepts `requiredPlan` and `featureKey` props
+- `useEnterpriseAccess` hook with `canAccess(feature)` function
+- `EnterpriseGate` component with `requiredPlan` and `featureKey` props
 - Features tab shows plan badges (Business/Enterprise) on premium features
-- Locked features show lock icon and prompt to upgrade
-- All screen-level gates updated with correct `requiredPlan` and `featureKey`
+
+## Bug Fixes (Latest Session)
+1. **Contact email**: Changed from `paylockpro@gmail.com` to `support@paylock.pro` in settings
+2. **Client details crash**: Added missing `adminToken` state variable
+3. **Loan restructuring**: Removed from features tab (only accessible via client details)
+4. **Revenue forecasting**: Created dedicated `/admin/revenue-forecast` page (was routing to reports)
+5. **Session management**: Created dedicated `/admin/session-management` page with search bar
+6. **Payment reminders**: Added search bar to filter by name/phone
+7. **Repeat customers metric**: Fixed backend calculation (intersection of active + paid loans)
+8. **Monthly interest earned**: Fixed calculation to include interest from active loan payments
+9. **Import path errors**: Fixed 3 broken imports in `src/components/admin/` (LoanRestructure/DocumentVault/SessionManagement modals)
+10. **Website pricing**: Updated from "Professional" to "Business" tier with correct feature lists
 
 ## All Implemented Features
 
-### Infrastructure
-- VPS deployment with Nginx reverse proxy + systemd service
-- Custom domain `api.paylock.pro` with Let's Encrypt SSL
-- Firebase Cloud Messaging for push notifications
-- Document vault storage on VPS `/opt/paylock/documents/`
+### Core (Starter)
+- Client management, Loan management, Payments & EMI tracking
+- Messaging (Telegram, WhatsApp), Reports (PDF & CSV), Notifications
+- Contract generation, Loan plans, Calculator
 
-### Bug Fixes (All Deployed)
-- Device count: enterprise-scoped `/api/stats`
-- Tamper detection: two-step warning + lock flow, real permission values
-- Chat date grouping, warning auto-dismiss, admin chat UI tweaks
+### Business Features
+- Collection analytics & trends, Bulk CSV import (clients & loans)
+- Loan restructuring tools, Client document vault
+- Device lock & unlock, Automated payment reminders
+- Auto-lock after grace period, Daily digest emails
 
-### Feature Set
+### Enterprise Features
+- RBAC (super_admin, full_admin, collections, viewer)
+- Session management (view/revoke), Revenue forecasting
+- Full audit log, Bank statement analyzer (AI)
+- Portfolio health & NPA tracking, Comparative analytics
+- Risk score history tracking
 
-1. **Audit Log System** - Log all admin actions, queryable with filters
-2. **Automated Payment Reminders** - Hourly scheduler, configurable schedule
-3. **Daily Digest Email** - Overdue, tamper alerts, upcoming due dates via Resend
-4. **Screenshot/Screen Recording Block** - `expo-screen-capture` on client app
-5. **Revenue Forecasting** - Expected vs likely collections, weekly forecast
-6. **Loan Restructuring** - Modify EMI/tenure/rate with full history tracking
-7. **Role-Based Permissions** - super_admin, full_admin, collections, viewer
-8. **Session Management** - View/revoke active admin sessions
-9. **Analytics Suite** - Collection trends, risk score history, portfolio health, comparative analytics
-10. **Client Document Vault** - Upload/list/download/delete documents
-11. **Bulk Loan Import** - CSV upload with client matching
-12. **Permission Enforcement** - Backend middleware on key routes
-13. **Risk Score Auto-Tracking** - Logs score changes on payment events
-14. **Feature Gating** - Subscription-based access control (starter/business/enterprise)
+## Builds & Deployments
+- **Admin APK**: https://expo.dev/accounts/karli1987/projects/loans/builds/dc6e375c-0e15-4f93-9109-2d540910fdfc
+- **Client APK**: https://expo.dev/accounts/karli1987/projects/client/builds/e833da39-eb23-4d78-b342-c2bcee3f3e2c
+- **Website ZIP**: `/app/paylockpro-website.zip` + available at `https://api.paylock.pro/api/download/paylockpro-website.zip`
+- **Backend**: Deployed to VPS (37.148.202.159), service running
 
-### Frontend UIs
-- **LoanRestructureModal** - Restructure form + history in client-details
-- **DocumentVaultModal** - Upload/list/delete documents in client-details
-- **SessionManagementModal** - View/revoke sessions in admin settings
-- **Dashboard Analytics** - Portfolio health + collection trends charts
-- **Features Tab** - Plan badges, locked/unlocked state, upgrade prompts
-
-## Translations
-- All new feature strings translated to: en, et, no, sv, da, fi, lv, lt, de, cs, pl, es, fr, it
-- Translation keys in `frontend/src/context/LanguageContext.tsx`
+## Test Reports
+- `/app/test_reports/iteration_73.json` - Feature gating: 39/39 passed (100%)
 
 ## Key Files
 - `backend/utils/plan_gating.py` - Feature-to-plan mapping and access checks
@@ -79,15 +76,8 @@ Full-stack loan management application with FastAPI backend, React Native mobile
 - `frontend/src/hooks/useEnterpriseAccess.ts` - Frontend plan hook
 - `frontend/src/components/EnterpriseGate.tsx` - Plan gate component
 - `frontend/app/admin/(tabs)/features.tsx` - Features tab with plan badges
-- `frontend/src/context/LanguageContext.tsx` - All translations
-
-## Test Reports
-- `/app/test_reports/iteration_73.json` - Feature gating tests: 39/39 passed (100%)
-
-## Upcoming Tasks
-- Build new Admin and Client APKs after feature gating is verified on devices
-- Deploy backend changes to production VPS
-- Additional UI/UX polish for new features
+- `frontend/app/admin/session-management.tsx` - Dedicated session management page
+- `frontend/app/admin/revenue-forecast.tsx` - Dedicated revenue forecast page
 
 ## 3rd Party Integrations
 - MongoDB Atlas, Stripe (Live), APScheduler, Resend, Chart.js, Expo/EAS, Firebase/FCM, Emergent LLM Key (AI Vision OCR)

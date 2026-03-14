@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Alert,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -48,6 +49,7 @@ export default function PaymentReminders() {
   const [refreshing, setRefreshing] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendingClient, setSendingClient] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchReminders = async () => {
     try {
@@ -252,19 +254,44 @@ export default function PaymentReminders() {
         </View>
       )}
 
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={18} color="#64748B" />
+        <TextInput
+          style={styles.searchInput}
+          placeholder={t('searchClients') || 'Search by name or phone...'}
+          placeholderTextColor="#64748B"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          data-testid="reminder-search-input"
+        />
+        {searchQuery !== '' && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={18} color="#64748B" />
+          </TouchableOpacity>
+        )}
+      </View>
+
       <ScrollView
         style={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />}
       >
-        {reminders.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="checkmark-circle" size={64} color="#10B981" />
-            <Text style={styles.emptyText}>
-              {t('noPendingReminders')}
-            </Text>
-          </View>
-        ) : (
-          reminders.map((reminder) => (
+        {(() => {
+          const filtered = reminders.filter(r => {
+            if (!searchQuery) return true;
+            const q = searchQuery.toLowerCase();
+            return (r.client_name || '').toLowerCase().includes(q) || (r.phone || '').includes(q);
+          });
+          if (filtered.length === 0) {
+            return (
+              <View style={styles.emptyContainer}>
+                <Ionicons name={searchQuery ? 'search-outline' : 'checkmark-circle'} size={64} color={searchQuery ? '#334155' : '#10B981'} />
+                <Text style={styles.emptyText}>
+                  {searchQuery ? (t('noResultsFound') || 'No results found') : t('noPendingReminders')}
+                </Text>
+              </View>
+            );
+          }
+          return filtered.map((reminder) => (
             <View key={reminder.client_id} style={styles.reminderCard}>
               <View style={styles.reminderHeader}>
                 <View style={styles.clientInfo}>
@@ -328,8 +355,8 @@ export default function PaymentReminders() {
                 )}
               </TouchableOpacity>
             </View>
-          ))
-        )}
+          ));
+        })()}
       </ScrollView>
     </SafeAreaView>
   );
@@ -355,6 +382,25 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 8,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#152035',
+    borderRadius: 10,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#1E3050',
+  },
+  searchInput: {
+    flex: 1,
+    color: '#F8FAFC',
+    fontSize: 14,
+    marginLeft: 8,
+    padding: 0,
   },
   headerTitle: {
     flex: 1,

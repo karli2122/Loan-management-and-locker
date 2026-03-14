@@ -206,11 +206,13 @@ async def get_clients_report(admin_token: str = Query(...)):
     now = datetime.utcnow()
     first_of_month = datetime(now.year, now.month, 1)
 
-    # Fetch repeat customers: clients that appear in paid_loans (completed a loan before)
+    # Repeat customers = clients who currently have an active loan AND completed at least one before
+    active_client_ids = {c["id"] for c in clients}
     paid_loan_client_ids = set()
     async for pl in db.paid_loans.find({"admin_id": admin_id}, {"_id": 0, "client_id": 1}):
         if pl.get("client_id"):
             paid_loan_client_ids.add(pl["client_id"])
+    repeat_client_ids = active_client_ids & paid_loan_client_ids
 
     on_time_list = []
     at_risk_list = []
@@ -255,7 +257,7 @@ async def get_clients_report(admin_token: str = Query(...)):
             "defaulted_clients": len(defaulted_list),
             "completed_clients": len(completed_list),
             "new_clients_this_month": new_this_month,
-            "repeat_customers": len(paid_loan_client_ids),
+            "repeat_customers": len(repeat_client_ids),
             "total_clients": len(clients),
         },
         "details": {
@@ -574,8 +576,30 @@ async def get_dashboard_analytics(
                 month_key = pd_dt.strftime("%Y-%m")
                 monthly_revenue[month_key] = monthly_revenue.get(month_key, 0) + (ph.get("amount", 0) or 0)
 
-    # Monthly interest: use paid_loans archived_at for interest allocation
+    # Monthly interest: calculate from payments based on client interest rates
+    # For each payment, estimate the interest portion based on the client's rate
     monthly_interest = {}
+    client_rates = {}
+    for c in clients:
+        rate = c.get("interest_rate", 0) or 0
+        if rate > 0:
+            client_rates[c["id"]] = rate / 100.0 / 12  # monthly rate
+
+    # Interest from active loan payments
+    for payment in payments_all:
+        payment_date = payment.get("payment_date")
+        if not payment_date or payment_date < six_months_ago:
+            continue
+        client_id = payment.get("client_id")
+        amount = payment.get("amount", 0) or 0
+        monthly_rate = client_rates.get(client_id, 0)
+        if monthly_rate > 0 and amount > 0:
+            # Approximate interest portion of each payment
+            interest_portion = amount * (monthly_rate / (1 + monthly_rate)) if monthly_rate < 1 else amount * 0.1
+            month_key = payment_date.strftime("%Y-%m")
+            monthly_interest[month_key] = monthly_interest.get(month_key, 0) + interest_portion
+
+    # Also add interest from archived/paid loans
     for pl in all_paid_loans:
         interest = pl.get("total_interest", 0) or 0
         if interest <= 0:
