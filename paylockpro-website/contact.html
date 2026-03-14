@@ -56,22 +56,23 @@
       <div class="contact-form">
         <h3 style="font-size:20px;font-weight:700;margin-bottom:24px">Send Us a Message</h3>
         <form id="contactForm" onsubmit="handleContact(event)">
-          <div class="form-group"><label>Full Name</label><input type="text" placeholder="Your name" required></div>
-          <div class="form-group"><label>Email</label><input type="email" placeholder="your@email.com" required></div>
+          <div class="form-group"><label>Full Name</label><input type="text" name="name" placeholder="Your name" required></div>
+          <div class="form-group"><label>Email</label><input type="email" name="email" placeholder="your@email.com" required></div>
           <div class="form-group"><label>Subject</label>
-            <select required>
+            <select name="subject" required>
               <option value="">Select a topic</option>
-              <option>General Inquiry</option>
-              <option>Sales / Pricing</option>
-              <option>Technical Support</option>
-              <option>Partnership</option>
-              <option>Request a Demo</option>
+              <option value="General Inquiry">General Inquiry</option>
+              <option value="Sales / Pricing">Sales / Pricing</option>
+              <option value="Technical Support">Technical Support</option>
+              <option value="Partnership">Partnership</option>
+              <option value="Request a Demo">Request a Demo</option>
             </select>
           </div>
-          <div class="form-group"><label>Message</label><textarea placeholder="Tell us how we can help..." required></textarea></div>
+          <div class="form-group"><label>Message</label><textarea name="message" placeholder="Tell us how we can help..." required></textarea></div>
           <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center"><i class="fas fa-paper-plane"></i> Send Message</button>
         </form>
         <p id="contactSuccess" style="display:none;text-align:center;color:var(--accent);margin-top:16px;font-weight:600"><i class="fas fa-check-circle"></i> Message sent! We'll get back to you within 24 hours.</p>
+        <p id="contactError" style="display:none;text-align:center;color:#EF4444;margin-top:16px;font-weight:600"></p>
       </div>
     </div>
   </div>
@@ -92,16 +93,40 @@ async function handleContact(e){
   e.preventDefault();
   var f=e.target;
   var btn=f.querySelector('button[type="submit"]');
+  var errEl=document.getElementById('contactError');
+  errEl.style.display='none';
   btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Sending...';
+  var payload={
+    name:f.name.value,
+    email:f.email.value,
+    subject:f.subject.value,
+    message:f.message.value
+  };
+  console.log('Sending contact form:', payload);
   try{
     var res=await fetch('https://api.paylock.pro/api/contact',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({name:f.querySelector('input[type="text"]').value,email:f.querySelector('input[type="email"]').value,subject:f.querySelector('select').value,message:f.querySelector('textarea').value})
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
     });
     var d=await res.json();
-    if(d.success){f.style.display='none';document.getElementById('contactSuccess').style.display='block';}
-    else{alert('Failed to send: '+(d.error||'Unknown error'));btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i> Send Message';}
-  }catch(err){alert('Network error. Please try again.');btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i> Send Message';}
+    console.log('Response:', d);
+    if(d.success){
+      f.style.display='none';
+      document.getElementById('contactSuccess').style.display='block';
+    } else {
+      errEl.textContent='Failed to send: '+(d.error||'Unknown error');
+      errEl.style.display='block';
+      btn.disabled=false;
+      btn.innerHTML='<i class="fas fa-paper-plane"></i> Send Message';
+    }
+  }catch(err){
+    console.error('Contact form error:', err);
+    errEl.textContent='Network error: '+err.message+'. Please try emailing support@paylock.pro directly.';
+    errEl.style.display='block';
+    btn.disabled=false;
+    btn.innerHTML='<i class="fas fa-paper-plane"></i> Send Message';
+  }
 }
 </script>
 </body>
