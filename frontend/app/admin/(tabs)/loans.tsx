@@ -8,6 +8,7 @@ import {
   TextInput,
   RefreshControl,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -16,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCurrency } from '../../../src/context/CurrencyContext';
 import { useLanguage } from '../../../src/context/LanguageContext';
 import { useTheme } from '../../../src/context/ThemeContext';
+import { useEnterpriseAccess } from '../../../src/hooks/useEnterpriseAccess';
 import API_URL from '../../../src/constants/api';
 
 
@@ -58,6 +60,7 @@ export default function LoansTab() {
   const { language, t } = useLanguage();
   const { formatAmount, currencySymbol } = useCurrency();
   const { colors } = useTheme();
+  const { plan, canAccess, loading: planLoading } = useEnterpriseAccess();
   const [clients, setClients] = useState<Client[]>([]);
   const [paidLoans, setPaidLoans] = useState<PaidLoan[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,6 +68,18 @@ export default function LoansTab() {
   const [filter, setFilter] = useState<string | undefined>(undefined);
   const [tab, setTab] = useState<'given' | 'archived'>('given');
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'today' | 'tomorrow' | 'next3days'>('all');
+
+  // Helper to handle feature locked alert
+  const showFeatureLockedAlert = (featureName: string, requiredPlan: string) => {
+    Alert.alert(
+      `${requiredPlan.charAt(0).toUpperCase() + requiredPlan.slice(1)} Feature`,
+      `${featureName} requires the ${requiredPlan.charAt(0).toUpperCase() + requiredPlan.slice(1)} plan or higher. Would you like to upgrade?`,
+      [
+        { text: t('cancel'), style: 'cancel' },
+        { text: 'Upgrade', onPress: () => router.push('/admin/settings') },
+      ]
+    );
+  };
 
   // Derive filter from URL params directly
   const filterParam = params?.filter?.toString().toLowerCase() || undefined;
@@ -242,7 +257,7 @@ export default function LoansTab() {
           <View style={styles.clientInfo}>
             <View style={styles.clientNameRow}>
               <Text style={[styles.clientName, { color: colors.text }]}>{item.name}</Text>
-              {item.credit_score != null && (
+              {canAccess('credit_scoring') && item.credit_score != null && (
                 <View style={[styles.creditScoreBadge, { backgroundColor: getCreditScoreColor(item.credit_score) + '20' }]}>
                   <Ionicons name="star" size={10} color={getCreditScoreColor(item.credit_score)} />
                   <Text style={[styles.creditScoreText, { color: getCreditScoreColor(item.credit_score) }]}>{item.credit_score}</Text>
@@ -351,7 +366,7 @@ export default function LoansTab() {
           <View style={styles.clientInfo}>
             <View style={styles.clientNameRow}>
               <Text style={[styles.clientName, { color: colors.text }]}>{item.client_name}</Text>
-              {item.final_credit_score != null && item.final_credit_score > 0 && (
+              {canAccess('credit_scoring') && item.final_credit_score != null && item.final_credit_score > 0 && (
                 <View style={[styles.creditScoreBadge, { backgroundColor: getCreditScoreColor(item.final_credit_score) + '20' }]}>
                   <Ionicons name="star" size={10} color={getCreditScoreColor(item.final_credit_score)} />
                   <Text style={[styles.creditScoreText, { color: getCreditScoreColor(item.final_credit_score) }]}>{item.final_credit_score}</Text>
@@ -407,12 +422,14 @@ export default function LoansTab() {
               </Text>
             </View>
             
-            <View style={[styles.nextPaymentBadge, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-              <Ionicons name="star" size={12} color="#10B981" />
-              <Text style={[styles.nextPaymentText, { color: '#10B981' }]}>
-                {t('score')}: {item.final_credit_score || 'N/A'}
-              </Text>
-            </View>
+            {canAccess('credit_scoring') && (
+              <View style={[styles.nextPaymentBadge, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                <Ionicons name="star" size={12} color="#10B981" />
+                <Text style={[styles.nextPaymentText, { color: '#10B981' }]}>
+                  {t('score')}: {item.final_credit_score || 'N/A'}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </View>

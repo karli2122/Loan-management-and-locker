@@ -22,6 +22,7 @@ import LoanRestructureModal from '../../src/components/admin/LoanRestructureModa
 import DocumentVaultModal from '../../src/components/admin/DocumentVaultModal';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { useTheme } from '../../src/context/ThemeContext';
+import { useEnterpriseAccess } from '../../src/hooks/useEnterpriseAccess';
 import API_URL from '../../src/constants/api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -50,6 +51,7 @@ export default function ClientDetails() {
   const { t, language } = useLanguage();
   const { formatAmount } = useCurrency();
   const { colors } = useTheme();
+  const { plan, canAccess, loading: planLoading } = useEnterpriseAccess();
 
   // Core state
   const [client, setClient] = useState<Client | null>(null);
@@ -715,16 +717,40 @@ export default function ClientDetails() {
 
         {/* Restructure & Documents Buttons */}
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 12, marginBottom: 16, paddingHorizontal: 16 }}>
-          <TouchableOpacity onPress={() => setRestructureModal(true)}
-            style={{ flex: 1, backgroundColor: '#1E3A5F', borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="swap-horizontal" size={18} color="#3B82F6" />
-            <Text style={{ color: '#93C5FD', fontWeight: '600', fontSize: 13, marginLeft: 6 }}>Restructure</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setDocVaultModal(true)}
-            style={{ flex: 1, backgroundColor: '#1E3A5F', borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="folder" size={18} color="#10B981" />
-            <Text style={{ color: '#A7F3D0', fontWeight: '600', fontSize: 13, marginLeft: 6 }}>Documents</Text>
-          </TouchableOpacity>
+          {canAccess('loan_restructure') ? (
+            <TouchableOpacity onPress={() => setRestructureModal(true)}
+              style={{ flex: 1, backgroundColor: '#1E3A5F', borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="swap-horizontal" size={18} color="#3B82F6" />
+              <Text style={{ color: '#93C5FD', fontWeight: '600', fontSize: 13, marginLeft: 6 }}>Restructure</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              onPress={() => Alert.alert('Professional Feature', 'Loan restructuring requires the Professional plan or higher. Would you like to upgrade?', [
+                { text: t('cancel'), style: 'cancel' },
+                { text: 'Upgrade', onPress: () => router.push('/admin/settings') },
+              ])}
+              style={{ flex: 1, backgroundColor: '#1E3A5F', borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', opacity: 0.6 }}>
+              <Ionicons name="lock-closed" size={18} color="#64748B" />
+              <Text style={{ color: '#64748B', fontWeight: '600', fontSize: 13, marginLeft: 6 }}>Restructure</Text>
+            </TouchableOpacity>
+          )}
+          {canAccess('document_vault') ? (
+            <TouchableOpacity onPress={() => setDocVaultModal(true)}
+              style={{ flex: 1, backgroundColor: '#1E3A5F', borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="folder" size={18} color="#10B981" />
+              <Text style={{ color: '#A7F3D0', fontWeight: '600', fontSize: 13, marginLeft: 6 }}>Documents</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              onPress={() => Alert.alert('Enterprise Feature', 'Document vault requires the Enterprise plan or higher. Would you like to upgrade?', [
+                { text: t('cancel'), style: 'cancel' },
+                { text: 'Upgrade', onPress: () => router.push('/admin/settings') },
+              ])}
+              style={{ flex: 1, backgroundColor: '#1E3A5F', borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', opacity: 0.6 }}>
+              <Ionicons name="lock-closed" size={18} color="#64748B" />
+              <Text style={{ color: '#64748B', fontWeight: '600', fontSize: 13, marginLeft: 6 }}>Documents</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
 

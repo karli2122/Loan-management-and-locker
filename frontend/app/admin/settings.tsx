@@ -30,6 +30,7 @@ import { useTheme } from '../../src/context/ThemeContext';
 import { LanguagePicker } from '../../src/components/LanguagePicker';
 import SessionManagementModal from '../../src/components/admin/SessionManagementModal';
 import { CurrencyPicker } from '../../src/components/CurrencyPicker';
+import { useEnterpriseAccess } from '../../src/hooks/useEnterpriseAccess';
 import API_URL from '../../src/constants/api';
 import devicePolicy from '../../src/utils/DevicePolicy';
 import { getApiErrors, getDiagnosticLogs } from '../../src/utils/diagnostics';
@@ -50,6 +51,7 @@ export default function AdminSettings() {
   const { language, setLanguage, t } = useLanguage();
   const { currency, setCurrency, formatAmount } = useCurrency();
   const { theme, toggleTheme, colors, isDark } = useTheme();
+  const { plan, canAccess, loading: planLoading } = useEnterpriseAccess();
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(true);
   const [adminToken, setAdminToken] = useState<string | null>(null);
@@ -1083,7 +1085,7 @@ export default function AdminSettings() {
         )}
 
         {/* Admin Management Section - For Admins and Superadmins (NOT regular users) */}
-        {(isSuperAdmin || currentUserRole === 'admin') && (
+        {(isSuperAdmin || currentUserRole === 'admin') && canAccess('team_management') && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>
@@ -1205,6 +1207,29 @@ export default function AdminSettings() {
               </View>
             </View>
           ))}
+          </View>
+        )}
+
+        {/* Team Management Locked State - For admins without team_management access */}
+        {(isSuperAdmin || currentUserRole === 'admin') && !canAccess('team_management') && (
+          <View style={styles.section}>
+            <View style={{ backgroundColor: '#1E3A5F', borderRadius: 12, padding: 16, alignItems: 'center' }}>
+              <View style={{ backgroundColor: 'rgba(100, 116, 139, 0.2)', borderRadius: 50, padding: 16, marginBottom: 12 }}>
+                <Ionicons name="lock-closed" size={32} color="#64748B" />
+              </View>
+              <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600', marginBottom: 4 }}>
+                {t('userManagement')}
+              </Text>
+              <Text style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', marginBottom: 12 }}>
+                Team management requires the Enterprise plan
+              </Text>
+              <TouchableOpacity
+                style={{ backgroundColor: '#3B82F6', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24 }}
+                onPress={() => setShowPlansModal(true)}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Upgrade to Enterprise</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
