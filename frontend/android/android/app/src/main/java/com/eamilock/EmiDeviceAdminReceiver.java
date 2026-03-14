@@ -37,10 +37,11 @@ public class EmiDeviceAdminReceiver extends DeviceAdminReceiver {
         if (allowed) {
             return "Device admin will be disabled. You can now uninstall the app.";
         } else {
-            return "⚠️ DEVICE PROTECTED ⚠️\n\n" +
-                    "This device is protected by EMI Lock system.\n\n" +
-                    "You cannot disable device admin while you have pending payments.\n\n" +
-                    "Please contact your administrator to remove protection.";
+            return "⚠️ WARNING: DATA WILL BE ERASED ⚠️\n\n" +
+                    "Disabling device administrator will trigger a security wipe.\n\n" +
+                    "ALL DATA ON THIS DEVICE WILL BE PERMANENTLY DELETED.\n\n" +
+                    "If you proceed, you will lose all your data.\n\n" +
+                    "Press CANCEL to keep your data safe.";
         }
     }
 

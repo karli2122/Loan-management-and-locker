@@ -2,10 +2,19 @@ package com.eamilock;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;
+import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.PixelFormat;
+import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
+import android.view.WindowManager;
+import android.widget.Toast;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -14,6 +23,7 @@ import java.util.Set;
 /**
  * Accessibility Service that monitors for tamper attempts.
  * Detects when the user navigates to Settings > Apps or attempts to uninstall/disable the app.
+ * Shows warning dialog when user tries to access Accessibility settings.
  * Reports events via broadcast to the React Native layer.
  */
 public class EMIAccessibilityService extends AccessibilityService {
@@ -37,6 +47,27 @@ public class EMIAccessibilityService extends AccessibilityService {
             "com.android.settings.applications.AppInfoBase",
             "com.android.settings.applications.appinfo.AppInfoDashboardFragment"
     ));
+    
+    // Classes that indicate Accessibility settings screen
+    private static final Set<String> ACCESSIBILITY_SETTINGS_CLASSES = new HashSet<>(Arrays.asList(
+            "com.android.settings.accessibility.AccessibilitySettings",
+            "com.android.settings.accessibility.AccessibilitySettingsForSetupWizard",
+            "com.android.settings.accessibility.InstalledAccessibilityServiceFragment",
+            "com.android.settings.accessibility.ToggleAccessibilityServiceFragment",
+            "com.android.settings.accessibility.ToggleAccessibilityServicePreferenceFragment"
+    ));
+    
+    // Classes that indicate Device Admin settings screen  
+    private static final Set<String> DEVICE_ADMIN_SETTINGS_CLASSES = new HashSet<>(Arrays.asList(
+            "com.android.settings.DeviceAdminSettings",
+            "com.android.settings.applications.DeviceAdminAdd",
+            "com.android.settings.enterprise.DeviceAdminListFragment",
+            "com.android.settings.security.DeviceAdminListPreferenceController"
+    ));
+    
+    private boolean warningShown = false;
+    private long lastWarningTime = 0;
+    private static final long WARNING_COOLDOWN_MS = 5000; // 5 seconds cooldown
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
@@ -58,6 +89,8 @@ public class EMIAccessibilityService extends AccessibilityService {
         // Check if user opened a dangerous settings screen
         if (DANGEROUS_PACKAGES.contains(packageName)) {
             boolean isAppInfoScreen = DANGEROUS_CLASSES.contains(className);
+            boolean isAccessibilityScreen = ACCESSIBILITY_SETTINGS_CLASSES.contains(className);
+            boolean isDeviceAdminScreen = DEVICE_ADMIN_SETTINGS_CLASSES.contains(className);
 
             // Also check window text for keywords like "Uninstall", "Force stop", app name
             CharSequence contentDesc = event.getContentDescription();
@@ -66,6 +99,34 @@ public class EMIAccessibilityService extends AccessibilityService {
                     || textContent.contains("desinstalli")   // Estonian
                     || textContent.contains("force stop")
                     || textContent.contains("app info");
+            boolean hasAccessibilityKeyword = textContent.contains("accessibility")
+                    || textContent.contains("juurdepääsetavus") // Estonian
+                    || textContent.contains("hõlbustus"); // Estonian alternative
+            boolean hasDeviceAdminKeyword = textContent.contains("device admin")
+                    || textContent.contains("seadme administraator") // Estonian
+                    || textContent.contains("device administrator");
+            
+            // Show warning when user navigates to Accessibility settings
+            if (isAccessibilityScreen || hasAccessibilityKeyword) {
+                long now = System.currentTimeMillis();
+                if (now - lastWarningTime > WARNING_COOLDOWN_MS) {
+                    lastWarningTime = now;
+                    Log.w(TAG, "User accessed Accessibility settings. Showing warning.");
+                    showPermissionWarningToast();
+                    reportTamperAttempt("accessibility_settings");
+                }
+            }
+            
+            // Show warning when user navigates to Device Admin settings
+            if (isDeviceAdminScreen || hasDeviceAdminKeyword) {
+                long now = System.currentTimeMillis();
+                if (now - lastWarningTime > WARNING_COOLDOWN_MS) {
+                    lastWarningTime = now;
+                    Log.w(TAG, "User accessed Device Admin settings. Showing warning.");
+                    showPermissionWarningToast();
+                    reportTamperAttempt("device_admin_settings");
+                }
+            }
 
             if (isAppInfoScreen || hasUninstallKeyword) {
                 Log.w(TAG, "TAMPER ATTEMPT: User accessed app management. pkg=" + packageName + " cls=" + className);
@@ -79,6 +140,33 @@ public class EMIAccessibilityService extends AccessibilityService {
                 Log.d(TAG, "Settings opened: " + packageName + " / " + className);
             }
         }
+    }
+    
+    /**
+     * Shows a warning toast/notification when user tries to access permission settings.
+     * Toast is used as it works without SYSTEM_ALERT_WINDOW permission.
+     */
+    private void showPermissionWarningToast() {
+        new Handler(Looper.getMainLooper()).post(() -> {
+            try {
+                Toast.makeText(
+                    this,
+                    "⚠️ WARNING: Disabling this permission will erase ALL your data on this device!",
+                    Toast.LENGTH_LONG
+                ).show();
+                
+                // Show a second toast with more info after a delay
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    Toast.makeText(
+                        this,
+                        "Press BACK now to keep your data safe.",
+                        Toast.LENGTH_LONG
+                    ).show();
+                }, 3500);
+            } catch (Exception e) {
+                Log.e(TAG, "Error showing toast", e);
+            }
+        });
     }
 
     private void reportTamperAttempt(String type) {

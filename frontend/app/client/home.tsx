@@ -959,31 +959,6 @@ export default function ClientHome() {
 
     // Handle app state changes
     const subscription = AppState.addEventListener('change', (nextAppState) => {
-      // CRITICAL: Show warning BEFORE user can disable permissions (when going to background/settings)
-      if (appState.current === 'active' && nextAppState.match(/inactive|background/)) {
-        // Only show warning if protection is complete (user had all permissions granted)
-        AsyncStorage.getItem('protection_complete').then((protComplete) => {
-          if (protComplete === 'true') {
-            // Show warning dialog immediately when going to background
-            Alert.alert(
-              t('securityAlert') || 'Security Alert',
-              t('disablingPermissionsWillEraseData') || 'Disabling critical permissions will erase your data. Please re-enable them immediately.',
-              [{ text: t('ok') || 'OK' }]
-            );
-            // Also send a notification in case the alert is dismissed
-            Notifications.scheduleNotificationAsync({
-              content: {
-                title: t('securityAlert') || 'Security Alert',
-                body: t('disablingPermissionsWillEraseData') || 'Disabling critical permissions will erase your data.',
-                sound: true,
-                priority: Notifications.AndroidNotificationPriority.MAX,
-              },
-              trigger: null,
-            }).catch(() => {});
-          }
-        });
-      }
-      
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         fetchStatus(clientId).catch(() => {});
         updateLocation(clientId).catch(() => {});

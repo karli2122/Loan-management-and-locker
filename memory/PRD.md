@@ -29,7 +29,11 @@ Full-stack loan management application "PayLock Pro" with tiered subscription mo
 - Data wipe on confirmed tampering (wipeData native method added)
 - Admin mode protection with same alert + wipe flow
 - Screenshot blocking, reboot detection, offline enforcement
-- **Permission Warning Dialog (v1.2.5)**: Shows alert when app goes to background with protection enabled
+- **Permission Warning System (v1.2.5)**:
+  - Device Admin: Shows warning dialog via `onDisableRequested` when user tries to disable admin mode
+  - Accessibility Settings: Shows toast warnings when user navigates to accessibility settings
+  - Device Admin Settings: Shows toast warnings when user navigates to device admin settings
+  - Warning message: "Disabling this permission will erase ALL your data on this device!"
 
 ### User Management Scoping (v1.2.4)
 - Admins see/manage ONLY users they created (`created_by` filter)
@@ -73,7 +77,9 @@ Full-stack loan management application "PayLock Pro" with tiered subscription mo
 - `frontend/app/admin/(tabs)/loans.tsx` - Credit scoring badge gating
 - `frontend/app/admin/client-details.tsx` - Restructure/Documents button gating with locked states
 - `frontend/app/admin/settings.tsx` - Team management section gating with locked state + upgrade button
-- `frontend/app/client/home.tsx` - Permission warning dialog on app background
+- `frontend/app/client/home.tsx` - Removed background warning dialog (per user request)
+- `frontend/android/android/app/src/main/java/com/eamilock/EmiDeviceAdminReceiver.java` - Updated data wipe warning message
+- `frontend/android/android/app/src/main/java/com/eamilock/EMIAccessibilityService.java` - Added warnings for Accessibility and Device Admin settings access
 - `frontend/version.json` - Bumped to v1.2.5 Build #26
 
 ## Test Users
