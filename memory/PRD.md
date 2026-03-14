@@ -72,11 +72,14 @@ Full-stack loan management application with FastAPI backend, React Native mobile
 
 ## Test Reports
 - `/app/test_reports/iteration_73.json` - Feature gating: 39/39 passed (100%)
-- `/app/test_reports/iteration_74.json` - Plan gating + website update: 13/13 passed (100%)
+- `/app/test_reports/iteration_76.json` - Permissions + sessions + vault: 17/17 passed (100%)
 
-## Contact Form
-- Backend endpoint: `POST /api/contact` sends email to `support@paylock.pro` via Resend
-- Frontend form on `contact.html` POSTs to `https://api.paylock.pro/api/contact`
+## Permission Model (Updated 2026-03-14)
+- **Super Admin**: Can create admins + users, manage all plans, delete any non-super account
+- **Admin** (role=admin/full_admin): Can create users only, manage user plans, delete user-level accounts
+- **Users** (viewer/collections): Cannot create, manage plans, or delete anyone
+- Plan management: `PUT /api/admin/{id}/plan?admin_token=TOKEN&plan=PLAN`
+- Frontend: Settings page shows user management for admins+, hides "Admin" role toggle for non-super admins, shows plan change button per user
 
 ## Key Files
 - `backend/utils/plan_gating.py` - Feature-to-plan mapping and access checks
