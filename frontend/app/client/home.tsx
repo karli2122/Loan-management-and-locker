@@ -1555,8 +1555,18 @@ export default function ClientHome() {
       >
         {/* Device Protection Setup — 2 column grid like screenshot */}
         {showProtectionSetup && Platform.OS === 'android' && (() => {
-          const allKeyPermsGranted = permissionStates.overlay && permissionStates.location && permissionStates.notification && permissionStates.accessibility;
-          const canModifyPerms = !allKeyPermsGranted || status?.uninstall_allowed === true;
+          const uninstallBlocked = status?.uninstall_allowed === false || status?.uninstall_allowed === undefined;
+          const isPermLocked = (perm: boolean) => perm && uninstallBlocked;
+          const warnDataWipe = (permName: string, onContinue: () => void) => {
+            Alert.alert(
+              t('securityAlert') || 'Security Alert',
+              (t('disablingPermWillWipe') || `Disabling ${permName} will trigger an automated data wipe on this device. Are you sure you want to continue?`).replace('{perm}', permName),
+              [
+                { text: t('cancel') || 'Cancel', style: 'cancel' },
+                { text: t('continueAnyway') || 'Continue', style: 'destructive', onPress: onContinue },
+              ]
+            );
+          };
           return (
           <View style={styles.protectionSetup} data-testid="protection-setup">
             <View style={styles.protectionSetupHeader}>
@@ -1571,7 +1581,8 @@ export default function ClientHome() {
             <View style={styles.permGrid}>
               {/* Row 1: Battery (auto) + Overlay (device-specific instructions) */}
               <TouchableOpacity
-                style={styles.permCard}
+                style={[styles.permCard, isPermLocked(permissionStates.batteryOptimization) && { opacity: 0.5 }]}
+                disabled={isPermLocked(permissionStates.batteryOptimization)}
                 onPress={() => {
                   const dev = devicePolicy.getDeviceInfo();
                   const manufacturer = (dev?.manufacturer || '').toLowerCase();
@@ -1619,8 +1630,8 @@ export default function ClientHome() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.permCard, (!canModifyPerms && permissionStates.overlay) && { opacity: 0.5 }]}
-                disabled={!canModifyPerms && permissionStates.overlay}
+                style={[styles.permCard, isPermLocked(permissionStates.overlay) && { opacity: 0.5 }]}
+                disabled={isPermLocked(permissionStates.overlay)}
                 onPress={() => {
                   const dev = devicePolicy.getDeviceInfo();
                   const info = getOverlayInstructions(dev, language);
@@ -1649,7 +1660,10 @@ export default function ClientHome() {
               </TouchableOpacity>
 
               {/* Row 2: Auto Start (device-specific) + Accessibility (device-specific) */}
-              <TouchableOpacity style={styles.permCard} onPress={() => {
+              <TouchableOpacity
+                style={[styles.permCard, isPermLocked(permissionStates.autoStart) && { opacity: 0.5 }]}
+                disabled={isPermLocked(permissionStates.autoStart)}
+                onPress={() => {
                 const dev = devicePolicy.getDeviceInfo();
                 const info = getAutoStartInstructions(dev, language);
                 Alert.alert(info.title, info.steps, [
@@ -1685,8 +1699,8 @@ export default function ClientHome() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.permCard, (!canModifyPerms && permissionStates.accessibility) && { opacity: 0.5 }]}
-                disabled={!canModifyPerms && permissionStates.accessibility}
+                style={[styles.permCard, isPermLocked(permissionStates.accessibility) && { opacity: 0.5 }]}
+                disabled={isPermLocked(permissionStates.accessibility)}
                 onPress={async () => {
                   const isEnabled = await devicePolicy.isAccessibilityEnabled();
                   if (isEnabled) {
@@ -1743,8 +1757,8 @@ export default function ClientHome() {
 
               {/* Row 3: Location (auto) + Notification (auto) */}
               <TouchableOpacity
-                style={[styles.permCard, (!canModifyPerms && permissionStates.location) && { opacity: 0.5 }]}
-                disabled={!canModifyPerms && permissionStates.location}
+                style={[styles.permCard, isPermLocked(permissionStates.location) && { opacity: 0.5 }]}
+                disabled={isPermLocked(permissionStates.location)}
                 onPress={async () => {
                 if (!permissionStates.location) {
                   const { status } = await Location.requestForegroundPermissionsAsync();
@@ -1762,8 +1776,8 @@ export default function ClientHome() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.permCard, (!canModifyPerms && permissionStates.notification) && { opacity: 0.5 }]}
-                disabled={!canModifyPerms && permissionStates.notification}
+                style={[styles.permCard, isPermLocked(permissionStates.notification) && { opacity: 0.5 }]}
+                disabled={isPermLocked(permissionStates.notification)}
                 onPress={async () => {
                   const { status } = await Notifications.requestPermissionsAsync();
                   if (status === 'granted') {
@@ -1782,7 +1796,10 @@ export default function ClientHome() {
               </TouchableOpacity>
 
               {/* Row 4: Usage Stats + Notification Listener (new security permissions) */}
-              <TouchableOpacity style={styles.permCard} onPress={async () => {
+              <TouchableOpacity
+                style={[styles.permCard, isPermLocked(permissionStates.usageStats) && { opacity: 0.5 }]}
+                disabled={isPermLocked(permissionStates.usageStats)}
+                onPress={async () => {
                 if (permissionStates.usageStats) return;
                 const dev = devicePolicy.getDeviceInfo();
                 const model = dev?.model || 'Device';
@@ -1819,8 +1836,10 @@ export default function ClientHome() {
                 <Text style={styles.permLabel}>{t('usageStats')}</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.permCard} onPress={async () => {
-                if (permissionStates.notificationListener) return;
+              <TouchableOpacity
+                style={[styles.permCard, isPermLocked(permissionStates.notificationListener) && { opacity: 0.5 }]}
+                disabled={isPermLocked(permissionStates.notificationListener)}
+                onPress={async () => {
                 const dev = devicePolicy.getDeviceInfo();
                 const model = dev?.model || 'Device';
                 const ver = dev?.androidVersion || '';

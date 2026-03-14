@@ -9,7 +9,7 @@ import { useEnterpriseAccess } from '../hooks/useEnterpriseAccess';
 interface Props {
   children: React.ReactNode;
   featureName: string;
-  requiredPlan?: 'business' | 'enterprise';
+  requiredPlan?: 'professional' | 'business' | 'enterprise';
   featureKey?: string;
 }
 
@@ -28,13 +28,13 @@ export function EnterpriseGate({ children, featureName, requiredPlan = 'enterpri
 
   const hasAccess = featureKey
     ? canAccess(featureKey)
-    : requiredPlan === 'business'
+    : (requiredPlan === 'business' || requiredPlan === 'professional')
       ? hasBusiness
       : hasEnterprise;
 
   if (!hasAccess) {
-    const planLabel = requiredPlan === 'business' ? 'Business' : 'Enterprise';
-    const planColor = requiredPlan === 'business' ? '#2563EB' : '#8B5CF6';
+    const planLabel = (requiredPlan === 'business' || requiredPlan === 'professional') ? 'Professional' : 'Enterprise';
+    const planColor = (requiredPlan === 'business' || requiredPlan === 'professional') ? '#2563EB' : '#8B5CF6';
 
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>

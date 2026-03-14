@@ -15,7 +15,7 @@ import { useLanguage } from '../../../src/context/LanguageContext';
 import { LanguagePicker } from '../../../src/components/LanguagePicker';
 import { useEnterpriseAccess } from '../../../src/hooks/useEnterpriseAccess';
 
-type PlanTier = 'starter' | 'business' | 'enterprise';
+type PlanTier = 'starter' | 'professional' | 'enterprise';
 
 interface FeatureItem {
   key: string;
@@ -31,7 +31,7 @@ interface FeatureItem {
 
 const PLAN_BADGE: Record<PlanTier, { label: string; color: string; bg: string }> = {
   starter: { label: '', color: '', bg: '' },
-  business: { label: 'Business', color: '#2563EB', bg: '#2563EB18' },
+  professional: { label: 'Professional', color: '#2563EB', bg: '#2563EB18' },
   enterprise: { label: 'Enterprise', color: '#8B5CF6', bg: '#8B5CF618' },
 };
 
@@ -75,7 +75,7 @@ export default function FeaturesTab() {
     {
       title: t('analytics'),
       items: [
-        { key: 'reports', icon: 'bar-chart', color: '#06B6D4', titleKey: 'reports', descKey: 'financialAnalyticsReports', route: '/admin/reports', requiredPlan: 'starter' },
+        { key: 'reports', icon: 'bar-chart', color: '#06B6D4', titleKey: 'reports', descKey: 'financialAnalyticsReports', route: '/admin/reports', featureGateKey: 'reports', requiredPlan: 'professional' },
         { key: 'bank_ocr', icon: 'document-text', color: '#10B981', titleKey: 'bankStatementAnalyzer', descKey: 'aipoweredIncomeexpenseAnalysis', route: '/admin/bank-analyzer', featureGateKey: 'bank_ocr', requiredPlan: 'enterprise', testId: 'bank-analyzer-link' },
         { key: 'audit_log', icon: 'shield-checkmark', color: '#8B5CF6', titleKey: 'auditLog', descKey: 'trackAllAdminActions', route: '/admin/audit-log', featureGateKey: 'audit_log', requiredPlan: 'enterprise', testId: 'audit-log-link' },
         { key: 'revenue_forecast', icon: 'trending-up', color: '#F97316', titleKey: 'revenueForecast', descKey: 'forecastFutureCollections', route: '/admin/revenue-forecast', featureGateKey: 'revenue_forecast', requiredPlan: 'enterprise', testId: 'revenue-forecast-link' },
@@ -84,17 +84,17 @@ export default function FeaturesTab() {
     {
       title: t('loanManagement'),
       items: [
-        { key: 'loan_plans', icon: 'pricetag', color: '#EC4899', titleKey: 'loanPlans', descKey: 'manageLoanPlans', route: '/admin/loan-plans', requiredPlan: 'starter' },
+        { key: 'loan_plans', icon: 'pricetag', color: '#EC4899', titleKey: 'loanPlans', descKey: 'manageLoanPlans', route: '/admin/loan-plans', featureGateKey: 'loan_plans', requiredPlan: 'professional' },
         { key: 'calculator', icon: 'calculator', color: '#14B8A6', titleKey: 'loanCalculator', descKey: 'calculateLoanPayments', route: '/admin/calculator', requiredPlan: 'starter' },
-        { key: 'bulk_import', icon: 'cloud-upload', color: '#3B82F6', titleKey: 'bulkImport', descKey: 'importClientsLoansFromCsv', route: '/admin/bulk-import', featureGateKey: 'bulk_import', requiredPlan: 'business', testId: 'bulk-import-link' },
-        { key: 'document_vault', icon: 'folder-open', color: '#06B6D4', titleKey: 'documentVault', descKey: 'secureClientDocumentStorage', route: '/admin/documents', featureGateKey: 'document_vault', requiredPlan: 'business', testId: 'documents-link' },
+        { key: 'bulk_import', icon: 'cloud-upload', color: '#3B82F6', titleKey: 'bulkImport', descKey: 'importClientsLoansFromCsv', route: '/admin/bulk-import', featureGateKey: 'bulk_import', requiredPlan: 'enterprise', testId: 'bulk-import-link' },
+        { key: 'document_vault', icon: 'folder-open', color: '#06B6D4', titleKey: 'documentVault', descKey: 'secureClientDocumentStorage', route: '/admin/documents', featureGateKey: 'document_vault', requiredPlan: 'enterprise', testId: 'documents-link' },
       ],
     },
     {
       title: t('deviceManagement'),
       items: [
-        { key: 'device_lock', icon: 'phone-portrait', color: '#F59E0B', titleKey: 'deviceManagement', descKey: 'lockunlockDevices', route: '/admin/device-management', featureGateKey: 'device_lock', requiredPlan: 'business' },
-        { key: 'reminders', icon: 'notifications', color: '#EF4444', titleKey: 'paymentReminders', descKey: 'automatedPaymentReminders', route: '/admin/payment-reminders', featureGateKey: 'reminders', requiredPlan: 'business', testId: 'reminders-link' },
+        { key: 'device_lock', icon: 'phone-portrait', color: '#F59E0B', titleKey: 'deviceManagement', descKey: 'lockunlockDevices', route: '/admin/device-management', featureGateKey: 'device_lock', requiredPlan: 'professional' },
+        { key: 'reminders', icon: 'notifications', color: '#EF4444', titleKey: 'paymentReminders', descKey: 'automatedPaymentReminders', route: '/admin/payment-reminders', featureGateKey: 'reminders', requiredPlan: 'starter', testId: 'reminders-link' },
       ],
     },
     {
@@ -165,7 +165,7 @@ export default function FeaturesTab() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{t('features')}</Text>
         <View style={styles.planIndicator}>
-          <Text style={styles.planIndicatorText}>{plan.charAt(0).toUpperCase() + plan.slice(1)}</Text>
+          <Text style={styles.planIndicatorText}>{plan === 'business' ? 'Professional' : plan.charAt(0).toUpperCase() + plan.slice(1)}</Text>
         </View>
       </View>
 

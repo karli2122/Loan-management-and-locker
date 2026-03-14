@@ -3,30 +3,33 @@ from database import db
 from utils.exceptions import AuthorizationException
 
 # Feature-to-plan mapping based on user-confirmed tiers:
-# Starter: Basic loan management, payments, client management
-# Business: + Analytics, Bulk Import, Restructuring, Document Vault, Device lock & unlock
-# Enterprise: + RBAC, Session Management, Revenue Forecasting, Audit Logs, Bank Statement Analyze
+# Starter: Up to 25 clients, Push notifications, Basic analytics dashboard, Email reminders
+# Professional: Everything in Starter + Device lock & unlock, Client messaging, PDF contracts,
+#   Automated payment scheduling, Auto-lock, Late fee automation, Team (3 members), GPS, Reports
+# Enterprise: Everything in Professional + Unlimited team, QR/NFC provisioning, Device Owner,
+#   Bank OCR, Document vault, Stripe, Scheduled reports, Portfolio health, Risk score,
+#   Daily digest, Session management, RBAC, Credit scoring, Bulk import/export, API access
 FEATURE_PLANS = {
     # Starter features (available to all)
     "clients": "starter",
     "loans": "starter",
     "payments": "starter",
-    "messaging": "starter",
-    "reports": "starter",
     "notifications": "starter",
-    "contracts": "starter",
-    "loan_plans": "starter",
     "calculator": "starter",
+    "reminders": "starter",
 
-    # Business features
-    "device_lock": "business",
-    "auto_lock": "business",
-    "reminders": "business",
-    "collection_trends": "business",
-    "bulk_import": "business",
-    "loan_restructure": "business",
-    "document_vault": "business",
-    "daily_digest": "business",
+    # Professional features
+    "device_lock": "professional",
+    "auto_lock": "professional",
+    "messaging": "professional",
+    "contracts": "professional",
+    "loan_plans": "professional",
+    "collection_trends": "professional",
+    "reports": "professional",
+    "reports_gps": "professional",
+    "late_fee": "professional",
+    "loan_restructure": "professional",
+    "team_management": "professional",
 
     # Enterprise features
     "device_owner": "enterprise",
@@ -42,10 +45,18 @@ FEATURE_PLANS = {
     "screenshot_block": "enterprise",
     "tamper_detection": "enterprise",
     "bank_ocr": "enterprise",
-    "reports_gps": "enterprise",
+    "document_vault": "enterprise",
+    "bulk_import": "enterprise",
+    "daily_digest": "enterprise",
+    "scheduled_reports": "enterprise",
+    "stripe_integration": "enterprise",
+    "qr_provisioning": "enterprise",
+    "nfc_provisioning": "enterprise",
+    "api_access": "enterprise",
 }
 
-PLAN_HIERARCHY = {"starter": 0, "business": 1, "enterprise": 2, "custom": 3}
+# Support both "professional" and legacy "business" at the same level
+PLAN_HIERARCHY = {"starter": 0, "professional": 1, "business": 1, "enterprise": 2, "custom": 3}
 
 
 async def get_admin_plan(admin_id: str) -> str:

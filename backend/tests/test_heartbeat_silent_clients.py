@@ -13,7 +13,7 @@ import time
 import uuid
 from datetime import datetime
 
-BASE_URL = "https://feature-gating-test.preview.emergentagent.com"
+BASE_URL = "https://paylock-fixes.preview.emergentagent.com"
 
 # Test credentials
 TEST_USERNAME = "karli1987"

@@ -8,7 +8,7 @@ import os
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://feature-gating-test.preview.emergentagent.com"
+    BASE_URL = "https://paylock-fixes.preview.emergentagent.com"
 
 # Admin credentials for testing
 TEST_ADMIN_USER = "admin"

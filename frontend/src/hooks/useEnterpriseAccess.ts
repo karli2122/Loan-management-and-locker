@@ -4,7 +4,8 @@ import API_URL from '../constants/api';
 
 const PLAN_LEVELS: Record<string, number> = {
   starter: 0,
-  business: 1,
+  professional: 1,
+  business: 1, // legacy alias
   enterprise: 2,
   custom: 3,
 };
@@ -62,7 +63,8 @@ export function useEnterpriseAccess(): PlanAccess {
 
   const planLevel = PLAN_LEVELS[plan] ?? 0;
   const hasEnterprise = isSuperAdmin || planLevel >= PLAN_LEVELS.enterprise;
-  const hasBusiness = isSuperAdmin || planLevel >= PLAN_LEVELS.business;
+  const hasBusiness = isSuperAdmin || planLevel >= PLAN_LEVELS.professional;
+  const hasProfessional = hasBusiness;
 
   const canAccess = (feature: string): boolean => {
     if (isSuperAdmin) return true;
@@ -72,5 +74,5 @@ export function useEnterpriseAccess(): PlanAccess {
     return true;
   };
 
-  return { plan, isSuperAdmin, hasEnterprise, hasBusiness, loading, features, canAccess };
+  return { plan, isSuperAdmin, hasEnterprise, hasBusiness, hasProfessional, loading, features, canAccess };
 }
