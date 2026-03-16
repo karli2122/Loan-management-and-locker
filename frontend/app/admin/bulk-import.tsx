@@ -320,6 +320,10 @@ function BulkImportContent() {
               <ScrollView style={styles.modalScroll}>
                 {/* Summary */}
                 <View style={styles.summaryGrid}>
+                  <View style={[styles.summaryItem, { backgroundColor: '#8B5CF620' }]}>
+                    <Text style={styles.summaryValue}>{reconcileResult.summary.new_clients_created || 0}</Text>
+                    <Text style={styles.summaryLabel}>New Clients</Text>
+                  </View>
                   <View style={[styles.summaryItem, { backgroundColor: '#10B98120' }]}>
                     <Text style={styles.summaryValue}>{reconcileResult.summary.loans_created}</Text>
                     <Text style={styles.summaryLabel}>Loans Created</Text>
@@ -328,15 +332,42 @@ function BulkImportContent() {
                     <Text style={styles.summaryValue}>{reconcileResult.summary.payments_recorded}</Text>
                     <Text style={styles.summaryLabel}>Payments</Text>
                   </View>
-                  <View style={[styles.summaryItem, { backgroundColor: '#F59E0B20' }]}>
-                    <Text style={styles.summaryValue}>{reconcileResult.summary.unmatched}</Text>
-                    <Text style={styles.summaryLabel}>Unmatched</Text>
-                  </View>
                   <View style={[styles.summaryItem, { backgroundColor: '#64748B20' }]}>
                     <Text style={styles.summaryValue}>{reconcileResult.summary.ignored}</Text>
                     <Text style={styles.summaryLabel}>Ignored</Text>
                   </View>
                 </View>
+
+                {/* New Clients Created */}
+                {reconcileResult.details.new_clients_created && reconcileResult.details.new_clients_created.length > 0 && (
+                  <View style={styles.detailSection}>
+                    <Text style={[styles.detailTitle, { color: colors.text }]}>
+                      <Ionicons name="person-add" size={16} color="#8B5CF6" /> New Clients Created
+                    </Text>
+                    <View style={[styles.infoBox, { backgroundColor: '#8B5CF610', borderColor: '#8B5CF6' }]}>
+                      <Ionicons name="information-circle" size={16} color="#8B5CF6" />
+                      <Text style={[styles.infoBoxText, { color: colors.textMuted }]}>
+                        These clients need review. Go to Loans → Imported tab to complete their info.
+                      </Text>
+                    </View>
+                    {reconcileResult.details.new_clients_created.map((client, i) => (
+                      <View key={i} style={[styles.detailItem, { backgroundColor: colors.background }]}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.detailName, { color: colors.text }]}>{client.client_name}</Text>
+                          <View style={styles.importedBadge}>
+                            <Text style={styles.importedBadgeText}>NEEDS REVIEW</Text>
+                          </View>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={[styles.detailAmount, { color: '#8B5CF6' }]}>
+                            {formatAmount(client.loan_amount)}
+                          </Text>
+                          <Text style={[styles.detailDate, { color: colors.textMuted }]}>{client.date}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
 
                 {/* Loans Created */}
                 {reconcileResult.details.loans_created.length > 0 && (
@@ -564,6 +595,25 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   paidBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  importedBadge: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  importedBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 12,
+    gap: 8,
+  },
+  infoBoxText: { flex: 1, fontSize: 12, lineHeight: 16 },
   extraInterest: { fontSize: 11, marginTop: 2 },
   errorText: { fontSize: 12 },
   moreText: { fontSize: 12, textAlign: 'center', marginTop: 8 },

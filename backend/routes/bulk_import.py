@@ -226,7 +226,7 @@ async def import_clients_csv(
                 "days_overdue": 0,
                 "is_registered": False,
                 "is_locked": False,
-                "registration_code": "",
+                # Exclude registration_code to allow sparse unique index to work
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "loan_given_date": date_given,
                 "imported": True,
@@ -451,6 +451,7 @@ async def reconcile_bank_statement(
     # Process transactions
     results = {
         "loans_created": [],
+        "new_clients_created": [],
         "payments_recorded": [],
         "ignored_transactions": [],
         "unmatched_transactions": [],
@@ -486,13 +487,72 @@ async def reconcile_bank_statement(
                 best_score = score
                 best_match = client
         
+        # Handle unmatched transactions - create new client if it's a loan disbursement
         if not best_match:
-            results["unmatched_transactions"].append({
-                "name": name,
-                "amount": amount,
-                "date": date,
-                "description": description[:100] if description else ""
-            })
+            if amount < 0:
+                # Negative amount = loan disbursement = create new client
+                loan_amount = abs(amount)
+                try:
+                    new_client_id = str(uuid.uuid4())
+                    new_client = {
+                        "id": new_client_id,
+                        "name": name,
+                        "phone": "",
+                        "email": "",
+                        "address": "",
+                        "birth_number": "",
+                        "loan_amount": loan_amount,
+                        "interest_rate": 0,  # User needs to set this
+                        "monthly_emi": 0,
+                        "total_amount_due": loan_amount,  # Will be recalculated when user sets interest
+                        "outstanding_balance": loan_amount,
+                        "total_paid": 0,
+                        "days_overdue": 0,
+                        "is_registered": False,
+                        "is_locked": False,
+                        # Exclude registration_code to allow sparse unique index to work
+                        "created_at": datetime.now(timezone.utc),
+                        "loan_given_date": date,
+                        "loan_due_date": "",  # User needs to set this
+                        "loan_setup_at": datetime.now(timezone.utc).isoformat(),
+                        "admin_id": admin_id,
+                        "imported": True,
+                        "imported_from_statement": True,
+                        "import_needs_review": True,
+                    }
+                    await db.clients.insert_one(new_client)
+                    
+                    # Add to local clients list for subsequent transaction matching
+                    clients.append({
+                        "id": new_client_id,
+                        "name": name,
+                        "loan_amount": loan_amount,
+                        "interest_rate": 0,
+                        "total_amount_due": loan_amount,
+                        "outstanding_balance": loan_amount,
+                        "total_paid": 0,
+                    })
+                    
+                    results["new_clients_created"].append({
+                        "client_name": name,
+                        "client_id": new_client_id,
+                        "loan_amount": loan_amount,
+                        "date": date,
+                        "needs_review": True
+                    })
+                except Exception as e:
+                    results["errors"].append({
+                        "name": name,
+                        "error": f"Failed to create new client: {str(e)}"
+                    })
+            else:
+                # Positive amount but no matching client - add to unmatched
+                results["unmatched_transactions"].append({
+                    "name": name,
+                    "amount": amount,
+                    "date": date,
+                    "description": description[:100] if description else ""
+                })
             continue
         
         # Process based on amount sign
@@ -619,6 +679,14 @@ async def reconcile_bank_statement(
                     "loan_fully_paid": new_outstanding == 0
                 })
                 
+                # Auto-archive to loan history if fully paid
+                if new_outstanding == 0:
+                    try:
+                        from routes.paid_loans import perform_archive
+                        await perform_archive(best_match["id"], admin_id)
+                    except Exception as archive_err:
+                        logger.warning(f"Auto-archive failed for {best_match['name']}: {archive_err}")
+                
                 # Update local client data
                 best_match["outstanding_balance"] = new_outstanding
                 best_match["total_paid"] = current_total_paid + payment_amount
@@ -633,6 +701,7 @@ async def reconcile_bank_statement(
     return {
         "summary": {
             "total_transactions": len(transactions),
+            "new_clients_created": len(results["new_clients_created"]),
             "loans_created": len(results["loans_created"]),
             "payments_recorded": len(results["payments_recorded"]),
             "ignored": len(results["ignored_transactions"]),

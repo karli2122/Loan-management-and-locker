@@ -1,0 +1,83 @@
+{
+  "summary": "Backend API testing for iteration 81 - New Client Creation from Unmatched Transactions and Auto-Archive features. All 9 tests passed after fixing a MongoDB duplicate key bug.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "POST /api/import/bank-statement/reconcile",
+        "issue": "IGNORE_KEYWORDS filtering uses substring match which can cause false positives (e.g., 'ost' in 'TEST_PositiveUnmatched'). Consider using word boundary matching.",
+        "priority": "LOW"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_bank_statement_new_client_creation.py",
+    "/app/test_reports/pytest/bank_statement_new_client_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "BUG FIXED: registration_code: '' was causing E11000 duplicate key error. Fixed by removing registration_code field from new client creation (allows sparse unique index to work correctly).",
+    "Note: The import flags (imported, import_needs_review, imported_from_statement) are stored in DB but NOT returned by GET /api/clients/{id} due to Pydantic response_model filtering. They ARE returned by GET /api/clients list endpoint."
+  ],
+  "updated_files": [
+    "/app/backend/routes/bulk_import.py",
+    "/app/backend/tests/test_bank_statement_new_client_creation.py"
+  ],
+  "success_rate": {
+    "backend": "100% (9/9 tests passed)",
+    "frontend": "N/A (backend only testing)"
+  },
+  "test_credentials": {
+    "superadmin": "karli1987 / nasvakas123"
+  },
+  "features_verified": {
+    "new_client_creation_from_negative_unmatched": {
+      "endpoint": "POST /api/import/bank-statement/reconcile",
+      "status": "PASS",
+      "details": {
+        "negative_amount_creates_client": "New client created with loan_amount set",
+        "import_needs_review_flag": "Set to True on created client",
+        "imported_flag": "Set to True on created client",
+        "imported_from_statement_flag": "Set to True on created client",
+        "interest_rate_default": "Set to 0 (user needs to configure)",
+        "summary_count": "new_clients_created field correctly populated"
+      }
+    },
+    "positive_unmatched_not_creates_client": {
+      "endpoint": "POST /api/import/bank-statement/reconcile",
+      "status": "PASS",
+      "details": "Positive amounts for non-existent clients go to unmatched_transactions, NOT new_clients_created"
+    },
+    "auto_archive_on_full_payment": {
+      "endpoint": "POST /api/import/bank-statement/reconcile",
+      "status": "PASS",
+      "details": {
+        "full_payment": "Triggers auto-archive to paid_loans collection",
+        "partial_payment": "Does NOT trigger archive",
+        "loan_fully_paid_flag": "Set to True in payment response"
+      }
+    },
+    "summary_totals_consistency": {
+      "endpoint": "POST /api/import/bank-statement/reconcile",
+      "status": "PASS",
+      "details": "total_transactions = loans_created + payments_recorded + new_clients_created + ignored + unmatched + errors"
+    }
+  },
+  "bugs_fixed": [
+    {
+      "issue": "E11000 duplicate key error on registration_code when creating new clients from bank statement",
+      "root_cause": "registration_code was set to empty string '' which conflicts with unique index when other clients have empty registration_code",
+      "fix": "Removed registration_code field from new client document (allows sparse unique index to work)",
+      "files_modified": ["/app/backend/routes/bulk_import.py (lines 513 and 229)"]
+    }
+  ],
+  "seed_data_creation": "Created test clients with TEST_ and NEWCLIENT_ prefixes for reconciliation testing",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "New client creation from unmatched negative transactions is now working. Auto-archive on full payment works. The import flags are stored in DB but only visible via list endpoint (not single client GET due to response_model). The IGNORE_KEYWORDS filtering in bulk_import.py uses substring matching which can cause false positives - consider word boundary matching in future."
+}
