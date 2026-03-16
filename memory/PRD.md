@@ -5,42 +5,26 @@ Full-stack loan management application "PayLock Pro" with tiered subscription mo
 
 ## Latest Update: v1.3.1 - 2026-03-16
 
-### Website Registration & Payment Flow (NEW)
-- **New Registration Page**: `register.html` with full form and plan selection
-- **Email Verification**: Sends 6-digit code via Resend (paylockpro.com domain)
-- **Payment Flow**: After verification, redirects to Stripe checkout
-- **Success Page**: `payment-success.html` shows confirmation and next steps
-- **SEO Optimization**: Added meta tags, Open Graph, structured data, sitemap.xml, robots.txt
+### Welcome Email Feature (NEW)
+After successful registration and payment, users receive a welcome email containing:
+- **Admin App download link** (always included)
+- **Client App download link** (only for Professional, Enterprise, Custom plans)
+- **User Manual link**
+- **Web Portal link**
 
-### Website Updates
-- Removed "14 day free trial" mentions from pricing FAQ
-- All "Get Started" buttons now link to `register.html?plan=X`
-- Plan features updated to match app capabilities
-- Added canonical URLs, meta keywords, Twitter cards
+Email is sent via Resend (paylockpro.com domain) from both:
+- Stripe webhook handler (for async payments)
+- Payment status check endpoint (for website polling flow)
 
-### Backend Deployed to Production VPS
-- Registration routes (`/api/auth/register`, `/api/auth/verify-email`)
-- Updated payments route with website source support
-- Plan gating with demo plan restrictions
+### Admin App Play Store Build Complete
+- **AAB Download**: https://expo.dev/artifacts/eas/qchyWeb2jkpviUBUDyvQUT.aab
+- **Build Page**: https://expo.dev/accounts/karli1987/projects/loans/builds/c3eeb838-1f6a-47fd-9e44-c46ee07af9e3
+- **Version**: 1.3.1 (Build 30)
 
-### User Registration & Demo Mode
-- **Registration Flow**: New users can self-register via `/api/auth/register`
-- **Email Verification**: 6-digit code sent via Resend (paylockpro.com domain)
-- **Demo Plan**: New users start in "demo" plan with severely restricted features
-- **Demo Allowed Features**: calculator, profile_edit, change_password, plans_pricing
-- **Frontend Changes**:
-  - Login screen has "Register" link
-  - Dashboard shows "Demo Mode" banner for demo users
-  - Plan badge supports demo plan (flask icon)
-
-### Admin App Play Store Submission
-- Building AAB (Android App Bundle) for Play Store
-- Build ID: c3eeb838-1f6a-47fd-9e44-c46ee07af9e3
-- Version: 1.3.1 (Build 30)
-- Build URL: https://expo.dev/accounts/karli1987/projects/loans/builds/c3eeb838-1f6a-47fd-9e44-c46ee07af9e3
-
-### Website Download
-- SEO-optimized website zip available at: `https://api.paylock.pro/api/download/paylockpro-website-seo.zip`
+### Website SEO & Registration Flow
+- **SEO**: Meta tags, Open Graph, Twitter cards, structured data, sitemap.xml, robots.txt
+- **Registration**: Full form with plan selection → email verification → Stripe payment → success page
+- **Website Download**: https://api.paylock.pro/api/download/paylockpro-website-seo.zip
 
 ## Architecture
 - **Backend**: FastAPI + MongoDB Atlas + APScheduler
