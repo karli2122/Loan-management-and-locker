@@ -632,8 +632,8 @@ export default function ClientDetails() {
           onEdit={openEditClientModal}
         />
 
-        {/* Device Info - Professional Feature */}
-        {canAccess('device_info') ? (
+        {/* Device Info - Professional Feature, hidden when uninstall allowed */}
+        {!client.uninstall_allowed && canAccess('device_info') ? (
           <DeviceInfo
             client={client}
             colors={colors}
@@ -644,7 +644,7 @@ export default function ClientDetails() {
             onOpenMap={openMap}
             onFetchPrice={handleFetchPrice}
           />
-        ) : (
+        ) : !client.uninstall_allowed ? (
           <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: '#1E3A5F', borderRadius: 12, padding: 16, alignItems: 'center' }}>
             <View style={{ backgroundColor: 'rgba(100, 116, 139, 0.2)', borderRadius: 50, padding: 12, marginBottom: 8 }}>
               <Ionicons name="phone-portrait-outline" size={24} color="#64748B" />
@@ -653,7 +653,7 @@ export default function ClientDetails() {
               Device information requires Professional plan
             </Text>
           </View>
-        )}
+        ) : null}
 
         {/* Tab Navigation */}
         <View style={[styles.tabContainer, { backgroundColor: colors.surface, borderColor: colors.border }]} data-testid="client-detail-tabs">

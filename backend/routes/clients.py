@@ -63,29 +63,21 @@ async def create_client(client_data: ClientCreate, admin_token: str = Query(...)
 @router.get("/clients")
 async def list_clients(admin_token: str = Query(...)):
     """List all clients for the authenticated admin.
-    Superadmins see clients belonging to themselves + users they created.
-    Regular admins see only their own clients.
+    All users see clients belonging to themselves + users they created (hierarchical scoping).
     """
     admin_id = await get_admin_id_from_token(admin_token)
     admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
     
-    # Enterprise data sharing: superadmin sees all enterprise members' clients
-    is_super = admin.get("is_super_admin", False) if admin else False
-    is_super = is_super or (admin and admin.get("role") in ("super_admin", "superadmin"))
+    # Hierarchical scoping: all users see their own clients + clients from users they created
+    team_members = await db.admins.find(
+        {"$or": [{"created_by": admin_id}, {"id": admin_id}]},
+        {"_id": 0, "id": 1}
+    ).to_list(100)
+    member_ids = [m["id"] for m in team_members]
+    if admin_id not in member_ids:
+        member_ids.append(admin_id)
     
-    if is_super:
-        # Get all users created by this superadmin + the superadmin themselves
-        team_members = await db.admins.find(
-            {"$or": [{"created_by": admin_id}, {"id": admin_id}]},
-            {"_id": 0, "id": 1}
-        ).to_list(100)
-        member_ids = [m["id"] for m in team_members]
-        if admin_id not in member_ids:
-            member_ids.append(admin_id)
-        query = {"admin_id": {"$in": member_ids}, "is_deleted": {"$ne": True}}
-    else:
-        # Regular users only see their own clients
-        query = {"admin_id": admin_id, "is_deleted": {"$ne": True}}
+    query = {"admin_id": {"$in": member_ids}, "is_deleted": {"$ne": True}}
     
     clients = await db.clients.find(query, {"_id": 0}).to_list(1000)
     
@@ -121,21 +113,17 @@ async def list_silent_clients(admin_token: str = Query(...), minutes: int = Quer
 async def export_clients(admin_token: str = Query(...), format: str = Query(default="json")):
     """Export clients data as JSON or CSV."""
     admin_id = await get_admin_id_from_token(admin_token)
-    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
     
-    # Enterprise scoping
-    is_super = admin.get("is_super_admin", False) if admin else False
-    is_super = is_super or (admin and admin.get("role") in ("super_admin", "superadmin"))
+    # Hierarchical scoping: all users see their own clients + clients from users they created
+    team_members = await db.admins.find(
+        {"$or": [{"created_by": admin_id}, {"id": admin_id}]},
+        {"_id": 0, "id": 1}
+    ).to_list(100)
+    member_ids = [m["id"] for m in team_members]
+    if admin_id not in member_ids:
+        member_ids.append(admin_id)
     
-    if is_super:
-        team_members = await db.admins.find(
-            {"$or": [{"created_by": admin_id}, {"id": admin_id}]},
-            {"_id": 0, "id": 1}
-        ).to_list(100)
-        member_ids = [m["id"] for m in team_members]
-        query = {"admin_id": {"$in": member_ids}, "is_deleted": {"$ne": True}}
-    else:
-        query = {"admin_id": admin_id, "is_deleted": {"$ne": True}}
+    query = {"admin_id": {"$in": member_ids}, "is_deleted": {"$ne": True}}
     
     clients = await db.clients.find(query, {"_id": 0, "registration_code": 0}).to_list(1000)
     

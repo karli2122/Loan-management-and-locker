@@ -32,21 +32,34 @@ export const ClientInfoCard = ({
   canAccessCreditScore = true,
   canAccessDeviceLock = true,
   canAccessRegistrationCode = true,
-}: Props) => (
+}: Props) => {
+  // Check if uninstall is allowed - hide device info, reg code, etc.
+  const isUninstallAllowed = client.uninstall_allowed === true;
+  
+  return (
   <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
     <View style={[styles.avatarContainer, { backgroundColor: colors.primary }]}>
       <Text style={styles.avatarText}>{client.name.charAt(0).toUpperCase()}</Text>
     </View>
     <View style={styles.clientNameWithScore}>
       <Text style={[styles.clientName, { color: colors.text }]}>{client.name}</Text>
-      {canAccessCreditScore && client.credit_score != null && (
+      {/* Hide credit score if uninstall allowed */}
+      {!isUninstallAllowed && canAccessCreditScore && client.credit_score != null && (
         <View style={[styles.creditScoreBadge, { backgroundColor: getCreditScoreColor(client.credit_score) + '20' }]}>
           <Ionicons name="star" size={12} color={getCreditScoreColor(client.credit_score)} />
           <Text style={[styles.creditScoreValue, { color: getCreditScoreColor(client.credit_score) }]}>{client.credit_score}</Text>
         </View>
       )}
     </View>
-    {canAccessDeviceLock && (
+    {/* Show "Uninstall Allowed" instead of locked/unlocked when uninstall is allowed */}
+    {isUninstallAllowed ? (
+      <View style={[styles.statusBadge, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
+        <Ionicons name="exit-outline" size={14} color="#8B5CF6" />
+        <Text style={[styles.statusText, { color: '#8B5CF6' }]}>
+          {t('uninstallAllowed') || 'Uninstall Allowed'}
+        </Text>
+      </View>
+    ) : canAccessDeviceLock && (
       <View style={[styles.statusBadge, client.is_locked ? styles.lockedBadge : styles.unlockedBadge]}>
         <Ionicons
           name={client.is_locked ? 'lock-closed' : 'lock-open'}
@@ -59,6 +72,8 @@ export const ClientInfoCard = ({
       </View>
     )}
     {client.is_registered && (
+    {/* Hide admin mode section if uninstall allowed */}
+    {!isUninstallAllowed && (
       <View style={[styles.statusBadge, client.admin_mode_active ? styles.adminModeBadge : styles.adminModeOffBadge]}>
         <Ionicons
           name={client.admin_mode_active ? 'shield-checkmark' : 'shield'}
@@ -81,6 +96,8 @@ export const ClientInfoCard = ({
         </Text>
       </View>
     )}
+    {/* Hide registration code section if uninstall allowed */}
+    {!isUninstallAllowed && (
     <View style={styles.regCodeRow}>
       {client.registration_code ? (
         <>
@@ -101,7 +118,9 @@ export const ClientInfoCard = ({
         </Text>
       )}
     </View>
-    {canAccessRegistrationCode ? (
+    )}
+    {/* Hide generate key button if uninstall allowed */}
+    {!isUninstallAllowed && canAccessRegistrationCode ? (
       <TouchableOpacity
         style={styles.generateKeyButton}
         onPress={onGenerateCode}
@@ -121,7 +140,7 @@ export const ClientInfoCard = ({
           </>
         )}
       </TouchableOpacity>
-    ) : (
+    ) : !isUninstallAllowed && (
       <View style={[styles.generateKeyButton, { backgroundColor: '#475569', opacity: 0.7 }]}>
         <Ionicons name="lock-closed" size={16} color="#94A3B8" />
         <Text style={[styles.generateKeyButtonText, { color: '#94A3B8' }]}>
@@ -131,3 +150,4 @@ export const ClientInfoCard = ({
     )}
   </View>
 );
+};
