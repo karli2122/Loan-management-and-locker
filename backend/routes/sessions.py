@@ -40,14 +40,39 @@ async def update_session_activity(admin_id: str):
 
 @router.get("")
 async def list_sessions(admin_token: str = Query(...)):
-    """List all active sessions for the current admin."""
+    """List all active sessions for the current admin (or all enterprise sessions for super admins)."""
     admin_id = await get_admin_id_from_token(admin_token)
     await check_plan_access(admin_id, "session_management")
     
-    sessions = await db.admin_sessions.find(
-        {"admin_id": admin_id, "is_active": True},
-        {"_id": 0}
-    ).sort("last_activity", -1).to_list(50)
+    # Check if super admin
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
+    is_super = admin.get("is_super_admin", False) if admin else False
+    
+    if is_super:
+        # Super admins see all sessions in the enterprise
+        enterprise_id = admin.get("enterprise_id") or admin_id
+        # Get all admin IDs in the enterprise
+        enterprise_admins = await db.admins.find(
+            {"$or": [{"enterprise_id": enterprise_id}, {"id": enterprise_id}]},
+            {"_id": 0, "id": 1}
+        ).to_list(100)
+        admin_ids = [a["id"] for a in enterprise_admins]
+        
+        sessions = await db.admin_sessions.find(
+            {"admin_id": {"$in": admin_ids}, "is_active": True},
+            {"_id": 0}
+        ).sort("last_activity", -1).to_list(100)
+        
+        # Add admin username to each session
+        admin_map = {a["id"]: a.get("username", "Unknown") for a in await db.admins.find({"id": {"$in": admin_ids}}, {"_id": 0, "id": 1, "username": 1}).to_list(100)}
+        for s in sessions:
+            s["admin_username"] = admin_map.get(s["admin_id"], "Unknown")
+    else:
+        # Regular admins only see their own sessions
+        sessions = await db.admin_sessions.find(
+            {"admin_id": admin_id, "is_active": True},
+            {"_id": 0}
+        ).sort("last_activity", -1).to_list(50)
     
     for s in sessions:
         for field in ["created_at", "last_activity"]:

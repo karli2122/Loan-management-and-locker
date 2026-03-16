@@ -252,3 +252,45 @@ async def remove_team_member(member_id: str, admin_token: str = Query(...)):
 
     r = await db.admins.delete_one({"id": member_id})
     return {"deleted": r.deleted_count > 0}
+
+
+@router.put("/{member_id}/role")
+async def update_member_role(member_id: str, admin_token: str = Query(...), role: str = Query(...)):
+    """Quick endpoint to update just the role of a team member."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
+    if not admin:
+        return JSONResponse(status_code=403, content={"error": "Admin not found"})
+
+    is_super = admin.get("is_super_admin", False)
+    admin_role = admin.get("role", "viewer")
+
+    if not is_super and admin_role not in ADMIN_ROLES:
+        return JSONResponse(status_code=403, content={"error": "Insufficient permissions"})
+
+    if role not in ROLES:
+        return JSONResponse(status_code=400, content={"error": f"Invalid role. Choose from: {list(ROLES.keys())}"})
+
+    target = await db.admins.find_one({"id": member_id}, {"_id": 0})
+    if not target:
+        return JSONResponse(status_code=404, content={"error": "Member not found"})
+
+    # Non-super admins cannot change admin-level members or assign admin roles
+    if not is_super:
+        if target.get("role") in ADMIN_ROLES:
+            return JSONResponse(status_code=403, content={"error": "Only super admins can modify admin accounts"})
+        if role in ADMIN_ROLES:
+            return JSONResponse(status_code=403, content={"error": "Only super admins can assign admin roles"})
+        if target.get("created_by") != admin_id:
+            return JSONResponse(status_code=403, content={"error": "You can only manage users you created"})
+
+    await db.admins.update_one(
+        {"id": member_id},
+        {"$set": {
+            "role": role,
+            "permissions": ROLES[role]["permissions"],
+            "is_super_admin": role in ("super_admin", "superadmin")
+        }}
+    )
+
+    return {"message": f"Role updated to {role}", "role": role}

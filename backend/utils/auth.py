@@ -87,7 +87,19 @@ async def get_admin_id_from_token(admin_token: str) -> str:
 
 
 async def enforce_client_scope(client: dict, admin_id: str):
-    """Ensure the requested client belongs to the provided admin scope"""
+    """Ensure the requested client belongs to the provided admin scope.
+    Super admins can access all clients in their enterprise."""
+    from database import db
+    
+    # Check if admin is a super admin
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0, "is_super_admin": 1, "role": 1})
+    is_super = admin.get("is_super_admin", False) if admin else False
+    is_super = is_super or (admin and admin.get("role") in ["super_admin", "superadmin"])
+    
+    if is_super:
+        # Super admins can access all clients in the enterprise
+        return
+    
     if client.get("admin_id"):
         if not admin_id or client["admin_id"] != admin_id:
             raise AuthorizationException("Client not accessible for this admin")

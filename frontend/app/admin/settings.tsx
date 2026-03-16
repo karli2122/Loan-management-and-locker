@@ -1182,6 +1182,43 @@ export default function AdminSettings() {
                 )}
               </View>
               <View style={styles.adminActions}>
+                {/* Role change - only for other users */}
+                {admin.id !== currentAdminId && !admin.is_super_admin && (
+                  <TouchableOpacity
+                    style={{ marginRight: 8, padding: 4 }}
+                    onPress={() => {
+                      const roles = ['user', 'admin'];
+                      const currentRole = admin.role || 'user';
+                      Alert.alert(
+                        t('changeRole') || 'Change Role',
+                        `${admin.username} - ${t('currentRole') || 'Current role'}: ${currentRole}`,
+                        [
+                          ...roles.map(r => ({
+                            text: r === 'admin' ? (t('admin2') || 'Admin') : (t('user2') || 'User'),
+                            onPress: async () => {
+                              try {
+                                const res = await fetch(
+                                  `${API_URL}/api/team/${admin.id}/role?admin_token=${adminToken}&role=${r}`,
+                                  { method: 'PUT' }
+                                );
+                                if (res.ok) {
+                                  Alert.alert(t('success'), `Role updated to ${r}`);
+                                  await fetchAdmins(adminToken!);
+                                } else {
+                                  const err = await res.json();
+                                  Alert.alert(t('error'), err.detail || 'Failed');
+                                }
+                              } catch (e: any) { Alert.alert(t('error'), e.message); }
+                            }
+                          })),
+                          { text: t('cancel'), style: 'cancel' }
+                        ]
+                      );
+                    }}
+                  >
+                    <Ionicons name="person-circle" size={18} color="#10B981" />
+                  </TouchableOpacity>
+                )}
                 {/* Plan change - only for other users */}
                 {admin.id !== currentAdminId && !admin.is_super_admin && (
                   <TouchableOpacity
