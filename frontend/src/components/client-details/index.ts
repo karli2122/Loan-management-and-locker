@@ -2,6 +2,7 @@ export { ClientInfoCard } from './ClientInfoCard';
 export { ContactInfo } from './ContactInfo';
 export { DeviceInfo } from './DeviceInfo';
 export { LoanOverview } from './LoanOverview';
+export { MultiLoanOverview } from './MultiLoanOverview';
 export { LoanHistory } from './LoanHistory';
 export { PaymentHistory } from './PaymentHistory';
 export { ActionButtons } from './ActionButtons';

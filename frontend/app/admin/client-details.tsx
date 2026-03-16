@@ -34,6 +34,7 @@ import {
   ContactInfo,
   DeviceInfo,
   LoanOverview,
+  MultiLoanOverview,
   LoanHistory,
   PaymentHistory,
   ActionButtons,
@@ -44,7 +45,6 @@ import {
   EditClientModal,
   EditLoanModal,
 } from '../../src/components/client-details';
-import { MultiLoanOverview } from '../../src/components/client-details/MultiLoanOverview';
 import type { Client, LoanHistoryItem, LoanPreview } from '../../src/components/client-details';
 
 export default function ClientDetails() {
@@ -220,24 +220,37 @@ export default function ClientDetails() {
 
   // ─── Action handlers ──────────────────────────────────────────
   const handleGenerateCode = async () => {
-    // Step 1: Ask which lock mode
-    Alert.alert(
-      t('generateNewKey'),
-      language === 'et'
-        ? 'Valige lukurežiim:\n\nDevice Admin (8-kohaline) — Standardne lukustus\nDevice Owner (9-kohaline) — Täielik kioski režiim'
-        : 'Select lock mode:\n\nDevice Admin (8-digit) — Standard lock\nDevice Owner (9-digit) — Full kiosk mode',
-      [
-        { text: t('cancel'), style: 'cancel' },
-        {
-          text: 'Device Admin',
-          onPress: () => generateCodeWithMode('device_admin'),
-        },
-        {
-          text: 'Device Owner',
-          onPress: () => generateCodeWithMode('device_owner'),
-        },
-      ]
-    );
+    // Check plan - Professional gets device_admin only, Enterprise/Custom gets choice
+    if (plan === 'professional') {
+      // Professional plan - automatically generate device_admin code
+      generateCodeWithMode('device_admin');
+    } else if (plan === 'enterprise' || plan === 'custom') {
+      // Enterprise/Custom plan - show mode selection
+      Alert.alert(
+        t('generateNewKey'),
+        language === 'et'
+          ? 'Valige lukurežiim:\n\nDevice Admin (8-kohaline) — Standardne lukustus\nDevice Owner (9-kohaline) — Täielik kioski režiim'
+          : 'Select lock mode:\n\nDevice Admin (8-digit) — Standard lock\nDevice Owner (9-digit) — Full kiosk mode',
+        [
+          { text: t('cancel'), style: 'cancel' },
+          {
+            text: 'Device Admin',
+            onPress: () => generateCodeWithMode('device_admin'),
+          },
+          {
+            text: 'Device Owner',
+            onPress: () => generateCodeWithMode('device_owner'),
+          },
+        ]
+      );
+    } else {
+      // Starter or unknown plan - show upgrade message
+      Alert.alert(
+        'Professional Feature',
+        'Registration key generation requires the Professional plan or higher.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const generateCodeWithMode = async (lockMode: string) => {
