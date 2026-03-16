@@ -6,6 +6,7 @@ import {
   FlatList,
   RefreshControl,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -14,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCurrency } from '../../../src/context/CurrencyContext';
 import { useLanguage } from '../../../src/context/LanguageContext';
 import { useTheme } from '../../../src/context/ThemeContext';
+import { useEnterpriseAccess } from '../../../src/hooks/useEnterpriseAccess';
 import API_URL from '../../../src/constants/api';
 
 
@@ -33,6 +35,7 @@ export default function TransactionsTab() {
   const { language, t } = useLanguage();
   const { formatAmount, currencySymbol } = useCurrency();
   const { colors } = useTheme();
+  const { plan, canAccess, loading: planLoading } = useEnterpriseAccess();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'all' | 'disbursement' | 'payment'>('all');
@@ -203,12 +206,28 @@ export default function TransactionsTab() {
         <Text style={[styles.headerTitle, { color: colors.text }]}>
           {t('transactions')}
         </Text>
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => router.push('/admin/reports')}
-        >
-          <Ionicons name="analytics" size={20} color="#fff" />
-        </TouchableOpacity>
+        {canAccess('reports') ? (
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => router.push('/admin/reports')}
+          >
+            <Ionicons name="analytics" size={20} color="#fff" />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.filterButton, { opacity: 0.5 }]}
+            onPress={() => Alert.alert(
+              'Professional Feature',
+              'Reports and analytics require the Professional plan or higher. Would you like to upgrade?',
+              [
+                { text: t('cancel') || 'Cancel', style: 'cancel' },
+                { text: 'Upgrade', onPress: () => router.push('/admin/settings') },
+              ]
+            )}
+          >
+            <Ionicons name="lock-closed" size={20} color="#fff" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Filter tabs */}

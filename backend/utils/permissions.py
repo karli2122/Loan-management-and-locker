@@ -14,6 +14,8 @@ ROLE_PERMISSIONS = {
     "admin": {"clients", "loans", "payments", "reminders", "reports", "devices",
               "contracts", "schedules", "documents", "import", "settings", "team",
               "clients_read", "reports_read", "loans_read"},  # Alias for full_admin
+    "user": {"clients", "loans", "payments", "reminders", "contracts",
+             "clients_read", "loans_read"},  # Regular user - same as collections but with less team access
     "collections": {"clients", "loans", "payments", "reminders", "contracts",
                     "clients_read", "loans_read"},
     "viewer": {"clients_read", "reports_read", "loans_read"},
