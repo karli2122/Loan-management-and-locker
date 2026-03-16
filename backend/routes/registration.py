@@ -47,7 +47,7 @@ async def send_verification_email(email: str, code: str, first_name: str):
         resend.api_key = RESEND_API_KEY
         
         resend.Emails.send({
-            "from": "PayLock Pro <noreply@paylock.app>",
+            "from": "PayLock Pro <noreply@paylockpro.com>",
             "to": email,
             "subject": "Verify Your PayLock Pro Account",
             "html": f"""
