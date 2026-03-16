@@ -3,30 +3,44 @@
 ## Original Problem Statement
 Full-stack loan management application "PayLock Pro" with tiered subscription model (Starter, Professional, Enterprise, Demo), React Native mobile apps (Admin + Client), FastAPI backend, static website, and web portal.
 
-## Latest Update: v1.2.10 - 2026-03-16
+## Latest Update: v1.3.1 - 2026-03-16
 
-### User Registration & Demo Mode Feature (NEW)
+### Website Registration & Payment Flow (NEW)
+- **New Registration Page**: `register.html` with full form and plan selection
+- **Email Verification**: Sends 6-digit code via Resend (paylockpro.com domain)
+- **Payment Flow**: After verification, redirects to Stripe checkout
+- **Success Page**: `payment-success.html` shows confirmation and next steps
+- **SEO Optimization**: Added meta tags, Open Graph, structured data, sitemap.xml, robots.txt
+
+### Website Updates
+- Removed "14 day free trial" mentions from pricing FAQ
+- All "Get Started" buttons now link to `register.html?plan=X`
+- Plan features updated to match app capabilities
+- Added canonical URLs, meta keywords, Twitter cards
+
+### Backend Deployed to Production VPS
+- Registration routes (`/api/auth/register`, `/api/auth/verify-email`)
+- Updated payments route with website source support
+- Plan gating with demo plan restrictions
+
+### User Registration & Demo Mode
 - **Registration Flow**: New users can self-register via `/api/auth/register`
-- **Email Verification**: 6-digit verification code sent via Resend (fallback: debug_code returned when email fails)
+- **Email Verification**: 6-digit code sent via Resend (paylockpro.com domain)
 - **Demo Plan**: New users start in "demo" plan with severely restricted features
 - **Demo Allowed Features**: calculator, profile_edit, change_password, plans_pricing
-- **Demo Restricted Features**: loans, clients, payments, notifications, reminders, device_lock, etc.
 - **Frontend Changes**:
-  - Login screen now has "Register" link
-  - New `register.tsx` screen with form and verification code input
-  - Dashboard shows "Demo Mode" banner for demo users with upgrade prompt
-  - Plan badge updated to support demo plan (flask icon)
+  - Login screen has "Register" link
+  - Dashboard shows "Demo Mode" banner for demo users
+  - Plan badge supports demo plan (flask icon)
 
-### Registration API Endpoints
-- `POST /api/auth/register` - Create pending registration, sends verification email
-- `POST /api/auth/verify-email` - Verify code and create admin account with demo plan
-- `POST /api/auth/resend-verification` - Resend verification code
+### Admin App Play Store Submission
+- Building AAB (Android App Bundle) for Play Store
+- Build ID: c3eeb838-1f6a-47fd-9e44-c46ee07af9e3
+- Version: 1.3.1 (Build 30)
+- Build URL: https://expo.dev/accounts/karli1987/projects/loans/builds/c3eeb838-1f6a-47fd-9e44-c46ee07af9e3
 
-### Plan Gating Enhancements
-- Added "demo" tier to `PLAN_HIERARCHY` with level -1 (below starter)
-- `DEMO_ALLOWED_FEATURES` set defines minimal features for demo users
-- `get_accessible_features()` returns true for demo-allowed features
-- `check_plan_access()` returns appropriate error messages for demo users
+### Website Download
+- SEO-optimized website zip available at: `https://api.paylock.pro/api/download/paylockpro-website-seo.zip`
 
 ## Architecture
 - **Backend**: FastAPI + MongoDB Atlas + APScheduler

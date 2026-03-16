@@ -1,0 +1,11 @@
+# Robots.txt for PayLock Pro
+# https://paylockpro.com
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://paylockpro.com/sitemap.xml
+
+# Disallow admin/internal pages
+Disallow: /payment-success.html
