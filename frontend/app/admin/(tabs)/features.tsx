@@ -86,7 +86,7 @@ export default function FeaturesTab() {
       items: [
         { key: 'loan_plans', icon: 'pricetag', color: '#EC4899', titleKey: 'loanPlans', descKey: 'manageLoanPlans', route: '/admin/loan-plans', featureGateKey: 'loan_plans', requiredPlan: 'professional' },
         { key: 'calculator', icon: 'calculator', color: '#14B8A6', titleKey: 'loanCalculator', descKey: 'calculateLoanPayments', route: '/admin/calculator', requiredPlan: 'starter' },
-        { key: 'bulk_import', icon: 'cloud-upload', color: '#3B82F6', titleKey: 'bulkImport', descKey: 'importClientsLoansFromCsv', route: '/admin/bulk-import', featureGateKey: 'bulk_import', requiredPlan: 'enterprise', testId: 'bulk-import-link' },
+        { key: 'bulk_import', icon: 'cloud-upload', color: '#3B82F6', titleKey: 'bulkImport', descKey: 'importClientsLoansFromCsv', route: '/admin/bulk-import', featureGateKey: 'bulk_import', requiredPlan: 'professional', testId: 'bulk-import-link' },
         { key: 'document_vault', icon: 'folder-open', color: '#06B6D4', titleKey: 'documentVault', descKey: 'secureClientDocumentStorage', route: '/admin/documents', featureGateKey: 'document_vault', requiredPlan: 'enterprise', testId: 'documents-link' },
       ],
     },

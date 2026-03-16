@@ -52,7 +52,7 @@ FEATURE_PLANS = {
     "tamper_detection": "enterprise",
     "bank_ocr": "enterprise",
     "document_vault": "enterprise",
-    "bulk_import": "enterprise",
+    "bulk_import": "professional",
     "daily_digest": "enterprise",
     "scheduled_reports": "enterprise",
     "stripe_integration": "enterprise",

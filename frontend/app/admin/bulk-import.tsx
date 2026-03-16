@@ -21,7 +21,7 @@ interface ImportResult {
 
 export default function BulkImportPage() {
   return (
-    <EnterpriseGate featureName="Bulk Import" requiredPlan="business" featureKey="bulk_import">
+    <EnterpriseGate featureName="Bulk Import" requiredPlan="professional" featureKey="bulk_import">
       <BulkImportContent />
     </EnterpriseGate>
   );
