@@ -1,37 +1,32 @@
 # PayLock Pro - Product Requirements Document
 
 ## Original Problem Statement
-Full-stack loan management application "PayLock Pro" with tiered subscription model (Starter, Professional, Enterprise), React Native mobile apps (Admin + Client), FastAPI backend, static website, and web portal.
+Full-stack loan management application "PayLock Pro" with tiered subscription model (Starter, Professional, Enterprise, Demo), React Native mobile apps (Admin + Client), FastAPI backend, static website, and web portal.
 
-## Latest Update: v1.2.9 - 2026-03-16
+## Latest Update: v1.2.10 - 2026-03-16
 
-### Multiple Loans Per Client Feature
-- **New `loans` collection** - Stores individual loans, allowing clients to have multiple active loans
-- **Bulk Import** - Creates SEPARATE loan records (not updating existing), client can have 2+ active loans
-- **Client Details** - New `MultiLoanOverview` component shows each loan separately with:
-  - Loan amount, with interest, paid, outstanding
-  - Progress bar for each loan
-  - Individual "Record Payment" button per loan
-  - Loan History section for archived/paid loans
-- **API Endpoints**:
-  - `GET /api/loans/client/{client_id}` - Get all loans for a client
-  - `GET /api/loans/all` - Get all loans (for loans tab)
-  - `POST /api/loans/{loan_id}/payment` - Record payment for specific loan
-  - `POST /api/loans/{loan_id}/archive` - Archive a loan
+### User Registration & Demo Mode Feature (NEW)
+- **Registration Flow**: New users can self-register via `/api/auth/register`
+- **Email Verification**: 6-digit verification code sent via Resend (fallback: debug_code returned when email fails)
+- **Demo Plan**: New users start in "demo" plan with severely restricted features
+- **Demo Allowed Features**: calculator, profile_edit, change_password, plans_pricing
+- **Demo Restricted Features**: loans, clients, payments, notifications, reminders, device_lock, etc.
+- **Frontend Changes**:
+  - Login screen now has "Register" link
+  - New `register.tsx` screen with form and verification code input
+  - Dashboard shows "Demo Mode" banner for demo users with upgrade prompt
+  - Plan badge updated to support demo plan (flask icon)
 
-### Hierarchical Client Scoping
-- Bulk import uses logged-in user's clients + clients of users they created
+### Registration API Endpoints
+- `POST /api/auth/register` - Create pending registration, sends verification email
+- `POST /api/auth/verify-email` - Verify code and create admin account with demo plan
+- `POST /api/auth/resend-verification` - Resend verification code
 
-### Auto-Refresh on Screen Focus  
-- Dashboard, Loans, Transactions, Reports, Client Details, Revenue Forecast
-
-### VPS Deployment
-- Backend deployed to `37.148.202.159:/opt/paylock/backend/`
-- New route: `routes/loans_multi.py`
-
-### Admin APK Builds
-- v1.2.8 (Build 27): https://expo.dev/accounts/karli1987/projects/loans/builds/6e02cf05-1b1f-4699-a743-697801f88755
-- v1.2.9 (Build 28): https://expo.dev/accounts/karli1987/projects/loans/builds/d94fd166-048f-410f-8fa1-b4b4c35233c8
+### Plan Gating Enhancements
+- Added "demo" tier to `PLAN_HIERARCHY` with level -1 (below starter)
+- `DEMO_ALLOWED_FEATURES` set defines minimal features for demo users
+- `get_accessible_features()` returns true for demo-allowed features
+- `check_plan_access()` returns appropriate error messages for demo users
 
 ## Architecture
 - **Backend**: FastAPI + MongoDB Atlas + APScheduler
@@ -167,9 +162,25 @@ Full-stack loan management application "PayLock Pro" with tiered subscription mo
 - `/app/test_reports/iteration_79.json` - Analytics & Bank Statement Analyzer plan gating (16/16 tests)
 - `/app/test_reports/iteration_80.json` - Bank Statement Reconciliation (18/18 tests)
 - `/app/test_reports/iteration_81.json` - New Client Creation & Auto-Archive (9/9 tests)
+- `/app/test_reports/iteration_82.json` - Registration Flow with Demo Plan (12/12 tests)
+
+## Test Users
+- `karli1987` / `nasvakas123` - Super Admin (custom/enterprise access)
+- `hhhhhh` / `testpass123` - Professional plan user
+- `starter_test` / `password123` - Starter plan user for testing
+- `testuser123` / `testpass123` - Demo plan user (created via registration)
 
 ## API Endpoints Reference
+- `/api/auth/register` - User registration (POST)
+- `/api/auth/verify-email` - Email verification (POST)
+- `/api/auth/resend-verification` - Resend verification code (POST)
 - `/api/admin/feature-access?admin_token=X` - Returns plan and accessible features
 - `/api/heartbeat/summary?admin_token=X` - Professional+ feature
 - `/api/analytics/dashboard?admin_token=X` - Professional+ feature
 - `/api/paid-loans/summary?admin_token=X` - Interest summary
+
+## Prioritized Backlog
+- P0: Deploy registration changes to production VPS
+- P0: Build new Admin APK v1.2.10 with registration flow
+- P1: Authorize paylock.app domain in Resend for email sending
+- P2: Subscription renewal check and expiry logic testing
