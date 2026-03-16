@@ -26,22 +26,33 @@ async def get_audit_logs(
     limit: int = Query(default=100, le=500),
     offset: int = Query(default=0)
 ):
-    """Get audit logs with optional filters. Superadmin can see all logs, regular admins see only their own."""
+    """Get audit logs with optional filters. 
+    Superadmin/Enterprise users see logs for themselves + users they created.
+    """
     requester_id = await get_admin_id_from_token(admin_token)
     await check_plan_access(requester_id, "audit_log")
     
     # Check if requester is superadmin
     admin = await db.admins.find_one({"id": requester_id})
     is_super_admin = admin.get("is_super_admin", False) if admin else False
+    is_super_admin = is_super_admin or (admin and admin.get("role") in ("super_admin", "superadmin"))
     
-    # Build query
-    query = {}
+    # Get all users created by this admin (hierarchical scoping)
+    team_members = await db.admins.find(
+        {"$or": [{"created_by": requester_id}, {"id": requester_id}]},
+        {"_id": 0, "id": 1}
+    ).to_list(100)
+    member_ids = [m["id"] for m in team_members]
+    if requester_id not in member_ids:
+        member_ids.append(requester_id)
     
-    # Non-superadmins can only see their own logs
-    if not is_super_admin:
-        query["admin_id"] = requester_id
-    elif admin_id_filter and admin_id_filter != "all":
-        query["admin_id"] = admin_id_filter
+    # Build query - show logs for the user + users they created
+    query = {"admin_id": {"$in": member_ids}}
+    
+    # If specific admin filter requested
+    if admin_id_filter and admin_id_filter != "all":
+        if admin_id_filter in member_ids:  # Only allow filtering to users in their hierarchy
+            query["admin_id"] = admin_id_filter
     
     if action_type:
         query["action_type"] = action_type
