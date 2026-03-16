@@ -441,9 +441,24 @@ async def reconcile_bank_statement(
             detail="No transactions could be extracted from the file. Please check the file format."
         )
     
-    # Get all clients for this admin
+    # Get admin info to check if superadmin/enterprise for hierarchical scoping
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0, "is_super_admin": 1, "plan": 1})
+    is_super = admin.get("is_super_admin", False) if admin else False
+    admin_plan = admin.get("plan", "starter") if admin else "starter"
+    
+    # Build list of admin IDs to include (hierarchical scoping)
+    admin_ids_to_include = [admin_id]
+    if is_super or admin_plan in ("enterprise", "custom"):
+        # Get all users created by this admin
+        created_users = await db.admins.find(
+            {"created_by": admin_id},
+            {"_id": 0, "id": 1}
+        ).to_list(100)
+        admin_ids_to_include.extend([u["id"] for u in created_users])
+    
+    # Get clients for this admin + users they created (hierarchical scoping)
     clients = await db.clients.find(
-        {"admin_id": admin_id, "is_deleted": {"$ne": True}},
+        {"admin_id": {"$in": admin_ids_to_include}, "is_deleted": {"$ne": True}},
         {"_id": 0, "id": 1, "name": 1, "loan_amount": 1, "interest_rate": 1, 
          "total_amount_due": 1, "outstanding_balance": 1, "total_paid": 1}
     ).to_list(1000)
@@ -560,7 +575,19 @@ async def reconcile_bank_statement(
             # Negative = Money going out = Loan disbursement
             loan_amount = abs(amount)
             
-            # Create/add loan to client
+            # Check if client has an active loan (outstanding > 0)
+            existing_outstanding = best_match.get("outstanding_balance", 0) or 0
+            
+            if existing_outstanding > 0:
+                # Client has active loan - archive it first before adding new loan
+                try:
+                    from routes.paid_loans import perform_archive
+                    await perform_archive(best_match["id"], admin_id)
+                    logger.info(f"Archived existing loan for {best_match['name']} before adding new loan")
+                except Exception as archive_err:
+                    logger.warning(f"Could not archive existing loan for {best_match['name']}: {archive_err}")
+            
+            # Add new loan to client
             try:
                 interest_rate = best_match.get("interest_rate", 0) or 0
                 total_due = loan_amount * (1 + interest_rate / 100)
@@ -571,9 +598,13 @@ async def reconcile_bank_statement(
                         "loan_amount": loan_amount,
                         "total_amount_due": total_due,
                         "outstanding_balance": total_due,
+                        "total_paid": 0,  # Reset for new loan
                         "loan_given_date": date,
                         "loan_setup_at": datetime.now(timezone.utc).isoformat(),
                         "imported_from_statement": True,
+                        "days_overdue": 0,
+                        "is_late": False,
+                        "late_fees_accumulated": 0,
                     }}
                 )
                 
@@ -582,13 +613,15 @@ async def reconcile_bank_statement(
                     "client_id": best_match["id"],
                     "loan_amount": loan_amount,
                     "date": date,
-                    "match_score": round(best_score * 100)
+                    "match_score": round(best_score * 100),
+                    "archived_previous": existing_outstanding > 0
                 })
                 
                 # Update local client data for subsequent transactions
                 best_match["loan_amount"] = loan_amount
                 best_match["total_amount_due"] = total_due
                 best_match["outstanding_balance"] = total_due
+                best_match["total_paid"] = 0
                 
             except Exception as e:
                 results["errors"].append({

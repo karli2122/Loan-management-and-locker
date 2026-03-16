@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCurrency } from '../../../src/context/CurrencyContext';
@@ -150,12 +151,20 @@ export default function LoansTab() {
     }
   }, [filterParam]);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchClients();
     await fetchPaidLoans();
     setRefreshing(false);
-  };
+  }, []);
+
+  // Auto-refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchClients();
+      fetchPaidLoans();
+    }, [])
+  );
 
   // Helper function to check if date matches filter
   const matchesPaymentFilter = (client: Client, filterType: string): boolean => {

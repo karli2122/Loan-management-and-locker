@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '../../src/constants/api';
@@ -36,6 +37,13 @@ export default function RevenueForecastScreen() {
   }, [days]);
 
   useEffect(() => { setLoading(true); fetchForecast(); }, [fetchForecast]);
+
+  // Auto-refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchForecast();
+    }, [fetchForecast])
+  );
 
   const formatAmount = (n: number) => {
     if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;

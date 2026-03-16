@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCurrency } from '../../../src/context/CurrencyContext';
@@ -122,11 +123,18 @@ export default function TransactionsTab() {
     fetchTransactions();
   }, []);
 
-  const onRefresh = async () => {
+  // Auto-refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchTransactions();
+    }, [])
+  );
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchTransactions();
     setRefreshing(false);
-  };
+  }, []);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

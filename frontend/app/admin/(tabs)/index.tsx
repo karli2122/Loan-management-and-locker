@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../../src/context/LanguageContext';
@@ -455,6 +456,16 @@ export default function Dashboard() {
     ]);
     setRefreshing(false);
   }, [selectedAdminId]);
+
+  // Auto-refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      // Refresh data when screen is focused
+      if (!initialLoading) {
+        onRefresh();
+      }
+    }, [selectedAdminId])
+  );
 
   const getSelectedAdminName = () => {
     if (!selectedAdminId) return t('myData');
