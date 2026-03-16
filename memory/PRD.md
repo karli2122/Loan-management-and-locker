@@ -101,12 +101,30 @@ Full-stack loan management application "PayLock Pro" with tiered subscription mo
 3. **Audit logs hierarchical scoping**: Implemented - Superadmins see logs for themselves + users they created (via `created_by` field)
 4. **Collection overview metrics**: Verified - `overdue_clients` and `completed_loans` returning correct values
 
+## New Feature: Bank Statement Reconciliation (v1.2.7)
+**Endpoint**: `POST /api/import/bank-statement/reconcile`
+
+**Supported File Types**: CSV, PDF, ASICE
+
+**Business Logic**:
+- Matches transaction names to existing clients (70%+ name match score)
+- Negative amounts (-): Creates/adds loan to matched client
+- Positive amounts (+): Records payment for matched client
+  - If payment > outstanding: marks difference as `extra_interest`
+  - Sets `loan_fully_paid=True` when fully paid
+- Ignores: bank fees (teenustasu, service fee), card payments (kaardimakse, pos, visa, mastercard)
+
+**Plan Requirements**:
+- CSV files: Professional+ plan
+- PDF files: Enterprise+ plan (requires AI extraction)
+
 ### Previous Session (v1.2.5)
 1. **Starter plan 403 on loan creation**: Fixed - Added "admin" and "superadmin" role aliases to ROLE_PERMISSIONS mapping in permissions.py
 2. **Settings access for starter users**: Fixed - Basic settings (theme, language, currency) available to all; Late Fee/Auto-Lock shows locked state with upgrade prompt for starter users
 
-## Test Report
-- `/app/test_reports/iteration_79.json` - 100% pass rate (16/16 tests), all backend API features verified
+## Test Reports
+- `/app/test_reports/iteration_79.json` - Analytics & Bank Statement Analyzer plan gating (16/16 tests)
+- `/app/test_reports/iteration_80.json` - Bank Statement Reconciliation (18/18 tests)
 
 ## API Endpoints Reference
 - `/api/admin/feature-access?admin_token=X` - Returns plan and accessible features
