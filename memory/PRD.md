@@ -69,10 +69,9 @@ Full-stack loan management application "PayLock Pro" with tiered subscription mo
 
 ## Current Version
 - v1.2.5, Build #26
-- **Client Build (In Progress):** `c14443d6-27c2-4354-970f-a68e8baeec9d`
-  - https://expo.dev/accounts/karli1987/projects/client/builds/c14443d6-27c2-4354-970f-a68e8baeec9d
-- **Admin Build (In Progress):** `dd5ab2d9-f0e7-4a19-9b9b-8646bdace05e`
-  - https://expo.dev/accounts/karli1987/projects/loans/builds/dd5ab2d9-f0e7-4a19-9b9b-8646bdace05e
+- **Client APK (v1.2.5):** https://expo.dev/artifacts/eas/pScbcfSnxanYiC4vUMuXbM.apk
+- **Admin APK (v1.2.5):** https://expo.dev/artifacts/eas/tkmNR32y24H38GYwQvzeBC.apk
+- **VPS IP:** 37.148.202.159
 
 ## Key Files Modified This Session (v1.2.5)
 - `frontend/app/admin/(tabs)/loans.tsx` - Credit scoring badge gating
