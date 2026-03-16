@@ -108,11 +108,22 @@ Full-stack loan management application "PayLock Pro" with tiered subscription mo
 
 **Business Logic**:
 - Matches transaction names to existing clients (70%+ name match score)
-- Negative amounts (-): Creates/adds loan to matched client
-- Positive amounts (+): Records payment for matched client
+- **Negative amounts (-)**: 
+  - If client exists: Creates/adds loan
+  - If client NOT found: Creates NEW client with `import_needs_review=True` flag
+- **Positive amounts (+)**: Records payment for matched client
   - If payment > outstanding: marks difference as `extra_interest`
-  - Sets `loan_fully_paid=True` when fully paid
+  - Sets `loan_fully_paid=True` and auto-archives to Loan History when fully paid
 - Ignores: bank fees (teenustasu, service fee), card payments (kaardimakse, pos, visa, mastercard)
+
+**New Client Creation**:
+- New clients created from unmatched negative transactions appear in **Loans → Imported** tab
+- Marked with "IMPORTED" badge - user can edit to add: birth number, address, phone, email, interest rate, due date
+
+**Loan Overview Updates**:
+- Shows "Remaining" amount with interest for partial payments
+- Shows "Loan Fully Paid" state with checkmark when outstanding_balance = 0
+- Fully paid loans automatically move to Loan History
 
 **Plan Requirements**:
 - CSV files: Professional+ plan
@@ -125,6 +136,7 @@ Full-stack loan management application "PayLock Pro" with tiered subscription mo
 ## Test Reports
 - `/app/test_reports/iteration_79.json` - Analytics & Bank Statement Analyzer plan gating (16/16 tests)
 - `/app/test_reports/iteration_80.json` - Bank Statement Reconciliation (18/18 tests)
+- `/app/test_reports/iteration_81.json` - New Client Creation & Auto-Archive (9/9 tests)
 
 ## API Endpoints Reference
 - `/api/admin/feature-access?admin_token=X` - Returns plan and accessible features
