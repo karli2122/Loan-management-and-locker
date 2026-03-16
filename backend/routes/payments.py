@@ -21,7 +21,8 @@ STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY")
 # Fixed plan definitions - NEVER accept amounts from frontend
 PLANS = {
     "starter": {"name": "Starter", "amount": 29.00, "currency": "eur", "clients": 50},
-    "business": {"name": "Business", "amount": 79.00, "currency": "eur", "clients": 200},
+    "professional": {"name": "Professional", "amount": 79.00, "currency": "eur", "clients": 200},
+    "business": {"name": "Business", "amount": 79.00, "currency": "eur", "clients": 200},  # Alias for professional
     "enterprise": {"name": "Enterprise", "amount": 199.00, "currency": "eur", "clients": 1000},
 }
 
@@ -189,15 +190,43 @@ async def stripe_webhook(request: Request):
                 plan_id = txn.get("plan_id")
                 admin_id = txn.get("admin_id")
                 plan = PLANS.get(plan_id, {})
+                
+                # Get admin's current plan for upgrade/downgrade logic
+                admin = await db.admins.find_one({"id": admin_id}, {"_id": 0, "plan": 1, "subscription_renewal_date": 1})
+                current_plan = admin.get("plan", "demo") if admin else "demo"
+                current_level = {"demo": -1, "starter": 0, "professional": 1, "business": 1, "enterprise": 2, "custom": 3}.get(current_plan, 0)
+                new_level = {"demo": -1, "starter": 0, "professional": 1, "business": 1, "enterprise": 2, "custom": 3}.get(plan_id, 0)
+                
+                # Calculate renewal date - 1 month from now for upgrades
+                # For downgrades, keep current renewal date (plan takes effect after renewal)
+                from datetime import timedelta
+                if new_level > current_level:
+                    # Upgrade - immediate effect, new renewal date
+                    renewal_date = datetime.now(timezone.utc) + timedelta(days=30)
+                    effective_plan = plan_id
+                else:
+                    # Downgrade - keep current plan until renewal, then switch
+                    renewal_date = admin.get("subscription_renewal_date") if admin else None
+                    if not renewal_date:
+                        renewal_date = datetime.now(timezone.utc) + timedelta(days=30)
+                    effective_plan = current_plan  # Keep current plan until renewal
+                    # Store pending downgrade
+                    await db.admins.update_one(
+                        {"id": admin_id},
+                        {"$set": {"pending_plan": plan_id, "pending_plan_date": renewal_date}}
+                    )
 
                 await db.admins.update_one(
                     {"id": admin_id},
                     {"$set": {
-                        "subscription_plan": plan_id,
+                        "subscription_plan": effective_plan,
+                        "plan": effective_plan,
                         "subscription_plan_name": plan.get("name", ""),
                         "subscription_clients_limit": plan.get("clients", 50),
                         "subscription_updated_at": datetime.now(timezone.utc).isoformat(),
                         "subscription_session_id": webhook_response.session_id,
+                        "subscription_renewal_date": renewal_date if isinstance(renewal_date, datetime) else datetime.fromisoformat(str(renewal_date)),
+                        "subscription_status": "paid",
                     }}
                 )
 
@@ -210,7 +239,7 @@ async def stripe_webhook(request: Request):
                         "updated_at": datetime.now(timezone.utc).isoformat(),
                     }}
                 )
-                logger.info(f"Webhook: Admin {admin_id} plan updated to {plan_id}")
+                logger.info(f"Webhook: Admin {admin_id} plan updated to {effective_plan}")
 
         return {"received": True}
     except Exception as e:

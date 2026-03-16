@@ -62,21 +62,51 @@ FEATURE_PLANS = {
 }
 
 # Support both "professional" and legacy "business" at the same level
-PLAN_HIERARCHY = {"starter": 0, "professional": 1, "business": 1, "enterprise": 2, "custom": 3}
+# Demo plan (-1) has minimal features - only dashboard, loans list, transactions list, calculator, settings
+PLAN_HIERARCHY = {"demo": -1, "starter": 0, "professional": 1, "business": 1, "enterprise": 2, "custom": 3}
+
+# Features available to demo users (very limited)
+DEMO_ALLOWED_FEATURES = {
+    "calculator",  # Loan calculator only
+    "profile_edit",  # Edit profile
+    "change_password",  # Change password
+    "plans_pricing",  # View plans and upgrade
+}
 
 
 async def get_admin_plan(admin_id: str) -> str:
-    """Get the subscription plan for an admin. Plan field is the authority."""
+    """Get the subscription plan for an admin. Check for expired subscription."""
+    from datetime import datetime, timezone
+    
     admin = await db.admins.find_one(
         {"id": admin_id},
-        {"_id": 0, "subscription_plan": 1, "plan": 1, "enterprise_id": 1}
+        {"_id": 0, "subscription_plan": 1, "plan": 1, "enterprise_id": 1, 
+         "subscription_renewal_date": 1, "subscription_status": 1}
     )
     if not admin:
         return "starter"
+    
     # Check own plan first
     own_plan = admin.get("subscription_plan") or admin.get("plan")
+    
+    # Check if subscription has expired (renewal date passed and not paid)
+    renewal_date = admin.get("subscription_renewal_date")
+    if renewal_date and own_plan not in ("demo", "custom"):
+        if isinstance(renewal_date, str):
+            try:
+                renewal_date = datetime.fromisoformat(renewal_date.replace('Z', '+00:00'))
+            except:
+                renewal_date = None
+        
+        if renewal_date and renewal_date < datetime.now(timezone.utc):
+            # Subscription expired - treat as demo until payment received
+            sub_status = admin.get("subscription_status", "")
+            if sub_status != "paid":
+                return "demo"
+    
     if own_plan:
         return own_plan
+    
     # If team member, inherit plan from enterprise owner
     enterprise_id = admin.get("enterprise_id")
     if enterprise_id and enterprise_id != admin_id:
@@ -86,12 +116,21 @@ async def get_admin_plan(admin_id: str) -> str:
         )
         if owner:
             return owner.get("subscription_plan") or owner.get("plan", "starter")
+    
     return "starter"
 
 
 async def check_plan_access(admin_id: str, feature: str) -> bool:
     """Check if admin's plan allows access to a feature. Returns True or raises."""
     plan = await get_admin_plan(admin_id)
+
+    # Demo users have very limited features
+    if plan == "demo":
+        if feature in DEMO_ALLOWED_FEATURES:
+            return True
+        raise AuthorizationException(
+            "Your account is in demo mode. Please upgrade to access this feature."
+        )
 
     required_plan = FEATURE_PLANS.get(feature, "starter")
     admin_level = PLAN_HIERARCHY.get(plan, 0)
