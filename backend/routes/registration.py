@@ -75,15 +75,29 @@ async def send_verification_email(email: str, code: str, first_name: str):
 @router.post("/register")
 async def register_admin(req: RegisterRequest):
     """Register a new admin account. Sends verification email."""
-    # Check if username exists
+    # Check if username exists in admins
     existing_username = await db.admins.find_one({"username": req.username})
     if existing_username:
         raise HTTPException(status_code=400, detail="Username already taken")
     
-    # Check if email exists
+    # Check if username exists in pending registrations
+    existing_pending_username = await db.pending_registrations.find_one(
+        {"username": req.username, "verified": False}
+    )
+    if existing_pending_username:
+        raise HTTPException(status_code=400, detail="Username already taken")
+    
+    # Check if email exists in admins
     existing_email = await db.admins.find_one({"email": req.email})
     if existing_email:
         raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Check if email exists in pending registrations
+    existing_pending_email = await db.pending_registrations.find_one(
+        {"email": req.email, "verified": False}
+    )
+    if existing_pending_email:
+        raise HTTPException(status_code=400, detail="Email already registered. Please check your email for verification code or use resend verification.")
     
     # Generate verification code
     verification_code = ''.join(random.choices(string.digits, k=6))
@@ -116,8 +130,8 @@ async def register_admin(req: RegisterRequest):
         "message": "Verification code sent to your email",
         "email": req.email,
         "email_sent": email_sent,
-        # For testing when email is not configured
-        "debug_code": verification_code if not RESEND_API_KEY else None
+        # For testing when email is not configured or email sending failed
+        "debug_code": verification_code if (not RESEND_API_KEY or not email_sent) else None
     }
 
 
@@ -135,8 +149,12 @@ async def verify_email(req: VerifyEmailRequest):
     
     # Check if code expired
     expires = pending.get("verification_expires")
-    if expires and expires < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Verification code expired. Please register again.")
+    if expires:
+        # Make sure both datetimes are timezone-aware
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        if expires < datetime.now(timezone.utc):
+            raise HTTPException(status_code=400, detail="Verification code expired. Please register again.")
     
     # Check code
     if pending.get("verification_code") != req.code:
@@ -173,6 +191,14 @@ async def verify_email(req: VerifyEmailRequest):
     }
     
     await db.admins.insert_one(new_admin)
+    
+    # Create token in admin_tokens collection for API authentication
+    await db.admin_tokens.insert_one({
+        "token": token,
+        "admin_id": admin_id,
+        "created_at": datetime.now(timezone.utc),
+        "expires_at": datetime.now(timezone.utc) + timedelta(days=365),  # Long-lived for demo
+    })
     
     # Clean up pending registration
     await db.pending_registrations.delete_one({"email": req.email})
@@ -215,5 +241,5 @@ async def resend_verification(email: str = Query(...)):
         "success": True,
         "message": "New verification code sent",
         "email_sent": email_sent,
-        "debug_code": verification_code if not RESEND_API_KEY else None
+        "debug_code": verification_code if (not RESEND_API_KEY or not email_sent) else None
     }

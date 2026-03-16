@@ -136,11 +136,16 @@ export default function RegisterScreen() {
       // Save token and log in
       await AsyncStorage.setItem('admin_token', data.token);
       await AsyncStorage.setItem('admin_id', data.admin_id);
+      await AsyncStorage.setItem('admin_username', username);
+      await AsyncStorage.setItem('admin_first_name', firstName);
+      await AsyncStorage.setItem('admin_last_name', lastName);
+      await AsyncStorage.setItem('admin_role', 'admin');
+      await AsyncStorage.setItem('is_super_admin', 'false');
       
       Alert.alert(
         'Account Created!',
         'Your demo account is ready. Explore the app and upgrade when ready.',
-        [{ text: 'Get Started', onPress: () => router.replace('/admin') }]
+        [{ text: 'Get Started', onPress: () => router.replace('/admin/(tabs)') }]
       );
     } catch (error) {
       Alert.alert('Error', error.message || 'Verification failed');

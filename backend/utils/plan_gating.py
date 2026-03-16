@@ -154,5 +154,10 @@ async def get_accessible_features(admin_id: str) -> dict:
     for feature, required_plan in FEATURE_PLANS.items():
         required_level = PLAN_HIERARCHY.get(required_plan, 0)
         result[feature] = admin_level >= required_level
+    
+    # Demo users get access to demo-allowed features
+    if plan == "demo":
+        for feature in DEMO_ALLOWED_FEATURES:
+            result[feature] = True
 
     return {"plan": plan, "features": result}

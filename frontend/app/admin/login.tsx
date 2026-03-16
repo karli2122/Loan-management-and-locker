@@ -406,6 +406,17 @@ export default function AdminLogin() {
                 <Text style={styles.buttonText}>{t('login')}</Text>
               )}
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.registerLink}
+              onPress={() => router.push('/admin/register')}
+              data-testid="register-link"
+            >
+              <Text style={styles.registerLinkText}>
+                Don't have an account?{' '}
+                <Text style={styles.registerLinkBold}>Register</Text>
+              </Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -498,6 +509,19 @@ const styles = StyleSheet.create({
   rememberText: {
     color: '#E2E8F0',
     fontSize: 14,
+    fontWeight: '600',
+  },
+  registerLink: {
+    alignItems: 'center',
+    marginTop: 20,
+    paddingVertical: 10,
+  },
+  registerLinkText: {
+    color: '#94A3B8',
+    fontSize: 14,
+  },
+  registerLinkBold: {
+    color: '#2563EB',
     fontWeight: '600',
   },
 });

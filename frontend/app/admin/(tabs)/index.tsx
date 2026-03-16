@@ -533,15 +533,15 @@ export default function Dashboard() {
         <View style={[styles.planBadgeContainer, { backgroundColor: colors.surface, borderColor: colors.border }]} data-testid="plan-badge">
           <View style={styles.planBadgeContent}>
             <Ionicons 
-              name={planFeatures.plan === 'enterprise' ? 'diamond' : planFeatures.plan === 'professional' ? 'star' : 'ribbon'} 
+              name={planFeatures.plan === 'enterprise' ? 'diamond' : planFeatures.plan === 'professional' ? 'star' : planFeatures.plan === 'demo' ? 'flask' : 'ribbon'} 
               size={18} 
-              color={planFeatures.plan === 'enterprise' ? '#8B5CF6' : planFeatures.plan === 'professional' ? '#F59E0B' : '#3B82F6'} 
+              color={planFeatures.plan === 'enterprise' ? '#8B5CF6' : planFeatures.plan === 'professional' ? '#F59E0B' : planFeatures.plan === 'demo' ? '#6B7280' : '#3B82F6'} 
             />
             <Text style={[styles.planBadgeText, { color: colors.text }]}>
               {planFeatures.plan.charAt(0).toUpperCase() + planFeatures.plan.slice(1)} Plan
             </Text>
           </View>
-          {planFeatures.plan === 'starter' && (
+          {(planFeatures.plan === 'starter' || planFeatures.plan === 'demo') && (
             <TouchableOpacity 
               style={styles.upgradePlanBtn}
               onPress={() => router.push('/admin/subscription')}
@@ -551,6 +551,23 @@ export default function Dashboard() {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Demo Mode Banner */}
+        {planFeatures.plan === 'demo' && (
+          <View style={{ backgroundColor: '#F59E0B', padding: 14, borderRadius: 10, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }} data-testid="demo-mode-banner">
+            <Ionicons name="flask" size={22} color="#fff" />
+            <View style={{ marginLeft: 12, flex: 1 }}>
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Demo Mode</Text>
+              <Text style={{ color: '#fff', fontSize: 12, opacity: 0.9 }}>Limited features. Upgrade to unlock full access.</Text>
+            </View>
+            <TouchableOpacity 
+              style={{ backgroundColor: '#fff', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6 }}
+              onPress={() => router.push('/admin/subscription')}
+            >
+              <Text style={{ color: '#F59E0B', fontWeight: '600', fontSize: 13 }}>Upgrade</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Payments Due Today Alert */}
         {dueTodayCount > 0 && (
