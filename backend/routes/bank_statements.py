@@ -187,7 +187,8 @@ def extract_text_with_ocr(pdf_bytes: bytes) -> str:
     """OCR extraction using PyMuPDF's built-in Tesseract API.
     Limited to first 2 pages — SEB account summary is always on page 1-2.
     """
-    import fitz, os
+    import fitz
+    import os
 
     # Always force-set TESSDATA_PREFIX — without it tesseract searches slowly and times out
     os.environ["TESSDATA_PREFIX"] = "/usr/share/tesseract-ocr/5/tessdata"
@@ -454,10 +455,40 @@ async def analyze_bank_statement(
     client_id: str = Query(None),
     force_ocr: bool = Query(False),
 ):
-    """Upload and analyze a bank statement (.pdf, .asice, .csv, or .xml)."""
+    """Upload and analyze a bank statement (.pdf, .asice, .csv, or .xml).
+    
+    Professional plan: Can analyze statements with basic text extraction (no OCR).
+    Enterprise plan: Can analyze statements with full OCR capabilities.
+    """
     admin_id = await get_admin_id_from_token(admin_token)
-    from utils.plan_gating import check_plan_access
-    await check_plan_access(admin_id, "bank_ocr")
+    from utils.plan_gating import check_plan_access, get_admin_plan, PLAN_HIERARCHY
+    
+    # The basic analyzer is available to professional users
+    # Check if user has at least professional plan
+    admin_plan = await get_admin_plan(admin_id)
+    admin_level = PLAN_HIERARCHY.get(admin_plan, 0)
+    professional_level = PLAN_HIERARCHY.get("professional", 1)
+    
+    if admin_level < professional_level:
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Bank Statement Analyzer requires the Professional plan or higher. Current plan: {admin_plan.title()}"
+        )
+    
+    # Check if user has OCR access (enterprise feature)
+    has_ocr_access = False
+    try:
+        await check_plan_access(admin_id, "bank_ocr")
+        has_ocr_access = True
+    except Exception:
+        has_ocr_access = False
+    
+    # If user requested force_ocr but doesn't have access, deny
+    if force_ocr and not has_ocr_access:
+        raise HTTPException(
+            status_code=403, 
+            detail="OCR analysis requires the Enterprise plan or higher."
+        )
 
     # Validate file type
     filename = file.filename or ""
@@ -520,15 +551,23 @@ async def analyze_bank_statement(
                 raise HTTPException(status_code=400, detail="Could not extract text from PDF. The file may be image-based or corrupted.")
 
     if not statement_text.strip() and pdf_bytes is not None:
-        # Try AI vision OCR as fallback for scanned/image-based PDFs
-        try:
-            logger.info("Text extraction empty, trying AI vision OCR...")
-            statement_text = await extract_text_with_ai_vision(pdf_bytes)
-        except Exception as e:
-            logger.error(f"AI vision OCR failed: {e}")
+        # Try AI vision OCR as fallback for scanned/image-based PDFs (only if user has OCR access)
+        if has_ocr_access:
+            try:
+                logger.info("Text extraction empty, trying AI vision OCR...")
+                statement_text = await extract_text_with_ai_vision(pdf_bytes)
+            except Exception as e:
+                logger.error(f"AI vision OCR failed: {e}")
 
     if not statement_text.strip():
-        raise HTTPException(status_code=400, detail="No text could be extracted from the PDF. It may be a scanned/image-based document.")
+        if has_ocr_access:
+            raise HTTPException(status_code=400, detail="No text could be extracted from the PDF. It may be a scanned/image-based document.")
+        else:
+            raise HTTPException(
+                status_code=400, 
+                detail="No text could be extracted from the PDF. This appears to be a scanned document. "
+                       "Upgrade to Enterprise plan for OCR support to analyze image-based PDFs."
+            )
 
     is_seb_file = is_seb_statement(statement_text, file.filename) or is_seb_pdf_bytes(pdf_bytes)
 
@@ -551,7 +590,8 @@ async def analyze_bank_statement(
         logger.error(f"AI analysis failed: {e}")
         ai_error = e
 
-    if not has_transactions(analysis) and pdf_bytes is not None and is_seb_file:
+    if not has_transactions(analysis) and pdf_bytes is not None and is_seb_file and has_ocr_access:
+        # Try OCR fallback for SEB files (requires enterprise plan)
         loop = asyncio.get_event_loop()
         ocr_text = await asyncio.wait_for(
             loop.run_in_executor(None, lambda: extract_text_from_pdf(pdf_bytes, force_ocr=True, filename=file.filename)),
@@ -593,10 +633,20 @@ async def get_analysis_history(
     admin_token: str = Query(...),
     client_id: str = Query(None),
 ):
-    """Get past bank statement analyses."""
+    """Get past bank statement analyses. Requires Professional plan or higher."""
     admin_id = await get_admin_id_from_token(admin_token)
-    from utils.plan_gating import check_plan_access
-    await check_plan_access(admin_id, "bank_ocr")
+    from utils.plan_gating import get_admin_plan, PLAN_HIERARCHY
+    
+    # Check if user has at least professional plan
+    admin_plan = await get_admin_plan(admin_id)
+    admin_level = PLAN_HIERARCHY.get(admin_plan, 0)
+    professional_level = PLAN_HIERARCHY.get("professional", 1)
+    
+    if admin_level < professional_level:
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Bank Statement Analyzer requires the Professional plan or higher. Current plan: {admin_plan.title()}"
+        )
 
     query = {"admin_id": admin_id}
     if client_id:

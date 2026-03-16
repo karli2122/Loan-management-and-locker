@@ -143,7 +143,7 @@ async def get_collection_report(
             target_admin_id = filter_admin_id
     
     query = {"admin_id": target_admin_id, "is_deleted": {"$ne": True}} if target_admin_id else {"is_deleted": {"$ne": True}}
-    clients = await db.clients.find(query, {"_id": 0, "id": 1, "name": 1, "loan_amount": 1, "total_paid": 1, "outstanding_balance": 1, "late_fees_accumulated": 1, "days_overdue": 1, "is_deleted": 1}).to_list(1000)
+    clients = await db.clients.find(query, {"_id": 0, "id": 1, "name": 1, "loan_amount": 1, "total_paid": 1, "outstanding_balance": 1, "late_fees_accumulated": 1, "days_overdue": 1, "is_deleted": 1, "created_at": 1}).to_list(1000)
     
     total_disbursed = sum(c.get("loan_amount", 0) for c in clients)
     total_collected = sum(c.get("total_paid", 0) for c in clients)
@@ -156,7 +156,7 @@ async def get_collection_report(
     
     collection_rate = (total_collected / total_disbursed * 100) if total_disbursed > 0 else 0
 
-    # This month payments
+    # This month payments and new loans
     now = datetime.utcnow()
     first_of_month = datetime(now.year, now.month, 1)
     client_ids = [c["id"] for c in clients]
@@ -165,6 +165,12 @@ async def get_collection_report(
         {"_id": 0, "amount": 1}
     ).to_list(10000)
     this_month_collected = sum(p.get("amount", 0) for p in this_month_payments)
+    
+    # Count new loans this month (clients created this month with loan_amount > 0)
+    new_loans_this_month = sum(
+        1 for c in clients 
+        if c.get("loan_amount", 0) > 0 and c.get("created_at") and c["created_at"] >= first_of_month
+    )
     
     return {
         "overview": {
@@ -183,6 +189,7 @@ async def get_collection_report(
         "this_month": {
             "total_collected": round(this_month_collected, 2),
             "number_of_payments": len(this_month_payments),
+            "new_loans": new_loans_this_month,
         },
         # Keep flat fields for backward compat
         "total_disbursed": round(total_disbursed, 2),

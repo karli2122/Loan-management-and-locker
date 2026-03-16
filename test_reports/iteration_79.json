@@ -1,0 +1,64 @@
+{
+  "summary": "Backend API testing for iteration 79 - All 16 tests passed. Verified: (1) new_loans field added to this_month in /api/reports/collection, (2) Bank Statement Analyzer plan gating working correctly (Starter=403, Professional=access but no OCR, Enterprise=full), (3) Audit logs hierarchical scoping functional (superadmin sees their logs + users they created), (4) Collection overview metrics (overdue_clients, completed_loans) returning correct values.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration79_features.py",
+    "/app/test_reports/pytest/iteration79_features_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_iteration79_features.py"
+  ],
+  "success_rate": {
+    "backend": "100% (16/16 tests passed)",
+    "frontend": "N/A (backend only testing)"
+  },
+  "test_credentials": {
+    "superadmin": "karli1987 / nasvakas123 (plan: custom)",
+    "professional_user": "hhhhhh / testpass123 (plan: professional)",
+    "starter_user": "starter_test / password123 (plan: starter)"
+  },
+  "features_verified": {
+    "new_loans_in_collection_report": {
+      "endpoint": "/api/reports/collection",
+      "status": "PASS",
+      "details": "this_month object now contains new_loans field counting clients created this month with loan_amount > 0"
+    },
+    "bank_statement_analyzer_plan_gating": {
+      "endpoint": "/api/bank-statements/analyze",
+      "status": "PASS",
+      "details": {
+        "starter_access": "403 - 'Bank Statement Analyzer requires the Professional plan or higher'",
+        "professional_access": "200 - Access granted for analyzer without OCR",
+        "professional_force_ocr": "403 - 'OCR analysis requires the Enterprise plan or higher'",
+        "enterprise_access": "Full access including OCR"
+      }
+    },
+    "audit_logs_hierarchical_scoping": {
+      "endpoint": "/api/audit-logs",
+      "status": "PASS",
+      "details": "Superadmin sees logs for themselves + users they created (via created_by field). Query uses admin_id $in member_ids"
+    },
+    "collection_overview_metrics": {
+      "endpoint": "/api/reports/collection",
+      "status": "PASS",
+      "details": {
+        "overdue_clients": "Correctly counts clients with days_overdue > 0",
+        "completed_loans": "Correctly counts clients with outstanding_balance <= 0 AND loan_amount > 0"
+      }
+    }
+  },
+  "seed_data_creation": "None - used existing test users",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All backend features tested and verified working. Plan hierarchy is starter < professional < enterprise < custom. Bank OCR is enterprise-only feature while basic analyzer is professional+. Audit logs require enterprise plan."
+}
