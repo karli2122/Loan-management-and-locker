@@ -31,6 +31,7 @@ class SubscribeRequest(BaseModel):
     plan_id: str
     origin_url: str
     admin_token: str
+    source: Optional[str] = None  # "app" or "website"
 
 
 class CheckStatusRequest(BaseModel):
@@ -53,10 +54,16 @@ async def create_subscription_checkout(req: SubscribeRequest, http_request: Requ
     admin = await db.admins.find_one({"token": req.admin_token}, {"_id": 0})
     admin_id = admin["id"] if admin else "unknown"
 
-    # Build URLs from frontend origin
+    # Build URLs from frontend origin - handle website vs app
     origin = req.origin_url.rstrip("/")
-    success_url = f"{origin}/admin/settings?session_id={{CHECKOUT_SESSION_ID}}&plan={req.plan_id}"
-    cancel_url = f"{origin}/admin/settings?cancelled=true"
+    if req.source == "website":
+        # Website registration - redirect to success page on website
+        success_url = f"{origin}/payment-success.html?session_id={{CHECKOUT_SESSION_ID}}&plan={req.plan_id}"
+        cancel_url = f"{origin}/register.html?cancelled=true&plan={req.plan_id}"
+    else:
+        # App - redirect to settings screen
+        success_url = f"{origin}/admin/settings?session_id={{CHECKOUT_SESSION_ID}}&plan={req.plan_id}"
+        cancel_url = f"{origin}/admin/settings?cancelled=true"
 
     # Init Stripe
     host_url = str(http_request.base_url)
