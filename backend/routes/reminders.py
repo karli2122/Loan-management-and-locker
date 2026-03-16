@@ -131,10 +131,12 @@ async def get_pending_reminders(admin_token: str = Query(...)):
         {"_id": 0}
     ).to_list(1000)
     
-    overdue = []
-    due_today = []
-    due_soon = []  # 1-3 days
-    upcoming = []  # 4-7 days
+    reminders = []
+    overdue_count = 0
+    due_today_count = 0
+    due_soon_count = 0
+    upcoming_count = 0
+    with_push_token = 0
     
     for client in clients:
         next_due = client.get("next_payment_due")
@@ -148,6 +150,27 @@ async def get_pending_reminders(admin_token: str = Query(...)):
             except ValueError:
                 continue
         
+        days_until_due = (next_due.replace(tzinfo=None) - now.replace(tzinfo=None)).days
+        has_push = bool(client.get("expo_push_token"))
+        if has_push:
+            with_push_token += 1
+        
+        # Determine reminder type
+        if next_due < today_start:
+            reminder_type = "overdue"
+            overdue_count += 1
+        elif today_start <= next_due < today_end:
+            reminder_type = "due_today"
+            due_today_count += 1
+        elif today_end <= next_due < today_start + timedelta(days=4):
+            reminder_type = "due_soon"
+            due_soon_count += 1
+        elif today_start + timedelta(days=4) <= next_due < week_end:
+            reminder_type = "upcoming"
+            upcoming_count += 1
+        else:
+            continue  # Skip clients with payments more than a week away
+        
         reminder_data = {
             "client_id": client["id"],
             "client_name": client["name"],
@@ -155,31 +178,26 @@ async def get_pending_reminders(admin_token: str = Query(...)):
             "monthly_emi": client.get("monthly_emi", 0),
             "outstanding_balance": client.get("outstanding_balance", 0),
             "next_payment_due": next_due.isoformat() if isinstance(next_due, datetime) else next_due,
-            "days_overdue": client.get("days_overdue", 0),
-            "has_push_token": bool(client.get("expo_push_token"))
+            "days_until_due": days_until_due,
+            "reminder_type": reminder_type,
+            "has_push_token": has_push
         }
-        
-        if next_due < today_start:
-            reminder_data["days_overdue"] = (now - next_due).days
-            overdue.append(reminder_data)
-        elif today_start <= next_due < today_end:
-            due_today.append(reminder_data)
-        elif today_end <= next_due < today_start + timedelta(days=4):
-            due_soon.append(reminder_data)
-        elif today_start + timedelta(days=4) <= next_due < week_end:
-            upcoming.append(reminder_data)
+        reminders.append(reminder_data)
+    
+    # Sort: overdue first (by most days overdue), then due_today, then due_soon, then upcoming
+    type_order = {"overdue": 0, "due_today": 1, "due_soon": 2, "upcoming": 3}
+    reminders.sort(key=lambda x: (type_order.get(x["reminder_type"], 4), x["days_until_due"]))
     
     return {
+        "reminders": reminders,
         "summary": {
-            "overdue_count": len(overdue),
-            "due_today_count": len(due_today),
-            "due_soon_count": len(due_soon),
-            "upcoming_count": len(upcoming)
-        },
-        "overdue": sorted(overdue, key=lambda x: x.get("days_overdue", 0), reverse=True),
-        "due_today": due_today,
-        "due_soon": due_soon,
-        "upcoming": upcoming
+            "total": len(reminders),
+            "overdue": overdue_count,
+            "due_today": due_today_count,
+            "due_soon": due_soon_count,
+            "upcoming": upcoming_count,
+            "with_push_token": with_push_token
+        }
     }
 
 
