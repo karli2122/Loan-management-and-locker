@@ -90,9 +90,13 @@ Full-stack loan management application "PayLock Pro" with tiered subscription mo
 - `/app/test_reports/iteration_78.json` - 100% pass rate, all feature gating verified
 
 ## Prioritized Backlog
-- P1: Build new APKs (v1.2.5) via EAS (no backend deploy needed - frontend changes only)
-- P1: User verification of feature gating on real devices
+- P0: Test all fixes on real devices with v1.2.5 APKs
+- P1: User verification of feature gating with starter/professional users
 - P2: Stabilization - no new features planned
+
+## Bug Fixes This Session
+1. **Starter plan 403 on loan creation**: Fixed - Added "admin" and "superadmin" role aliases to ROLE_PERMISSIONS mapping in permissions.py
+2. **Settings access for starter users**: Fixed - Basic settings (theme, language, currency) available to all; Late Fee/Auto-Lock shows locked state with upgrade prompt for starter users
 
 ## API Endpoints Reference
 - `/api/admin/feature-access?admin_token=X` - Returns plan and accessible features

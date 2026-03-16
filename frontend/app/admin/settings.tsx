@@ -931,7 +931,8 @@ export default function AdminSettings() {
           </View>
         </View>
 
-        {/* Late Fee & Auto-Lock Settings Section */}
+        {/* Late Fee & Auto-Lock Settings Section - Professional Feature */}
+        {canAccess('late_fee') ? (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
             {t('lateFeeAutolock')}
@@ -1047,6 +1048,27 @@ export default function AdminSettings() {
             </TouchableOpacity>
           </View>
         </View>
+        ) : (
+          <View style={styles.section}>
+            <View style={{ backgroundColor: '#1E3A5F', borderRadius: 12, padding: 16, alignItems: 'center' }}>
+              <View style={{ backgroundColor: 'rgba(100, 116, 139, 0.2)', borderRadius: 50, padding: 16, marginBottom: 12 }}>
+                <Ionicons name="lock-closed" size={32} color="#64748B" />
+              </View>
+              <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600', marginBottom: 4 }}>
+                {t('lateFeeAutolock')}
+              </Text>
+              <Text style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', marginBottom: 12 }}>
+                Late fee and auto-lock settings require the Professional plan
+              </Text>
+              <TouchableOpacity
+                style={{ backgroundColor: '#3B82F6', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24 }}
+                onPress={() => setShowPlansModal(true)}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Upgrade to Professional</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {isSuperAdmin && (
           <View style={styles.section}>

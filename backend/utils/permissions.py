@@ -7,9 +7,13 @@ from utils.exceptions import AuthorizationException
 # Permission mapping for roles
 ROLE_PERMISSIONS = {
     "super_admin": {"all"},
+    "superadmin": {"all"},  # Alias for super_admin
     "full_admin": {"clients", "loans", "payments", "reminders", "reports", "devices",
                    "contracts", "schedules", "documents", "import", "settings", "team",
                    "clients_read", "reports_read", "loans_read"},
+    "admin": {"clients", "loans", "payments", "reminders", "reports", "devices",
+              "contracts", "schedules", "documents", "import", "settings", "team",
+              "clients_read", "reports_read", "loans_read"},  # Alias for full_admin
     "collections": {"clients", "loans", "payments", "reminders", "contracts",
                     "clients_read", "loans_read"},
     "viewer": {"clients_read", "reports_read", "loans_read"},
