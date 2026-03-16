@@ -37,6 +37,8 @@ interface Client {
   is_late?: boolean;
   late_fees_accumulated?: number;
   credit_score?: number;
+  imported?: boolean;
+  import_needs_review?: boolean;
 }
 
 interface PaidLoan {
@@ -66,7 +68,7 @@ export default function LoansTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<string | undefined>(undefined);
-  const [tab, setTab] = useState<'given' | 'archived'>('given');
+  const [tab, setTab] = useState<'given' | 'archived' | 'imported'>('given');
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'today' | 'tomorrow' | 'next3days'>('all');
 
   // Helper to handle feature locked alert
@@ -191,14 +193,21 @@ export default function LoansTab() {
     }
 
     if (tab === 'given') {
-      // Show clients with active loans (outstanding > 0)
+      // Show clients with active loans (outstanding > 0) that are NOT imported or have been reviewed
       list = list.filter(
-        (c) => getLoanAmount(c) > 0 && getOutstanding(c) > 0
+        (c) => getLoanAmount(c) > 0 && getOutstanding(c) > 0 && !c.import_needs_review
+      );
+    } else if (tab === 'imported') {
+      // Show only clients that need review (imported but not yet completed)
+      list = list.filter(
+        (c) => c.import_needs_review === true
       );
     }
 
-    // Apply payment date filter
-    list = list.filter((c) => matchesPaymentFilter(c, paymentFilter));
+    // Apply payment date filter (only for given tab)
+    if (tab === 'given') {
+      list = list.filter((c) => matchesPaymentFilter(c, paymentFilter));
+    }
 
     return list.filter(
       (client) =>
@@ -264,7 +273,15 @@ export default function LoansTab() {
                 </View>
               )}
             </View>
-            <Text style={[styles.clientPhone, { color: colors.textMuted }]}>{item.phone}</Text>
+            {item.import_needs_review && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                <View style={{ backgroundColor: '#F59E0B', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '600' }}>{t('imported') || 'IMPORTED'}</Text>
+                </View>
+                <Text style={{ color: '#F59E0B', fontSize: 10, marginLeft: 4 }}>{t('needsReview') || 'Needs review'}</Text>
+              </View>
+            )}
+            {!item.import_needs_review && <Text style={[styles.clientPhone, { color: colors.textMuted }]}>{item.phone}</Text>}
           </View>
           <View style={[styles.statusBadge, item.is_locked ? styles.statusLocked : styles.statusUnlocked]}>
             <Ionicons
@@ -497,6 +514,23 @@ export default function LoansTab() {
           {paidLoans.length > 0 && (
             <View style={styles.badgeSmall}>
               <Text style={styles.badgeTextSmall}>{paidLoans.length}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, { backgroundColor: colors.surface, borderColor: colors.border }, tab === 'imported' && styles.tabButtonActive]}
+          onPress={() => {
+            setTab('imported');
+            setPaymentFilter('all');
+          }}
+          data-testid="loans-tab-imported"
+        >
+          <Text style={[styles.tabText, { color: colors.textMuted }, tab === 'imported' && styles.tabTextActive]}>
+            {t('imported') || 'Imported'}
+          </Text>
+          {clients.filter(c => c.import_needs_review).length > 0 && (
+            <View style={[styles.badgeSmall, { backgroundColor: '#F59E0B' }]}>
+              <Text style={styles.badgeTextSmall}>{clients.filter(c => c.import_needs_review).length}</Text>
             </View>
           )}
         </TouchableOpacity>

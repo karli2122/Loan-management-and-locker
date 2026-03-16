@@ -238,6 +238,10 @@ async def setup_loan(client_id: str, loan_data: LoanSetup, admin_token: str = Qu
         {"$set": update_fields}
     )
     
+    # If this was an imported client, clear the import_needs_review flag since loan is now set up
+    if client.get("import_needs_review"):
+        await db.clients.update_one({"id": client_id}, {"$set": {"import_needs_review": False}})
+    
     return {
         "message": "Loan setup complete",
         "client_id": client_id,

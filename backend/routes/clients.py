@@ -195,7 +195,19 @@ async def update_client(client_id: str, client_data: ClientUpdate, admin_token: 
     if update_data:
         await db.clients.update_one({"id": client_id}, {"$set": update_data})
     
+    # Check if this was an imported client and if required fields are now complete
     updated = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if updated.get("import_needs_review"):
+        # Required fields for imported client to be considered complete
+        has_phone = bool(updated.get("phone"))
+        has_interest = (updated.get("interest_rate") or 0) > 0
+        has_loan_setup = (updated.get("monthly_emi") or 0) > 0
+        
+        if has_phone and has_interest and has_loan_setup:
+            # All required fields are complete, clear the review flag
+            await db.clients.update_one({"id": client_id}, {"$set": {"import_needs_review": False}})
+            updated["import_needs_review"] = False
+    
     return updated
 
 

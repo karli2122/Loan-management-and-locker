@@ -16,12 +16,18 @@ router = APIRouter(prefix="/api/import", tags=["import"])
 async def import_clients_csv(
     admin_token: str = Form(...),
     file: UploadFile = File(...),
-    skip_duplicates: str = Form(default="true"),
+    skip_duplicates: str = Form(default="false"),
 ):
-    """Import clients from a CSV file.
+    """Import clients/loans from a CSV file.
 
     Expected CSV columns (case-insensitive, flexible matching):
-    name, phone, email, address, birth_number/id_code, loan_amount, interest_rate, loan_duration_months
+    - Required: name (client name)
+    - Optional: date_given/loan_date, amount/loan_amount, phone, email, address, birth_number, interest_rate
+    
+    Behavior:
+    - If client name exists: adds loan to existing client
+    - If client doesn't exist: creates new client with imported=true flag
+    - Imported clients need admin to add missing data (phone, email, interest rate, etc.)
     """
     admin_id = await get_admin_id_from_token(admin_token)
     await check_plan_access(admin_id, "bulk_import")
@@ -44,27 +50,28 @@ async def import_clients_csv(
     field_map = {}
     for f in reader.fieldnames:
         fl = f.strip().lower().replace(" ", "_")
-        if fl in ("name", "client_name", "full_name"):
+        if fl in ("name", "client_name", "full_name", "nimi"):
             field_map[f] = "name"
-        elif fl in ("phone", "phone_number", "tel", "mobile"):
+        elif fl in ("phone", "phone_number", "tel", "mobile", "telefon"):
             field_map[f] = "phone"
         elif fl in ("email", "e-mail", "email_address"):
             field_map[f] = "email"
-        elif fl in ("address", "addr"):
+        elif fl in ("address", "addr", "aadress"):
             field_map[f] = "address"
-        elif fl in ("birth_number", "id_code", "personal_id", "id", "pesel", "personnummer"):
+        elif fl in ("birth_number", "id_code", "personal_id", "id", "pesel", "personnummer", "isikukood"):
             field_map[f] = "birth_number"
-        elif fl in ("loan_amount", "loan", "amount", "principal"):
+        elif fl in ("loan_amount", "loan", "amount", "principal", "summa", "laenu_summa"):
             field_map[f] = "loan_amount"
-        elif fl in ("interest_rate", "rate", "interest"):
+        elif fl in ("interest_rate", "rate", "interest", "intress"):
             field_map[f] = "interest_rate"
-        elif fl in ("duration", "months", "loan_duration", "loan_duration_months", "tenure"):
+        elif fl in ("duration", "months", "loan_duration", "loan_duration_months", "tenure", "kuud"):
             field_map[f] = "loan_duration_months"
+        elif fl in ("date_given", "loan_date", "start_date", "date", "kuupäev", "antud"):
+            field_map[f] = "date_given"
         elif fl in ("telegram", "telegram_chat_id", "telegram_id"):
             field_map[f] = "telegram_chat_id"
 
-    skip_dupes = skip_duplicates.lower() in ("true", "1", "yes")
-    imported, skipped, errors = 0, 0, []
+    imported_new, imported_existing, skipped, errors = 0, 0, 0, []
 
     for row_num, row in enumerate(reader, start=2):
         mapped = {}
@@ -78,63 +85,98 @@ async def import_clients_csv(
             errors.append({"row": row_num, "error": "Missing name"})
             continue
 
-        # Check duplicates by phone or birth_number
-        if skip_dupes:
-            dupe_query = []
-            if mapped.get("phone"):
-                dupe_query.append({"phone": mapped["phone"]})
-            if mapped.get("birth_number"):
-                dupe_query.append({"birth_number": mapped["birth_number"]})
-            if dupe_query:
-                existing = await db.clients.find_one({"$or": dupe_query})
-                if existing:
-                    skipped += 1
-                    continue
-
+        # Parse loan amount
         loan_amount = 0
         try:
-            loan_amount = float(mapped.get("loan_amount", 0))
+            amount_str = mapped.get("loan_amount", "0").replace(",", ".").replace(" ", "")
+            loan_amount = float(amount_str) if amount_str else 0
         except (ValueError, TypeError):
             pass
 
+        # Parse interest rate (default to 0 for imported - needs editing)
         interest_rate = 0
         try:
-            interest_rate = float(mapped.get("interest_rate", 0))
+            rate_str = mapped.get("interest_rate", "0").replace(",", ".").replace(" ", "")
+            interest_rate = float(rate_str) if rate_str else 0
         except (ValueError, TypeError):
             pass
 
-        client = {
-            "id": str(uuid.uuid4()),
-            "name": name,
-            "phone": mapped.get("phone", ""),
-            "email": mapped.get("email", ""),
-            "address": mapped.get("address", ""),
-            "birth_number": mapped.get("birth_number", ""),
-            "loan_amount": loan_amount,
-            "interest_rate": interest_rate,
-            "monthly_emi": 0,
-            "total_amount_due": loan_amount * (1 + interest_rate / 100) if loan_amount and interest_rate else loan_amount,
-            "outstanding_balance": loan_amount * (1 + interest_rate / 100) if loan_amount and interest_rate else loan_amount,
-            "total_paid": 0,
-            "days_overdue": 0,
-            "is_registered": False,
-            "is_locked": False,
-            "registration_code": "",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "imported": True,
-            "telegram_chat_id": mapped.get("telegram_chat_id", ""),
-            "admin_id": admin_id,
-        }
+        # Parse date given
+        date_given = mapped.get("date_given", "")
+        if date_given:
+            # Try to parse various date formats
+            for fmt in ["%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y"]:
+                try:
+                    parsed_date = datetime.strptime(date_given, fmt)
+                    date_given = parsed_date.strftime("%Y-%m-%d")
+                    break
+                except ValueError:
+                    continue
+        else:
+            date_given = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-        await db.clients.insert_one(client)
-        imported += 1
+        # Check if client with same name already exists for this admin
+        existing_client = await db.clients.find_one({
+            "name": {"$regex": f"^{name}$", "$options": "i"},
+            "admin_id": admin_id,
+            "is_deleted": {"$ne": True}
+        })
+
+        if existing_client:
+            # Client exists - add/update loan
+            total_due = loan_amount * (1 + interest_rate / 100) if interest_rate else loan_amount
+            loan_update = {
+                "loan_amount": loan_amount,
+                "interest_rate": interest_rate,
+                "total_amount_due": total_due,
+                "outstanding_balance": total_due,
+                "loan_given_date": date_given,
+                "loan_setup_at": datetime.now(timezone.utc).isoformat(),
+                "imported": True,
+                "import_needs_review": True,  # Needs admin to complete data
+            }
+            await db.clients.update_one({"id": existing_client["id"]}, {"$set": loan_update})
+            imported_existing += 1
+        else:
+            # Create new client with imported flag
+            total_due = loan_amount * (1 + interest_rate / 100) if interest_rate else loan_amount
+            client = {
+                "id": str(uuid.uuid4()),
+                "name": name,
+                "phone": mapped.get("phone", ""),
+                "email": mapped.get("email", ""),
+                "address": mapped.get("address", ""),
+                "birth_number": mapped.get("birth_number", ""),
+                "loan_amount": loan_amount,
+                "interest_rate": interest_rate,
+                "monthly_emi": 0,
+                "total_amount_due": total_due,
+                "outstanding_balance": total_due,
+                "total_paid": 0,
+                "days_overdue": 0,
+                "is_registered": False,
+                "is_locked": False,
+                "registration_code": "",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "loan_given_date": date_given,
+                "imported": True,
+                "import_needs_review": True,  # Needs admin to add missing data
+                "telegram_chat_id": mapped.get("telegram_chat_id", ""),
+                "admin_id": admin_id,
+            }
+
+            await db.clients.insert_one(client)
+            imported_new += 1
 
     return {
-        "imported": imported,
+        "imported_new": imported_new,
+        "imported_existing": imported_existing,
+        "total_imported": imported_new + imported_existing,
         "skipped": skipped,
         "errors": errors[:20],
-        "total_rows": imported + skipped + len(errors),
+        "total_rows": imported_new + imported_existing + skipped + len(errors),
         "detected_columns": list(field_map.values()),
+        "message": f"Imported {imported_new} new clients and updated {imported_existing} existing clients. All imported items need review."
     }
 
 
