@@ -44,6 +44,7 @@ import {
   EditClientModal,
   EditLoanModal,
 } from '../../src/components/client-details';
+import { MultiLoanOverview } from '../../src/components/client-details/MultiLoanOverview';
 import type { Client, LoanHistoryItem, LoanPreview } from '../../src/components/client-details';
 
 export default function ClientDetails() {
@@ -78,6 +79,8 @@ export default function ClientDetails() {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [paymentNotes, setPaymentNotes] = useState('');
+  const [selectedLoanId, setSelectedLoanId] = useState(null);  // For multi-loan payment
+  const [selectedLoan, setSelectedLoan] = useState(null);  // Selected loan details
   const [warningMessage, setWarningMessage] = useState('');
   const [lockMessage, setLockMessage] = useState('');
   const [editDeviceMake, setEditDeviceMake] = useState('');
@@ -454,25 +457,36 @@ export default function ClientDetails() {
     setActionLoading(true);
     try {
       const token = await AsyncStorage.getItem('admin_token');
-      const response = await fetch(`${API_URL}/api/loans/${id}/payments?admin_token=${token}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: parseFloat(paymentAmount), payment_method: paymentMethod, notes: paymentNotes }),
+      
+      // Use loan-specific endpoint if a loan is selected, otherwise use legacy endpoint
+      const endpoint = selectedLoanId 
+        ? `${API_URL}/api/loans/${selectedLoanId}/payment?admin_token=${token}&amount=${parseFloat(paymentAmount)}&notes=${encodeURIComponent(paymentNotes || '')}`
+        : `${API_URL}/api/loans/${id}/payments?admin_token=${token}`;
+      
+      const response = await fetch(endpoint, {
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body: selectedLoanId ? undefined : JSON.stringify({ amount: parseFloat(paymentAmount), payment_method: paymentMethod, notes: paymentNotes }),
       });
       if (!response.ok) { const errorData = await response.json().catch(() => ({})); throw new Error(errorData.detail || errorData.message || 'Failed to record payment'); }
       const data = await response.json();
-      const paidAmount = data.payment?.amount ?? parseFloat(paymentAmount);
-      const outstandingBalance = data.updated_balance?.outstanding_balance ?? 0;
+      const paidAmount = data.payment_amount ?? data.payment?.amount ?? parseFloat(paymentAmount);
+      const outstandingBalance = data.new_outstanding ?? data.updated_balance?.outstanding_balance ?? 0;
+      const fullyPaid = data.loan_fully_paid || outstandingBalance === 0;
+      
       Alert.alert(
         t('success'),
         language === 'et'
-          ? `Makse salvestatud!\n\nMakstud: ${formatAmount(paidAmount)}\nJ\u00e4\u00e4k: ${formatAmount(outstandingBalance)}`
-          : `Payment recorded!\n\nPaid: ${formatAmount(paidAmount)}\nOutstanding: ${formatAmount(outstandingBalance)}`
+          ? `Makse salvestatud!\n\nMakstud: ${formatAmount(paidAmount)}\nJääk: ${formatAmount(outstandingBalance)}${fullyPaid ? '\n\n✓ Laen täielikult makstud!' : ''}`
+          : `Payment recorded!\n\nPaid: ${formatAmount(paidAmount)}\nOutstanding: ${formatAmount(outstandingBalance)}${fullyPaid ? '\n\n✓ Loan fully paid!' : ''}`
       );
       setPaymentModal(false);
       setPaymentAmount('');
       setPaymentNotes('');
+      setSelectedLoanId(null);
+      setSelectedLoan(null);
       fetchClient();
-    } catch (error: any) { Alert.alert(t('error'), error.message || 'Failed to record payment'); }
+    } catch (error) { Alert.alert(t('error'), error.message || 'Failed to record payment'); }
     finally { setActionLoading(false); }
   };
 
@@ -690,30 +704,16 @@ export default function ClientDetails() {
 
         {activeTab === 'loan' && (
           <>
-            <LoanOverview
-              client={client}
-              language={language}
-              clientId={id as string}
-              actionLoading={actionLoading}
-              onEditLoan={openEditLoanModal}
-              onRecordPayment={() => {
-                setPaymentAmount(client.monthly_emi?.toFixed(2) || '');
+            <MultiLoanOverview
+              clientId={id}
+              clientName={client?.name}
+              onRecordPayment={(loanId, loan) => {
+                setSelectedLoanId(loanId);
+                setSelectedLoan(loan);
+                setPaymentAmount('');
                 setPaymentModal(true);
               }}
               onAddNewLoan={() => router.push(`/admin/add-loan?client_id=${id}`)}
-              onDownloadContract={handleDownloadContract}
-              onShareContract={handleShareContract}
-              canAccessContracts={canAccess('contracts')}
-            />
-            <LoanHistory
-              loanHistory={loanHistory}
-              loanHistoryLoading={loanHistoryLoading}
-              showLoanHistory={showLoanHistory}
-              loanHistorySearch={loanHistorySearch}
-              language={language}
-              colors={colors}
-              onToggle={() => setShowLoanHistory(!showLoanHistory)}
-              onSearchChange={setLoanHistorySearch}
             />
           </>
         )}

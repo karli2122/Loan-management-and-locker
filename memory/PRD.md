@@ -3,30 +3,35 @@
 ## Original Problem Statement
 Full-stack loan management application "PayLock Pro" with tiered subscription model (Starter, Professional, Enterprise), React Native mobile apps (Admin + Client), FastAPI backend, static website, and web portal.
 
-## Latest Update: v1.2.8 - 2026-03-16
+## Latest Update: v1.2.9 - 2026-03-16
 
-### Bulk Import Enhancements
-1. **Hierarchical Client Scoping** - Uses logged-in user's clients + clients of users they created
-2. **New Loan Logic** - If client has active loan, archives it first before adding new loan (doesn't update existing)
-3. **New Client Creation** - Creates new clients from unmatched loan disbursements with `import_needs_review=True`
-4. **Estonian Fee Keywords** - Ignores: teenustasu (bank fee), kaardimakse (card payment)
-5. **Auto-Archive** - Fully paid loans automatically move to Loan History
+### Multiple Loans Per Client Feature
+- **New `loans` collection** - Stores individual loans, allowing clients to have multiple active loans
+- **Bulk Import** - Creates SEPARATE loan records (not updating existing), client can have 2+ active loans
+- **Client Details** - New `MultiLoanOverview` component shows each loan separately with:
+  - Loan amount, with interest, paid, outstanding
+  - Progress bar for each loan
+  - Individual "Record Payment" button per loan
+  - Loan History section for archived/paid loans
+- **API Endpoints**:
+  - `GET /api/loans/client/{client_id}` - Get all loans for a client
+  - `GET /api/loans/all` - Get all loans (for loans tab)
+  - `POST /api/loans/{loan_id}/payment` - Record payment for specific loan
+  - `POST /api/loans/{loan_id}/archive` - Archive a loan
 
-### Auto-Refresh on Screen Focus
-Added `useFocusEffect` to refresh data when navigating to:
-- Dashboard, Loans tab, Transactions, Reports, Client Details, Revenue Forecast
+### Hierarchical Client Scoping
+- Bulk import uses logged-in user's clients + clients of users they created
 
-### Loan Overview Updates
-- Shows "Remaining" amount (loan + interest - paid)
-- Shows "Loan Fully Paid" state when outstanding = 0
+### Auto-Refresh on Screen Focus  
+- Dashboard, Loans, Transactions, Reports, Client Details, Revenue Forecast
 
 ### VPS Deployment
-- Backend files deployed to `37.148.202.159:/opt/paylock/backend/`
-- Service restarted successfully
+- Backend deployed to `37.148.202.159:/opt/paylock/backend/`
+- New route: `routes/loans_multi.py`
 
-### Admin APK Build
-- Version: 1.2.8 (Build 27)
-- Build URL: https://expo.dev/accounts/karli1987/projects/loans/builds/6e02cf05-1b1f-4699-a743-697801f88755
+### Admin APK Builds
+- v1.2.8 (Build 27): https://expo.dev/accounts/karli1987/projects/loans/builds/6e02cf05-1b1f-4699-a743-697801f88755
+- v1.2.9 (Build 28): https://expo.dev/accounts/karli1987/projects/loans/builds/d94fd166-048f-410f-8fa1-b4b4c35233c8
 
 ## Architecture
 - **Backend**: FastAPI + MongoDB Atlas + APScheduler

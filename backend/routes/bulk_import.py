@@ -573,55 +573,66 @@ async def reconcile_bank_statement(
         # Process based on amount sign
         if amount < 0:
             # Negative = Money going out = Loan disbursement
+            # Create a NEW separate loan record (client can have multiple active loans)
             loan_amount = abs(amount)
             
-            # Check if client has an active loan (outstanding > 0)
-            existing_outstanding = best_match.get("outstanding_balance", 0) or 0
-            
-            if existing_outstanding > 0:
-                # Client has active loan - archive it first before adding new loan
-                try:
-                    from routes.paid_loans import perform_archive
-                    await perform_archive(best_match["id"], admin_id)
-                    logger.info(f"Archived existing loan for {best_match['name']} before adding new loan")
-                except Exception as archive_err:
-                    logger.warning(f"Could not archive existing loan for {best_match['name']}: {archive_err}")
-            
-            # Add new loan to client
             try:
                 interest_rate = best_match.get("interest_rate", 0) or 0
                 total_due = loan_amount * (1 + interest_rate / 100)
                 
+                # Create new loan in loans collection
+                new_loan_id = str(uuid.uuid4())
+                new_loan = {
+                    "id": new_loan_id,
+                    "client_id": best_match["id"],
+                    "client_name": best_match["name"],
+                    "admin_id": admin_id,
+                    "loan_amount": loan_amount,
+                    "interest_rate": interest_rate,
+                    "total_amount_due": total_due,
+                    "outstanding_balance": total_due,
+                    "total_paid": 0,
+                    "loan_given_date": date,
+                    "loan_due_date": "",  # User can set this later
+                    "status": "active",
+                    "days_overdue": 0,
+                    "is_late": False,
+                    "late_fees_accumulated": 0,
+                    "created_at": datetime.now(timezone.utc),
+                    "imported_from_statement": True,
+                }
+                await db.loans.insert_one(new_loan)
+                
+                # Also update client's total loan summary for display purposes
+                # Get all active loans for this client to recalculate totals
+                client_loans = await db.loans.find(
+                    {"client_id": best_match["id"], "status": "active"}
+                ).to_list(100)
+                
+                total_loan_amount = sum(loan.get("loan_amount", 0) for loan in client_loans)
+                total_outstanding = sum(loan.get("outstanding_balance", 0) for loan in client_loans)
+                total_paid_all = sum(loan.get("total_paid", 0) for loan in client_loans)
+                
                 await db.clients.update_one(
                     {"id": best_match["id"]},
                     {"$set": {
-                        "loan_amount": loan_amount,
-                        "total_amount_due": total_due,
-                        "outstanding_balance": total_due,
-                        "total_paid": 0,  # Reset for new loan
-                        "loan_given_date": date,
-                        "loan_setup_at": datetime.now(timezone.utc).isoformat(),
-                        "imported_from_statement": True,
-                        "days_overdue": 0,
-                        "is_late": False,
-                        "late_fees_accumulated": 0,
+                        "total_loan_amount": total_loan_amount,
+                        "total_outstanding_all_loans": total_outstanding,
+                        "total_paid_all_loans": total_paid_all,
+                        "active_loans_count": len(client_loans),
+                        "has_multiple_loans": len(client_loans) > 1,
                     }}
                 )
                 
                 results["loans_created"].append({
                     "client_name": best_match["name"],
                     "client_id": best_match["id"],
+                    "loan_id": new_loan_id,
                     "loan_amount": loan_amount,
                     "date": date,
                     "match_score": round(best_score * 100),
-                    "archived_previous": existing_outstanding > 0
+                    "is_additional_loan": len(client_loans) > 1
                 })
-                
-                # Update local client data for subsequent transactions
-                best_match["loan_amount"] = loan_amount
-                best_match["total_amount_due"] = total_due
-                best_match["outstanding_balance"] = total_due
-                best_match["total_paid"] = 0
                 
             except Exception as e:
                 results["errors"].append({
