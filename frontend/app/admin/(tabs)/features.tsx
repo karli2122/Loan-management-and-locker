@@ -94,7 +94,7 @@ export default function FeaturesTab() {
       title: t('deviceManagement'),
       items: [
         { key: 'device_lock', icon: 'phone-portrait', color: '#F59E0B', titleKey: 'deviceManagement', descKey: 'lockunlockDevices', route: '/admin/device-management', featureGateKey: 'device_lock', requiredPlan: 'professional' },
-        { key: 'reminders', icon: 'notifications', color: '#EF4444', titleKey: 'paymentReminders', descKey: 'automatedPaymentReminders', route: '/admin/payment-reminders', featureGateKey: 'reminders', requiredPlan: 'starter', testId: 'reminders-link' },
+        { key: 'reminders', icon: 'notifications', color: '#EF4444', titleKey: 'paymentReminders', descKey: 'automatedPaymentReminders', route: '/admin/payment-reminders', featureGateKey: 'reminders', requiredPlan: 'professional', testId: 'reminders-link' },
       ],
     },
     {

@@ -21,11 +21,17 @@ interface Props {
   isSuperAdmin: boolean;
   generatingCode: boolean;
   onGenerateCode: () => void;
+  canAccessCreditScore?: boolean;
+  canAccessDeviceLock?: boolean;
+  canAccessRegistrationCode?: boolean;
 }
 
 export const ClientInfoCard = ({
   client, language, colors, t,
   isSuperAdmin, generatingCode, onGenerateCode,
+  canAccessCreditScore = true,
+  canAccessDeviceLock = true,
+  canAccessRegistrationCode = true,
 }: Props) => (
   <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
     <View style={[styles.avatarContainer, { backgroundColor: colors.primary }]}>
@@ -33,23 +39,25 @@ export const ClientInfoCard = ({
     </View>
     <View style={styles.clientNameWithScore}>
       <Text style={[styles.clientName, { color: colors.text }]}>{client.name}</Text>
-      {client.credit_score != null && (
+      {canAccessCreditScore && client.credit_score != null && (
         <View style={[styles.creditScoreBadge, { backgroundColor: getCreditScoreColor(client.credit_score) + '20' }]}>
           <Ionicons name="star" size={12} color={getCreditScoreColor(client.credit_score)} />
           <Text style={[styles.creditScoreValue, { color: getCreditScoreColor(client.credit_score) }]}>{client.credit_score}</Text>
         </View>
       )}
     </View>
-    <View style={[styles.statusBadge, client.is_locked ? styles.lockedBadge : styles.unlockedBadge]}>
-      <Ionicons
-        name={client.is_locked ? 'lock-closed' : 'lock-open'}
-        size={14}
-        color={client.is_locked ? colors.error : colors.success}
-      />
-      <Text style={[styles.statusText, client.is_locked ? styles.lockedText : styles.unlockedText]}>
-        {client.is_locked ? t('locked') : t('unlocked')}
-      </Text>
-    </View>
+    {canAccessDeviceLock && (
+      <View style={[styles.statusBadge, client.is_locked ? styles.lockedBadge : styles.unlockedBadge]}>
+        <Ionicons
+          name={client.is_locked ? 'lock-closed' : 'lock-open'}
+          size={14}
+          color={client.is_locked ? colors.error : colors.success}
+        />
+        <Text style={[styles.statusText, client.is_locked ? styles.lockedText : styles.unlockedText]}>
+          {client.is_locked ? t('locked') : t('unlocked')}
+        </Text>
+      </View>
+    )}
     {client.is_registered && (
       <View style={[styles.statusBadge, client.admin_mode_active ? styles.adminModeBadge : styles.adminModeOffBadge]}>
         <Ionicons
@@ -93,24 +101,33 @@ export const ClientInfoCard = ({
         </Text>
       )}
     </View>
-    <TouchableOpacity
-      style={styles.generateKeyButton}
-      onPress={onGenerateCode}
-      disabled={generatingCode}
-      data-testid="generate-key-button"
-    >
-      {generatingCode ? (
-        <ActivityIndicator size="small" color="#fff" />
-      ) : (
-        <>
-          <Ionicons name="key" size={16} color="#fff" />
-          <Text style={styles.generateKeyButtonText}>
-            {client.registration_code
-              ? (t('regenerateKey'))
-              : (t('generateKey'))}
-          </Text>
-        </>
-      )}
-    </TouchableOpacity>
+    {canAccessRegistrationCode ? (
+      <TouchableOpacity
+        style={styles.generateKeyButton}
+        onPress={onGenerateCode}
+        disabled={generatingCode}
+        data-testid="generate-key-button"
+      >
+        {generatingCode ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <>
+            <Ionicons name="key" size={16} color="#fff" />
+            <Text style={styles.generateKeyButtonText}>
+              {client.registration_code
+                ? (t('regenerateKey'))
+                : (t('generateKey'))}
+            </Text>
+          </>
+        )}
+      </TouchableOpacity>
+    ) : (
+      <View style={[styles.generateKeyButton, { backgroundColor: '#475569', opacity: 0.7 }]}>
+        <Ionicons name="lock-closed" size={16} color="#94A3B8" />
+        <Text style={[styles.generateKeyButtonText, { color: '#94A3B8' }]}>
+          {language === 'et' ? 'Võti (Pro)' : 'Key (Pro)'}
+        </Text>
+      </View>
+    )}
   </View>
 );

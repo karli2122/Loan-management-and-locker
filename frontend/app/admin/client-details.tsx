@@ -620,6 +620,9 @@ export default function ClientDetails() {
           isSuperAdmin={isSuperAdmin}
           generatingCode={generatingCode}
           onGenerateCode={handleGenerateCode}
+          canAccessCreditScore={canAccess('credit_scoring')}
+          canAccessDeviceLock={canAccess('device_lock')}
+          canAccessRegistrationCode={canAccess('registration_code')}
         />
 
         <ContactInfo
@@ -629,16 +632,28 @@ export default function ClientDetails() {
           onEdit={openEditClientModal}
         />
 
-        <DeviceInfo
-          client={client}
-          colors={colors}
-          t={t}
-          language={language}
-          fetchingPrice={fetchingPrice}
-          onEditDevice={openEditDeviceModal}
-          onOpenMap={openMap}
-          onFetchPrice={handleFetchPrice}
-        />
+        {/* Device Info - Professional Feature */}
+        {canAccess('device_info') ? (
+          <DeviceInfo
+            client={client}
+            colors={colors}
+            t={t}
+            language={language}
+            fetchingPrice={fetchingPrice}
+            onEditDevice={openEditDeviceModal}
+            onOpenMap={openMap}
+            onFetchPrice={handleFetchPrice}
+          />
+        ) : (
+          <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: '#1E3A5F', borderRadius: 12, padding: 16, alignItems: 'center' }}>
+            <View style={{ backgroundColor: 'rgba(100, 116, 139, 0.2)', borderRadius: 50, padding: 12, marginBottom: 8 }}>
+              <Ionicons name="phone-portrait-outline" size={24} color="#64748B" />
+            </View>
+            <Text style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center' }}>
+              Device information requires Professional plan
+            </Text>
+          </View>
+        )}
 
         {/* Tab Navigation */}
         <View style={[styles.tabContainer, { backgroundColor: colors.surface, borderColor: colors.border }]} data-testid="client-detail-tabs">
@@ -679,6 +694,7 @@ export default function ClientDetails() {
               onAddNewLoan={() => router.push(`/admin/add-loan?client_id=${id}`)}
               onDownloadContract={handleDownloadContract}
               onShareContract={handleShareContract}
+              canAccessContracts={canAccess('contracts')}
             />
             <LoanHistory
               loanHistory={loanHistory}
@@ -711,8 +727,9 @@ export default function ClientDetails() {
           onSetupLoan={() => router.push(`/admin/add-loan?clientId=${client.id}`)}
           onRenewLoan={() => router.push(`/admin/add-loan?clientId=${client.id}&renew=true`)}
           onSendWarning={() => setWarningModal(true)}
-          onToggleLock={client.is_locked ? handleUnlock : () => setLockModal(true)}
+          onToggleLock={canAccess('device_lock') ? (client.is_locked ? handleUnlock : () => setLockModal(true)) : () => Alert.alert('Professional Feature', 'Device lock/unlock requires the Professional plan.', [{ text: 'OK' }])}
           onAllowUninstall={handleAllowUninstall}
+          canAccessDeviceLock={canAccess('device_lock')}
         />
 
         {/* Restructure & Documents Buttons */}

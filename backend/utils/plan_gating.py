@@ -16,9 +16,9 @@ FEATURE_PLANS = {
     "payments": "starter",
     "notifications": "starter",
     "calculator": "starter",
-    "reminders": "starter",
 
     # Professional features
+    "reminders": "professional",  # Payment reminders
     "device_lock": "professional",
     "auto_lock": "professional",
     "messaging": "professional",
@@ -34,6 +34,8 @@ FEATURE_PLANS = {
     "dashboard_analytics": "professional",
     "interest_summary": "professional",
     "device_management": "professional",
+    "device_info": "professional",  # Device information visibility
+    "registration_code": "professional",  # Generate key / registration code
 
     # Enterprise features
     "device_owner": "enterprise",

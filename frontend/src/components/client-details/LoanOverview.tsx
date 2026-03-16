@@ -16,12 +16,14 @@ interface Props {
   onAddNewLoan: () => void;
   onDownloadContract: () => void;
   onShareContract: () => void;
+  canAccessContracts?: boolean;
 }
 
 export const LoanOverview = ({
   client, language, clientId, actionLoading,
   onEditLoan, onRecordPayment, onAddNewLoan,
   onDownloadContract, onShareContract,
+  canAccessContracts = true,
 }: Props) => {
   const { formatAmount } = useCurrency();
   const { t } = useLanguage();
@@ -139,30 +141,41 @@ export const LoanOverview = ({
       )}
 
       {/* Contract Actions */}
-      <View style={styles.contractActions}>
-        <TouchableOpacity
-          style={[styles.contractButton, styles.downloadButton]}
-          onPress={onDownloadContract}
-          disabled={actionLoading}
-          data-testid="download-contract-btn"
-        >
-          <Ionicons name="download" size={16} color="#3B82F6" />
-          <Text style={[styles.contractButtonText, styles.downloadButtonText]}>
-            {t('download')}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.contractButton, styles.shareButton]}
-          onPress={onShareContract}
-          disabled={actionLoading}
-          data-testid="share-contract-btn"
-        >
-          <Ionicons name="share-social" size={16} color="#10B981" />
-          <Text style={[styles.contractButtonText, styles.shareButtonText]}>
-            {t('share')}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {canAccessContracts ? (
+        <View style={styles.contractActions}>
+          <TouchableOpacity
+            style={[styles.contractButton, styles.downloadButton]}
+            onPress={onDownloadContract}
+            disabled={actionLoading}
+            data-testid="download-contract-btn"
+          >
+            <Ionicons name="download" size={16} color="#3B82F6" />
+            <Text style={[styles.contractButtonText, styles.downloadButtonText]}>
+              {t('download')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.contractButton, styles.shareButton]}
+            onPress={onShareContract}
+            disabled={actionLoading}
+            data-testid="share-contract-btn"
+          >
+            <Ionicons name="share-social" size={16} color="#10B981" />
+            <Text style={[styles.contractButtonText, styles.shareButtonText]}>
+              {t('share')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={[styles.contractActions, { opacity: 0.6 }]}>
+          <View style={[styles.contractButton, { backgroundColor: '#334155' }]}>
+            <Ionicons name="lock-closed" size={16} color="#64748B" />
+            <Text style={[styles.contractButtonText, { color: '#64748B' }]}>
+              {language === 'et' ? 'Leping (Pro)' : 'Contract (Pro)'}
+            </Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 };

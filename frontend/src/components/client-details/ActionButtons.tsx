@@ -17,11 +17,13 @@ interface Props {
   onSendWarning: () => void;
   onToggleLock: () => void;
   onAllowUninstall: () => void;
+  canAccessDeviceLock?: boolean;
 }
 
 export const ActionButtons = ({
   client, loanHistory, language, actionLoading, t,
   onSetupLoan, onRenewLoan, onSendWarning, onToggleLock, onAllowUninstall,
+  canAccessDeviceLock = true,
 }: Props) => {
   if (!client.is_registered) return null;
 
@@ -117,27 +119,43 @@ export const ActionButtons = ({
             <Text style={styles.actionButtonText}>{t('sendWarning')}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.actionButton, client.is_locked ? styles.unlockButton : styles.lockButton]}
-            onPress={onToggleLock}
-            disabled={actionLoading}
-            data-testid="toggle-lock-btn"
-          >
-            <Ionicons name={client.is_locked ? 'lock-open' : 'lock-closed'} size={20} color="#fff" />
-            <Text style={styles.actionButtonText}>
-              {client.is_locked ? t('unlockDevice') : t('lockDevice')}
-            </Text>
-          </TouchableOpacity>
+          {canAccessDeviceLock ? (
+            <TouchableOpacity
+              style={[styles.actionButton, client.is_locked ? styles.unlockButton : styles.lockButton]}
+              onPress={onToggleLock}
+              disabled={actionLoading}
+              data-testid="toggle-lock-btn"
+            >
+              <Ionicons name={client.is_locked ? 'lock-open' : 'lock-closed'} size={20} color="#fff" />
+              <Text style={styles.actionButtonText}>
+                {client.is_locked ? t('unlockDevice') : t('lockDevice')}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#475569', opacity: 0.7 }]}
+              onPress={onToggleLock}
+              disabled={actionLoading}
+              data-testid="toggle-lock-btn-locked"
+            >
+              <Ionicons name="lock-closed" size={20} color="#94A3B8" />
+              <Text style={[styles.actionButtonText, { color: '#94A3B8' }]}>
+                {language === 'et' ? 'Lukustus (Pro)' : 'Lock (Pro)'}
+              </Text>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity
-            style={[styles.actionButton, styles.allowUninstallButton]}
-            onPress={onAllowUninstall}
-            disabled={actionLoading}
-            data-testid="allow-uninstall-btn"
-          >
-            <Ionicons name="shield-checkmark" size={20} color="#fff" />
-            <Text style={styles.actionButtonText}>Allow Uninstall</Text>
-          </TouchableOpacity>
+          {canAccessDeviceLock && (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.allowUninstallButton]}
+              onPress={onAllowUninstall}
+              disabled={actionLoading}
+              data-testid="allow-uninstall-btn"
+            >
+              <Ionicons name="shield-checkmark" size={20} color="#fff" />
+              <Text style={styles.actionButtonText}>Allow Uninstall</Text>
+            </TouchableOpacity>
+          )}
         </>
       )}
     </View>
