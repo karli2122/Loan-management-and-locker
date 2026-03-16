@@ -40,7 +40,7 @@ async def update_session_activity(admin_id: str):
 
 @router.get("")
 async def list_sessions(admin_token: str = Query(...)):
-    """List all active sessions for the current admin (or all enterprise sessions for super admins)."""
+    """List all active sessions for the enterprise (main user + created users)."""
     admin_id = await get_admin_id_from_token(admin_token)
     await check_plan_access(admin_id, "session_management")
     
@@ -49,14 +49,14 @@ async def list_sessions(admin_token: str = Query(...)):
     is_super = admin.get("is_super_admin", False) if admin else False
     
     if is_super:
-        # Super admins see all sessions in the enterprise
-        enterprise_id = admin.get("enterprise_id") or admin_id
-        # Get all admin IDs in the enterprise
+        # Super admins see sessions for themselves and all users they created (enterprise members)
+        # Get all admin IDs in the enterprise (created_by = admin_id OR id = admin_id)
         enterprise_admins = await db.admins.find(
-            {"$or": [{"enterprise_id": enterprise_id}, {"id": enterprise_id}]},
-            {"_id": 0, "id": 1}
+            {"$or": [{"created_by": admin_id}, {"id": admin_id}]},
+            {"_id": 0, "id": 1, "username": 1}
         ).to_list(100)
         admin_ids = [a["id"] for a in enterprise_admins]
+        admin_map = {a["id"]: a.get("username", "Unknown") for a in enterprise_admins}
         
         sessions = await db.admin_sessions.find(
             {"admin_id": {"$in": admin_ids}, "is_active": True},
@@ -64,7 +64,6 @@ async def list_sessions(admin_token: str = Query(...)):
         ).sort("last_activity", -1).to_list(100)
         
         # Add admin username to each session
-        admin_map = {a["id"]: a.get("username", "Unknown") for a in await db.admins.find({"id": {"$in": admin_ids}}, {"_id": 0, "id": 1, "username": 1}).to_list(100)}
         for s in sessions:
             s["admin_username"] = admin_map.get(s["admin_id"], "Unknown")
     else:

@@ -1324,7 +1324,7 @@ export default function AdminSettings() {
               <ScrollView showsVerticalScrollIndicator={false}>
           {[
             { id: 'starter', icon: 'rocket-outline' as const, price: 29, clients: 20, features: ['basicLoanMgmt', 'oneAdmin', 'paymentTracking', 'clientMessaging'] },
-            { id: 'business', icon: 'business-outline' as const, price: 79, clients: 200, features: ['deviceLockUnlock', 'autoLock', 'paymentReminders', 'reportsGps', 'bulkImport', 'businessManagement', 'threeAdmins', 'loanRestructuring', 'collectionTrends', 'dailyDigestEmail'], popular: true },
+            { id: 'professional', icon: 'business-outline' as const, price: 79, clients: 200, features: ['deviceLockUnlock', 'autoLock', 'paymentReminders', 'reportsGps', 'bulkImport', 'businessManagement', 'threeAdmins', 'loanRestructuring', 'collectionTrends', 'dailyDigestEmail'], popular: true },
             { id: 'enterprise', icon: 'diamond-outline' as const, price: 199, clients: 1000, features: ['allBusinessFeatures', 'bankOcr', 'documentVault', 'deviceOwnerMode', 'customLauncher', 'creditScoring', 'auditLog', 'unlimitedAdmins', 'prioritySupport', 'revenueForecast', 'portfolioHealth', 'riskScoreTracking', 'comparativeAnalytics', 'sessionManagement', 'roleBasedPermissions', 'screenshotBlock', 'tamperDetection'] },
           ].map((plan) => {
             const isActive = selectedPlan === plan.id;
