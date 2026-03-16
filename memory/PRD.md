@@ -84,7 +84,8 @@ Full-stack loan management application "PayLock Pro" with tiered subscription mo
 
 ## Test Users
 - `karli1987` / `nasvakas123` - Super Admin (custom/enterprise access)
-- `starter_test` / `starter123` - Starter plan user for testing feature restrictions
+- `hhhhhh` / `testpass123` - Professional plan user
+- `starter_test` / `password123` - Starter plan user for testing feature restrictions
 
 ## Test Report
 - `/app/test_reports/iteration_78.json` - 100% pass rate, all feature gating verified
@@ -94,9 +95,18 @@ Full-stack loan management application "PayLock Pro" with tiered subscription mo
 - P1: User verification of feature gating with starter/professional users
 - P2: Stabilization - no new features planned
 
-## Bug Fixes This Session
+## Bug Fixes This Session (v1.2.6 - 2026-03-16)
+1. **Analytics new_loans metric**: Fixed - Added `new_loans` count to `this_month` object in `/api/reports/collection` endpoint
+2. **Bank Statement Analyzer plan gating**: Refactored - Professional users can access analyzer WITHOUT OCR, Enterprise users get full OCR capability
+3. **Audit logs hierarchical scoping**: Implemented - Superadmins see logs for themselves + users they created (via `created_by` field)
+4. **Collection overview metrics**: Verified - `overdue_clients` and `completed_loans` returning correct values
+
+### Previous Session (v1.2.5)
 1. **Starter plan 403 on loan creation**: Fixed - Added "admin" and "superadmin" role aliases to ROLE_PERMISSIONS mapping in permissions.py
 2. **Settings access for starter users**: Fixed - Basic settings (theme, language, currency) available to all; Late Fee/Auto-Lock shows locked state with upgrade prompt for starter users
+
+## Test Report
+- `/app/test_reports/iteration_79.json` - 100% pass rate (16/16 tests), all backend API features verified
 
 ## API Endpoints Reference
 - `/api/admin/feature-access?admin_token=X` - Returns plan and accessible features
