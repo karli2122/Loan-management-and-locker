@@ -43,8 +43,8 @@ export const ClientInfoCard = ({
     </View>
     <View style={styles.clientNameWithScore}>
       <Text style={[styles.clientName, { color: colors.text }]}>{client.name}</Text>
-      {/* Hide credit score if uninstall allowed */}
-      {!isUninstallAllowed && canAccessCreditScore && client.credit_score != null && (
+      {/* Keep credit score visible even when uninstall allowed */}
+      {canAccessCreditScore && client.credit_score != null && (
         <View style={[styles.creditScoreBadge, { backgroundColor: getCreditScoreColor(client.credit_score) + '20' }]}>
           <Ionicons name="star" size={12} color={getCreditScoreColor(client.credit_score)} />
           <Text style={[styles.creditScoreValue, { color: getCreditScoreColor(client.credit_score) }]}>{client.credit_score}</Text>
@@ -119,8 +119,8 @@ export const ClientInfoCard = ({
       )}
     </View>
     )}
-    {/* Hide generate key button if uninstall allowed */}
-    {!isUninstallAllowed && canAccessRegistrationCode ? (
+    {/* Keep Generate Key button visible even when uninstall allowed */}
+    {canAccessRegistrationCode ? (
       <TouchableOpacity
         style={styles.generateKeyButton}
         onPress={onGenerateCode}
@@ -140,7 +140,7 @@ export const ClientInfoCard = ({
           </>
         )}
       </TouchableOpacity>
-    ) : !isUninstallAllowed && (
+    ) : (
       <View style={[styles.generateKeyButton, { backgroundColor: '#475569', opacity: 0.7 }]}>
         <Ionicons name="lock-closed" size={16} color="#94A3B8" />
         <Text style={[styles.generateKeyButtonText, { color: '#94A3B8' }]}>
