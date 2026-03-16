@@ -1,11 +1,42 @@
-# Robots.txt for PayLock Pro
+# Robots.txt for PayLock Pro - Loan Management Software
 # https://paylockpro.com
+# Updated: 2026-03-16
 
+# Allow all search engine crawlers
 User-agent: *
 Allow: /
+Allow: /pricing.html
+Allow: /register.html
+Allow: /how-it-works.html
+Allow: /contact.html
 
-# Sitemap location
+# Crawl delay for polite crawling
+Crawl-delay: 1
+
+# Sitemap location (important for Google indexing)
 Sitemap: https://paylockpro.com/sitemap.xml
 
-# Disallow admin/internal pages
+# Disallow internal/utility pages
 Disallow: /payment-success.html
+Disallow: /api/
+Disallow: /*.json$
+
+# Google specific
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+# Bing specific
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+# Allow social media crawlers for rich previews
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
