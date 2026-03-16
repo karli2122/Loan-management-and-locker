@@ -71,9 +71,8 @@ export const ClientInfoCard = ({
         </Text>
       </View>
     )}
-    {client.is_registered && (
     {/* Hide admin mode section if uninstall allowed */}
-    {!isUninstallAllowed && (
+    {client.is_registered && !isUninstallAllowed && (
       <View style={[styles.statusBadge, client.admin_mode_active ? styles.adminModeBadge : styles.adminModeOffBadge]}>
         <Ionicons
           name={client.admin_mode_active ? 'shield-checkmark' : 'shield'}
