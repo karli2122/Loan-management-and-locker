@@ -250,3 +250,89 @@ async def archive_loan(
         )
     
     return {"success": True, "loan_id": loan_id, "status": "archived"}
+
+
+@router.put("/{loan_id}")
+async def update_loan(
+    loan_id: str,
+    admin_token: str = Query(...),
+    loan_amount: float = Query(None),
+    interest_rate: float = Query(None),
+    loan_given_date: str = Query(None),
+    due_date: str = Query(None),
+    emi_amount: float = Query(None),
+    next_payment_date: str = Query(None),
+    next_payment_amount: float = Query(None),
+    notes: str = Query(None),
+):
+    """Update loan details."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    loan = await db.loans.find_one({"id": loan_id}, {"_id": 0})
+    if not loan:
+        raise HTTPException(status_code=404, detail="Loan not found")
+    
+    # Build update data
+    update_data = {"updated_at": datetime.now(timezone.utc)}
+    
+    if loan_amount is not None:
+        update_data["loan_amount"] = loan_amount
+        # Recalculate total amount due and outstanding
+        rate = interest_rate if interest_rate is not None else loan.get("interest_rate", 0)
+        interest_amount = loan_amount * (rate / 100)
+        total_due = loan_amount + interest_amount
+        update_data["total_amount_due"] = total_due
+        paid = loan.get("total_paid", 0)
+        update_data["outstanding_balance"] = max(total_due - paid, 0)
+        
+    if interest_rate is not None:
+        update_data["interest_rate"] = interest_rate
+        # Recalculate if loan_amount wasn't also updated
+        if loan_amount is None:
+            principal = loan.get("loan_amount", 0)
+            interest_amount = principal * (interest_rate / 100)
+            total_due = principal + interest_amount
+            update_data["total_amount_due"] = total_due
+            paid = loan.get("total_paid", 0)
+            update_data["outstanding_balance"] = max(total_due - paid, 0)
+    
+    if loan_given_date is not None:
+        update_data["loan_given_date"] = loan_given_date
+    
+    if due_date is not None:
+        update_data["due_date"] = due_date
+    
+    if emi_amount is not None:
+        update_data["emi_amount"] = emi_amount
+    
+    if next_payment_date is not None:
+        update_data["next_payment_date"] = next_payment_date
+    
+    if next_payment_amount is not None:
+        update_data["next_payment_amount"] = next_payment_amount
+    
+    if notes is not None:
+        update_data["notes"] = notes
+    
+    await db.loans.update_one({"id": loan_id}, {"$set": update_data})
+    
+    # Update client summary
+    client_id = loan.get("client_id")
+    if client_id:
+        active_loans = await db.loans.find(
+            {"client_id": client_id, "status": "active"}
+        ).to_list(100)
+        
+        await db.clients.update_one(
+            {"id": client_id},
+            {"$set": {
+                "total_loan_amount": sum(l.get("loan_amount", 0) for l in active_loans),
+                "total_outstanding_all_loans": sum(l.get("outstanding_balance", 0) for l in active_loans),
+            }}
+        )
+    
+    # Fetch updated loan
+    updated_loan = await db.loans.find_one({"id": loan_id}, {"_id": 0})
+    
+    return {"success": True, "loan": updated_loan}
+

@@ -546,22 +546,33 @@ export default function ClientDetails() {
     setActionLoading(true);
     try {
       const token = await AsyncStorage.getItem('admin_token');
-      const response = await fetch(`${API_URL}/api/loans/${id}/edit?admin_token=${token}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          loan_amount: parseFloat(editLoanAmount), interest_rate: parseFloat(editInterestRate),
-          loan_start_date: editLoanStartDate || undefined, due_date: editLoanDueDate || undefined,
-        }),
-      });
+      
+      // Use the specific loan ID if editing individual loan, otherwise use client ID
+      const endpoint = selectedLoanId 
+        ? `${API_URL}/api/loans/${selectedLoanId}?admin_token=${token}&loan_amount=${parseFloat(editLoanAmount)}&interest_rate=${parseFloat(editInterestRate)}${editLoanStartDate ? `&loan_given_date=${editLoanStartDate}` : ''}${editLoanDueDate ? `&due_date=${editLoanDueDate}` : ''}`
+        : `${API_URL}/api/loans/${id}/edit?admin_token=${token}`;
+      
+      const response = selectedLoanId
+        ? await fetch(endpoint, { method: 'PUT' })
+        : await fetch(endpoint, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              loan_amount: parseFloat(editLoanAmount), interest_rate: parseFloat(editInterestRate),
+              loan_start_date: editLoanStartDate || undefined, due_date: editLoanDueDate || undefined,
+            }),
+          });
+      
       if (!response.ok) { const errorData = await response.json().catch(() => ({})); throw new Error(errorData.detail || 'Failed to update loan'); }
       const data = await response.json();
-      Alert.alert(
-        t('success'),
-        language === 'et'
-          ? `Laen uuendatud!\n\nKuumakse: ${formatAmount(data.loan_details.monthly_emi)}\nKokku: ${formatAmount(data.loan_details.total_amount_due)}`
-          : `Loan updated!\n\nMonthly EMI: ${formatAmount(data.loan_details.monthly_emi)}\nTotal: ${formatAmount(data.loan_details.total_amount_due)}`
-      );
+      
+      const successMsg = selectedLoanId
+        ? `Loan updated successfully!`
+        : `Loan updated!\n\nMonthly EMI: ${formatAmount(data.loan_details?.monthly_emi || 0)}\nTotal: ${formatAmount(data.loan_details?.total_amount_due || 0)}`;
+      
+      Alert.alert(t('success'), language === 'et' ? 'Laen uuendatud!' : successMsg);
       setEditLoanModal(false);
+      setSelectedLoanId(null);
+      setSelectedLoan(null);
       fetchClient();
     } catch (error: any) { Alert.alert(t('error'), error.message || 'Failed to update loan'); }
     finally { setActionLoading(false); }
@@ -727,6 +738,15 @@ export default function ClientDetails() {
                 setPaymentModal(true);
               }}
               onAddNewLoan={() => router.push(`/admin/add-loan?client_id=${id}`)}
+              onEditLoan={(loanId, loan) => {
+                setSelectedLoanId(loanId);
+                setSelectedLoan(loan);
+                setEditLoanAmount(String(loan.loan_amount || ''));
+                setEditInterestRate(String(loan.interest_rate || ''));
+                setEditLoanStartDate(loan.loan_given_date || '');
+                setEditLoanDueDate(loan.due_date || '');
+                setEditLoanModal(true);
+              }}
             />
           </>
         )}

@@ -12,6 +12,7 @@ export const MultiLoanOverview = ({
   clientName,
   onRecordPayment,
   onAddNewLoan,
+  onEditLoan,
 }) => {
   const { formatAmount } = useCurrency();
   const { t } = useLanguage();
@@ -43,6 +44,29 @@ export const MultiLoanOverview = ({
   useEffect(() => {
     fetchLoans();
   }, [fetchLoans]);
+
+  // Calculate due today amount based on payment schedule
+  const getDueTodayAmount = (loan) => {
+    if (!loan.next_payment_date) return 0;
+    const today = new Date().toISOString().split('T')[0];
+    if (loan.next_payment_date === today) {
+      return loan.next_payment_amount || loan.emi_amount || 0;
+    }
+    return 0;
+  };
+
+  // Calculate interest amount
+  const getInterestAmount = (loan) => {
+    const principal = loan.loan_amount || 0;
+    const total = loan.total_amount_due || principal;
+    return total - principal;
+  };
+
+  // Calculate paid percentage
+  const getPaidPercentage = (loan) => {
+    if (!loan.total_amount_due || loan.total_amount_due === 0) return 0;
+    return ((loan.total_paid || 0) / loan.total_amount_due * 100).toFixed(1);
+  };
 
   if (loading) {
     return (
@@ -104,44 +128,61 @@ export const MultiLoanOverview = ({
                     <Text style={styles.importedBadgeText}>IMPORTED</Text>
                   </View>
                 )}
+                <TouchableOpacity
+                  style={[styles.editBtn, { backgroundColor: colors.primary }]}
+                  onPress={() => onEditLoan && onEditLoan(loan.id, loan)}
+                  data-testid={`edit-loan-btn-${loan.id}`}
+                >
+                  <Ionicons name="pencil" size={14} color="#fff" />
+                  <Text style={styles.editBtnText}>Edit</Text>
+                </TouchableOpacity>
               </View>
               
               <View style={styles.loanDetails}>
                 <View style={styles.loanRow}>
-                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Given</Text>
+                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Given Amount</Text>
                   <Text style={[styles.loanValue, { color: colors.text }]}>{formatAmount(loan.loan_amount)}</Text>
                 </View>
                 <View style={styles.loanRow}>
-                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>With Interest</Text>
-                  <Text style={[styles.loanValue, { color: colors.text }]}>{formatAmount(loan.total_amount_due)}</Text>
+                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Interest Amount</Text>
+                  <Text style={[styles.loanValue, { color: '#F59E0B' }]}>{formatAmount(getInterestAmount(loan))}</Text>
                 </View>
                 <View style={styles.loanRow}>
-                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Paid</Text>
+                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Paid Amount</Text>
                   <Text style={[styles.loanValue, { color: '#10B981' }]}>{formatAmount(loan.total_paid || 0)}</Text>
                 </View>
                 <View style={styles.loanRow}>
-                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Outstanding</Text>
-                  <Text style={[styles.loanValue, { color: '#EF4444', fontWeight: '700' }]}>{formatAmount(loan.outstanding_balance)}</Text>
+                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Due Today</Text>
+                  <Text style={[styles.loanValue, { color: getDueTodayAmount(loan) > 0 ? '#EF4444' : colors.textMuted }]}>
+                    {getDueTodayAmount(loan) > 0 ? formatAmount(getDueTodayAmount(loan)) : '-'}
+                  </Text>
                 </View>
                 <View style={styles.loanRow}>
-                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Date Given</Text>
-                  <Text style={[styles.loanValue, { color: colors.text }]}>{loan.loan_given_date || '-'}</Text>
+                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Next Due Date</Text>
+                  <Text style={[styles.loanValue, { color: colors.text }]}>{loan.next_payment_date || '-'}</Text>
+                </View>
+                <View style={styles.loanRow}>
+                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Next Due Amount</Text>
+                  <Text style={[styles.loanValue, { color: '#EF4444' }]}>
+                    {loan.next_payment_amount ? formatAmount(loan.next_payment_amount) : formatAmount(loan.emi_amount || loan.outstanding_balance)}
+                  </Text>
                 </View>
               </View>
 
-              {/* Progress Bar */}
+              {/* Progress Bar with Paid % */}
               <View style={styles.progressContainer}>
+                <View style={styles.progressHeader}>
+                  <Text style={[styles.progressLabel, { color: colors.textMuted }]}>Payment Progress</Text>
+                  <Text style={[styles.progressPercent, { color: '#10B981' }]}>{getPaidPercentage(loan)}% Paid</Text>
+                </View>
                 <View style={styles.progressBar}>
                   <View 
                     style={[
                       styles.progressFill, 
-                      { width: `${loan.total_amount_due > 0 ? ((loan.total_paid || 0) / loan.total_amount_due * 100) : 0}%` }
+                      { width: `${getPaidPercentage(loan)}%` }
                     ]} 
                   />
                 </View>
-                <Text style={[styles.progressText, { color: colors.textMuted }]}>
-                  {loan.total_amount_due > 0 ? ((loan.total_paid || 0) / loan.total_amount_due * 100).toFixed(0) : 0}% paid
-                </Text>
               </View>
 
               <TouchableOpacity
@@ -273,6 +314,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginBottom: 12,
+    alignItems: 'center',
   },
   loanBadge: {
     backgroundColor: '#2563EB',
@@ -294,6 +336,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 10,
     fontWeight: '700',
+  },
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+    gap: 4,
+    marginLeft: 'auto',
+  },
+  editBtnText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
   },
   paidBadge: {
     paddingHorizontal: 8,
@@ -322,6 +378,19 @@ const styles = StyleSheet.create({
   progressContainer: {
     marginTop: 12,
     marginBottom: 12,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  progressLabel: {
+    fontSize: 12,
+  },
+  progressPercent: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   progressBar: {
     height: 6,
