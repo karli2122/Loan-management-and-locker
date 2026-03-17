@@ -170,6 +170,10 @@ async def verify_email(req: VerifyEmailRequest):
     admin_id = str(uuid.uuid4())
     token = ''.join(random.choices(string.ascii_lowercase + string.digits, k=64))
     
+    # Determine role based on plan: enterprise/custom get admin role, others get user role
+    plan = pending.get("plan", "demo").lower() if pending.get("plan") else "demo"
+    role = "admin" if plan in ["enterprise", "custom"] else "user"
+    
     new_admin = {
         "id": admin_id,
         "username": pending["username"],
@@ -180,10 +184,10 @@ async def verify_email(req: VerifyEmailRequest):
         "phone": pending["phone"],
         "address": pending["address"],
         "token": token,
-        "role": "user",
+        "role": role,
         "is_super_admin": False,
-        "plan": "demo",
-        "subscription_plan": "demo",
+        "plan": plan,
+        "subscription_plan": plan,
         "subscription_renewal_date": None,  # Demo has no renewal
         "subscription_status": "demo",
         "created_at": datetime.now(timezone.utc),

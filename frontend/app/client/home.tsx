@@ -35,6 +35,7 @@ import OfflineSyncManager from '../../src/services/OfflineSyncManager';
 import { startBackgroundLocationTracking, isBackgroundLocationActive } from '../../src/services/BackgroundLocationService';
 import { initializeNotifications } from '../../src/services/BackgroundNotificationService';
 import { sendDeviceInfoUpdateThrottled } from '../../src/services/DeviceInfoService';
+import { registerHeartbeatTask, sendHeartbeat, getHeartbeatStatus } from '../../src/services/BackgroundHeartbeatService';
 import API_URL from '../../src/constants/api';
 import * as ScreenCapture from 'expo-screen-capture';
 
@@ -629,9 +630,18 @@ export default function ClientHome() {
       updateLocation(id).catch(e => console.log('Location update error (non-fatal):', e));
       registerPushToken(id).catch(e => console.log('Push token error (non-fatal):', e));
       
-      // Initialize background services (location tracking + notifications)
+      // Initialize background services (location tracking + notifications + heartbeat)
       initializeNotifications().catch(e => console.log('Notification init error (non-fatal):', e));
       startBackgroundLocationTracking(API_URL).catch(e => console.log('Background location init error (non-fatal):', e));
+      
+      // Register background heartbeat task (sends device info every 5 mins even when app closed)
+      registerHeartbeatTask().then(registered => {
+        if (registered) {
+          console.log('[Heartbeat] Background task registered successfully');
+          // Send an immediate heartbeat on app open
+          sendHeartbeat().catch(e => console.log('Initial heartbeat error (non-fatal):', e));
+        }
+      }).catch(e => console.log('Heartbeat registration error (non-fatal):', e));
     } catch (error) {
       console.error('loadClientData error:', error);
       if (isMounted.current) setLoading(false);

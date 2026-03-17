@@ -309,17 +309,27 @@ async def check_payment_status(session_id: str, http_request: Request):
         plan_id = txn.get("plan_id")
         admin_id = txn.get("admin_id")
         plan = PLANS.get(plan_id, {})
+        
+        # Determine role based on plan: enterprise/custom get admin role
+        role_update = "admin" if plan_id.lower() in ["enterprise", "custom"] else None
 
         # Update admin's subscription
+        update_fields = {
+            "subscription_plan": plan_id,
+            "subscription_plan_name": plan.get("name", ""),
+            "subscription_clients_limit": plan.get("clients", 50),
+            "subscription_updated_at": datetime.now(timezone.utc).isoformat(),
+            "subscription_session_id": session_id,
+        }
+        
+        # Upgrade role to admin if enterprise/custom plan
+        if role_update:
+            update_fields["role"] = role_update
+            logger.info(f"Admin {admin_id} role upgraded to {role_update} for {plan_id} plan")
+        
         await db.admins.update_one(
             {"id": admin_id},
-            {"$set": {
-                "subscription_plan": plan_id,
-                "subscription_plan_name": plan.get("name", ""),
-                "subscription_clients_limit": plan.get("clients", 50),
-                "subscription_updated_at": datetime.now(timezone.utc).isoformat(),
-                "subscription_session_id": session_id,
-            }}
+            {"$set": update_fields}
         )
 
         update_data["processed"] = True
@@ -409,18 +419,28 @@ async def stripe_webhook(request: Request):
                         {"$set": {"pending_plan": plan_id, "pending_plan_date": renewal_date}}
                     )
 
+                # Determine role upgrade for enterprise/custom plans
+                role_update = "admin" if effective_plan.lower() in ["enterprise", "custom"] else None
+                
+                update_fields = {
+                    "subscription_plan": effective_plan,
+                    "plan": effective_plan,
+                    "subscription_plan_name": plan.get("name", ""),
+                    "subscription_clients_limit": plan.get("clients", 50),
+                    "subscription_updated_at": datetime.now(timezone.utc).isoformat(),
+                    "subscription_session_id": webhook_response.session_id,
+                    "subscription_renewal_date": renewal_date if isinstance(renewal_date, datetime) else datetime.fromisoformat(str(renewal_date)),
+                    "subscription_status": "paid",
+                }
+                
+                # Upgrade role if enterprise/custom plan
+                if role_update:
+                    update_fields["role"] = role_update
+                    logger.info(f"Webhook: Admin {admin_id} role upgraded to {role_update}")
+
                 await db.admins.update_one(
                     {"id": admin_id},
-                    {"$set": {
-                        "subscription_plan": effective_plan,
-                        "plan": effective_plan,
-                        "subscription_plan_name": plan.get("name", ""),
-                        "subscription_clients_limit": plan.get("clients", 50),
-                        "subscription_updated_at": datetime.now(timezone.utc).isoformat(),
-                        "subscription_session_id": webhook_response.session_id,
-                        "subscription_renewal_date": renewal_date if isinstance(renewal_date, datetime) else datetime.fromisoformat(str(renewal_date)),
-                        "subscription_status": "paid",
-                    }}
+                    {"$set": update_fields}
                 )
 
                 await db.payment_transactions.update_one(

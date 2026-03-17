@@ -91,7 +91,8 @@ export default {
       "@react-native-community/datetimepicker",
       "expo-font",
       "expo-web-browser",
-      ...(IS_ADMIN_APP ? [] : []),
+      // Background fetch for heartbeat service (client app only)
+      ...(IS_ADMIN_APP ? [] : ["expo-background-fetch"]),
       [
         "expo-location",
         {
