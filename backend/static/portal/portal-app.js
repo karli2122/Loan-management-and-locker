@@ -1106,9 +1106,29 @@ async function showDeviceDetails(clientId) {
   try {
     const client = await api('GET', `/clients/${clientId}`);
     const c = client.client || client;
-    const deviceInfo = c.device_info || {};
-    const lastSeen = formatLastSeen(c.minutes_since_heartbeat || c.minutes_ago);
+    
+    // Calculate last seen from last_heartbeat timestamp
+    let lastSeen = 'Never';
+    if (c.last_heartbeat) {
+      const hbDate = new Date(c.last_heartbeat);
+      const now = new Date();
+      const diffMs = now - hbDate;
+      const diffMins = Math.floor(diffMs / 60000);
+      lastSeen = formatLastSeen(diffMins);
+    }
+    
+    // App installed = is_registered
+    const appInstalled = c.is_registered || false;
     const uninstallAllowed = c.uninstall_allowed || false;
+    
+    // Device info - get from client object directly
+    const deviceModel = c.device_model || '-';
+    const androidVersion = c.android_version || '-';
+    const batteryLevel = c.battery_level || c.battery || null;
+    const storageFree = c.storage_free_gb || c.free_storage_gb || null;
+    const storageTotal = c.storage_total_gb || c.total_storage_gb || null;
+    const imei = c.imei || '-';
+    const serial = c.serial || '-';
     
     overlay.innerHTML = `<div class="modal" style="max-width:650px">
       <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:16px">
@@ -1130,11 +1150,12 @@ async function showDeviceDetails(clientId) {
         <div class="card" style="padding:16px">
           <h4 style="margin:0 0 12px 0;font-size:14px;color:var(--text-muted)"><i class="fas fa-mobile-alt"></i> Device Information</h4>
           <div style="space-y:8px">
-            <p style="margin:4px 0"><b>Model:</b> ${esc(deviceInfo.model || c.device_model || '-')}</p>
-            <p style="margin:4px 0"><b>Android:</b> ${esc(deviceInfo.android_version || '-')}</p>
-            <p style="margin:4px 0"><b>IMEI:</b> ${esc(deviceInfo.imei || c.imei || '-')}</p>
-            <p style="margin:4px 0"><b>Serial:</b> ${esc(deviceInfo.serial || '-')}</p>
-            <p style="margin:4px 0"><b>Battery:</b> ${deviceInfo.battery_level ? deviceInfo.battery_level + '%' : '-'}</p>
+            <p style="margin:4px 0"><b>Model:</b> ${esc(deviceModel)}</p>
+            <p style="margin:4px 0"><b>Android:</b> ${esc(androidVersion)}</p>
+            <p style="margin:4px 0"><b>IMEI:</b> ${esc(imei)}</p>
+            <p style="margin:4px 0"><b>Serial:</b> ${esc(serial)}</p>
+            <p style="margin:4px 0"><b>Battery:</b> ${batteryLevel !== null ? batteryLevel + '%' : '-'}</p>
+            <p style="margin:4px 0"><b>Storage:</b> ${storageFree !== null && storageTotal !== null ? storageFree + ' GB / ' + storageTotal + ' GB' : '-'}</p>
           </div>
         </div>
       </div>
@@ -1151,7 +1172,7 @@ async function showDeviceDetails(clientId) {
             <div style="font-size:11px;color:var(--text-muted)">Last Seen</div>
           </div>
           <div>
-            <div style="font-size:18px;font-weight:700">${c.app_installed?'<span style="color:var(--success)">Yes</span>':'<span style="color:var(--text-muted)">No</span>'}</div>
+            <div style="font-size:18px;font-weight:700">${appInstalled?'<span style="color:var(--success)">Yes</span>':'<span style="color:var(--text-muted)">No</span>'}</div>
             <div style="font-size:11px;color:var(--text-muted)">App Installed</div>
           </div>
           <div>

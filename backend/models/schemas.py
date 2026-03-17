@@ -197,6 +197,12 @@ class DeviceRegistration(BaseModel):
     registration_code: str
     device_id: str
     device_model: str
+    android_version: Optional[str] = None
+    battery_level: Optional[int] = None  # Battery percentage 0-100
+    storage_free_gb: Optional[float] = None  # Free storage in GB
+    storage_total_gb: Optional[float] = None  # Total storage in GB
+    imei: Optional[str] = None
+    serial: Optional[str] = None
 
 
 class LocationUpdate(BaseModel):
@@ -210,6 +216,16 @@ class PushTokenUpdate(BaseModel):
     client_id: str
     push_token: str
     admin_id: Optional[str] = None
+
+
+class DeviceInfoUpdate(BaseModel):
+    """Model for updating device info during heartbeat/status updates."""
+    client_id: str
+    battery_level: Optional[int] = None  # Battery percentage 0-100
+    storage_free_gb: Optional[float] = None
+    storage_total_gb: Optional[float] = None
+    android_version: Optional[str] = None
+    device_model: Optional[str] = None
 
 
 # ===================== LOAN MODELS =====================

@@ -6,7 +6,7 @@ import logging
 from database import db
 from models.schemas import (
     Client, ClientStatusResponse,
-    DeviceRegistration, LocationUpdate, PushTokenUpdate
+    DeviceRegistration, LocationUpdate, PushTokenUpdate, DeviceInfoUpdate
 )
 from utils.exceptions import ValidationException
 
@@ -34,20 +34,37 @@ async def register_device(registration: DeviceRegistration):
     # Generate a device_token for client-side auth (messaging, etc.)
     device_token = str(uuid.uuid4())
     
+    # Build update with device info
+    update_data = {
+        "device_id": registration.device_id,
+        "device_model": registration.device_model,
+        "device_token": device_token,
+        "is_registered": True,
+        "registered_at": datetime.utcnow(),
+        "last_heartbeat": datetime.utcnow(),
+        "uninstall_allowed": False,
+        "admin_mode_active": False,
+        "tamper_attempts": 0,
+        "lock_mode": lock_mode,
+    }
+    
+    # Add optional device info if provided
+    if registration.android_version:
+        update_data["android_version"] = registration.android_version
+    if registration.battery_level is not None:
+        update_data["battery_level"] = registration.battery_level
+    if registration.storage_free_gb is not None:
+        update_data["storage_free_gb"] = registration.storage_free_gb
+    if registration.storage_total_gb is not None:
+        update_data["storage_total_gb"] = registration.storage_total_gb
+    if registration.imei:
+        update_data["imei"] = registration.imei
+    if registration.serial:
+        update_data["serial"] = registration.serial
+    
     await db.clients.update_one(
         {"id": client["id"]},
-        {"$set": {
-            "device_id": registration.device_id,
-            "device_model": registration.device_model,
-            "device_token": device_token,
-            "is_registered": True,
-            "registered_at": datetime.utcnow(),
-            "last_heartbeat": datetime.utcnow(),
-            "uninstall_allowed": False,
-            "admin_mode_active": False,
-            "tamper_attempts": 0,
-            "lock_mode": lock_mode,
-        }}
+        {"$set": update_data}
     )
     
     updated_client = await db.clients.find_one({"id": client["id"]}, {"_id": 0})
@@ -210,3 +227,34 @@ async def report_admin_status(client_id: str = Query(...), admin_active: bool = 
     )
     
     return {"message": "Admin status updated", "admin_active": admin_active}
+
+
+
+@router.post("/device/update-info")
+async def update_device_info(data: DeviceInfoUpdate):
+    """Update device information (battery, storage, etc.) during heartbeat.
+    This should be called by the client app periodically to keep device info updated.
+    """
+    client = await db.clients.find_one({"id": data.client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    update_data = {"last_heartbeat": datetime.utcnow()}
+    
+    if data.battery_level is not None:
+        update_data["battery_level"] = data.battery_level
+    if data.storage_free_gb is not None:
+        update_data["storage_free_gb"] = data.storage_free_gb
+    if data.storage_total_gb is not None:
+        update_data["storage_total_gb"] = data.storage_total_gb
+    if data.android_version:
+        update_data["android_version"] = data.android_version
+    if data.device_model:
+        update_data["device_model"] = data.device_model
+    
+    await db.clients.update_one(
+        {"id": data.client_id},
+        {"$set": update_data}
+    )
+    
+    return {"message": "Device info updated", "client_id": data.client_id}

@@ -27,7 +27,7 @@ async def get_audit_logs(
     offset: int = Query(default=0)
 ):
     """Get audit logs with optional filters. 
-    Superadmin/Enterprise users see logs for themselves + users they created.
+    Superadmin/Enterprise users see logs for themselves + enterprise members.
     """
     requester_id = await get_admin_id_from_token(admin_token)
     await check_plan_access(requester_id, "audit_log")
@@ -37,21 +37,29 @@ async def get_audit_logs(
     is_super_admin = admin.get("is_super_admin", False) if admin else False
     is_super_admin = is_super_admin or (admin and admin.get("role") in ("super_admin", "superadmin"))
     
-    # Get all users created by this admin (hierarchical scoping)
+    # Get enterprise_id for the requester
+    enterprise_id = admin.get("enterprise_id") or requester_id if admin else requester_id
+    
+    # Get all enterprise members (use enterprise_id to find all related users)
     team_members = await db.admins.find(
-        {"$or": [{"created_by": requester_id}, {"id": requester_id}]},
+        {"$or": [
+            {"enterprise_id": enterprise_id},
+            {"id": enterprise_id},
+            {"created_by": requester_id},
+            {"id": requester_id}
+        ]},
         {"_id": 0, "id": 1}
     ).to_list(100)
-    member_ids = [m["id"] for m in team_members]
+    member_ids = list(set([m["id"] for m in team_members]))
     if requester_id not in member_ids:
         member_ids.append(requester_id)
     
-    # Build query - show logs for the user + users they created
+    # Build query - show logs for the user + enterprise members
     query = {"admin_id": {"$in": member_ids}}
     
     # If specific admin filter requested
     if admin_id_filter and admin_id_filter != "all":
-        if admin_id_filter in member_ids:  # Only allow filtering to users in their hierarchy
+        if admin_id_filter in member_ids:  # Only allow filtering to users in their enterprise
             query["admin_id"] = admin_id_filter
     
     if action_type:

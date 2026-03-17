@@ -184,28 +184,45 @@ Email is sent via Resend (paylockpro.com domain) from both:
 - **Device Details Modal**: Shows comprehensive client info, device info, connection status (Lock, Last Seen, App Installed, Uninstall status)
 - **Action buttons**: Lock/Unlock Device, Send Warning (push notification), Allow Uninstall, View Client
 - **Uninstall Allowed badge**: Yellow badge appears in device list when uninstall is allowed
+- **Device Info Display**: Modal shows Model, Android version, Battery %, Storage (free/total GB), IMEI, Serial
 
 ### 2. Heartbeat Monitor Fix (CRITICAL BUG FIX)
 - **Issue**: "Last seen" showing incorrect values (e.g., "5268min ago" when it should be "3 days ago")
 - **Root cause**: Timezone mismatch - `datetime.utcnow()` returns naive datetime, MongoDB stores timezone-aware
-- **Fix**: Changed to `datetime.now(timezone.utc)` and added timezone-aware handling for both naive and aware datetimes
-- **Files modified**: `backend/routes/reports.py`
+- **Fix**: Changed to `datetime.now(timezone.utc)` with proper timezone handling for both naive and aware datetimes
 
-### 3. Document Storage Enhancements
+### 3. App Installed Status Fix
+- **Issue**: "App Installed" showing "No" even when device is registered
+- **Root cause**: Modal was checking non-existent `app_installed` field
+- **Fix**: Now correctly uses `is_registered` field
+
+### 4. Last Seen Calculation Fix
+- **Issue**: "Last Seen" showing "Never" even when device has heartbeat
+- **Root cause**: Modal was using `minutes_since_heartbeat` which doesn't exist
+- **Fix**: Now calculates minutes from `last_heartbeat` timestamp client-side
+
+### 5. Team Activity Filtering Fix
+- **Issue**: Team member filter not working correctly
+- **Root cause**: Query used `created_by` instead of `enterprise_id` to find team members
+- **Fix**: Updated audit_logs route to use `enterprise_id` for finding related team members
+
+### 6. Document Storage Enhancements
 - **Recent Documents table**: Shows all documents with client name, filename, type, size, upload date
-- **Download button**: Each document has a download icon that opens the file directly
-- **Delete button**: Red trash icon for document deletion
-- **New endpoint**: `GET /api/documents/all` - Lists all documents with client names
+- **Download button**: Each document has a download icon
+- **New endpoint**: `GET /api/documents/all`
 
-### 4. Team Activity Log Filtering
-- **Already implemented**: Team Member dropdown filter in Activity page
-- **Filter by admin**: Select specific team member to filter activity logs
-- **Export CSV**: Exports filtered activity logs
+### 7. Backend Device Info Support (NEW)
+- **Updated DeviceRegistration model**: Now accepts android_version, battery_level, storage_free_gb, storage_total_gb, imei, serial
+- **New endpoint**: `POST /api/device/update-info` - For client app to send device info during heartbeat
+- **Note**: Client app needs to be updated to send this data - currently shows "-" for these fields
 
 ### Files Modified:
-- `backend/routes/reports.py` - Fixed heartbeat timezone calculation, added `uninstall_allowed` and `client_id` to response
-- `backend/routes/documents.py` - Added `/api/documents/all` endpoint
-- `backend/static/portal/portal-app.js` - Enhanced device management, documents, and send warning functions
+- `backend/routes/reports.py` - Heartbeat timezone fix, added uninstall_allowed and client_id
+- `backend/routes/audit_logs.py` - Fixed team member filtering using enterprise_id
+- `backend/routes/documents.py` - Added /api/documents/all endpoint
+- `backend/routes/device.py` - Updated registration, added /device/update-info endpoint
+- `backend/models/schemas.py` - Added DeviceInfoUpdate model, extended DeviceRegistration
+- `backend/static/portal/portal-app.js` - Fixed device modal, last seen, app installed, send warning
 
 ## Prioritized Backlog
 - P0: Deploy web portal changes to production VPS
