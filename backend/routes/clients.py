@@ -111,7 +111,18 @@ async def list_clients(admin_token: str = Query(...)):
             total_paid_loans = sum(l.get("total_paid", 0) for l in client_loans)
             
             # Get earliest due date and interest rate from active loans
-            due_dates = [l.get("due_date") for l in client_loans if l.get("due_date")]
+            # Normalize all dates to datetime objects for comparison
+            due_dates = []
+            for l in client_loans:
+                due = l.get("due_date")
+                if due:
+                    if isinstance(due, str):
+                        try:
+                            due = datetime.fromisoformat(due.replace('Z', '+00:00'))
+                        except (ValueError, TypeError):
+                            continue
+                    due_dates.append(due)
+            
             interest_rates = [l.get("interest_rate", 0) for l in client_loans if l.get("interest_rate")]
             
             # Update client with aggregated data if loans collection has data
@@ -122,8 +133,9 @@ async def list_clients(admin_token: str = Query(...)):
             
             if due_dates:
                 # Use earliest due date
-                client["loan_due_date"] = min(due_dates)
-                client["next_payment_due"] = min(due_dates)
+                earliest_due = min(due_dates)
+                client["loan_due_date"] = earliest_due.isoformat() if isinstance(earliest_due, datetime) else earliest_due
+                client["next_payment_due"] = earliest_due
             
             if interest_rates:
                 client["interest_rate"] = interest_rates[0]  # Use first loan's rate
