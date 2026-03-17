@@ -102,7 +102,7 @@ async def delete_document(doc_id: str, admin_token: str = Query(...)):
 
 @router.get("/stats")
 async def document_stats(admin_token: str = Query(...)):
-    """Get document storage statistics."""
+    """Get document storage statistics from document_vault (same as admin app)."""
     await get_admin_id_from_token(admin_token)
     pipeline = [
         {"$group": {
@@ -111,14 +111,15 @@ async def document_stats(admin_token: str = Query(...)):
             "total_size": {"$sum": "$size"}
         }}
     ]
-    stats = await db.documents.aggregate(pipeline).to_list(50)
+    # Use document_vault collection (same as admin app)
+    stats = await db.document_vault.aggregate(pipeline).to_list(50)
     total_docs = sum(s["count"] for s in stats)
-    total_size = sum(s["total_size"] for s in stats)
+    total_size = sum(s.get("total_size", 0) or 0 for s in stats)
     return {
         "total_documents": total_docs,
         "total_size_bytes": total_size,
-        "total_size_mb": round(total_size / (1024 * 1024), 2),
-        "by_type": {s["_id"]: {"count": s["count"], "size": s["total_size"]} for s in stats}
+        "total_size_mb": round(total_size / (1024 * 1024), 2) if total_size else 0,
+        "by_type": {s["_id"]: {"count": s["count"], "size": s.get("total_size", 0) or 0} for s in stats}
     }
 
 

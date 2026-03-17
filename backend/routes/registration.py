@@ -180,7 +180,7 @@ async def verify_email(req: VerifyEmailRequest):
         "phone": pending["phone"],
         "address": pending["address"],
         "token": token,
-        "role": "admin",
+        "role": "user",
         "is_super_admin": False,
         "plan": "demo",
         "subscription_plan": "demo",

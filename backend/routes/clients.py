@@ -64,6 +64,7 @@ async def create_client(client_data: ClientCreate, admin_token: str = Query(...)
 async def list_clients(admin_token: str = Query(...)):
     """List all clients for the authenticated admin.
     All users see clients belonging to themselves + users they created (hierarchical scoping).
+    Aggregates loan data from both clients collection and loans collection.
     """
     admin_id = await get_admin_id_from_token(admin_token)
     admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
@@ -81,10 +82,69 @@ async def list_clients(admin_token: str = Query(...)):
     
     clients = await db.clients.find(query, {"_id": 0}).to_list(1000)
     
-    # Ensure loan fields are properly mapped for frontend compatibility
+    # Get all client IDs
+    client_ids = [c["id"] for c in clients]
+    
+    # Fetch all loans for these clients from loans collection
+    loans_by_client = {}
+    if client_ids:
+        all_loans = await db.loans.find(
+            {"client_id": {"$in": client_ids}, "status": "active"},
+            {"_id": 0}
+        ).to_list(5000)
+        
+        for loan in all_loans:
+            cid = loan.get("client_id")
+            if cid not in loans_by_client:
+                loans_by_client[cid] = []
+            loans_by_client[cid].append(loan)
+    
+    # Aggregate loan data for each client
     for client in clients:
+        cid = client["id"]
+        client_loans = loans_by_client.get(cid, [])
+        
+        if client_loans:
+            # Calculate totals from loans collection
+            total_loan_amount = sum(l.get("loan_amount", 0) or l.get("amount", 0) for l in client_loans)
+            total_outstanding = sum(l.get("outstanding_balance", 0) or (l.get("loan_amount", 0) - l.get("total_paid", 0)) for l in client_loans)
+            total_paid_loans = sum(l.get("total_paid", 0) for l in client_loans)
+            
+            # Get earliest due date and interest rate from active loans
+            due_dates = [l.get("due_date") for l in client_loans if l.get("due_date")]
+            interest_rates = [l.get("interest_rate", 0) for l in client_loans if l.get("interest_rate")]
+            
+            # Update client with aggregated data if loans collection has data
+            if total_loan_amount > 0:
+                client["loan_amount"] = total_loan_amount
+                client["outstanding_balance"] = max(0, total_outstanding)
+                client["total_paid"] = (client.get("total_paid", 0) or 0) + total_paid_loans
+            
+            if due_dates:
+                # Use earliest due date
+                client["loan_due_date"] = min(due_dates)
+                client["next_payment_due"] = min(due_dates)
+            
+            if interest_rates:
+                client["interest_rate"] = interest_rates[0]  # Use first loan's rate
+            
+            # Calculate total amount due with interest
+            if client.get("loan_amount") and client.get("interest_rate"):
+                months = 1  # Default
+                interest_amount = client["loan_amount"] * (client["interest_rate"] / 100) * months
+                client["total_amount_due"] = client["loan_amount"] + interest_amount
+                client["interest_amount"] = interest_amount
+            
+            # Store loans for multi-loan display
+            client["loans"] = client_loans
+        
+        # Ensure loan fields are properly mapped for frontend compatibility
         if client.get("loan_amount") and not client.get("principal_amount"):
             client["principal_amount"] = client["loan_amount"]
+        
+        # Calculate interest amount if not set
+        if not client.get("interest_amount") and client.get("total_amount_due") and client.get("loan_amount"):
+            client["interest_amount"] = max(0, client["total_amount_due"] - client["loan_amount"])
     
     return {"clients": clients}
 

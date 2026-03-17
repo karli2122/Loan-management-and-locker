@@ -27,6 +27,40 @@ async def get_client_loans(
     
     loans = await db.loans.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
     
+    # Enrich loans with calculated fields
+    for loan in loans:
+        # Calculate next payment date if not set
+        if not loan.get("next_payment_date") and loan.get("due_date"):
+            loan["next_payment_date"] = loan["due_date"]
+        
+        # Calculate due today amount (amount due if past due date)
+        if loan.get("due_date"):
+            from datetime import datetime, timezone
+            try:
+                due = loan["due_date"]
+                if isinstance(due, str):
+                    due = datetime.fromisoformat(due.replace("Z", "+00:00"))
+                if due.tzinfo is None:
+                    due = due.replace(tzinfo=timezone.utc)
+                now = datetime.now(timezone.utc)
+                if now >= due:
+                    loan["due_today_amount"] = loan.get("outstanding_balance", 0)
+                else:
+                    loan["due_today_amount"] = 0
+            except:
+                loan["due_today_amount"] = 0
+        
+        # Calculate next payment amount
+        if not loan.get("next_payment_amount"):
+            loan["next_payment_amount"] = loan.get("emi_amount") or loan.get("outstanding_balance", 0)
+        
+        # Calculate interest amount
+        loan_amount = loan.get("loan_amount", 0)
+        interest_rate = loan.get("interest_rate", 0)
+        if loan_amount and interest_rate:
+            tenure = loan.get("tenure_months", 1) or 1
+            loan["interest_amount"] = loan_amount * (interest_rate / 100) * tenure
+    
     # Calculate summary
     active_loans = [loan for loan in loans if loan.get("status") == "active"]
     summary = {

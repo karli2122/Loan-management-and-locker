@@ -190,12 +190,16 @@ async def get_pending_reminders(admin_token: str = Query(...)):
     
     return {
         "reminders": reminders,
+        "overdue": [r for r in reminders if r["reminder_type"] == "overdue"],
+        "due_today": [r for r in reminders if r["reminder_type"] == "due_today"],
+        "due_soon": [r for r in reminders if r["reminder_type"] == "due_soon"],
+        "upcoming": [r for r in reminders if r["reminder_type"] == "upcoming"],
         "summary": {
             "total": len(reminders),
-            "overdue": overdue_count,
-            "due_today": due_today_count,
-            "due_soon": due_soon_count,
-            "upcoming": upcoming_count,
+            "overdue_count": overdue_count,
+            "due_today_count": due_today_count,
+            "due_soon_count": due_soon_count,
+            "upcoming_count": upcoming_count,
             "with_push_token": with_push_token
         }
     }

@@ -373,18 +373,35 @@ async def stripe_webhook(request: Request):
                 current_level = {"demo": -1, "starter": 0, "professional": 1, "business": 1, "enterprise": 2, "custom": 3}.get(current_plan, 0)
                 new_level = {"demo": -1, "starter": 0, "professional": 1, "business": 1, "enterprise": 2, "custom": 3}.get(plan_id, 0)
                 
-                # Calculate renewal date - 1 month from now for upgrades
-                # For downgrades, keep current renewal date (plan takes effect after renewal)
+                # Calculate renewal date - 1 month from now
                 from datetime import timedelta
-                if new_level > current_level:
+                
+                # Check if current renewal date is in the future (renewal payment)
+                current_renewal = admin.get("subscription_renewal_date") if admin else None
+                now = datetime.now(timezone.utc)
+                
+                # If paying for same plan and renewal is in future, extend from renewal date
+                if plan_id == current_plan and current_renewal:
+                    if isinstance(current_renewal, str):
+                        current_renewal = datetime.fromisoformat(current_renewal.replace("Z", "+00:00"))
+                    if current_renewal.tzinfo is None:
+                        current_renewal = current_renewal.replace(tzinfo=timezone.utc)
+                    if current_renewal > now:
+                        # Extend from current renewal date (stacking payments)
+                        renewal_date = current_renewal + timedelta(days=30)
+                    else:
+                        # Expired, start fresh
+                        renewal_date = now + timedelta(days=30)
+                    effective_plan = plan_id
+                elif new_level > current_level:
                     # Upgrade - immediate effect, new renewal date
-                    renewal_date = datetime.now(timezone.utc) + timedelta(days=30)
+                    renewal_date = now + timedelta(days=30)
                     effective_plan = plan_id
                 else:
                     # Downgrade - keep current plan until renewal, then switch
-                    renewal_date = admin.get("subscription_renewal_date") if admin else None
+                    renewal_date = current_renewal if current_renewal else None
                     if not renewal_date:
-                        renewal_date = datetime.now(timezone.utc) + timedelta(days=30)
+                        renewal_date = now + timedelta(days=30)
                     effective_plan = current_plan  # Keep current plan until renewal
                     # Store pending downgrade
                     await db.admins.update_one(
