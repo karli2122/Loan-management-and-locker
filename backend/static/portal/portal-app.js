@@ -532,7 +532,7 @@ async function renderClientDetail(el) {
       <div class="detail-item"><div class="label">${t('total_paid')}</div><div class="value" style="color:var(--success)">${cur(c.total_paid||0)}</div></div>
       <div class="detail-item"><div class="label">${t('outstanding')}</div><div class="value" style="color:${c.outstanding_balance>0?'var(--warning)':'var(--success)'}">${cur(c.outstanding_balance||0)}</div></div>
       <div class="detail-item"><div class="label">${t('interest_rate')}</div><div class="value">${c.interest_rate||0}% /mo</div></div>
-      <div class="detail-item"><div class="label">${t('due_date')}</div><div class="value" style="color:${c.days_overdue>0?'var(--danger)':'var(--text)'}">${c.due_date ? fmtDate(c.due_date) : (c.next_payment_due ? fmtDate(c.next_payment_due) : '-')}</div></div>
+      <div class="detail-item"><div class="label">${t('due_date')}</div><div class="value" style="color:${c.days_overdue>0?'var(--danger)':'var(--text)'}">${c.loan_due_date ? fmtDate(c.loan_due_date) : (c.due_date ? fmtDate(c.due_date) : (c.next_payment_due ? fmtDate(c.next_payment_due) : '-'))}</div></div>
       <div class="detail-item"><div class="label">${t('days_overdue')}</div><div class="value" style="color:${(c.days_overdue||0)>0?'var(--danger)':'var(--text)'}">${c.days_overdue||0}</div></div>
       <div class="detail-item"><div class="label">${t('device_col')}</div><div class="value">${c.is_locked?`<span style="color:var(--danger)">${t('locked')}</span>`:c.is_registered?`<span style="color:var(--success)">${t('active_status')}</span>`:t('unregistered')}</div></div>
     </div>
@@ -935,7 +935,7 @@ async function showEditLoan(loanId, clientId) {
         <div class="form-group"><label>Interest Rate (% monthly)</label><input id="el-rate" type="number" step="0.1" value="${loan.interest_rate||0}" onchange="updateLoanPreview()" data-testid="edit-loan-rate"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Given Date</label><input id="el-given" type="date" value="${loan.given_date ? loan.given_date.split('T')[0] : ''}" data-testid="edit-loan-given"></div>
+        <div class="form-group"><label>Given Date</label><input id="el-given" type="date" value="${loan.loan_given_date ? loan.loan_given_date.split('T')[0] : (loan.given_date ? loan.given_date.split('T')[0] : '')}" data-testid="edit-loan-given"></div>
         <div class="form-group"><label>Due Date</label><input id="el-due" type="date" value="${loan.due_date ? loan.due_date.split('T')[0] : ''}" data-testid="edit-loan-due"></div>
       </div>
       <div class="form-group"><label>Tenure (months)</label><input id="el-tenure" type="number" value="${loan.tenure_months||1}" min="1" onchange="updateLoanPreview()" data-testid="edit-loan-tenure"></div>
@@ -962,13 +962,28 @@ async function showEditLoan(loanId, clientId) {
   document.getElementById('edit-loan-form').onsubmit = async(e) => {
     e.preventDefault();
     try {
-      await api('PUT', `/loans/multi/${loanId}`, {
-        amount: parseFloat(document.getElementById('el-amount').value),
-        interest_rate: parseFloat(document.getElementById('el-rate').value),
-        given_date: document.getElementById('el-given').value || null,
-        due_date: document.getElementById('el-due').value || null,
-        tenure_months: parseInt(document.getElementById('el-tenure').value) || 1,
+      const amount = parseFloat(document.getElementById('el-amount').value);
+      const rate = parseFloat(document.getElementById('el-rate').value);
+      const given = document.getElementById('el-given').value || null;
+      const due = document.getElementById('el-due').value || null;
+      
+      // Build query string - backend uses Query params not JSON body
+      let queryParams = `admin_token=${state.token}`;
+      if (amount) queryParams += `&loan_amount=${amount}`;
+      if (rate !== undefined) queryParams += `&interest_rate=${rate}`;
+      if (given) queryParams += `&loan_given_date=${given}`;
+      if (due) queryParams += `&due_date=${due}`;
+      
+      const response = await fetch(`${API_BASE}/loans/${loanId}?${queryParams}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
       });
+      
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || 'Failed to update loan');
+      }
+      
       toast('Loan updated successfully');
       closeModal();
       // Refresh client data
@@ -1950,7 +1965,7 @@ async function renderDocuments(el) {
             <td>${d.size ? (d.size/1024).toFixed(1) + ' KB' : '-'}</td>
             <td>${fmtDate(d.uploaded_at)}</td>
             <td class="action-row">
-              <a href="${API_BASE}/documents/${d.id}/download?admin_token=${state.token}" class="btn btn-ghost btn-sm" title="Download" target="_blank" data-testid="download-doc-${d.id}"><i class="fas fa-download"></i></a>
+              <a href="${API_BASE}/documents/vault/${d.client_id}/${d.id}/download?admin_token=${state.token}" class="btn btn-ghost btn-sm" title="Download" target="_blank" data-testid="download-doc-${d.id}"><i class="fas fa-download"></i></a>
               <button class="btn btn-ghost btn-sm" onclick="deleteDoc('${d.id}')" title="Delete" data-testid="delete-doc-${d.id}"><i class="fas fa-trash" style="color:var(--danger)"></i></button>
             </td>
           </tr>`).join('')}
@@ -1988,7 +2003,7 @@ async function searchClientDocs() {
       container.innerHTML = `<table><thead><tr><th>${t('filename')}</th><th>${t('type')}</th><th>${t('size')}</th><th>${t('uploaded')}</th><th>${t('actions')}</th></tr></thead><tbody>
         ${docs.documents.map(d=>`<tr><td>${esc(d.filename)}</td><td><span class="badge badge-info">${esc(d.doc_type)}</span></td>
           <td>${(d.size/1024).toFixed(1)} KB</td><td>${fmtDate(d.uploaded_at)}</td>
-          <td class="action-row"><a href="${API_BASE}/documents/${d.id}/download?admin_token=${state.token}" class="btn btn-ghost btn-sm" target="_blank"><i class="fas fa-download"></i></a>
+          <td class="action-row"><a href="${API_BASE}/documents/vault/${d.client_id}/${d.id}/download?admin_token=${state.token}" class="btn btn-ghost btn-sm" target="_blank"><i class="fas fa-download"></i></a>
           <button class="btn btn-ghost btn-sm" onclick="deleteDoc('${d.id}')"><i class="fas fa-trash" style="color:var(--danger)"></i></button></td></tr>`).join('')}
       </tbody></table>`;
     } else {
@@ -2059,15 +2074,13 @@ function showUploadDoc() {
     e.preventDefault();
     if (!hiddenInput.value) { toast('Please select a client', 'error'); return; }
     const fd = new FormData();
-    fd.append('admin_token', state.token);
-    fd.append('client_id', hiddenInput.value);
-    fd.append('doc_type', document.getElementById('ud-type').value);
-    fd.append('description', document.getElementById('ud-desc').value);
+    const docType = document.getElementById('ud-type').value;
     fd.append('file', document.getElementById('ud-file').files[0]);
     try {
-      const res = await fetch(`${API_BASE}/documents/upload`, { method: 'POST', body: fd });
+      // Use document vault endpoint (same as admin app)
+      const res = await fetch(`${API_BASE}/documents/vault/${hiddenInput.value}/upload?admin_token=${state.token}&doc_type=${docType}`, { method: 'POST', body: fd });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      if (!res.ok) throw new Error(data.error || data.detail || 'Upload failed');
       toast('Document uploaded'); closeModal(); navigate('documents');
     } catch(err) { toast(err.message, 'error'); }
   };

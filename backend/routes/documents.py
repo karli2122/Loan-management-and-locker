@@ -124,7 +124,9 @@ async def document_stats(admin_token: str = Query(...)):
 
 @router.get("/all")
 async def list_all_documents(admin_token: str = Query(...), limit: int = Query(default=50)):
-    """List all documents (without file data) - used by portal document storage page."""
+    """List all documents (without file data) - used by portal document storage page.
+    Reads from document_vault collection (same as admin app).
+    """
     admin_id = await get_admin_id_from_token(admin_token)
     
     # Check if super admin
@@ -132,10 +134,10 @@ async def list_all_documents(admin_token: str = Query(...), limit: int = Query(d
     is_super = admin.get("is_super_admin", False) if admin else False
     
     if is_super:
-        # Super admin sees all docs
-        docs = await db.documents.find(
+        # Super admin sees all docs from document_vault
+        docs = await db.document_vault.find(
             {},
-            {"_id": 0, "data": 0}
+            {"_id": 0, "data": 0, "file_path": 0}
         ).sort("uploaded_at", -1).to_list(limit)
     else:
         # Regular admin sees only their clients' docs
@@ -144,9 +146,9 @@ async def list_all_documents(admin_token: str = Query(...), limit: int = Query(d
             {"_id": 0, "id": 1}
         ).to_list(1000)
         cid_list = [c["id"] for c in client_ids]
-        docs = await db.documents.find(
+        docs = await db.document_vault.find(
             {"client_id": {"$in": cid_list}},
-            {"_id": 0, "data": 0}
+            {"_id": 0, "data": 0, "file_path": 0}
         ).sort("uploaded_at", -1).to_list(limit)
     
     # Enrich with client names
@@ -159,5 +161,8 @@ async def list_all_documents(admin_token: str = Query(...), limit: int = Query(d
     
     for doc in docs:
         doc["client_name"] = client_map.get(doc.get("client_id"), "Unknown")
+        # Use original_filename if filename not present
+        if not doc.get("filename"):
+            doc["filename"] = doc.get("original_filename", "Unknown")
     
     return {"documents": docs, "total": len(docs)}
