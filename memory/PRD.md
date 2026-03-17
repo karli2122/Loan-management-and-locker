@@ -3,23 +3,44 @@
 ## Original Problem Statement
 Full-stack loan management application "PayLock Pro" with tiered subscription model (Starter, Professional, Enterprise, Demo), React Native mobile apps (Admin + Client), FastAPI backend, static website, and web portal.
 
-## Latest Update: v1.3.1 - 2026-03-16
+## Latest Update: v1.3.5 - 2026-03-17
 
-### Welcome Email Feature (NEW)
+### Background Heartbeat Service (NEW)
+Client app now sends device information every 5 minutes even when app is closed/killed:
+- **Battery level** (percentage)
+- **Storage** (free/total GB)
+- **Android/iOS version**
+- **Device model**
+- **Android ID** (used as IMEI alternative - prefixed with "AID-")
+
+**Technical Implementation:**
+- Uses `expo-background-fetch` + `expo-task-manager`
+- Background task registered after user login
+- Immediate heartbeat sent on app open
+- Data stored on backend via `/api/device/update-info` endpoint
+
+**Note:** True IMEI collection is not possible on Android 10+ due to privacy restrictions.
+
+### Role-Based Registration Logic (NEW)
+- New users registering get "user" role by default
+- Users with **Enterprise** or **Custom** plans automatically get "admin" role
+- Role upgrade happens both at:
+  - Initial registration with plan
+  - Stripe payment confirmation (webhook or status check)
+
+### Current Version
+- **Version**: 1.3.5 (Build 34)
+- **Client Build**: https://expo.dev/accounts/karli1987/projects/client/builds/1d6b8c8b-bae9-42de-8c07-c7b46c159ae2
+- **Admin Build**: https://expo.dev/accounts/karli1987/projects/loans/builds/9bb1e170-b490-4eda-9a71-dec1f0bfe7ca
+
+### Previous Updates
+
+#### v1.3.1 - Welcome Email Feature
 After successful registration and payment, users receive a welcome email containing:
 - **Admin App download link** (always included)
 - **Client App download link** (only for Professional, Enterprise, Custom plans)
 - **User Manual link**
 - **Web Portal link**
-
-Email is sent via Resend (paylockpro.com domain) from both:
-- Stripe webhook handler (for async payments)
-- Payment status check endpoint (for website polling flow)
-
-### Admin App Play Store Build Complete
-- **AAB Download**: https://expo.dev/artifacts/eas/qchyWeb2jkpviUBUDyvQUT.aab
-- **Build Page**: https://expo.dev/accounts/karli1987/projects/loans/builds/c3eeb838-1f6a-47fd-9e44-c46ee07af9e3
-- **Version**: 1.3.1 (Build 30)
 
 ### Website SEO & Registration Flow
 - **SEO**: Meta tags, Open Graph, Twitter cards, structured data, sitemap.xml, robots.txt
