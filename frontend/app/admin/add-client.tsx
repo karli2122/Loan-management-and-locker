@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -38,10 +38,44 @@ export default function AddClient() {
     interest_rate: '',
   });
 
+  // Live preview calculation (single payment, not EMI)
+  const loanPreview = React.useMemo(() => {
+    const amount = parseFloat(form.loan_amount);
+    const rate = parseFloat(form.interest_rate);
+    if (!form.emi_due_date || !form.loan_given_date || isNaN(amount) || amount <= 0 || isNaN(rate) || rate < 0) return null;
+
+    const start = new Date(form.loan_given_date);
+    const due = new Date(form.emi_due_date);
+    const diffMs = due.getTime() - start.getTime();
+    const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+
+    // Single payment: Interest = Principal × (Rate/100) × (Days/30)
+    const totalInterest = amount * (rate / 100) * (days / 30);
+    const totalAmount = amount + totalInterest;
+
+    return {
+      principal: amount,
+      totalInterest: Math.round(totalInterest * 100) / 100,
+      totalAmount: Math.round(totalAmount * 100) / 100,
+      days,
+    };
+  }, [form.loan_amount, form.interest_rate, form.loan_given_date, form.emi_due_date]);
+
   const handleSubmit = async () => {
     if (!form.name.trim() || !form.phone.trim() || !form.email.trim()) {
       Alert.alert(t('error'), t('fillAllFields'));
       return;
+    }
+
+    // Validate loan fields if any loan info is provided
+    const hasLoanInfo = form.loan_amount || form.interest_rate || form.emi_due_date;
+    if (hasLoanInfo) {
+      if (!form.loan_amount || !form.interest_rate || !form.emi_due_date) {
+        Alert.alert(t('error'), language === 'et' 
+          ? 'Kui lisate laenuandmeid, täitke kõik laenuväljad (summa, intress, tähtaeg)'
+          : 'If adding loan details, please fill all loan fields (amount, interest, due date)');
+        return;
+      }
     }
 
     setLoading(true);
@@ -49,81 +83,105 @@ export default function AddClient() {
       const auth = await getAuthInfo();
       if (!auth) { await handleAuthFailure(router, language); return; }
 
-      const requestBody = {
+      // Step 1: Create client
+      const clientData = {
         name: form.name,
         phone: form.phone,
         email: form.email,
         address: form.address,
         birth_number: form.birth_number,
-        loan_amount: parseFloat(form.loan_amount) || 0,
-        emi_due_date: form.emi_due_date || undefined,
-        interest_rate: parseFloat(form.interest_rate) || 0,
-        loan_start_date: form.loan_given_date || undefined,
       };
       
-      console.log('Creating client with data:', requestBody);
-      const response = await fetch(`${API_URL}/api/clients?admin_token=${auth.token}`, {
+      console.log('Creating client:', clientData);
+      const clientResponse = await fetch(`${API_URL}/api/clients?admin_token=${auth.token}`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify(clientData),
       });
 
-      console.log('Create client response status:', response.status);
-      
-      if (response.status === 401) {
+      if (clientResponse.status === 401) {
         await handleAuthFailure(router, language);
         return;
       }
 
-      const responseText = await response.text();
-      let data;
+      const clientText = await clientResponse.text();
+      let client;
       try {
-        data = JSON.parse(responseText);
+        client = JSON.parse(clientText);
       } catch (e) {
-        console.error('Parse error:', responseText.substring(0, 200));
+        console.error('Parse error:', clientText.substring(0, 200));
         throw new Error('Server error. Please try again.');
       }
 
-      if (!response.ok) {
-        // Handle different error response formats
+      if (!clientResponse.ok) {
         let errorMessage = 'Failed to create client';
-        if (data.detail) {
-          if (typeof data.detail === 'string') {
-            errorMessage = data.detail;
-          } else if (Array.isArray(data.detail)) {
-            // Pydantic validation errors
-            errorMessage = data.detail.map((err: any) => err.msg || err.message || JSON.stringify(err)).join(', ');
-          } else if (typeof data.detail === 'object') {
-            errorMessage = data.detail.msg || data.detail.message || JSON.stringify(data.detail);
-          }
+        if (client.detail) {
+          if (typeof client.detail === 'string') errorMessage = client.detail;
+          else if (Array.isArray(client.detail)) errorMessage = client.detail.map((err: any) => err.msg || err.message).join(', ');
         }
         throw new Error(errorMessage);
       }
 
-      const client = data;
-      console.log('Client created successfully:', client.id);
-      Alert.alert(
-        t('success'),
-        t('clientCreatedGoToClientDetails'),
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      console.log('Client created:', client.id);
+
+      // Step 2: Setup loan if loan data provided
+      if (hasLoanInfo && form.loan_amount && form.interest_rate && form.emi_due_date) {
+        const loanData = {
+          loan_amount: parseFloat(form.loan_amount),
+          interest_rate: parseFloat(form.interest_rate),
+          given_date: form.loan_given_date,
+          due_date: form.emi_due_date,
+          down_payment: 0,
+        };
+
+        console.log('Setting up loan:', loanData);
+        const loanResponse = await fetch(`${API_URL}/api/loans/${client.id}/setup?admin_token=${auth.token}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(loanData),
+        });
+
+        if (!loanResponse.ok) {
+          const loanError = await loanResponse.text();
+          console.error('Loan setup error:', loanError);
+          // Client created but loan failed - still show partial success
+          Alert.alert(
+            t('partialSuccess') || 'Partial Success',
+            language === 'et' 
+              ? `Klient loodud, kuid laenu seadistamine ebaõnnestus: ${loanError}`
+              : `Client created, but loan setup failed: ${loanError}`,
+            [{ text: 'OK', onPress: () => router.back() }]
+          );
+          return;
+        }
+
+        const loanResult = await loanResponse.json();
+        console.log('Loan setup complete:', loanResult);
+        
+        const details = loanResult.loan_details || {};
+        Alert.alert(
+          t('success'),
+          language === 'et'
+            ? `Klient ja laen loodud!\nKokku tasuda: ${formatAmount(details.total_amount || 0)}\nTähtaeg: ${form.emi_due_date}`
+            : `Client and loan created!\nTotal due: ${formatAmount(details.total_amount || 0)}\nDue: ${form.emi_due_date}`,
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      } else {
+        Alert.alert(
+          t('success'),
+          t('clientCreatedGoToClientDetails'),
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      }
     } catch (error: any) {
       console.error('Add client error:', error);
-      // Extract meaningful error message from various error formats
       let errorMessage = 'Something went wrong';
-      
-      if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (error && typeof error === 'object') {
-        // Try to extract message from common error object properties
-        errorMessage = error.message || error.detail || error.error || JSON.stringify(error);
-      }
-      
+      if (typeof error === 'string') errorMessage = error;
+      else if (error instanceof Error) errorMessage = error.message;
+      else if (error && typeof error === 'object') errorMessage = error.message || error.detail || JSON.stringify(error);
       Alert.alert(t('error'), errorMessage);
     } finally {
       setLoading(false);
@@ -257,6 +315,36 @@ export default function AddClient() {
               minDate={new Date(Date.now() + 86400000)}
               testID="emi-due-date-input"
             />
+
+            {/* Live Loan Preview Card */}
+            {loanPreview && (
+              <View style={styles.previewCard} data-testid="loan-preview-card">
+                <View style={styles.previewHeader}>
+                  <Ionicons name="calculator" size={20} color="#10B981" />
+                  <Text style={styles.previewTitle}>
+                    {language === 'et' ? 'Laenu eelvaade (ühekordne makse)' : 'Loan Preview (Single Payment)'}
+                  </Text>
+                </View>
+                <View style={styles.previewGrid}>
+                  <View style={styles.previewItem}>
+                    <Text style={styles.previewLabel}>{language === 'et' ? 'Põhisumma' : 'Principal'}</Text>
+                    <Text style={styles.previewValue}>{formatAmount(loanPreview.principal)}</Text>
+                  </View>
+                  <View style={styles.previewItem}>
+                    <Text style={styles.previewLabel}>{language === 'et' ? 'Kestus' : 'Duration'}</Text>
+                    <Text style={styles.previewValue}>{loanPreview.days} {language === 'et' ? 'päeva' : 'days'}</Text>
+                  </View>
+                  <View style={styles.previewItem}>
+                    <Text style={styles.previewLabel}>{language === 'et' ? 'Intress kokku' : 'Total Interest'}</Text>
+                    <Text style={[styles.previewValue, { color: '#F59E0B' }]}>{formatAmount(loanPreview.totalInterest)}</Text>
+                  </View>
+                  <View style={styles.previewItem}>
+                    <Text style={styles.previewLabel}>{language === 'et' ? 'Kokku tasuda' : 'Total Due'}</Text>
+                    <Text style={[styles.previewValue, styles.previewTotal]}>{formatAmount(loanPreview.totalAmount)}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
 
             <TouchableOpacity
               style={[styles.submitButton, loading && styles.submitButtonDisabled]}
@@ -488,6 +576,53 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  // Loan Preview Card styles
+  previewCard: {
+    backgroundColor: '#152035',
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: '#10B98140',
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  previewTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  previewGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  previewItem: {
+    flex: 1,
+    minWidth: '40%',
+    backgroundColor: '#0B1527',
+    borderRadius: 12,
+    padding: 14,
+  },
+  previewLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  previewValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  previewTotal: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#10B981',
   },
 });
   

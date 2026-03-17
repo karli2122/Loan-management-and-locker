@@ -1,9 +1,10 @@
 """Loan routes - loan plans, loans setup, payments, calculator."""
 from fastapi import APIRouter, Query, HTTPException
-from datetime import datetime
+from datetime import datetime, timezone
 from dateutil.relativedelta import relativedelta
 from typing import Optional
 import logging
+import uuid
 
 from database import db
 from models.schemas import (
@@ -168,7 +169,13 @@ async def generate_amortization_schedule(
 
 @router.post("/loans/{client_id}/setup")
 async def setup_loan(client_id: str, loan_data: LoanSetup, admin_token: str = Query(...)):
-    """Setup loan details for a client."""
+    """Setup loan details for a client. Creates loan in both clients and loans collections.
+    
+    Uses SINGLE PAYMENT calculation (not monthly EMI):
+    - Total Interest = Principal × (Interest Rate/100) × (Days/30)
+    - Total Amount = Principal + Total Interest
+    - This is the amount due by the due date
+    """
     admin_id = await get_admin_id_from_token(admin_token)
     
     client = await db.clients.find_one({"id": client_id})
@@ -177,78 +184,129 @@ async def setup_loan(client_id: str, loan_data: LoanSetup, admin_token: str = Qu
     
     await enforce_client_scope(client, admin_id)
     
-    # Determine loan start date: use given_date if provided, otherwise use current date
+    # Parse given_date (loan start date)
     if loan_data.given_date:
         try:
             loan_start = datetime.fromisoformat(loan_data.given_date.replace('Z', '+00:00').split('T')[0])
+            loan_start = loan_start.replace(tzinfo=timezone.utc)
         except (ValueError, TypeError):
             raise HTTPException(status_code=400, detail="Invalid given_date format. Use YYYY-MM-DD.")
     else:
-        loan_start = datetime.utcnow()
+        loan_start = datetime.now(timezone.utc)
     
-    # Determine tenure: use due_date if provided, otherwise use loan_tenure_months
-    tenure_months = loan_data.loan_tenure_months
-    due_date_str = loan_data.due_date
+    # Parse due_date
+    if not loan_data.due_date:
+        raise HTTPException(status_code=400, detail="Due date is required")
     
-    if due_date_str:
-        try:
-            due_date_parsed = datetime.fromisoformat(due_date_str.replace('Z', '+00:00').split('T')[0])
-            # Calculate months between loan start and due date
-            diff = relativedelta(due_date_parsed, loan_start)
-            tenure_months = diff.years * 12 + diff.months
-            if diff.days > 0:
-                tenure_months += 1  # Round up partial months
-            if tenure_months < 1:
-                tenure_months = 1
-        except (ValueError, TypeError):
-            raise HTTPException(status_code=400, detail="Invalid due_date format. Use YYYY-MM-DD.")
+    try:
+        due_date_parsed = datetime.fromisoformat(loan_data.due_date.replace('Z', '+00:00').split('T')[0])
+        due_date_parsed = due_date_parsed.replace(tzinfo=timezone.utc)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid due_date format. Use YYYY-MM-DD.")
     
-    if tenure_months < 1:
-        raise HTTPException(status_code=400, detail="Loan tenure must be at least 1 month")
+    # Calculate days between loan start and due date
+    diff_days = (due_date_parsed - loan_start).days
+    if diff_days < 1:
+        diff_days = 1
     
-    # Calculate EMI using reducing balance (interest_rate is now monthly)
-    emi_data = calculate_reducing_balance_emi(
-        loan_data.loan_amount - loan_data.down_payment,
-        loan_data.interest_rate * 12,  # Convert monthly to yearly for the calculation
-        tenure_months
-    )
+    # Calculate tenure in months (for backward compatibility)
+    tenure_months = max(1, diff_days // 30)
     
-    next_due = loan_start + relativedelta(months=1)
+    # SINGLE PAYMENT CALCULATION (not EMI)
+    # Interest = Principal × (Rate/100) × (Days/30)
+    principal = loan_data.loan_amount - loan_data.down_payment
+    total_interest = principal * (loan_data.interest_rate / 100) * (diff_days / 30)
+    total_amount = principal + total_interest
     
+    # For single payment loans, monthly_emi equals total_amount (paid once at due date)
+    monthly_emi = round(total_amount, 2)
+    
+    # Generate loan ID
+    loan_id = str(uuid.uuid4())
+    
+    # Update client record (for backward compatibility)
     update_fields = {
         "loan_amount": loan_data.loan_amount,
         "down_payment": loan_data.down_payment,
-        "interest_rate": loan_data.interest_rate,  # Store as monthly rate
+        "interest_rate": loan_data.interest_rate,
         "loan_tenure_months": tenure_months,
-        "monthly_emi": emi_data["monthly_emi"],
-        "total_amount_due": emi_data["total_amount"],
-        "outstanding_balance": emi_data["total_amount"],
+        "monthly_emi": monthly_emi,
+        "total_amount_due": round(total_amount, 2),
+        "outstanding_balance": round(total_amount, 2),
         "loan_start_date": loan_start,
-        "next_payment_due": next_due
+        "next_payment_due": due_date_parsed,
+        "loan_due_date": loan_data.due_date,
+        "loan_given_date": loan_data.given_date or loan_start.strftime('%Y-%m-%d'),
+        "active_loan_id": loan_id,  # Link to loans collection
     }
-    
-    if due_date_str:
-        update_fields["loan_due_date"] = due_date_str
-    
-    if loan_data.given_date:
-        update_fields["loan_given_date"] = loan_data.given_date
     
     await db.clients.update_one(
         {"id": client_id},
         {"$set": update_fields}
     )
     
-    # If this was an imported client, clear the import_needs_review flag since loan is now set up
+    # Create loan record in loans collection (for multi-loan overview)
+    new_loan = {
+        "id": loan_id,
+        "client_id": client_id,
+        "admin_id": admin_id,
+        "loan_amount": loan_data.loan_amount,
+        "down_payment": loan_data.down_payment,
+        "principal_amount": principal,
+        "interest_rate": loan_data.interest_rate,
+        "total_interest": round(total_interest, 2),
+        "total_amount": round(total_amount, 2),
+        "outstanding_balance": round(total_amount, 2),
+        "total_paid": 0,
+        "emi_amount": monthly_emi,  # Single payment amount
+        "tenure_months": tenure_months,
+        "tenure_days": diff_days,
+        "given_date": loan_start,
+        "due_date": due_date_parsed,
+        "next_payment_date": due_date_parsed,
+        "next_payment_amount": monthly_emi,
+        "payment_type": "single",  # Indicates single payment (not monthly EMI)
+        "status": "active",
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
+    }
+    
+    await db.loans.insert_one(new_loan)
+    
+    # Update client's multi-loan summary
+    active_loans = await db.loans.find(
+        {"client_id": client_id, "status": "active"}
+    ).to_list(100)
+    
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {
+            "total_loan_amount": sum(loan.get("loan_amount", 0) for loan in active_loans),
+            "total_outstanding_all_loans": sum(loan.get("outstanding_balance", 0) for loan in active_loans),
+            "total_paid_all_loans": sum(loan.get("total_paid", 0) for loan in active_loans),
+            "active_loans_count": len(active_loans),
+            "has_multiple_loans": len(active_loans) > 1,
+        }}
+    )
+    
+    # If this was an imported client, clear the import_needs_review flag
     if client.get("import_needs_review"):
         await db.clients.update_one({"id": client_id}, {"$set": {"import_needs_review": False}})
     
     return {
         "message": "Loan setup complete",
         "client_id": client_id,
+        "loan_id": loan_id,
         "loan_details": {
-            "monthly_emi": emi_data["monthly_emi"],
-            "total_amount": emi_data["total_amount"],
-            "tenure_months": tenure_months
+            "principal": principal,
+            "interest_rate": loan_data.interest_rate,
+            "tenure_days": diff_days,
+            "total_interest": round(total_interest, 2),
+            "total_amount": round(total_amount, 2),
+            "monthly_emi": monthly_emi,  # Same as total for single payment
+            "tenure_months": tenure_months,
+            "due_date": loan_data.due_date,
+            "payment_type": "single"
         }
     }
 

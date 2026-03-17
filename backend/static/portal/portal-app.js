@@ -2540,20 +2540,33 @@ async function sendWarning(clientId) {
 function showAddLoan(clientId) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay'; overlay.id = 'modal-overlay';
-  overlay.innerHTML = `<div class="modal"><h3><i class="fas fa-plus-circle"></i> Add Loan</h3>
+  overlay.innerHTML = `<div class="modal" style="max-width:600px">
+    <h3><i class="fas fa-plus-circle"></i> Add Loan</h3>
     <form id="add-loan-form">
       <div class="form-row">
         <div class="form-group"><label>Loan Amount (EUR) *</label><input id="nl-amount" type="number" step="0.01" required data-testid="new-loan-amount"></div>
-        <div class="form-group"><label>Interest Rate (% monthly) *</label><input id="nl-rate" type="number" step="0.1" value="5" required data-testid="new-loan-rate"></div>
+        <div class="form-group"><label>Interest Rate (% per month) *</label><input id="nl-rate" type="number" step="0.1" value="5" required data-testid="new-loan-rate"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Down Payment (EUR)</label><input id="nl-down" type="number" step="0.01" value="0" data-testid="new-loan-down"></div>
-        <div class="form-group"><label>Tenure (months) *</label><input id="nl-tenure" type="number" min="1" value="12" required data-testid="new-loan-tenure"></div>
+        <div class="form-group"><label>Given Date *</label><input id="nl-given" type="date" value="${new Date().toISOString().split('T')[0]}" required data-testid="new-loan-given"></div>
+        <div class="form-group"><label>Due Date *</label><input id="nl-due" type="date" required data-testid="new-loan-due"></div>
       </div>
-      <div class="form-row">
-        <div class="form-group"><label>Given Date</label><input id="nl-given" type="date" data-testid="new-loan-given"></div>
-        <div class="form-group"><label>Due Date</label><input id="nl-due" type="date" data-testid="new-loan-due"></div>
+      <div class="form-group"><label>Down Payment (EUR)</label><input id="nl-down" type="number" step="0.01" value="0" data-testid="new-loan-down"></div>
+      
+      <!-- Live Preview Card -->
+      <div id="loan-preview" class="stat-card" style="margin-top:16px;background:linear-gradient(135deg,#1e3a5f,#0d253b);border:1px solid #10b981;display:none">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <i class="fas fa-calculator" style="color:#10b981"></i>
+          <span style="color:#10b981;font-weight:600">Loan Preview (Single Payment)</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div><span style="color:#94a3b8;font-size:12px">Principal</span><div id="preview-principal" style="font-size:18px;font-weight:600;color:#fff">-</div></div>
+          <div><span style="color:#94a3b8;font-size:12px">Duration</span><div id="preview-days" style="font-size:18px;font-weight:600;color:#fff">-</div></div>
+          <div><span style="color:#94a3b8;font-size:12px">Total Interest</span><div id="preview-interest" style="font-size:18px;font-weight:600;color:#f59e0b">-</div></div>
+          <div><span style="color:#94a3b8;font-size:12px">Total Due (by Due Date)</span><div id="preview-total" style="font-size:20px;font-weight:700;color:#10b981">-</div></div>
+        </div>
       </div>
+      
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
         <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
         <button type="submit" class="btn btn-primary btn-sm" data-testid="save-loan-btn"><i class="fas fa-save"></i> Create Loan</button>
@@ -2561,21 +2574,61 @@ function showAddLoan(clientId) {
     </form></div>`;
   document.body.appendChild(overlay);
   overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+  
+  // Live preview calculation
+  function updatePreview() {
+    const amount = parseFloat(document.getElementById('nl-amount').value) || 0;
+    const rate = parseFloat(document.getElementById('nl-rate').value) || 0;
+    const down = parseFloat(document.getElementById('nl-down').value) || 0;
+    const givenDate = document.getElementById('nl-given').value;
+    const dueDate = document.getElementById('nl-due').value;
+    const preview = document.getElementById('loan-preview');
+    
+    if (amount > 0 && rate >= 0 && givenDate && dueDate) {
+      const start = new Date(givenDate);
+      const due = new Date(dueDate);
+      const days = Math.max(1, Math.ceil((due - start) / (1000 * 60 * 60 * 24)));
+      
+      const principal = amount - down;
+      const totalInterest = principal * (rate / 100) * (days / 30);
+      const totalAmount = principal + totalInterest;
+      
+      document.getElementById('preview-principal').textContent = cur(principal);
+      document.getElementById('preview-days').textContent = days + ' days';
+      document.getElementById('preview-interest').textContent = cur(totalInterest);
+      document.getElementById('preview-total').textContent = cur(totalAmount);
+      preview.style.display = 'block';
+    } else {
+      preview.style.display = 'none';
+    }
+  }
+  
+  // Attach event listeners for live preview
+  ['nl-amount', 'nl-rate', 'nl-down', 'nl-given', 'nl-due'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updatePreview);
+  });
+  
   document.getElementById('add-loan-form').onsubmit = async(e) => {
     e.preventDefault();
     try {
+      const givenDate = document.getElementById('nl-given').value;
+      const dueDate = document.getElementById('nl-due').value;
+      
+      if (!givenDate || !dueDate) {
+        toast('Please select both given date and due date', 'error');
+        return;
+      }
+      
       const payload = {
         loan_amount: parseFloat(document.getElementById('nl-amount').value),
         interest_rate: parseFloat(document.getElementById('nl-rate').value),
         down_payment: parseFloat(document.getElementById('nl-down').value) || 0,
-        loan_tenure_months: parseInt(document.getElementById('nl-tenure').value),
+        given_date: givenDate,
+        due_date: dueDate,
       };
-      const g = document.getElementById('nl-given').value;
-      const d = document.getElementById('nl-due').value;
-      if (g) payload.given_date = g;
-      if (d) payload.due_date = d;
       const result = await api('POST', `/loans/${clientId}/setup`, payload);
-      toast('Loan created! EMI: ' + cur(result.loan_details.monthly_emi) + '/month');
+      const details = result.loan_details || {};
+      toast(`Loan created! Total due: ${cur(details.total_amount || 0)} by ${dueDate}`);
       closeModal();
       const data = await api('GET', '/clients');
       state.clients = data.clients || [];
