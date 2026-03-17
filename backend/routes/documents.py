@@ -120,3 +120,44 @@ async def document_stats(admin_token: str = Query(...)):
         "total_size_mb": round(total_size / (1024 * 1024), 2),
         "by_type": {s["_id"]: {"count": s["count"], "size": s["total_size"]} for s in stats}
     }
+
+
+@router.get("/all")
+async def list_all_documents(admin_token: str = Query(...), limit: int = Query(default=50)):
+    """List all documents (without file data) - used by portal document storage page."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Check if super admin
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0, "is_super_admin": 1})
+    is_super = admin.get("is_super_admin", False) if admin else False
+    
+    if is_super:
+        # Super admin sees all docs
+        docs = await db.documents.find(
+            {},
+            {"_id": 0, "data": 0}
+        ).sort("uploaded_at", -1).to_list(limit)
+    else:
+        # Regular admin sees only their clients' docs
+        client_ids = await db.clients.find(
+            {"$or": [{"admin_id": admin_id}, {"created_by": admin_id}]},
+            {"_id": 0, "id": 1}
+        ).to_list(1000)
+        cid_list = [c["id"] for c in client_ids]
+        docs = await db.documents.find(
+            {"client_id": {"$in": cid_list}},
+            {"_id": 0, "data": 0}
+        ).sort("uploaded_at", -1).to_list(limit)
+    
+    # Enrich with client names
+    client_ids = list(set(d.get("client_id") for d in docs if d.get("client_id")))
+    clients_data = await db.clients.find(
+        {"id": {"$in": client_ids}},
+        {"_id": 0, "id": 1, "name": 1}
+    ).to_list(len(client_ids))
+    client_map = {c["id"]: c.get("name", "Unknown") for c in clients_data}
+    
+    for doc in docs:
+        doc["client_name"] = client_map.get(doc.get("client_id"), "Unknown")
+    
+    return {"documents": docs, "total": len(docs)}

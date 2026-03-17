@@ -177,8 +177,39 @@ Email is sent via Resend (paylockpro.com domain) from both:
 - `/api/analytics/dashboard?admin_token=X` - Professional+ feature
 - `/api/paid-loans/summary?admin_token=X` - Interest summary
 
+## Web Portal Enhancements (v1.3.2 - 2026-03-17)
+
+### 1. Device Management Improvements
+- **Clickable device rows**: Entire row is clickable to open device details modal
+- **Device Details Modal**: Shows comprehensive client info, device info, connection status (Lock, Last Seen, App Installed, Uninstall status)
+- **Action buttons**: Lock/Unlock Device, Send Warning (push notification), Allow Uninstall, View Client
+- **Uninstall Allowed badge**: Yellow badge appears in device list when uninstall is allowed
+
+### 2. Heartbeat Monitor Fix (CRITICAL BUG FIX)
+- **Issue**: "Last seen" showing incorrect values (e.g., "5268min ago" when it should be "3 days ago")
+- **Root cause**: Timezone mismatch - `datetime.utcnow()` returns naive datetime, MongoDB stores timezone-aware
+- **Fix**: Changed to `datetime.now(timezone.utc)` and added timezone-aware handling for both naive and aware datetimes
+- **Files modified**: `backend/routes/reports.py`
+
+### 3. Document Storage Enhancements
+- **Recent Documents table**: Shows all documents with client name, filename, type, size, upload date
+- **Download button**: Each document has a download icon that opens the file directly
+- **Delete button**: Red trash icon for document deletion
+- **New endpoint**: `GET /api/documents/all` - Lists all documents with client names
+
+### 4. Team Activity Log Filtering
+- **Already implemented**: Team Member dropdown filter in Activity page
+- **Filter by admin**: Select specific team member to filter activity logs
+- **Export CSV**: Exports filtered activity logs
+
+### Files Modified:
+- `backend/routes/reports.py` - Fixed heartbeat timezone calculation, added `uninstall_allowed` and `client_id` to response
+- `backend/routes/documents.py` - Added `/api/documents/all` endpoint
+- `backend/static/portal/portal-app.js` - Enhanced device management, documents, and send warning functions
+
 ## Prioritized Backlog
-- P0: Deploy registration changes to production VPS
+- P0: Deploy web portal changes to production VPS
 - P0: Build new Admin APK v1.2.10 with registration flow
+- P1: Advanced Analytics enhancements for Reports section (user requested)
 - P1: Authorize paylock.app domain in Resend for email sending
 - P2: Subscription renewal check and expiry logic testing

@@ -1,6 +1,6 @@
 """Reports routes - analytics, collection reports, financial reports."""
 from fastapi import APIRouter, Query, HTTPException
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import logging
 
@@ -64,14 +64,15 @@ async def get_heartbeat_summary(
         else:
             target_admin_id = filter_admin_id
     
-    now = datetime.utcnow()
+    # Use timezone-aware UTC datetime to avoid mismatch with MongoDB's timezone-aware dates
+    now = datetime.now(timezone.utc)
     query = {"is_registered": True, "is_deleted": {"$ne": True}}
     if target_admin_id:
         query["admin_id"] = target_admin_id
     
     clients = await db.clients.find(
         query,
-        {"_id": 0, "id": 1, "name": 1, "device_model": 1, "last_heartbeat": 1, "is_locked": 1}
+        {"_id": 0, "id": 1, "name": 1, "device_model": 1, "last_heartbeat": 1, "is_locked": 1, "uninstall_allowed": 1}
     ).to_list(1000)
     
     online = []
@@ -83,9 +84,11 @@ async def get_heartbeat_summary(
         hb = client.get("last_heartbeat")
         entry = {
             "id": client["id"],
+            "client_id": client["id"],  # Add client_id for frontend compatibility
             "name": client.get("name", "Unknown"),
             "device_model": client.get("device_model", "Unknown"),
             "is_locked": client.get("is_locked", False),
+            "uninstall_allowed": client.get("uninstall_allowed", False),
             "last_heartbeat": hb.isoformat() if hb else None,
         }
         
@@ -94,6 +97,10 @@ async def get_heartbeat_summary(
             entry["minutes_ago"] = None
             never_reported.append(entry)
         else:
+            # Handle both timezone-aware and naive datetimes from MongoDB
+            if hb.tzinfo is None:
+                # Naive datetime - assume it's UTC
+                hb = hb.replace(tzinfo=timezone.utc)
             minutes_ago = (now - hb).total_seconds() / 60
             entry["minutes_ago"] = round(minutes_ago)
             

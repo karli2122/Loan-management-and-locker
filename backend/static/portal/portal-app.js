@@ -1073,15 +1073,16 @@ function renderDeviceSection(title, devices, type) {
     <div class="table-wrap"><table><thead><tr><th>${t('client')}</th><th>${t('device_col')}</th><th>${t('last_seen')}</th><th>${t('lock_status')}</th><th>${t('actions')}</th></tr></thead><tbody>
       ${devices.map(d => {
         const lastSeen = formatLastSeen(d.minutes_ago);
-        return `<tr data-testid="device-row-${d.client_id}">
-          <td>${esc(d.name)}</td>
+        const clientId = d.client_id || d.id;
+        return `<tr data-testid="device-row-${clientId}" style="cursor:pointer" onclick="showDeviceDetails('${clientId}')">
+          <td>${esc(d.name)}${d.uninstall_allowed ? ' <span class="badge badge-warning" style="font-size:10px;padding:2px 6px"><i class="fas fa-unlock-alt"></i> Uninstall Allowed</span>' : ''}</td>
           <td>${esc(d.device_model || 'Unknown')}</td>
           <td>${lastSeen}</td>
           <td>${d.is_locked?`<span class="badge badge-danger">${t('locked')}</span>`:`<span class="badge badge-success">${t('unlocked')}</span>`}</td>
-          <td class="action-row">
-            <button class="btn btn-ghost btn-sm" onclick="showDeviceDetails('${d.client_id}')" title="View Details"><i class="fas fa-eye"></i></button>
-            <button class="btn btn-ghost btn-sm" onclick="toggleDeviceLock('${d.client_id}', ${!d.is_locked})" title="${d.is_locked ? 'Unlock' : 'Lock'}"><i class="fas fa-${d.is_locked ? 'lock-open' : 'lock'}"></i></button>
-            <button class="btn btn-ghost btn-sm" onclick="sendDeviceWarning('${d.client_id}')" title="Send Warning"><i class="fas fa-exclamation-triangle" style="color:#f59e0b"></i></button>
+          <td class="action-row" onclick="event.stopPropagation()">
+            <button class="btn btn-ghost btn-sm" onclick="showDeviceDetails('${clientId}')" title="View Details"><i class="fas fa-eye"></i></button>
+            <button class="btn btn-ghost btn-sm" onclick="toggleDeviceLock('${clientId}', ${!d.is_locked})" title="${d.is_locked ? 'Unlock' : 'Lock'}"><i class="fas fa-${d.is_locked ? 'lock-open' : 'lock'}"></i></button>
+            <button class="btn btn-ghost btn-sm" onclick="sendDeviceWarning('${clientId}')" title="Send Warning"><i class="fas fa-exclamation-triangle" style="color:#f59e0b"></i></button>
           </td>
         </tr>`;
       }).join('')}
@@ -1107,6 +1108,7 @@ async function showDeviceDetails(clientId) {
     const c = client.client || client;
     const deviceInfo = c.device_info || {};
     const lastSeen = formatLastSeen(c.minutes_since_heartbeat || c.minutes_ago);
+    const uninstallAllowed = c.uninstall_allowed || false;
     
     overlay.innerHTML = `<div class="modal" style="max-width:650px">
       <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:16px">
@@ -1139,18 +1141,22 @@ async function showDeviceDetails(clientId) {
       
       <div class="card" style="padding:16px;margin-bottom:20px">
         <h4 style="margin:0 0 12px 0;font-size:14px;color:var(--text-muted)"><i class="fas fa-signal"></i> Connection Status</h4>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center">
           <div>
-            <div style="font-size:20px;font-weight:700;color:${c.is_locked?'var(--danger)':'var(--success)'}">${c.is_locked?'LOCKED':'UNLOCKED'}</div>
+            <div style="font-size:18px;font-weight:700;color:${c.is_locked?'var(--danger)':'var(--success)'}">${c.is_locked?'LOCKED':'UNLOCKED'}</div>
             <div style="font-size:11px;color:var(--text-muted)">Lock Status</div>
           </div>
           <div>
-            <div style="font-size:20px;font-weight:700">${lastSeen}</div>
+            <div style="font-size:18px;font-weight:700">${lastSeen}</div>
             <div style="font-size:11px;color:var(--text-muted)">Last Seen</div>
           </div>
           <div>
-            <div style="font-size:20px;font-weight:700">${c.app_installed?'<span style="color:var(--success)">Yes</span>':'<span style="color:var(--text-muted)">No</span>'}</div>
+            <div style="font-size:18px;font-weight:700">${c.app_installed?'<span style="color:var(--success)">Yes</span>':'<span style="color:var(--text-muted)">No</span>'}</div>
             <div style="font-size:11px;color:var(--text-muted)">App Installed</div>
+          </div>
+          <div>
+            <div style="font-size:18px;font-weight:700;color:${uninstallAllowed?'var(--warning)':'var(--text-muted)'}">${uninstallAllowed?'ALLOWED':'NO'}</div>
+            <div style="font-size:11px;color:var(--text-muted)">Uninstall</div>
           </div>
         </div>
       </div>
@@ -1168,8 +1174,8 @@ async function showDeviceDetails(clientId) {
         <button class="btn btn-warning" onclick="sendDeviceWarning('${clientId}')">
           <i class="fas fa-exclamation-triangle"></i> Send Warning
         </button>
-        <button class="btn btn-outline" onclick="requestUninstall('${clientId}')" style="color:var(--danger);border-color:var(--danger)">
-          <i class="fas fa-trash-alt"></i> Allow Uninstall
+        <button class="btn btn-outline ${uninstallAllowed ? '' : ''}" onclick="requestUninstall('${clientId}')" style="color:${uninstallAllowed?'var(--text-muted)':'var(--danger)'};border-color:${uninstallAllowed?'var(--text-muted)':'var(--danger)'}">
+          <i class="fas fa-trash-alt"></i> ${uninstallAllowed ? 'Uninstall Already Allowed' : 'Allow Uninstall'}
         </button>
         <button class="btn btn-outline" onclick="viewClientDetails('${clientId}'); closeModal();">
           <i class="fas fa-user"></i> View Client
@@ -1194,8 +1200,8 @@ async function sendDeviceWarning(clientId) {
   const msg = prompt('Enter warning message to send to device:', 'Payment reminder: Please make your payment to avoid device lock.');
   if (!msg) return;
   try {
-    await api('POST', `/clients/${clientId}/message`, { message: msg, type: 'warning' });
-    toast('Warning sent successfully', 'success');
+    const result = await api('POST', `/clients/${clientId}/send-warning?message=${encodeURIComponent(msg)}`);
+    toast(`Warning sent${result.push_sent ? ' (Push delivered)' : ' (Saved as in-app message)'}`, 'success');
   } catch(e) { toast(e.message, 'error'); }
 }
 
@@ -1708,7 +1714,12 @@ async function deleteMember(id, name) {
 
 // ===================== DOCUMENTS =====================
 async function renderDocuments(el) {
-  const stats = await api('GET', '/documents/stats').catch(() => ({ total_documents: 0, total_size_mb: 0, by_type: {} }));
+  const [stats, allDocs] = await Promise.all([
+    api('GET', '/documents/stats').catch(() => ({ total_documents: 0, total_size_mb: 0, by_type: {} })),
+    api('GET', '/documents/all?limit=50').catch(() => ({ documents: [] }))
+  ]);
+  const docs = allDocs.documents || [];
+  
   el.innerHTML = `
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:start">
       <div><h2>${t('docs_title')}</h2><p>${stats.total_documents} ${t('documents')} (${stats.total_size_mb} MB)</p></div>
@@ -1722,6 +1733,24 @@ async function renderDocuments(el) {
     <div class="card"><div class="card-header"><h3>Search Documents by Client</h3></div>
       <div class="search-bar"><input id="doc-client-search" placeholder="Enter client ID or search clients..." data-testid="doc-search"><button class="btn btn-primary btn-sm" onclick="searchClientDocs()" data-testid="doc-search-btn"><i class="fas fa-search"></i> Search</button></div>
       <div id="doc-results"></div>
+    </div>
+    <div class="card" style="margin-top:16px"><div class="card-header" style="display:flex;justify-content:space-between;align-items:center"><h3>Recent Documents</h3><span class="badge badge-info">${docs.length}</span></div>
+      ${docs.length > 0 ? `<div class="table-wrap"><table data-testid="all-documents-table">
+        <thead><tr><th>Client</th><th>${t('filename')}</th><th>${t('type')}</th><th>${t('size')}</th><th>${t('uploaded')}</th><th>${t('actions')}</th></tr></thead>
+        <tbody>
+          ${docs.map(d=>`<tr data-testid="doc-row-${d.id}">
+            <td><b>${esc(d.client_name || 'Unknown')}</b><br><span style="font-size:11px;color:var(--text-muted)">${(d.client_id||'').substring(0,8)}</span></td>
+            <td>${esc(d.filename || d.original_filename || 'Unknown')}</td>
+            <td><span class="badge badge-info">${esc(d.doc_type || 'other')}</span></td>
+            <td>${d.size ? (d.size/1024).toFixed(1) + ' KB' : '-'}</td>
+            <td>${fmtDate(d.uploaded_at)}</td>
+            <td class="action-row">
+              <a href="${API_BASE}/documents/${d.id}/download?admin_token=${state.token}" class="btn btn-ghost btn-sm" title="Download" target="_blank" data-testid="download-doc-${d.id}"><i class="fas fa-download"></i></a>
+              <button class="btn btn-ghost btn-sm" onclick="deleteDoc('${d.id}')" title="Delete" data-testid="delete-doc-${d.id}"><i class="fas fa-trash" style="color:var(--danger)"></i></button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table></div>` : '<p style="color:var(--text-muted);padding:16px">No documents uploaded yet. Upload a document to get started.</p>'}
     </div>`;
 }
 
