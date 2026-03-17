@@ -110,6 +110,43 @@ async def list_documents(
     return {"client_id": client_id, "documents": docs, "total": len(docs)}
 
 
+@router.get("/all")
+async def list_all_documents(
+    admin_token: str = Query(...),
+    doc_type: Optional[str] = Query(default=None),
+):
+    """List all documents across all clients (for Document Vault page)."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "document_vault")
+
+    # Get admin's clients
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0, "is_super_admin": 1})
+    is_super_admin = admin.get("is_super_admin", False) if admin else False
+    
+    if is_super_admin:
+        # Super admin sees all documents
+        query = {}
+    else:
+        # Regular admin sees documents from their clients
+        client_ids = await db.clients.find(
+            {"$or": [{"admin_id": admin_id}, {"created_by": admin_id}]},
+            {"_id": 0, "id": 1}
+        ).to_list(1000)
+        client_id_list = [c["id"] for c in client_ids]
+        query = {"client_id": {"$in": client_id_list}}
+
+    if doc_type:
+        query["doc_type"] = doc_type
+
+    docs = await db.document_vault.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    for d in docs:
+        if isinstance(d.get("created_at"), datetime):
+            d["created_at"] = d["created_at"].isoformat()
+
+    return {"documents": docs, "total": len(docs)}
+
+
+
 @router.get("/{client_id}/{doc_id}/download")
 async def download_document(
     client_id: str,

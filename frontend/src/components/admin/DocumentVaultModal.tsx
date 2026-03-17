@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, Alert, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ScrollView, Alert, ActivityIndicator, Platform, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import API_URL from '../../constants/api';
 
 interface Props {
@@ -24,6 +26,7 @@ export default function DocumentVaultModal({ clientId, clientName, adminToken, c
   const [documents, setDocuments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [downloading, setDownloading] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState('other');
 
   useEffect(() => {
@@ -68,6 +71,60 @@ export default function DocumentVaultModal({ clientId, clientName, adminToken, c
       Alert.alert('Error', e.message);
     }
     setUploading(false);
+  };
+
+  const handleDownload = async (docId: string, filename: string) => {
+    setDownloading(docId);
+    try {
+      const resp = await fetch(`${API_URL}/api/documents/vault/${clientId}/${docId}/download?admin_token=${adminToken}`);
+      if (!resp.ok) {
+        const errorData = await resp.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Download failed');
+      }
+      
+      const data = await resp.json();
+      const base64Data = data.document?.data;
+      const contentType = data.document?.content_type || 'application/octet-stream';
+      
+      if (!base64Data) {
+        throw new Error('No file data received');
+      }
+
+      if (Platform.OS === 'web') {
+        // Web: Create blob and download
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: contentType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        Alert.alert('Success', 'Document downloaded');
+      } else {
+        // Native: Save to file system and share
+        const fileUri = FileSystem.documentDirectory + filename;
+        await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri, { mimeType: contentType });
+        } else {
+          Alert.alert('Success', `Document saved to: ${fileUri}`);
+        }
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Download failed');
+    }
+    setDownloading(null);
   };
 
   const handleDelete = (docId: string, filename: string) => {
@@ -149,6 +206,17 @@ export default function DocumentVaultModal({ clientId, clientName, adminToken, c
                       {doc.created_at ? new Date(doc.created_at).toLocaleDateString() : ''}
                     </Text>
                   </View>
+                  <TouchableOpacity 
+                    onPress={() => handleDownload(doc.id, doc.original_filename)} 
+                    disabled={downloading === doc.id}
+                    style={{ padding: 8 }}
+                  >
+                    {downloading === doc.id ? (
+                      <ActivityIndicator size="small" color="#3B82F6" />
+                    ) : (
+                      <Ionicons name="download-outline" size={18} color="#3B82F6" />
+                    )}
+                  </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDelete(doc.id, doc.original_filename)} style={{ padding: 8 }}>
                     <Ionicons name="trash-outline" size={18} color="#EF4444" />
                   </TouchableOpacity>
