@@ -5,7 +5,32 @@ Full-stack loan management application "PayLock Pro" with tiered subscription mo
 
 ## Latest Update: v1.3.5 - 2026-03-17
 
-### Background Heartbeat Service (NEW)
+### Unified Loan System & Data Architecture (NEW)
+All loan operations now write to the `loans` collection as the primary data source:
+
+**Single Payment Calculation (Not Monthly EMI):**
+- Formula: `Interest = Principal × (Rate/100) × (Days/30)`
+- `Total Amount = Principal + Total Interest`
+- This is the amount due by the due date
+
+**Data Source Alignment:**
+| Feature | Data Source |
+|---------|-------------|
+| Multi-Loan Overview | `loans` collection ✓ |
+| Bulk Import (CSV/PDF) | `loans` collection ✓ |
+| Add Loan (Portal) | `loans` collection ✓ |
+| Add Client (Admin) | `loans` collection ✓ |
+| Document Vault | `document_vault` collection ✓ |
+| Dashboard/Analytics | `loans` + `clients` collections |
+
+**Updated Components:**
+- `/loans/{client_id}/setup` → writes to both `clients` and `loans`
+- Web Portal "Add Loan" → single payment calc with live preview
+- Admin App "Add Client" → single payment calc with live preview
+- Bulk Import (CSV/PDF) → creates loans in `loans` collection
+- Document Vault API → fixed route ordering (`/all` before `/{client_id}`)
+
+### Background Heartbeat Service
 Client app now sends device information every 5 minutes even when app is closed/killed:
 - **Battery level** (percentage)
 - **Storage** (free/total GB)
@@ -13,15 +38,9 @@ Client app now sends device information every 5 minutes even when app is closed/
 - **Device model**
 - **Android ID** (used as IMEI alternative - prefixed with "AID-")
 
-**Technical Implementation:**
-- Uses `expo-background-fetch` + `expo-task-manager`
-- Background task registered after user login
-- Immediate heartbeat sent on app open
-- Data stored on backend via `/api/device/update-info` endpoint
-
 **Note:** True IMEI collection is not possible on Android 10+ due to privacy restrictions.
 
-### Role-Based Registration Logic (NEW)
+### Role-Based Registration Logic
 - New users registering get "user" role by default
 - Users with **Enterprise** or **Custom** plans automatically get "admin" role
 - Role upgrade happens both at:
@@ -29,9 +48,9 @@ Client app now sends device information every 5 minutes even when app is closed/
   - Stripe payment confirmation (webhook or status check)
 
 ### Current Version
-- **Version**: 1.3.5 (Build 34)
-- **Client Build**: https://expo.dev/accounts/karli1987/projects/client/builds/1d6b8c8b-bae9-42de-8c07-c7b46c159ae2
-- **Admin Build**: https://expo.dev/accounts/karli1987/projects/loans/builds/9bb1e170-b490-4eda-9a71-dec1f0bfe7ca
+- **Version**: 1.3.5 (Build 35)
+- **Client Build**: https://expo.dev/accounts/karli1987/projects/client/builds/f5b1b490-3187-425e-88ec-86023eeeaec7
+- **Admin Build**: https://expo.dev/accounts/karli1987/projects/loans/builds/276b36d5-ef7d-42af-9b0b-a40e4c5e0ed5
 
 ### Previous Updates
 
