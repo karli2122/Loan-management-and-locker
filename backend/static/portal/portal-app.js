@@ -501,9 +501,13 @@ async function viewClient(id) {
 async function renderClientDetail(el) {
   const c = state.selectedClient;
   if (!c) { navigate('clients'); return; }
-  const payments = await api('GET', `/loans/payments/${c.id}`).catch(() => []);
+  const payments = await api('GET', `/loans/${c.id}/payments`).catch(() => []);
   const loans = await api('GET', `/loans/client/${c.id}`).catch(() => ({ loans: [] }));
   const clientLoans = loans.loans || loans || [];
+  
+  // Calculate interest amount (total due - loan amount)
+  const interestAmount = (c.total_amount_due || 0) - (c.loan_amount || 0);
+  
   el.innerHTML = `
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:start">
       <div><button class="btn btn-ghost" onclick="navigate('clients')" data-testid="back-to-clients"><i class="fas fa-arrow-left"></i> ${t('back')}</button><h2 style="margin-top:8px">${esc(c.name)}</h2></div>
@@ -521,13 +525,14 @@ async function renderClientDetail(el) {
       <div class="detail-item"><div class="label">${t('phone')}</div><div class="value">${esc(c.phone||'-')}</div></div>
       <div class="detail-item"><div class="label">${t('email')}</div><div class="value">${esc(c.email||'-')}</div></div>
       <div class="detail-item"><div class="label">${t('address')}</div><div class="value">${esc(c.address||'-')}</div></div>
-      <div class="detail-item"><div class="label">${t('id_code')}</div><div class="value">${esc(c.birth_number||'-')}</div></div>
+      <div class="detail-item"><div class="label">${t('id_code')}</div><div class="value">${esc(c.birth_number||c.personal_number||'-')}</div></div>
       <div class="detail-item"><div class="label">${t('loan_amount')}</div><div class="value">${cur(c.loan_amount||0)}</div></div>
+      <div class="detail-item"><div class="label">${t('interest_amount')}</div><div class="value" style="color:var(--accent)">${cur(interestAmount > 0 ? interestAmount : 0)}</div></div>
       <div class="detail-item"><div class="label">${t('total_due')}</div><div class="value">${cur(c.total_amount_due||c.outstanding_balance||0)}</div></div>
       <div class="detail-item"><div class="label">${t('total_paid')}</div><div class="value" style="color:var(--success)">${cur(c.total_paid||0)}</div></div>
       <div class="detail-item"><div class="label">${t('outstanding')}</div><div class="value" style="color:${c.outstanding_balance>0?'var(--warning)':'var(--success)'}">${cur(c.outstanding_balance||0)}</div></div>
-      <div class="detail-item"><div class="label">${t('interest_rate')}</div><div class="value">${c.interest_rate||0}%</div></div>
-      <div class="detail-item"><div class="label">${t('next_payment')}</div><div class="value">${c.next_payment_due ? fmtDate(c.next_payment_due) : '-'}</div></div>
+      <div class="detail-item"><div class="label">${t('interest_rate')}</div><div class="value">${c.interest_rate||0}% /mo</div></div>
+      <div class="detail-item"><div class="label">${t('due_date')}</div><div class="value" style="color:${c.days_overdue>0?'var(--danger)':'var(--text)'}">${c.due_date ? fmtDate(c.due_date) : (c.next_payment_due ? fmtDate(c.next_payment_due) : '-')}</div></div>
       <div class="detail-item"><div class="label">${t('days_overdue')}</div><div class="value" style="color:${(c.days_overdue||0)>0?'var(--danger)':'var(--text)'}">${c.days_overdue||0}</div></div>
       <div class="detail-item"><div class="label">${t('device_col')}</div><div class="value">${c.is_locked?`<span style="color:var(--danger)">${t('locked')}</span>`:c.is_registered?`<span style="color:var(--success)">${t('active_status')}</span>`:t('unregistered')}</div></div>
     </div>
@@ -565,14 +570,23 @@ async function renderClientDetail(el) {
     </div>
 
     <div class="card"><div class="card-header" style="display:flex;justify-content:space-between;align-items:center"><h3><i class="fas fa-file-invoice-dollar"></i> Active Loans</h3></div>
-      <div class="table-wrap"><table data-testid="client-loans-table"><thead><tr><th>Loan Amount</th><th>Interest</th><th>Remaining</th><th>Status</th><th>Schedule</th></tr></thead><tbody>
-        ${(Array.isArray(clientLoans)?clientLoans:[]).map(l => `<tr>
-          <td><b>${cur(l.amount||l.loan_amount||0)}</b></td>
-          <td>${l.interest_rate||0}%</td>
-          <td style="color:var(--warning)">${cur(l.remaining_amount||0)}</td>
-          <td><span class="badge badge-${l.status==='active'?'success':'warning'}">${l.status||'active'}</span></td>
-          <td><button class="btn btn-ghost btn-sm" onclick="showLoanSchedule('${l.id}','${c.id}')"><i class="fas fa-calendar"></i> View</button></td>
-        </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No loans</td></tr>'}
+      <div class="table-wrap"><table data-testid="client-loans-table"><thead><tr><th>Loan Amount</th><th>Interest</th><th>Remaining</th><th>Due Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+        ${(Array.isArray(clientLoans)?clientLoans:[]).map(l => {
+          const loanPrincipal = l.amount || l.loan_amount || 0;
+          const totalDue = l.total_amount_due || (loanPrincipal * (1 + (l.interest_rate || 0) / 100));
+          const totalPaid = l.total_paid || 0;
+          const remaining = Math.max(0, totalDue - totalPaid);
+          return `<tr>
+          <td><b>${cur(loanPrincipal)}</b></td>
+          <td>${l.interest_rate||0}% /mo</td>
+          <td style="color:var(--warning)">${cur(remaining)}</td>
+          <td>${l.due_date ? fmtDate(l.due_date) : '-'}</td>
+          <td><span class="badge badge-${l.status==='active'?'success':l.status==='paid'?'info':'warning'}">${l.status||'active'}</span></td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick="showEditLoan('${l.id}','${c.id}')" title="Edit Loan"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-ghost btn-sm" onclick="showLoanSchedule('${l.id}','${c.id}')" title="View Schedule"><i class="fas fa-calendar"></i></button>
+          </td>
+        </tr>`}).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No loans</td></tr>'}
       </tbody></table></div>
     </div>
 
@@ -591,8 +605,8 @@ async function renderClientDetail(el) {
       </div>
     </div>
     <div class="card"><div class="card-header"><h3>${t('payment_history')}</h3></div>
-      <div class="table-wrap"><table data-testid="payments-table"><thead><tr><th>${t('date')}</th><th>${t('amount')}</th><th>${t('method')}</th></tr></thead><tbody>
-        ${(Array.isArray(payments)?payments:[]).map(p => `<tr><td>${fmtDate(p.payment_date)}</td><td>${cur(p.amount)}</td><td>${esc(p.payment_method||'cash')}</td></tr>`).join('') || `<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">${t('no_payments')}</td></tr>`}
+      <div class="table-wrap"><table data-testid="payments-table"><thead><tr><th>${t('date')}</th><th>${t('amount')}</th><th>${t('method')}</th><th>Recorded By</th></tr></thead><tbody>
+        ${(Array.isArray(payments)?payments:[]).map(p => `<tr><td>${fmtDate(p.payment_date)}</td><td>${cur(p.amount)}</td><td>${esc(p.payment_method||'cash')}</td><td>${esc(p.recorded_by||'-')}</td></tr>`).join('') || `<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">${t('no_payments')}</td></tr>`}
       </tbody></table></div>
     </div>`;
 }
@@ -647,13 +661,81 @@ async function showLockHistory(clientId) {
   } catch(e) { toast(e.message, 'error'); }
 }
 
-async function recordPayment(clientId) {
-  const amount = parseFloat(document.getElementById('pay-amount').value);
+async function recordPayment(clientId, loanId = null) {
+  // If multi-loan client, show loan selection dropdown
+  const client = state.selectedClient || state.clients?.find(c => c.id === clientId);
+  const loans = client?.loans || [];
+  
+  if (loans.length > 1 && !loanId) {
+    // Show loan selection modal
+    const loanOptions = loans.filter(l => l.status === 'active').map(l => 
+      `<option value="${l.id}">${l.description || 'Loan'} - ${cur(l.remaining_balance || l.loan_amount)} remaining</option>`
+    ).join('');
+    
+    const html = `
+      <div style="padding:16px">
+        <div class="form-group">
+          <label>Select Loan</label>
+          <select id="loan-select" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)">
+            ${loanOptions}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>${t('amount')}</label>
+          <input type="number" id="pay-amount-modal" step="0.01" min="0.01" placeholder="0.00" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)">
+        </div>
+        <div class="form-group">
+          <label>${t('payment_method')}</label>
+          <select id="pay-method-modal" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text)">
+            <option value="cash">Cash</option>
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="card">Card</option>
+            <option value="stripe">Stripe</option>
+          </select>
+        </div>
+        <button class="btn btn-success" onclick="submitLoanPayment('${clientId}')" style="width:100%"><i class="fas fa-check"></i> ${t('record_payment')}</button>
+      </div>`;
+    state.modal = { title: t('record_payment'), body: html };
+    renderModal();
+    return;
+  }
+  
+  const amount = parseFloat(document.getElementById('pay-amount')?.value || document.getElementById('pay-amount-modal')?.value);
   if (!amount || amount <= 0) { toast(t('enter_valid_amount'), 'error'); return; }
-  const method = document.getElementById('pay-method')?.value || 'cash';
+  const method = document.getElementById('pay-method')?.value || document.getElementById('pay-method-modal')?.value || 'cash';
+  
   try {
-    await api('POST', '/loans/payment', { client_id: clientId, amount, payment_method: method });
+    // Use multi-loan endpoint if loan_id specified, otherwise use client payment endpoint
+    if (loanId) {
+      await api('POST', `/loans/multi/${loanId}/payment`, { amount, payment_method: method });
+    } else {
+      await api('POST', `/loans/${clientId}/payments`, { amount, payment_method: method });
+    }
     toast(t('payment_recorded'));
+    closeModal();
+    // Refresh client data
+    const data = await api('GET', '/clients');
+    state.clients = data.clients || [];
+    state.selectedClient = state.clients.find(c => c.id === clientId);
+    renderClientDetail(document.getElementById('page-content'));
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function submitLoanPayment(clientId) {
+  const loanId = document.getElementById('loan-select')?.value;
+  const amount = parseFloat(document.getElementById('pay-amount-modal')?.value);
+  const method = document.getElementById('pay-method-modal')?.value || 'cash';
+  
+  if (!amount || amount <= 0) { toast(t('enter_valid_amount'), 'error'); return; }
+  
+  try {
+    if (loanId) {
+      await api('POST', `/loans/multi/${loanId}/payment`, { amount, payment_method: method });
+    } else {
+      await api('POST', `/loans/${clientId}/payments`, { amount, payment_method: method });
+    }
+    toast(t('payment_recorded'));
+    closeModal();
     // Refresh client data
     const data = await api('GET', '/clients');
     state.clients = data.clients || [];
@@ -794,6 +876,9 @@ function showEditClient(clientId) {
         <div class="form-group"><label>${t('email')}</label><input id="ec-email" value="${esc(c.email||'')}" data-testid="edit-client-email"></div>
         <div class="form-group"><label>${t('address')}</label><input id="ec-addr" value="${esc(c.address||'')}" data-testid="edit-client-address"></div>
       </div>
+      <div class="form-row">
+        <div class="form-group"><label>${t('personal_number')} (ID Code)</label><input id="ec-personal" value="${esc(c.birth_number||c.personal_number||'')}" data-testid="edit-client-personal"></div>
+      </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
         <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">${t('cancel')}</button>
         <button type="submit" class="btn btn-primary btn-sm" data-testid="save-edit-btn"><i class="fas fa-save"></i> ${t('save')}</button>
@@ -810,6 +895,7 @@ function showEditClient(clientId) {
         phone: document.getElementById('ec-phone').value,
         email: document.getElementById('ec-email').value,
         address: document.getElementById('ec-addr').value,
+        birth_number: document.getElementById('ec-personal').value,
       });
       toast(t('client_updated'));
       closeModal();
@@ -819,6 +905,94 @@ function showEditClient(clientId) {
       renderClientDetail(document.getElementById('page-content'));
     } catch(err) { toast(err.message, 'error'); }
   };
+}
+
+async function showEditLoan(loanId, clientId) {
+  // Fetch loan details
+  let loan;
+  try {
+    const loans = await api('GET', `/loans/client/${clientId}`);
+    loan = (loans.loans || loans || []).find(l => l.id === loanId);
+  } catch(e) { toast('Error loading loan', 'error'); return; }
+  if (!loan) { toast('Loan not found', 'error'); return; }
+  
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay';
+  
+  // Calculate preview values
+  const previewCalc = (amount, rate, months) => {
+    const interest = amount * (rate / 100) * months;
+    return { principal: amount, interest, total: amount + interest, monthly: (amount + interest) / months };
+  };
+  const preview = previewCalc(loan.amount || loan.loan_amount || 0, loan.interest_rate || 0, loan.tenure_months || 1);
+  
+  overlay.innerHTML = `<div class="modal" style="max-width:500px">
+    <h3><i class="fas fa-edit"></i> Edit Loan</h3>
+    <form id="edit-loan-form">
+      <div class="form-row">
+        <div class="form-group"><label>Loan Amount (€)</label><input id="el-amount" type="number" step="0.01" value="${loan.amount||loan.loan_amount||0}" onchange="updateLoanPreview()" data-testid="edit-loan-amount"></div>
+        <div class="form-group"><label>Interest Rate (% monthly)</label><input id="el-rate" type="number" step="0.1" value="${loan.interest_rate||0}" onchange="updateLoanPreview()" data-testid="edit-loan-rate"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Given Date</label><input id="el-given" type="date" value="${loan.given_date ? loan.given_date.split('T')[0] : ''}" data-testid="edit-loan-given"></div>
+        <div class="form-group"><label>Due Date</label><input id="el-due" type="date" value="${loan.due_date ? loan.due_date.split('T')[0] : ''}" data-testid="edit-loan-due"></div>
+      </div>
+      <div class="form-group"><label>Tenure (months)</label><input id="el-tenure" type="number" value="${loan.tenure_months||1}" min="1" onchange="updateLoanPreview()" data-testid="edit-loan-tenure"></div>
+      
+      <div id="loan-preview" style="background:var(--bg);padding:16px;border-radius:8px;margin:16px 0">
+        <h4 style="margin:0 0 12px 0;font-size:14px">Calculation Preview</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+          <div>Principal: <b id="prev-principal">${cur(preview.principal)}</b></div>
+          <div>Interest: <b id="prev-interest" style="color:var(--accent)">${cur(preview.interest)}</b></div>
+          <div>Total Due: <b id="prev-total" style="color:var(--warning)">${cur(preview.total)}</b></div>
+          <div>Monthly: <b id="prev-monthly">${cur(preview.monthly)}</b></div>
+        </div>
+      </div>
+      
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">${t('cancel')}</button>
+        <button type="submit" class="btn btn-primary btn-sm" data-testid="save-loan-btn"><i class="fas fa-save"></i> Save Changes</button>
+      </div>
+    </form>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+  
+  document.getElementById('edit-loan-form').onsubmit = async(e) => {
+    e.preventDefault();
+    try {
+      await api('PUT', `/loans/multi/${loanId}`, {
+        amount: parseFloat(document.getElementById('el-amount').value),
+        interest_rate: parseFloat(document.getElementById('el-rate').value),
+        given_date: document.getElementById('el-given').value || null,
+        due_date: document.getElementById('el-due').value || null,
+        tenure_months: parseInt(document.getElementById('el-tenure').value) || 1,
+      });
+      toast('Loan updated successfully');
+      closeModal();
+      // Refresh client data
+      const data = await api('GET', '/clients');
+      state.clients = data.clients || [];
+      state.selectedClient = state.clients.find(c => c.id === clientId);
+      renderClientDetail(document.getElementById('page-content'));
+    } catch(err) { toast(err.message, 'error'); }
+  };
+}
+
+function updateLoanPreview() {
+  const amount = parseFloat(document.getElementById('el-amount')?.value) || 0;
+  const rate = parseFloat(document.getElementById('el-rate')?.value) || 0;
+  const tenure = parseInt(document.getElementById('el-tenure')?.value) || 1;
+  
+  const interest = amount * (rate / 100) * tenure;
+  const total = amount + interest;
+  const monthly = total / tenure;
+  
+  document.getElementById('prev-principal').textContent = cur(amount);
+  document.getElementById('prev-interest').textContent = cur(interest);
+  document.getElementById('prev-total').textContent = cur(total);
+  document.getElementById('prev-monthly').textContent = cur(monthly);
 }
 
 function closeModal() { document.getElementById('modal-overlay')?.remove(); }
@@ -1235,7 +1409,17 @@ async function requestUninstall(clientId) {
 }
 
 function viewClientDetails(clientId) {
-  state.selectedClient = clientId;
+  // Find the client object from clients list
+  state.selectedClient = state.clients?.find(c => c.id === clientId) || null;
+  if (!state.selectedClient) {
+    // Fetch the client if not in list
+    api('GET', `/clients/${clientId}`).then(data => {
+      state.selectedClient = data.client || data;
+      state.page = 'clients';
+      render();
+    }).catch(e => toast('Error loading client: ' + e.message, 'error'));
+    return;
+  }
   state.page = 'clients';
   render();
 }
@@ -1781,8 +1965,25 @@ async function searchClientDocs() {
   const container = document.getElementById('doc-results');
   container.innerHTML = '<div class="spinner"></div>';
   try {
-    // Try as client ID first
-    const docs = await api('GET', `/documents/client/${q}`);
+    // First try to find client by name/partial ID
+    let clientId = q;
+    
+    // Check if it looks like a UUID or partial search
+    if (!q.includes('-') || q.length < 20) {
+      // Search for client by name
+      const clients = await api('GET', '/clients');
+      const found = (clients.clients || []).find(c => 
+        c.name?.toLowerCase().includes(q.toLowerCase()) || 
+        c.id?.includes(q) ||
+        c.phone?.includes(q)
+      );
+      if (found) {
+        clientId = found.id;
+      }
+    }
+    
+    // Try as client ID
+    const docs = await api('GET', `/documents/client/${clientId}`);
     if (docs.documents && docs.documents.length > 0) {
       container.innerHTML = `<table><thead><tr><th>${t('filename')}</th><th>${t('type')}</th><th>${t('size')}</th><th>${t('uploaded')}</th><th>${t('actions')}</th></tr></thead><tbody>
         ${docs.documents.map(d=>`<tr><td>${esc(d.filename)}</td><td><span class="badge badge-info">${esc(d.doc_type)}</span></td>

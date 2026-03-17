@@ -177,20 +177,20 @@ export default function DeviceManagement() {
           </TouchableOpacity>
         </View>
 
-        {/* Business Management - only visible to Business/Enterprise/Custom + superadmin */}
+        {/* Device Owner Management - only visible to Business/Enterprise/Custom + superadmin */}
         {planAllowsBusinessMgmt && (
         <TouchableOpacity
           style={[styles.businessMgmtHeader, { marginBottom: 40 }]}
           onPress={() => router.push('/admin/business-management')}
-          data-testid="business-management-nav"
+          data-testid="device-owner-management-nav"
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <View style={[styles.actionIcon, { backgroundColor: '#F97316' }]}>
-              <Ionicons name="business" size={24} color="#fff" />
+              <Ionicons name="phone-portrait" size={24} color="#fff" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.sectionTitle} data-testid="business-management-title">
-                {language === 'et' ? 'Ärihaldus' : 'Business Management'}
+              <Text style={styles.sectionTitle} data-testid="device-owner-management-title">
+                {language === 'et' ? 'Seadme Omaniku Haldus' : 'Device Owner Management'}
               </Text>
               <Text style={{ fontSize: 12, color: '#64748B' }}>
                 {language === 'et' ? 'Device Owner kiosk-režiimi aktiveerimine' : 'Device Owner kiosk mode activation'}

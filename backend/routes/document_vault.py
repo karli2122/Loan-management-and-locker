@@ -169,9 +169,22 @@ async def download_document(
         raise ValidationException("Document not found")
 
     file_path = doc.get("file_path") or doc.get("remote_path", "")
-    if not os.path.isfile(file_path):
+    
+    # If file_path is empty or doesn't exist, check if we have inline data
+    if not file_path or not os.path.isfile(file_path):
+        # Check if document has stored data directly
+        stored_data = doc.get("data")
+        if stored_data:
+            return {
+                "document": {
+                    "id": doc["id"],
+                    "filename": doc.get("original_filename", "document"),
+                    "content_type": doc.get("content_type", "application/octet-stream"),
+                    "data": stored_data if isinstance(stored_data, str) else base64.b64encode(stored_data).decode("utf-8"),
+                }
+            }
         from utils.exceptions import ValidationException
-        raise ValidationException("File not found on disk")
+        raise ValidationException(f"File not found on disk: {file_path}")
 
     with open(file_path, "rb") as f:
         content = f.read()
@@ -179,7 +192,7 @@ async def download_document(
     return {
         "document": {
             "id": doc["id"],
-            "filename": doc["original_filename"],
+            "filename": doc.get("original_filename", "document"),
             "content_type": doc.get("content_type", "application/octet-stream"),
             "data": base64.b64encode(content).decode("utf-8"),
         }
