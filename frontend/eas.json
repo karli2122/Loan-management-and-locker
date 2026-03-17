@@ -33,14 +33,15 @@
       "node": "20.20.0"
     },
     "admin-production": {
-      "distribution": "store",
+      "distribution": "internal",
       "credentialsSource": "local",
       "env": {
         "APP_MODE": "admin",
         "EXPO_PUBLIC_BACKEND_URL": "https://api.paylock.pro"
       },
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       },
       "channel": "production",
       "node": "20.20.0"
