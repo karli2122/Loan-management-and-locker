@@ -34,6 +34,7 @@ import { getAutoStartInstructions, getOverlayInstructions, getAccessibilityInstr
 import OfflineSyncManager from '../../src/services/OfflineSyncManager';
 import { startBackgroundLocationTracking, isBackgroundLocationActive } from '../../src/services/BackgroundLocationService';
 import { initializeNotifications } from '../../src/services/BackgroundNotificationService';
+import { sendDeviceInfoUpdateThrottled } from '../../src/services/DeviceInfoService';
 import API_URL from '../../src/constants/api';
 import * as ScreenCapture from 'expo-screen-capture';
 
@@ -388,6 +389,11 @@ export default function ClientHome() {
       
       // Update offline indicator
       setIsOffline(data.offline || false);
+      
+      // Send device info update (throttled to every 5 minutes)
+      if (!data.offline) {
+        sendDeviceInfoUpdateThrottled(id).catch(() => {});
+      }
       
       // Create a copy of data for potential modifications (avoid mutating original)
       let statusToSet = { ...data };

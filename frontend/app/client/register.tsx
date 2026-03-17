@@ -20,6 +20,7 @@ import { useLanguage } from '../../src/context/LanguageContext';
 import { LanguagePicker } from '../../src/components/LanguagePicker';
 import API_URL, { API_BASE_URL, buildApiUrl } from '../../src/constants/api';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
+import { getRegistrationDeviceInfo } from '../../src/services/DeviceInfoService';
 
 export default function ClientRegister() {
   const router = useRouter();
@@ -75,9 +76,9 @@ export default function ClientRegister() {
 
     setLoading(true);
     try {
-      const deviceId = Device.osBuildId || Device.osInternalBuildId || 'unknown';
-      const deviceModel = `${Device.brand || ''} ${Device.modelName || 'Unknown Device'}`.trim();
-
+      // Get device info including battery, storage, android version
+      const deviceInfo = await getRegistrationDeviceInfo();
+      
       const parseJson = async (resp: Response) => {
         const text = await resp.text();
         try {
@@ -94,8 +95,7 @@ export default function ClientRegister() {
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           body: JSON.stringify({
             registration_code: code,
-            device_id: deviceId,
-            device_model: deviceModel,
+            ...deviceInfo,
           }),
         });
 

@@ -2524,3 +2524,11 @@ document.addEventListener('click', e => {
 
 // Init
 render();
+
+// Expose helpers for portal-reports.js and other modules
+window.PLP = window.PLP || {};
+window.PLP.api = api;
+window.PLP.cur = cur;
+window.PLP.esc = esc;
+window.PLP.t = t;
+window.PLP.toast = toast;
