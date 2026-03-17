@@ -133,8 +133,8 @@ export default function AddLoan() {
     }
   };
 
-  // Real-time interest calculator (day-count method)
-  // Example: 200 loan, 50% monthly rate, 15 days = 200 * 0.5 * (15/30) = 50
+  // Real-time interest calculator (simple month-based method)
+  // Example: 200 loan, 50% monthly rate, 2 months = 200 * 0.5 * 2 = 200
   const emiPreview = React.useMemo(() => {
     const amount = parseFloat(loanAmount);
     const rate = parseFloat(interestRate); // Monthly interest rate %
@@ -144,15 +144,17 @@ export default function AddLoan() {
     const due = new Date(dueDate);
     const diffMs = due.getTime() - start.getTime();
     const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    const months = Math.max(1, Math.round(days / 30)); // Round to nearest month
 
-    // Day-count interest: principal * (rate/100) * (days/30)
-    const totalInterest = amount * (rate / 100) * (days / 30);
+    // Simple month-based interest: principal * (rate/100) * months
+    const totalInterest = amount * (rate / 100) * months;
     const totalAmount = amount + totalInterest;
 
     return {
-      monthlyEmi: Math.round((totalAmount / Math.max(1, Math.ceil(days / 30))) * 100) / 100,
+      monthlyEmi: Math.round(totalAmount * 100) / 100, // Single payment
       totalAmount: Math.round(totalAmount * 100) / 100,
       totalInterest: Math.round(totalInterest * 100) / 100,
+      months,
       days,
     };
   }, [loanAmount, interestRate, givenDate, dueDate]);

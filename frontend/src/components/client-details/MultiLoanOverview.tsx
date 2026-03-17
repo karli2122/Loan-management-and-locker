@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -41,9 +42,12 @@ export const MultiLoanOverview = ({
     }
   }, [clientId]);
 
-  useEffect(() => {
-    fetchLoans();
-  }, [fetchLoans]);
+  // Refresh loans every time the screen comes into focus (fixes ~1min delay after adding loan)
+  useFocusEffect(
+    useCallback(() => {
+      fetchLoans();
+    }, [fetchLoans])
+  );
 
   // Calculate due today amount based on payment schedule
   const getDueTodayAmount = (loan) => {
@@ -57,15 +61,18 @@ export const MultiLoanOverview = ({
 
   // Calculate interest amount
   const getInterestAmount = (loan) => {
+    // Use pre-calculated interest_amount if available
+    if (loan.interest_amount) return loan.interest_amount;
     const principal = loan.loan_amount || 0;
-    const total = loan.total_amount_due || principal;
+    const total = loan.total_amount_due || loan.total_amount || principal;
     return total - principal;
   };
 
   // Calculate paid percentage
   const getPaidPercentage = (loan) => {
-    if (!loan.total_amount_due || loan.total_amount_due === 0) return 0;
-    return ((loan.total_paid || 0) / loan.total_amount_due * 100).toFixed(1);
+    const totalDue = loan.total_amount_due || loan.total_amount || loan.outstanding_balance || 0;
+    if (!totalDue || totalDue === 0) return 0;
+    return ((loan.total_paid || 0) / totalDue * 100).toFixed(1);
   };
 
   if (loading) {
@@ -148,6 +155,14 @@ export const MultiLoanOverview = ({
                   <Text style={[styles.loanValue, { color: '#F59E0B' }]}>{formatAmount(getInterestAmount(loan))}</Text>
                 </View>
                 <View style={styles.loanRow}>
+                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Given Date</Text>
+                  <Text style={[styles.loanValue, { color: colors.text }]}>{loan.given_date || loan.loan_given_date || '-'}</Text>
+                </View>
+                <View style={styles.loanRow}>
+                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Due Date</Text>
+                  <Text style={[styles.loanValue, { color: '#EF4444' }]}>{loan.due_date || '-'}</Text>
+                </View>
+                <View style={styles.loanRow}>
                   <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Paid Amount</Text>
                   <Text style={[styles.loanValue, { color: '#10B981' }]}>{formatAmount(loan.total_paid || 0)}</Text>
                 </View>
@@ -158,13 +173,9 @@ export const MultiLoanOverview = ({
                   </Text>
                 </View>
                 <View style={styles.loanRow}>
-                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Next Due Date</Text>
-                  <Text style={[styles.loanValue, { color: colors.text }]}>{loan.next_payment_date || '-'}</Text>
-                </View>
-                <View style={styles.loanRow}>
-                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Next Due Amount</Text>
+                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Outstanding</Text>
                   <Text style={[styles.loanValue, { color: '#EF4444' }]}>
-                    {loan.next_payment_amount ? formatAmount(loan.next_payment_amount) : formatAmount(loan.emi_amount || loan.outstanding_balance)}
+                    {formatAmount(loan.outstanding_balance || 0)}
                   </Text>
                 </View>
               </View>
@@ -230,11 +241,15 @@ export const MultiLoanOverview = ({
                 </View>
                 <View style={styles.loanRow}>
                   <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Total Paid</Text>
-                  <Text style={[styles.loanValue, { color: '#10B981' }]}>{formatAmount(loan.total_paid || loan.total_amount_due)}</Text>
+                  <Text style={[styles.loanValue, { color: '#10B981' }]}>{formatAmount(loan.total_paid || loan.total_amount_due || loan.total_amount)}</Text>
                 </View>
                 <View style={styles.loanRow}>
-                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Date</Text>
-                  <Text style={[styles.loanValue, { color: colors.text }]}>{loan.loan_given_date || '-'}</Text>
+                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Given Date</Text>
+                  <Text style={[styles.loanValue, { color: colors.text }]}>{loan.given_date || loan.loan_given_date || '-'}</Text>
+                </View>
+                <View style={styles.loanRow}>
+                  <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Due Date</Text>
+                  <Text style={[styles.loanValue, { color: colors.text }]}>{loan.due_date || '-'}</Text>
                 </View>
               </View>
             </View>

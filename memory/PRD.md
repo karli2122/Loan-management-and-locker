@@ -3,7 +3,33 @@
 ## Original Problem Statement
 Full-stack loan management application "PayLock Pro" with tiered subscription model (Starter, Professional, Enterprise, Demo), React Native mobile apps (Admin + Client), FastAPI backend, static website, and web portal.
 
-## Latest Update: v1.3.5 - 2026-03-17
+## Latest Update: v1.3.6 - 2026-03-17
+
+### Fixes Applied in This Session
+
+**1. MultiLoanOverview - Missing Given Date & Due Date (FIXED)**
+- Added `given_date` and `due_date` display rows to active loan cards
+- Added `due_date` display to archived loan cards
+- Backend enrichment now sets `total_amount_due`, `loan_given_date`, and `interest_amount` for all loans
+
+**2. MultiLoanOverview - ~1 Minute Delay After Adding Loan (FIXED)**
+- Replaced `useEffect` with `useFocusEffect` so loans re-fetch immediately when navigating back from add-loan screen
+- Fixed param name mismatch (`client_id` → `clientId`) in `onAddNewLoan` navigation
+
+**3. Web Portal Add Client - Missing Loan Collection Write (FIXED)**
+- Added `given_date` and `due_date` input fields to the web portal's add-client form
+- After creating client, now calls `POST /loans/{client_id}/setup` to write loan data to the `loans` collection
+- Previously only wrote to `clients` collection
+
+**4. Interest/Total Amount Calculation Display (FIXED)**
+- Backend `get_client_loans` now enriches loans with `total_amount_due` (from `total_amount`) and `loan_given_date` (from `given_date`)
+- Frontend `getInterestAmount` and `getPaidPercentage` now correctly fall back to `total_amount` when `total_amount_due` is not present
+
+### Deployed
+- Backend changes deployed to VPS at `/opt/paylock/backend/`
+- Admin app EAS build completed: `2ccadcf1-9069-49d9-87e4-093fb5b4246e`
+
+## Previous Update: v1.3.5 - 2026-03-17
 
 ### Unified Loan System & Data Architecture (NEW)
 All loan operations now write to the `loans` collection as the primary data source:

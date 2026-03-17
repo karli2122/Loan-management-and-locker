@@ -171,8 +171,8 @@ async def generate_amortization_schedule(
 async def setup_loan(client_id: str, loan_data: LoanSetup, admin_token: str = Query(...)):
     """Setup loan details for a client. Creates loan in both clients and loans collections.
     
-    Uses SINGLE PAYMENT calculation (not monthly EMI):
-    - Total Interest = Principal × (Interest Rate/100) × (Days/30)
+    Uses SIMPLE MONTH-BASED interest calculation:
+    - Total Interest = Principal × (Interest Rate/100) × Months
     - Total Amount = Principal + Total Interest
     - This is the amount due by the due date
     """
@@ -184,60 +184,60 @@ async def setup_loan(client_id: str, loan_data: LoanSetup, admin_token: str = Qu
     
     await enforce_client_scope(client, admin_id)
     
-    # Parse given_date (loan start date)
+    # Parse given_date (loan start date) - store as date only, no time
     if loan_data.given_date:
         try:
-            loan_start = datetime.fromisoformat(loan_data.given_date.replace('Z', '+00:00').split('T')[0])
-            loan_start = loan_start.replace(tzinfo=timezone.utc)
+            given_date_str = loan_data.given_date.split('T')[0]  # Remove time component
+            loan_start = datetime.strptime(given_date_str, '%Y-%m-%d')
+            loan_start = loan_start.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
         except (ValueError, TypeError):
             raise HTTPException(status_code=400, detail="Invalid given_date format. Use YYYY-MM-DD.")
     else:
-        loan_start = datetime.now(timezone.utc)
+        loan_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     
-    # Parse due_date
+    # Parse due_date - store as date only, no time
     if not loan_data.due_date:
         raise HTTPException(status_code=400, detail="Due date is required")
     
     try:
-        due_date_parsed = datetime.fromisoformat(loan_data.due_date.replace('Z', '+00:00').split('T')[0])
-        due_date_parsed = due_date_parsed.replace(tzinfo=timezone.utc)
+        due_date_str = loan_data.due_date.split('T')[0]  # Remove time component
+        due_date_parsed = datetime.strptime(due_date_str, '%Y-%m-%d')
+        due_date_parsed = due_date_parsed.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
     except (ValueError, TypeError):
         raise HTTPException(status_code=400, detail="Invalid due_date format. Use YYYY-MM-DD.")
     
-    # Calculate days between loan start and due date
+    # Calculate months between loan start and due date
     diff_days = (due_date_parsed - loan_start).days
-    if diff_days < 1:
-        diff_days = 1
+    tenure_months = max(1, round(diff_days / 30))  # Round to nearest month
     
-    # Calculate tenure in months (for backward compatibility)
-    tenure_months = max(1, diff_days // 30)
-    
-    # SINGLE PAYMENT CALCULATION (not EMI)
-    # Interest = Principal × (Rate/100) × (Days/30)
+    # SIMPLE MONTH-BASED INTEREST CALCULATION
+    # Interest = Principal × (Rate/100) × Months
     principal = loan_data.loan_amount - loan_data.down_payment
-    total_interest = principal * (loan_data.interest_rate / 100) * (diff_days / 30)
+    total_interest = principal * (loan_data.interest_rate / 100) * tenure_months
     total_amount = principal + total_interest
-    
-    # For single payment loans, monthly_emi equals total_amount (paid once at due date)
-    monthly_emi = round(total_amount, 2)
     
     # Generate loan ID
     loan_id = str(uuid.uuid4())
+    
+    # Store dates as ISO strings (date only format: YYYY-MM-DD)
+    given_date_iso = loan_start.strftime('%Y-%m-%d')
+    due_date_iso = due_date_parsed.strftime('%Y-%m-%d')
     
     # Update client record (for backward compatibility)
     update_fields = {
         "loan_amount": loan_data.loan_amount,
         "down_payment": loan_data.down_payment,
         "interest_rate": loan_data.interest_rate,
+        "interest_amount": round(total_interest, 2),
         "loan_tenure_months": tenure_months,
-        "monthly_emi": monthly_emi,
+        "monthly_emi": round(total_amount, 2),
         "total_amount_due": round(total_amount, 2),
         "outstanding_balance": round(total_amount, 2),
-        "loan_start_date": loan_start,
-        "next_payment_due": due_date_parsed,
-        "loan_due_date": loan_data.due_date,
-        "loan_given_date": loan_data.given_date or loan_start.strftime('%Y-%m-%d'),
-        "active_loan_id": loan_id,  # Link to loans collection
+        "loan_start_date": given_date_iso,
+        "next_payment_due": due_date_iso,
+        "loan_due_date": due_date_iso,
+        "loan_given_date": given_date_iso,
+        "active_loan_id": loan_id,
     }
     
     await db.clients.update_one(
@@ -249,23 +249,24 @@ async def setup_loan(client_id: str, loan_data: LoanSetup, admin_token: str = Qu
     new_loan = {
         "id": loan_id,
         "client_id": client_id,
+        "client_name": client.get("name", ""),
         "admin_id": admin_id,
         "loan_amount": loan_data.loan_amount,
         "down_payment": loan_data.down_payment,
         "principal_amount": principal,
         "interest_rate": loan_data.interest_rate,
+        "interest_amount": round(total_interest, 2),
         "total_interest": round(total_interest, 2),
         "total_amount": round(total_amount, 2),
         "outstanding_balance": round(total_amount, 2),
         "total_paid": 0,
-        "emi_amount": monthly_emi,  # Single payment amount
+        "emi_amount": round(total_amount, 2),
         "tenure_months": tenure_months,
-        "tenure_days": diff_days,
-        "given_date": loan_start,
-        "due_date": due_date_parsed,
-        "next_payment_date": due_date_parsed,
-        "next_payment_amount": monthly_emi,
-        "payment_type": "single",  # Indicates single payment (not monthly EMI)
+        "given_date": given_date_iso,
+        "due_date": due_date_iso,
+        "next_payment_date": due_date_iso,
+        "next_payment_amount": round(total_amount, 2),
+        "payment_type": "single",
         "status": "active",
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc),
@@ -300,12 +301,11 @@ async def setup_loan(client_id: str, loan_data: LoanSetup, admin_token: str = Qu
         "loan_details": {
             "principal": principal,
             "interest_rate": loan_data.interest_rate,
-            "tenure_days": diff_days,
+            "tenure_months": tenure_months,
             "total_interest": round(total_interest, 2),
             "total_amount": round(total_amount, 2),
-            "monthly_emi": monthly_emi,  # Same as total for single payment
-            "tenure_months": tenure_months,
-            "due_date": loan_data.due_date,
+            "due_date": due_date_iso,
+            "given_date": given_date_iso,
             "payment_type": "single"
         }
     }
@@ -408,6 +408,128 @@ async def edit_loan(client_id: str, loan_data: LoanEdit, admin_token: str = Quer
             "next_payment_due": next_due.isoformat()
         }
     }
+
+
+@router.delete("/loans/{loan_id}")
+async def delete_loan(loan_id: str, admin_token: str = Query(...)):
+    """Delete a loan from the loans collection.
+    
+    Marks the loan as deleted (soft delete) and updates client summary.
+    """
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Find the loan
+    loan = await db.loans.find_one({"id": loan_id})
+    if not loan:
+        raise HTTPException(status_code=404, detail="Loan not found")
+    
+    client_id = loan.get("client_id")
+    
+    # Verify admin has access to this client
+    client = await db.clients.find_one({"id": client_id})
+    if client:
+        await enforce_client_scope(client, admin_id)
+    
+    # Soft delete the loan
+    await db.loans.update_one(
+        {"id": loan_id},
+        {"$set": {
+            "status": "deleted",
+            "deleted_at": datetime.now(timezone.utc),
+            "deleted_by": admin_id,
+        }}
+    )
+    
+    # Update client's multi-loan summary
+    active_loans = await db.loans.find(
+        {"client_id": client_id, "status": "active"}
+    ).to_list(100)
+    
+    if client:
+        update_data = {
+            "total_loan_amount": sum(loan.get("loan_amount", 0) for loan in active_loans),
+            "total_outstanding_all_loans": sum(loan.get("outstanding_balance", 0) for loan in active_loans),
+            "total_paid_all_loans": sum(loan.get("total_paid", 0) for loan in active_loans),
+            "active_loans_count": len(active_loans),
+            "has_multiple_loans": len(active_loans) > 1,
+        }
+        
+        # If no more active loans, clear the active_loan_id
+        if not active_loans:
+            update_data["active_loan_id"] = None
+            update_data["loan_amount"] = 0
+            update_data["outstanding_balance"] = 0
+        elif client.get("active_loan_id") == loan_id and active_loans:
+            # Set active_loan_id to another active loan
+            update_data["active_loan_id"] = active_loans[0]["id"]
+            update_data["loan_amount"] = active_loans[0].get("loan_amount", 0)
+            update_data["outstanding_balance"] = active_loans[0].get("outstanding_balance", 0)
+        
+        await db.clients.update_one({"id": client_id}, {"$set": update_data})
+    
+    return {
+        "message": "Loan deleted successfully",
+        "loan_id": loan_id,
+        "client_id": client_id,
+        "remaining_active_loans": len(active_loans)
+    }
+
+
+@router.get("/loans/{loan_id}/contract")
+async def get_loan_contract(loan_id: str, admin_token: str = Query(...)):
+    """Get loan contract details for sharing.
+    
+    Returns loan details including given amount, interest, given date, due date, and amount due.
+    """
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Find the loan
+    loan = await db.loans.find_one({"id": loan_id, "status": {"$ne": "deleted"}})
+    if not loan:
+        raise HTTPException(status_code=404, detail="Loan not found")
+    
+    client_id = loan.get("client_id")
+    
+    # Get client details
+    client = await db.clients.find_one({"id": client_id})
+    if client:
+        await enforce_client_scope(client, admin_id)
+    
+    # Format dates for display (date only, no time)
+    given_date = loan.get("given_date", "")
+    due_date = loan.get("due_date", "")
+    
+    if isinstance(given_date, datetime):
+        given_date = given_date.strftime('%Y-%m-%d')
+    elif isinstance(given_date, str) and 'T' in given_date:
+        given_date = given_date.split('T')[0]
+    
+    if isinstance(due_date, datetime):
+        due_date = due_date.strftime('%Y-%m-%d')
+    elif isinstance(due_date, str) and 'T' in due_date:
+        due_date = due_date.split('T')[0]
+    
+    contract_data = {
+        "loan_id": loan_id,
+        "client_id": client_id,
+        "client_name": client.get("name", "") if client else loan.get("client_name", ""),
+        "client_phone": client.get("phone", "") if client else "",
+        "client_email": client.get("email", "") if client else "",
+        "client_address": client.get("address", "") if client else "",
+        "given_amount": loan.get("loan_amount", 0),
+        "principal_amount": loan.get("principal_amount", loan.get("loan_amount", 0)),
+        "interest_rate": loan.get("interest_rate", 0),
+        "interest_amount": loan.get("interest_amount", loan.get("total_interest", 0)),
+        "given_date": given_date,
+        "due_date": due_date,
+        "tenure_months": loan.get("tenure_months", 1),
+        "amount_due": loan.get("total_amount", 0),
+        "outstanding_balance": loan.get("outstanding_balance", 0),
+        "total_paid": loan.get("total_paid", 0),
+        "status": loan.get("status", "active"),
+    }
+    
+    return contract_data
 
 
 @router.get("/loans/{client_id}/preview")

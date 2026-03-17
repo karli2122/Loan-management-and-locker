@@ -54,12 +54,22 @@ async def get_client_loans(
         if not loan.get("next_payment_amount"):
             loan["next_payment_amount"] = loan.get("emi_amount") or loan.get("outstanding_balance", 0)
         
-        # Calculate interest amount
+        # Calculate interest amount and total_amount_due
         loan_amount = loan.get("loan_amount", 0)
         interest_rate = loan.get("interest_rate", 0)
         if loan_amount and interest_rate:
             tenure = loan.get("tenure_months", 1) or 1
             loan["interest_amount"] = loan_amount * (interest_rate / 100) * tenure
+        
+        # Ensure total_amount_due is set (frontend uses this field)
+        if not loan.get("total_amount_due"):
+            loan["total_amount_due"] = loan.get("total_amount") or (
+                loan_amount + loan.get("interest_amount", 0)
+            )
+        
+        # Ensure loan_given_date is set from given_date for display
+        if not loan.get("loan_given_date") and loan.get("given_date"):
+            loan["loan_given_date"] = loan["given_date"]
     
     # Calculate summary
     active_loans = [loan for loan in loans if loan.get("status") == "active"]

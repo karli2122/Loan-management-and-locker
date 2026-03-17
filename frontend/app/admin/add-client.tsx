@@ -38,7 +38,7 @@ export default function AddClient() {
     interest_rate: '',
   });
 
-  // Live preview calculation (single payment, not EMI)
+  // Live preview calculation (simple month-based interest, not day-count)
   const loanPreview = React.useMemo(() => {
     const amount = parseFloat(form.loan_amount);
     const rate = parseFloat(form.interest_rate);
@@ -48,15 +48,17 @@ export default function AddClient() {
     const due = new Date(form.emi_due_date);
     const diffMs = due.getTime() - start.getTime();
     const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    const months = Math.max(1, Math.round(days / 30)); // Round to nearest month
 
-    // Single payment: Interest = Principal × (Rate/100) × (Days/30)
-    const totalInterest = amount * (rate / 100) * (days / 30);
+    // Simple month-based: Interest = Principal × (Rate/100) × Months
+    const totalInterest = amount * (rate / 100) * months;
     const totalAmount = amount + totalInterest;
 
     return {
       principal: amount,
       totalInterest: Math.round(totalInterest * 100) / 100,
       totalAmount: Math.round(totalAmount * 100) / 100,
+      months,
       days,
     };
   }, [form.loan_amount, form.interest_rate, form.loan_given_date, form.emi_due_date]);
@@ -322,7 +324,7 @@ export default function AddClient() {
                 <View style={styles.previewHeader}>
                   <Ionicons name="calculator" size={20} color="#10B981" />
                   <Text style={styles.previewTitle}>
-                    {language === 'et' ? 'Laenu eelvaade (ühekordne makse)' : 'Loan Preview (Single Payment)'}
+                    {language === 'et' ? 'Laenu eelvaade (kuupõhine intress)' : 'Loan Preview (Month-based Interest)'}
                   </Text>
                 </View>
                 <View style={styles.previewGrid}>
@@ -332,7 +334,7 @@ export default function AddClient() {
                   </View>
                   <View style={styles.previewItem}>
                     <Text style={styles.previewLabel}>{language === 'et' ? 'Kestus' : 'Duration'}</Text>
-                    <Text style={styles.previewValue}>{loanPreview.days} {language === 'et' ? 'päeva' : 'days'}</Text>
+                    <Text style={styles.previewValue}>{loanPreview.months} {language === 'et' ? 'kuud' : 'month(s)'}</Text>
                   </View>
                   <View style={styles.previewItem}>
                     <Text style={styles.previewLabel}>{language === 'et' ? 'Intress kokku' : 'Total Interest'}</Text>

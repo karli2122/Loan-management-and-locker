@@ -582,8 +582,10 @@ async function renderClientDetail(el) {
           <td style="color:var(--warning)">${cur(remaining)}</td>
           <td>${l.due_date ? fmtDate(l.due_date) : '-'}</td>
           <td><span class="badge badge-${l.status==='active'?'success':l.status==='paid'?'info':'warning'}">${l.status||'active'}</span></td>
-          <td>
+          <td style="display:flex;gap:4px">
             <button class="btn btn-ghost btn-sm" onclick="showEditLoan('${l.id}','${c.id}')" title="Edit Loan"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-ghost btn-sm" onclick="deleteLoan('${l.id}','${c.id}')" title="Delete Loan" style="color:var(--error)"><i class="fas fa-trash"></i></button>
+            <button class="btn btn-ghost btn-sm" onclick="shareLoanContract('${l.id}')" title="Share Contract"><i class="fas fa-share-alt"></i></button>
             <button class="btn btn-ghost btn-sm" onclick="showLoanSchedule('${l.id}','${c.id}')" title="View Schedule"><i class="fas fa-calendar"></i></button>
           </td>
         </tr>`}).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No loans</td></tr>'}
@@ -832,6 +834,10 @@ function showAddClient() {
         <div class="form-group"><label>${t('loan_amount_eur')} (&#8364;)</label><input id="nc-loan" type="number" step="0.01" data-testid="new-client-loan"></div>
         <div class="form-group"><label>${t('interest_rate_pct')}</label><input id="nc-rate" type="number" step="0.1" data-testid="new-client-rate"></div>
       </div>
+      <div class="form-row">
+        <div class="form-group"><label>Loan Given Date</label><input id="nc-given-date" type="date" value="${new Date().toISOString().split('T')[0]}" data-testid="new-client-given-date"></div>
+        <div class="form-group"><label>Due Date</label><input id="nc-due-date" type="date" data-testid="new-client-due-date"></div>
+      </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
         <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">${t('cancel')}</button>
         <button type="submit" class="btn btn-primary btn-sm" data-testid="save-client-btn"><i class="fas fa-save"></i> ${t('save')}</button>
@@ -843,15 +849,37 @@ function showAddClient() {
   document.getElementById('add-client-form').onsubmit = async(e) => {
     e.preventDefault();
     try {
-      await api('POST', '/clients', {
+      const loanAmount = parseFloat(document.getElementById('nc-loan').value) || 0;
+      const interestRate = parseFloat(document.getElementById('nc-rate').value) || 0;
+      const givenDate = document.getElementById('nc-given-date').value;
+      const dueDate = document.getElementById('nc-due-date').value;
+      
+      const client = await api('POST', '/clients', {
         name: document.getElementById('nc-name').value,
         phone: document.getElementById('nc-phone').value,
         email: document.getElementById('nc-email').value,
         birth_number: document.getElementById('nc-birth').value,
         address: document.getElementById('nc-addr').value,
-        loan_amount: parseFloat(document.getElementById('nc-loan').value) || 0,
-        interest_rate: parseFloat(document.getElementById('nc-rate').value) || 0,
+        loan_amount: loanAmount,
+        interest_rate: interestRate,
       });
+      
+      // Also create loan in loans collection if loan data provided
+      if (loanAmount > 0 && interestRate > 0 && dueDate) {
+        try {
+          await api('POST', `/loans/${client.id}/setup`, {
+            loan_amount: loanAmount,
+            interest_rate: interestRate,
+            given_date: givenDate || new Date().toISOString().split('T')[0],
+            due_date: dueDate,
+            down_payment: 0,
+          });
+        } catch(loanErr) {
+          console.error('Loan setup error:', loanErr);
+          toast('Client created but loan setup failed: ' + loanErr.message, 'error');
+        }
+      }
+      
       toast(t('client_added'));
       closeModal();
       navigate('clients');
@@ -1011,6 +1039,68 @@ function updateLoanPreview() {
 }
 
 function closeModal() { document.getElementById('modal-overlay')?.remove(); }
+
+// Delete loan function
+async function deleteLoan(loanId, clientId) {
+  if (!confirm('Are you sure you want to delete this loan? This action cannot be undone.')) return;
+  try {
+    await api('DELETE', `/loans/${loanId}`);
+    toast('Loan deleted successfully', 'success');
+    // Refresh client data
+    const data = await api('GET', '/clients');
+    state.clients = data.clients || [];
+    state.selectedClient = state.clients.find(c => c.id === clientId);
+    renderClientDetail(document.getElementById('page-content'));
+  } catch(err) { toast(err.message, 'error'); }
+}
+
+// Share loan contract function
+async function shareLoanContract(loanId) {
+  try {
+    const contract = await api('GET', `/loans/${loanId}/contract`);
+    
+    const contractText = `
+📄 LOAN CONTRACT
+
+Client: ${contract.client_name}
+Phone: ${contract.client_phone}
+Email: ${contract.client_email}
+
+────────────────────
+LOAN DETAILS
+────────────────────
+Given Amount: €${contract.given_amount?.toFixed(2) || '0.00'}
+Interest Rate: ${contract.interest_rate || 0}% per month
+Interest Amount: €${contract.interest_amount?.toFixed(2) || '0.00'}
+Total Amount Due: €${contract.amount_due?.toFixed(2) || '0.00'}
+
+Given Date: ${contract.given_date || '-'}
+Due Date: ${contract.due_date || '-'}
+Duration: ${contract.tenure_months || 1} month(s)
+
+Status: ${contract.status || 'active'}
+Outstanding: €${contract.outstanding_balance?.toFixed(2) || '0.00'}
+Paid: €${contract.total_paid?.toFixed(2) || '0.00'}
+────────────────────
+    `.trim();
+    
+    // Try to use Web Share API
+    if (navigator.share) {
+      await navigator.share({
+        title: 'Loan Contract',
+        text: contractText,
+      });
+    } else {
+      // Fallback: copy to clipboard
+      await navigator.clipboard.writeText(contractText);
+      toast('Contract copied to clipboard!', 'success');
+    }
+  } catch(err) {
+    if (err.name !== 'AbortError') {
+      toast(err.message || 'Failed to share contract', 'error');
+    }
+  }
+}
 
 function renderModal() {
   // Generic modal renderer for state.modal
@@ -2557,11 +2647,11 @@ function showAddLoan(clientId) {
       <div id="loan-preview" class="stat-card" style="margin-top:16px;background:linear-gradient(135deg,#1e3a5f,#0d253b);border:1px solid #10b981;display:none">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
           <i class="fas fa-calculator" style="color:#10b981"></i>
-          <span style="color:#10b981;font-weight:600">Loan Preview (Single Payment)</span>
+          <span style="color:#10b981;font-weight:600">Loan Preview (Month-based Interest)</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div><span style="color:#94a3b8;font-size:12px">Principal</span><div id="preview-principal" style="font-size:18px;font-weight:600;color:#fff">-</div></div>
-          <div><span style="color:#94a3b8;font-size:12px">Duration</span><div id="preview-days" style="font-size:18px;font-weight:600;color:#fff">-</div></div>
+          <div><span style="color:#94a3b8;font-size:12px">Duration</span><div id="preview-months" style="font-size:18px;font-weight:600;color:#fff">-</div></div>
           <div><span style="color:#94a3b8;font-size:12px">Total Interest</span><div id="preview-interest" style="font-size:18px;font-weight:600;color:#f59e0b">-</div></div>
           <div><span style="color:#94a3b8;font-size:12px">Total Due (by Due Date)</span><div id="preview-total" style="font-size:20px;font-weight:700;color:#10b981">-</div></div>
         </div>
@@ -2575,7 +2665,7 @@ function showAddLoan(clientId) {
   document.body.appendChild(overlay);
   overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
   
-  // Live preview calculation
+  // Live preview calculation (month-based interest)
   function updatePreview() {
     const amount = parseFloat(document.getElementById('nl-amount').value) || 0;
     const rate = parseFloat(document.getElementById('nl-rate').value) || 0;
@@ -2588,13 +2678,15 @@ function showAddLoan(clientId) {
       const start = new Date(givenDate);
       const due = new Date(dueDate);
       const days = Math.max(1, Math.ceil((due - start) / (1000 * 60 * 60 * 24)));
+      const months = Math.max(1, Math.round(days / 30)); // Round to nearest month
       
       const principal = amount - down;
-      const totalInterest = principal * (rate / 100) * (days / 30);
+      // Month-based interest: principal * (rate/100) * months
+      const totalInterest = principal * (rate / 100) * months;
       const totalAmount = principal + totalInterest;
       
       document.getElementById('preview-principal').textContent = cur(principal);
-      document.getElementById('preview-days').textContent = days + ' days';
+      document.getElementById('preview-months').textContent = months + ' month(s)';
       document.getElementById('preview-interest').textContent = cur(totalInterest);
       document.getElementById('preview-total').textContent = cur(totalAmount);
       preview.style.display = 'block';

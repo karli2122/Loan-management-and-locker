@@ -737,7 +737,7 @@ export default function ClientDetails() {
                 setPaymentAmount('');
                 setPaymentModal(true);
               }}
-              onAddNewLoan={() => router.push(`/admin/add-loan?client_id=${id}`)}
+              onAddNewLoan={() => router.push(`/admin/add-loan?clientId=${id}`)}
               onEditLoan={(loanId, loan) => {
                 setSelectedLoanId(loanId);
                 setSelectedLoan(loan);
