@@ -1070,10 +1070,147 @@ async function renderDevices(el) {
 function renderDeviceSection(title, devices, type) {
   if (!devices?.length) return '';
   return `<div class="card"><div class="card-header"><h3>${title}</h3><span class="badge badge-${type}">${devices.length}</span></div>
-    <div class="table-wrap"><table><thead><tr><th>${t('client')}</th><th>${t('device_col')}</th><th>${t('last_seen')}</th><th>${t('lock_status')}</th></tr></thead><tbody>
-      ${devices.map(d => `<tr><td>${esc(d.name)}</td><td>${esc(d.device_model)}</td><td>${d.minutes_ago!==null? d.minutes_ago+' '+t('min_ago'):t('never')}</td>
-        <td>${d.is_locked?`<span class="badge badge-danger">${t('locked')}</span>`:`<span class="badge badge-success">${t('unlocked')}</span>`}</td></tr>`).join('')}
+    <div class="table-wrap"><table><thead><tr><th>${t('client')}</th><th>${t('device_col')}</th><th>${t('last_seen')}</th><th>${t('lock_status')}</th><th>${t('actions')}</th></tr></thead><tbody>
+      ${devices.map(d => {
+        const lastSeen = formatLastSeen(d.minutes_ago);
+        return `<tr data-testid="device-row-${d.client_id}">
+          <td>${esc(d.name)}</td>
+          <td>${esc(d.device_model || 'Unknown')}</td>
+          <td>${lastSeen}</td>
+          <td>${d.is_locked?`<span class="badge badge-danger">${t('locked')}</span>`:`<span class="badge badge-success">${t('unlocked')}</span>`}</td>
+          <td class="action-row">
+            <button class="btn btn-ghost btn-sm" onclick="showDeviceDetails('${d.client_id}')" title="View Details"><i class="fas fa-eye"></i></button>
+            <button class="btn btn-ghost btn-sm" onclick="toggleDeviceLock('${d.client_id}', ${!d.is_locked})" title="${d.is_locked ? 'Unlock' : 'Lock'}"><i class="fas fa-${d.is_locked ? 'lock-open' : 'lock'}"></i></button>
+            <button class="btn btn-ghost btn-sm" onclick="sendDeviceWarning('${d.client_id}')" title="Send Warning"><i class="fas fa-exclamation-triangle" style="color:#f59e0b"></i></button>
+          </td>
+        </tr>`;
+      }).join('')}
     </tbody></table></div></div>`;
+}
+
+function formatLastSeen(minutes) {
+  if (minutes === null || minutes === undefined) return t('never');
+  if (minutes < 60) return `${minutes} ${t('min_ago')}`;
+  if (minutes < 1440) return `${Math.floor(minutes/60)} ${t('hours_ago')}`;
+  return `${Math.floor(minutes/1440)} ${t('days_ago')}`;
+}
+
+async function showDeviceDetails(clientId) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay'; overlay.id = 'modal-overlay';
+  overlay.innerHTML = '<div class="modal" style="max-width:600px"><div class="spinner"></div> Loading device details...</div>';
+  document.body.appendChild(overlay);
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+  
+  try {
+    const client = await api('GET', `/clients/${clientId}`);
+    const c = client.client || client;
+    const deviceInfo = c.device_info || {};
+    const lastSeen = formatLastSeen(c.minutes_since_heartbeat || c.minutes_ago);
+    
+    overlay.innerHTML = `<div class="modal" style="max-width:650px">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:16px">
+        <h3 style="margin:0"><i class="fas fa-mobile-alt" style="margin-right:8px;color:var(--accent)"></i>Device Details</h3>
+        <button class="btn btn-ghost btn-sm" onclick="closeModal()"><i class="fas fa-times"></i></button>
+      </div>
+      
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <div class="card" style="padding:16px">
+          <h4 style="margin:0 0 12px 0;font-size:14px;color:var(--text-muted)"><i class="fas fa-user"></i> Client Information</h4>
+          <div style="space-y:8px">
+            <p style="margin:4px 0"><b>Name:</b> ${esc(c.name)}</p>
+            <p style="margin:4px 0"><b>Phone:</b> ${esc(c.phone || '-')}</p>
+            <p style="margin:4px 0"><b>Email:</b> ${esc(c.email || '-')}</p>
+            <p style="margin:4px 0"><b>Address:</b> ${esc(c.address || '-')}</p>
+            <p style="margin:4px 0"><b>ID:</b> <code style="font-size:11px">${esc(c.id)}</code></p>
+          </div>
+        </div>
+        <div class="card" style="padding:16px">
+          <h4 style="margin:0 0 12px 0;font-size:14px;color:var(--text-muted)"><i class="fas fa-mobile-alt"></i> Device Information</h4>
+          <div style="space-y:8px">
+            <p style="margin:4px 0"><b>Model:</b> ${esc(deviceInfo.model || c.device_model || '-')}</p>
+            <p style="margin:4px 0"><b>Android:</b> ${esc(deviceInfo.android_version || '-')}</p>
+            <p style="margin:4px 0"><b>IMEI:</b> ${esc(deviceInfo.imei || c.imei || '-')}</p>
+            <p style="margin:4px 0"><b>Serial:</b> ${esc(deviceInfo.serial || '-')}</p>
+            <p style="margin:4px 0"><b>Battery:</b> ${deviceInfo.battery_level ? deviceInfo.battery_level + '%' : '-'}</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card" style="padding:16px;margin-bottom:20px">
+        <h4 style="margin:0 0 12px 0;font-size:14px;color:var(--text-muted)"><i class="fas fa-signal"></i> Connection Status</h4>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center">
+          <div>
+            <div style="font-size:20px;font-weight:700;color:${c.is_locked?'var(--danger)':'var(--success)'}">${c.is_locked?'LOCKED':'UNLOCKED'}</div>
+            <div style="font-size:11px;color:var(--text-muted)">Lock Status</div>
+          </div>
+          <div>
+            <div style="font-size:20px;font-weight:700">${lastSeen}</div>
+            <div style="font-size:11px;color:var(--text-muted)">Last Seen</div>
+          </div>
+          <div>
+            <div style="font-size:20px;font-weight:700">${c.app_installed?'<span style="color:var(--success)">Yes</span>':'<span style="color:var(--text-muted)">No</span>'}</div>
+            <div style="font-size:11px;color:var(--text-muted)">App Installed</div>
+          </div>
+        </div>
+      </div>
+      
+      ${c.last_location ? `<div class="card" style="padding:16px;margin-bottom:20px">
+        <h4 style="margin:0 0 12px 0;font-size:14px;color:var(--text-muted)"><i class="fas fa-map-marker-alt"></i> Last Location</h4>
+        <p style="margin:0">Lat: ${c.last_location.latitude}, Lng: ${c.last_location.longitude}</p>
+        <a href="https://maps.google.com/?q=${c.last_location.latitude},${c.last_location.longitude}" target="_blank" class="btn btn-outline btn-sm" style="margin-top:8px"><i class="fas fa-external-link-alt"></i> View on Map</a>
+      </div>` : ''}
+      
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn ${c.is_locked?'btn-success':'btn-danger'}" onclick="toggleDeviceLock('${clientId}', ${!c.is_locked}); closeModal();">
+          <i class="fas fa-${c.is_locked?'lock-open':'lock'}"></i> ${c.is_locked ? 'Unlock Device' : 'Lock Device'}
+        </button>
+        <button class="btn btn-warning" onclick="sendDeviceWarning('${clientId}')">
+          <i class="fas fa-exclamation-triangle"></i> Send Warning
+        </button>
+        <button class="btn btn-outline" onclick="requestUninstall('${clientId}')" style="color:var(--danger);border-color:var(--danger)">
+          <i class="fas fa-trash-alt"></i> Allow Uninstall
+        </button>
+        <button class="btn btn-outline" onclick="viewClientDetails('${clientId}'); closeModal();">
+          <i class="fas fa-user"></i> View Client
+        </button>
+      </div>
+    </div>`;
+  } catch(e) {
+    overlay.innerHTML = `<div class="modal"><p style="color:var(--danger)">Error loading device: ${e.message}</p><button class="btn btn-outline" onclick="closeModal()">Close</button></div>`;
+  }
+}
+
+async function toggleDeviceLock(clientId, shouldLock) {
+  try {
+    const endpoint = shouldLock ? `/clients/${clientId}/lock` : `/clients/${clientId}/unlock`;
+    await api('POST', endpoint);
+    toast(shouldLock ? 'Device locked' : 'Device unlocked', 'success');
+    loadPage(); // Refresh
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function sendDeviceWarning(clientId) {
+  const msg = prompt('Enter warning message to send to device:', 'Payment reminder: Please make your payment to avoid device lock.');
+  if (!msg) return;
+  try {
+    await api('POST', `/clients/${clientId}/message`, { message: msg, type: 'warning' });
+    toast('Warning sent successfully', 'success');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function requestUninstall(clientId) {
+  if (!confirm('Are you sure you want to allow app uninstall on this device? This will remove device management capabilities.')) return;
+  try {
+    await api('POST', `/clients/${clientId}/allow-uninstall`);
+    toast('Uninstall permission granted', 'success');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function viewClientDetails(clientId) {
+  state.selectedClient = clientId;
+  state.page = 'clients';
+  render();
 }
 
 // Provisioning
