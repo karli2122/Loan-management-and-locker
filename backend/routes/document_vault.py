@@ -82,34 +82,7 @@ async def upload_document(
     return {"message": "Document uploaded", "document": doc_meta}
 
 
-@router.get("/{client_id}")
-async def list_documents(
-    client_id: str,
-    admin_token: str = Query(...),
-    doc_type: Optional[str] = Query(default=None),
-):
-    """List all documents in a client's vault."""
-    admin_id = await get_admin_id_from_token(admin_token)
-    await check_plan_access(admin_id, "document_vault")
-
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        from utils.exceptions import ValidationException
-        raise ValidationException("Client not found")
-    await enforce_client_scope(client, admin_id)
-
-    query = {"client_id": client_id}
-    if doc_type:
-        query["doc_type"] = doc_type
-
-    docs = await db.document_vault.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
-    for d in docs:
-        if isinstance(d.get("created_at"), datetime):
-            d["created_at"] = d["created_at"].isoformat()
-
-    return {"client_id": client_id, "documents": docs, "total": len(docs)}
-
-
+# NOTE: /all must come BEFORE /{client_id} to avoid route matching issues
 @router.get("/all")
 async def list_all_documents(
     admin_token: str = Query(...),
@@ -144,6 +117,34 @@ async def list_all_documents(
             d["created_at"] = d["created_at"].isoformat()
 
     return {"documents": docs, "total": len(docs)}
+
+
+@router.get("/{client_id}")
+async def list_documents(
+    client_id: str,
+    admin_token: str = Query(...),
+    doc_type: Optional[str] = Query(default=None),
+):
+    """List all documents in a client's vault."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "document_vault")
+
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        from utils.exceptions import ValidationException
+        raise ValidationException("Client not found")
+    await enforce_client_scope(client, admin_id)
+
+    query = {"client_id": client_id}
+    if doc_type:
+        query["doc_type"] = doc_type
+
+    docs = await db.document_vault.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    for d in docs:
+        if isinstance(d.get("created_at"), datetime):
+            d["created_at"] = d["created_at"].isoformat()
+
+    return {"client_id": client_id, "documents": docs, "total": len(docs)}
 
 
 

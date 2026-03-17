@@ -195,6 +195,37 @@ async def import_clients_csv(
         if existing_client:
             # Client exists - add/update loan
             total_due = loan_amount * (1 + interest_rate / 100) if interest_rate else loan_amount
+            
+            # Create loan in loans collection
+            loan_id = str(uuid.uuid4())
+            new_loan = {
+                "id": loan_id,
+                "client_id": existing_client["id"],
+                "client_name": existing_client.get("name", ""),
+                "admin_id": admin_id,
+                "loan_amount": loan_amount,
+                "principal_amount": loan_amount,
+                "interest_rate": interest_rate,
+                "total_interest": loan_amount * (interest_rate / 100) if interest_rate else 0,
+                "total_amount": total_due,
+                "outstanding_balance": total_due,
+                "total_paid": 0,
+                "emi_amount": total_due,  # Single payment
+                "tenure_months": 1,
+                "given_date": datetime.fromisoformat(date_given) if date_given else datetime.now(timezone.utc),
+                "due_date": None,  # To be set by admin
+                "next_payment_date": None,
+                "next_payment_amount": total_due,
+                "payment_type": "single",
+                "status": "active",
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc),
+                "imported_from_pdf": True,
+                "import_needs_review": True,
+            }
+            await db.loans.insert_one(new_loan)
+            
+            # Update client summary
             loan_update = {
                 "loan_amount": loan_amount,
                 "interest_rate": interest_rate,
@@ -202,6 +233,7 @@ async def import_clients_csv(
                 "outstanding_balance": total_due,
                 "loan_given_date": date_given,
                 "loan_setup_at": datetime.now(timezone.utc).isoformat(),
+                "active_loan_id": loan_id,
                 "imported": True,
                 "import_needs_review": True,  # Needs admin to complete data
             }
@@ -210,8 +242,11 @@ async def import_clients_csv(
         else:
             # Create new client with imported flag
             total_due = loan_amount * (1 + interest_rate / 100) if interest_rate else loan_amount
+            client_id = str(uuid.uuid4())
+            loan_id = str(uuid.uuid4())
+            
             client = {
-                "id": str(uuid.uuid4()),
+                "id": client_id,
                 "name": name,
                 "phone": mapped.get("phone", ""),
                 "email": mapped.get("email", ""),
@@ -219,16 +254,16 @@ async def import_clients_csv(
                 "birth_number": mapped.get("birth_number", ""),
                 "loan_amount": loan_amount,
                 "interest_rate": interest_rate,
-                "monthly_emi": 0,
+                "monthly_emi": total_due,  # Single payment
                 "total_amount_due": total_due,
                 "outstanding_balance": total_due,
                 "total_paid": 0,
                 "days_overdue": 0,
                 "is_registered": False,
                 "is_locked": False,
-                # Exclude registration_code to allow sparse unique index to work
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "loan_given_date": date_given,
+                "active_loan_id": loan_id,
                 "imported": True,
                 "import_needs_review": True,  # Needs admin to add missing data
                 "telegram_chat_id": mapped.get("telegram_chat_id", ""),
@@ -236,6 +271,35 @@ async def import_clients_csv(
             }
 
             await db.clients.insert_one(client)
+            
+            # Create loan in loans collection
+            new_loan = {
+                "id": loan_id,
+                "client_id": client_id,
+                "client_name": name,
+                "admin_id": admin_id,
+                "loan_amount": loan_amount,
+                "principal_amount": loan_amount,
+                "interest_rate": interest_rate,
+                "total_interest": loan_amount * (interest_rate / 100) if interest_rate else 0,
+                "total_amount": total_due,
+                "outstanding_balance": total_due,
+                "total_paid": 0,
+                "emi_amount": total_due,  # Single payment
+                "tenure_months": 1,
+                "given_date": datetime.fromisoformat(date_given) if date_given else datetime.now(timezone.utc),
+                "due_date": None,  # To be set by admin
+                "next_payment_date": None,
+                "next_payment_amount": total_due,
+                "payment_type": "single",
+                "status": "active",
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc),
+                "imported_from_pdf": True,
+                "import_needs_review": True,
+            }
+            await db.loans.insert_one(new_loan)
+            
             imported_new += 1
 
     return {
@@ -351,20 +415,63 @@ async def import_loans_csv(
         if emi <= 0:
             emi = round(total_due / duration, 2) if duration > 0 else total_due
 
-        # Set up the loan
-        loan_update = {
+        # Create loan in loans collection (primary data source)
+        loan_id = str(uuid.uuid4())
+        new_loan = {
+            "id": loan_id,
+            "client_id": client["id"],
+            "client_name": client.get("name", ""),
+            "admin_id": admin_id,
             "loan_amount": loan_amount,
+            "principal_amount": loan_amount,
             "interest_rate": interest_rate,
-            "monthly_emi": emi,
-            "emi_amount": emi,
-            "total_amount_due": total_due,
+            "total_interest": loan_amount * (interest_rate / 100) if interest_rate else 0,
+            "total_amount": total_due,
             "outstanding_balance": total_due,
             "total_paid": 0,
+            "emi_amount": emi,
+            "tenure_months": duration,
+            "given_date": datetime.fromisoformat(start_date) if start_date else datetime.now(timezone.utc),
+            "due_date": None,  # Can be set later
+            "next_payment_date": None,
+            "next_payment_amount": emi,
+            "payment_type": "single",
+            "status": "active",
             "days_overdue": 0,
-            "loan_start_date": start_date,
-            "loan_setup_at": datetime.now(timezone.utc).isoformat(),
+            "is_late": False,
+            "late_fees_accumulated": 0,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
+            "imported_from_csv": True,
         }
-        await db.clients.update_one({"id": client["id"]}, {"$set": loan_update})
+        await db.loans.insert_one(new_loan)
+        
+        # Update client's loan summary (for backward compatibility)
+        client_loans = await db.loans.find(
+            {"client_id": client["id"], "status": "active"}
+        ).to_list(100)
+        
+        await db.clients.update_one(
+            {"id": client["id"]}, 
+            {"$set": {
+                "loan_amount": loan_amount,
+                "interest_rate": interest_rate,
+                "monthly_emi": emi,
+                "emi_amount": emi,
+                "total_amount_due": total_due,
+                "outstanding_balance": total_due,
+                "total_paid": 0,
+                "days_overdue": 0,
+                "loan_start_date": start_date,
+                "loan_setup_at": datetime.now(timezone.utc).isoformat(),
+                "active_loan_id": loan_id,
+                "total_loan_amount": sum(loan.get("loan_amount", 0) for loan in client_loans),
+                "total_outstanding_all_loans": sum(loan.get("outstanding_balance", 0) for loan in client_loans),
+                "total_paid_all_loans": sum(loan.get("total_paid", 0) for loan in client_loans),
+                "active_loans_count": len(client_loans),
+                "has_multiple_loans": len(client_loans) > 1,
+            }}
+        )
         imported += 1
 
     return {
