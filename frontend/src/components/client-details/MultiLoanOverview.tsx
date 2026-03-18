@@ -15,6 +15,7 @@ export const MultiLoanOverview = ({
   onAddNewLoan,
   onEditLoan,
   refreshKey,
+  adminPlan,
 }) => {
   const { formatAmount } = useCurrency();
   const { t } = useLanguage();
@@ -69,6 +70,49 @@ export const MultiLoanOverview = ({
     const totalDue = loan.total_amount_due || loan.total_amount || loan.outstanding_balance || 0;
     if (!totalDue || totalDue === 0) return 0;
     return ((loan.total_paid || 0) / totalDue * 100).toFixed(1);
+  };
+
+  // Send payment link to client
+  const handleSendPaymentLink = async (loanId: string, dueTodayAmount: number) => {
+    const isEnterprise = adminPlan === 'enterprise' || adminPlan === 'custom';
+    if (!isEnterprise) {
+      Alert.alert('Enterprise Feature', 'Sending payment links requires the Enterprise or Custom plan.');
+      return;
+    }
+    
+    Alert.alert(
+      'Send Payment Link',
+      `Send a payment link of ${dueTodayAmount > 0 ? dueTodayAmount.toFixed(2) : '0.00'} EUR to ${clientName || 'client'}?\n\nThe client will receive an in-app message and push notification.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send',
+          onPress: async () => {
+            setActionLoading(loanId + '_pay');
+            try {
+              const token = await AsyncStorage.getItem('admin_token');
+              const resp = await fetch(
+                `${API_URL}/api/connect/send-payment-link?admin_token=${token}&client_id=${clientId}&loan_id=${loanId}&amount=${dueTodayAmount}`,
+                { method: 'POST' }
+              );
+              const data = await resp.json();
+              if (resp.ok && data.success) {
+                Alert.alert(
+                  'Payment Link Sent',
+                  `Message sent to ${clientName}.\n${data.push_notification_sent ? 'Push notification delivered.' : 'Push notification not available.'}`
+                );
+              } else {
+                Alert.alert('Error', data.detail || 'Failed to send payment link. Make sure Stripe Connect is set up in Settings.');
+              }
+            } catch (e) {
+              Alert.alert('Error', 'Failed to send payment link');
+            } finally {
+              setActionLoading(null);
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Delete a loan
@@ -250,8 +294,25 @@ export const MultiLoanOverview = ({
                   data-testid={`record-payment-btn-${loan.id}`}
                 >
                   <Ionicons name="card" size={14} color="#fff" />
-                  <Text style={styles.actionBtnText}>Record Payment</Text>
+                  <Text style={styles.actionBtnText}>Payment</Text>
                 </TouchableOpacity>
+                {(adminPlan === 'enterprise' || adminPlan === 'custom') && (
+                  <TouchableOpacity
+                    style={[styles.actionBtn, { backgroundColor: '#8B5CF6' }]}
+                    onPress={() => handleSendPaymentLink(loan.id, loan.due_today_amount || 0)}
+                    disabled={actionLoading === loan.id + '_pay'}
+                    data-testid={`send-payment-link-btn-${loan.id}`}
+                  >
+                    {actionLoading === loan.id + '_pay' ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="send" size={14} color="#fff" />
+                        <Text style={styles.actionBtnText}>Pay Link</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
                   style={[styles.actionBtn, { backgroundColor: '#3B82F6' }]}
                   onPress={() => handleShareContract(loan.id)}

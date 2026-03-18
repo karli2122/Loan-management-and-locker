@@ -34,6 +34,7 @@ import { useEnterpriseAccess } from '../../src/hooks/useEnterpriseAccess';
 import API_URL from '../../src/constants/api';
 import devicePolicy from '../../src/utils/DevicePolicy';
 import { getApiErrors, getDiagnosticLogs } from '../../src/utils/diagnostics';
+import { StripeConnectSection } from '../../src/components/admin/StripeConnectSection';
 
 
 interface Admin {
@@ -1067,6 +1068,48 @@ export default function AdminSettings() {
                 <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Upgrade to Professional</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        )}
+
+        {/* Stripe Connect - Enterprise/Custom Feature */}
+        {(plan === 'enterprise' || plan === 'custom') ? (
+          <StripeConnectSection adminToken={adminToken} colors={colors} t={t} formatAmount={formatAmount} />
+        ) : (
+          <View style={[styles.section, { opacity: 0.5 }]}>
+            <Text style={styles.sectionTitle}>Stripe Connect</Text>
+            <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, alignItems: 'center' }}>
+              <Ionicons name="lock-closed" size={32} color="#64748B" />
+              <Text style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', marginTop: 8, marginBottom: 12 }}>
+                Payment forwarding via Stripe Connect requires the Enterprise plan
+              </Text>
+              <TouchableOpacity
+                style={{ backgroundColor: '#3B82F6', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24 }}
+                onPress={() => setShowPlansModal(true)}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Upgrade to Enterprise</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Connect Dashboard - Superadmin Only */}
+        {isSuperAdmin && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Platform Fees Dashboard</Text>
+            <TouchableOpacity
+              style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+              onPress={() => router.push('/admin/connect-dashboard')}
+              data-testid="connect-dashboard-btn"
+            >
+              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#6366F1', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="stats-chart" size={22} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>Connect Dashboard</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>View platform fees earned, connected accounts & transactions</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
           </View>
         )}
 

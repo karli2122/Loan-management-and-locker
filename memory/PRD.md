@@ -3,7 +3,46 @@
 ## Original Problem Statement
 Full-stack loan management application "PayLock Pro" with tiered subscription model (Starter, Professional, Enterprise, Demo), React Native mobile apps (Admin + Client), FastAPI backend, static website, and web portal.
 
-## Latest Update: v1.4.0 - 2026-03-18
+## Latest Update: v1.5.0 - 2026-03-18
+
+### Stripe Connect Full Integration
+
+**1. Stripe Connect Onboarding UI (Settings Page)**
+- Added `StripeConnectSection` component gated to Enterprise/Custom plans
+- Shows connection status, platform fee info, and onboarding button
+- Locked state with "Upgrade to Enterprise" prompt for lower plans
+- Superadmins bypass plan gate
+
+**2. Send Payment Link (MultiLoanOverview)**
+- "Pay Link" button on each active loan (purple, Enterprise/Custom only)
+- Creates Stripe destination charge with 0.75% platform fee
+- Sends in-app message to client with payment URL
+- Sends push notification to client's device via Expo Push
+- Amount prefilled with `due_today_amount`
+
+**3. Connect Dashboard (Superadmin)**
+- New screen at `/admin/connect-dashboard`
+- Shows: Total fees earned, Total volume, Transaction count, Connected accounts
+- Monthly breakdown table
+- Recent transactions with admin/client names
+- Accessible from Settings for superadmins only
+
+**4. Backend Endpoints Added**
+- `POST /api/connect/onboard` - Create Express Connect account
+- `GET /api/connect/onboard/complete` - Handle onboarding callback
+- `GET /api/connect/onboard/refresh` - Refresh expired onboarding link
+- `GET /api/connect/status` - Get connection status
+- `POST /api/connect/payment-link` - Create payment link with destination charge
+- `POST /api/connect/send-payment-link` - Create + send via messaging + push
+- `GET /api/connect/dashboard` - Superadmin fees dashboard
+- `GET /api/connect/payment/success` - Handle successful payment
+- `GET /api/connect/payment/cancel` - Handle cancelled payment
+
+### Prerequisites for Stripe Connect
+- User must enable Stripe Connect in their Stripe Dashboard: https://dashboard.stripe.com/connect
+- Enterprise or Custom plan required (superadmins bypassed)
+
+## Previous Update: v1.4.0 - 2026-03-18
 
 ### Features & Fixes Applied in This Session
 

@@ -26,9 +26,10 @@ async def create_connect_account(request: Request, admin_token: str = Query(...)
     if not admin:
         raise HTTPException(status_code=404, detail="Admin not found")
     
-    # Check plan access
+    # Check plan access (enterprise/custom or superadmin)
     plan = admin.get("plan", "starter")
-    if plan not in ("enterprise", "custom"):
+    is_super = admin.get("is_super_admin", False)
+    if plan not in ("enterprise", "custom") and not is_super:
         raise HTTPException(status_code=403, detail="Stripe Connect is available for Enterprise and Custom plans only.")
     
     # Check if admin already has a connected account
@@ -397,3 +398,249 @@ async def get_connect_payment_status(session_id: str, admin_token: str = Query(.
         "client_id": payment.get("client_id"),
         "loan_id": payment.get("loan_id"),
     }
+
+
+
+@router.get("/connect/dashboard")
+async def get_connect_dashboard(admin_token: str = Query(...)):
+    """Get platform fees dashboard (superadmin only)."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
+    if not admin or not admin.get("is_super_admin"):
+        raise HTTPException(status_code=403, detail="Superadmin access required")
+    
+    # Get all completed connect payments
+    pipeline = [
+        {"$match": {"payment_status": "paid"}},
+        {"$group": {
+            "_id": None,
+            "total_volume": {"$sum": "$amount"},
+            "total_fees": {"$sum": {"$multiply": ["$amount", PLATFORM_FEE_PERCENT / 100]}},
+            "total_transactions": {"$sum": 1},
+        }}
+    ]
+    result = await db.connect_payments.aggregate(pipeline).to_list(1)
+    totals = result[0] if result else {"total_volume": 0, "total_fees": 0, "total_transactions": 0}
+    
+    # Monthly breakdown
+    monthly_pipeline = [
+        {"$match": {"payment_status": "paid"}},
+        {"$group": {
+            "_id": {
+                "year": {"$year": "$completed_at"},
+                "month": {"$month": "$completed_at"},
+            },
+            "volume": {"$sum": "$amount"},
+            "fees": {"$sum": {"$multiply": ["$amount", PLATFORM_FEE_PERCENT / 100]}},
+            "count": {"$sum": 1},
+        }},
+        {"$sort": {"_id.year": -1, "_id.month": -1}},
+        {"$limit": 12},
+    ]
+    monthly = await db.connect_payments.aggregate(monthly_pipeline).to_list(12)
+    
+    # Connected accounts count
+    connected_count = await db.admins.count_documents({"stripe_connect_status": "active"})
+    pending_count = await db.admins.count_documents({"stripe_connect_status": "pending"})
+    
+    # Recent transactions
+    recent = await db.connect_payments.find(
+        {"payment_status": "paid"},
+        {"_id": 0, "id": 1, "amount": 1, "platform_fee_cents": 1, "client_id": 1, "admin_id": 1, "completed_at": 1}
+    ).sort("completed_at", -1).limit(20).to_list(20)
+    
+    # Enrich recent with admin/client names
+    for tx in recent:
+        tx["platform_fee"] = round((tx.get("platform_fee_cents", 0) or 0) / 100, 2)
+        admin_doc = await db.admins.find_one({"id": tx.get("admin_id")}, {"_id": 0, "username": 1})
+        client_doc = await db.clients.find_one({"id": tx.get("client_id")}, {"_id": 0, "name": 1})
+        tx["admin_name"] = admin_doc.get("username", "Unknown") if admin_doc else "Unknown"
+        tx["client_name"] = client_doc.get("name", "Unknown") if client_doc else "Unknown"
+        if tx.get("completed_at"):
+            tx["completed_at"] = tx["completed_at"].isoformat() if hasattr(tx["completed_at"], 'isoformat') else str(tx["completed_at"])
+    
+    return {
+        "platform_fee_percent": PLATFORM_FEE_PERCENT,
+        "total_volume": round(totals.get("total_volume", 0), 2),
+        "total_fees_earned": round(totals.get("total_fees", 0), 2),
+        "total_transactions": totals.get("total_transactions", 0),
+        "connected_accounts": connected_count,
+        "pending_accounts": pending_count,
+        "monthly_breakdown": [
+            {
+                "month": f"{m['_id']['year']}-{m['_id']['month']:02d}",
+                "volume": round(m["volume"], 2),
+                "fees": round(m["fees"], 2),
+                "count": m["count"],
+            }
+            for m in monthly
+        ],
+        "recent_transactions": recent,
+    }
+
+
+@router.post("/connect/send-payment-link")
+async def send_payment_link_to_client(
+    request: Request,
+    admin_token: str = Query(...),
+    client_id: str = Query(...),
+    loan_id: str = Query(...),
+    amount: float = Query(None),
+    message: str = Query(default="You have a payment link for your loan."),
+):
+    """Create a payment link and send it to the client via in-app messaging + push notification."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    
+    # Check plan access
+    plan = admin.get("plan", "starter")
+    is_super = admin.get("is_super_admin", False)
+    if plan not in ("enterprise", "custom") and not is_super:
+        raise HTTPException(status_code=403, detail="Payment links require Enterprise or Custom plan.")
+    
+    # Verify Connect is set up
+    account_id = admin.get("stripe_connect_account_id")
+    if not account_id:
+        raise HTTPException(status_code=400, detail="Stripe Connect not set up. Go to Settings to connect your Stripe account.")
+    
+    # Check account is active
+    try:
+        account = stripe.Account.retrieve(account_id)
+        if not account.charges_enabled:
+            raise HTTPException(status_code=400, detail="Stripe account not fully activated.")
+    except stripe.error.StripeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    # Get client and loan
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    loan = await db.loans.find_one({"id": loan_id}, {"_id": 0})
+    if not loan:
+        raise HTTPException(status_code=404, detail="Loan not found")
+    
+    if not amount:
+        amount = loan.get("outstanding_balance", 0)
+    
+    if not amount or amount <= 0:
+        raise HTTPException(status_code=400, detail="Invalid payment amount")
+    
+    # Calculate platform fee
+    application_fee_amount = int(round(amount * PLATFORM_FEE_PERCENT / 100 * 100))
+    amount_cents = int(round(amount * 100))
+    
+    host_url = str(request.base_url).rstrip("/")
+    payment_id = str(uuid.uuid4())
+    
+    try:
+        # Create Checkout Session
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": "eur",
+                    "product_data": {
+                        "name": f"Loan Payment - {client.get('name', 'Client')}",
+                        "description": f"Payment of {amount:.2f} EUR",
+                    },
+                    "unit_amount": amount_cents,
+                },
+                "quantity": 1,
+            }],
+            mode="payment",
+            success_url=f"{host_url}/api/connect/payment/success?session_id={{CHECKOUT_SESSION_ID}}&payment_id={payment_id}",
+            cancel_url=f"{host_url}/api/connect/payment/cancel?payment_id={payment_id}",
+            payment_intent_data={
+                "application_fee_amount": application_fee_amount,
+                "transfer_data": {"destination": account_id},
+            },
+            metadata={
+                "payment_id": payment_id,
+                "admin_id": admin_id,
+                "client_id": client_id,
+                "loan_id": loan_id,
+            },
+        )
+        
+        # Save payment record
+        await db.connect_payments.insert_one({
+            "id": payment_id,
+            "session_id": session.id,
+            "admin_id": admin_id,
+            "client_id": client_id,
+            "loan_id": loan_id,
+            "amount": amount,
+            "amount_cents": amount_cents,
+            "platform_fee_cents": application_fee_amount,
+            "platform_fee_percent": PLATFORM_FEE_PERCENT,
+            "destination_account": account_id,
+            "status": "pending",
+            "payment_status": "initiated",
+            "created_at": datetime.now(timezone.utc),
+        })
+        
+        # Send in-app message with payment link
+        msg_text = f"{message}\n\nPayment amount: {amount:.2f} EUR\nPay here: {session.url}"
+        msg_record = {
+            "id": str(uuid.uuid4()),
+            "client_id": client_id,
+            "sender_type": "admin",
+            "sender_id": admin_id,
+            "text": msg_text,
+            "type": "payment_link",
+            "payment_url": session.url,
+            "payment_id": payment_id,
+            "amount": amount,
+            "created_at": datetime.now(timezone.utc),
+        }
+        await db.messages.insert_one(msg_record)
+        
+        # Send push notification to client
+        push_sent = False
+        client_device = await db.devices.find_one(
+            {"client_id": client_id},
+            {"_id": 0, "expo_push_token": 1, "push_token": 1}
+        )
+        push_token = None
+        if client_device:
+            push_token = client_device.get("expo_push_token") or client_device.get("push_token")
+        
+        if push_token and push_token.startswith("ExponentPushToken"):
+            try:
+                import httpx
+                async with httpx.AsyncClient(timeout=15) as http_client:
+                    resp = await http_client.post(
+                        "https://exp.host/--/api/v2/push/send",
+                        json={
+                            "to": push_token,
+                            "title": "Payment Request",
+                            "body": f"You have a payment of {amount:.2f} EUR. Tap to pay.",
+                            "sound": "default",
+                            "priority": "high",
+                            "data": {
+                                "type": "payment_link",
+                                "payment_url": session.url,
+                                "amount": amount,
+                                "payment_id": payment_id,
+                            },
+                        },
+                    )
+                    push_sent = resp.status_code == 200
+            except Exception as e:
+                logger.error(f"Push notification failed: {e}")
+        
+        return {
+            "success": True,
+            "payment_url": session.url,
+            "payment_id": payment_id,
+            "amount": amount,
+            "platform_fee": round(amount * PLATFORM_FEE_PERCENT / 100, 2),
+            "message_sent": True,
+            "push_notification_sent": push_sent,
+        }
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe Connect payment link error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

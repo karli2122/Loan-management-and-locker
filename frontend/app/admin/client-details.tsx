@@ -733,6 +733,7 @@ export default function ClientDetails() {
               clientId={id}
               clientName={client?.name}
               refreshKey={loanRefreshKey}
+              adminPlan={plan}
               onRecordPayment={(loanId, loan, dueTodayAmount) => {
                 setSelectedLoanId(loanId);
                 setSelectedLoan(loan);
