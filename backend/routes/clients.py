@@ -56,6 +56,13 @@ async def create_client(client_data: ClientCreate, admin_token: str = Query(...)
         client_dict["loan_due_date"] = client_data.emi_due_date
         client_dict["next_payment_due"] = client_data.emi_due_date
     await db.clients.insert_one(client_dict)
+    # Set initial credit score
+    client_dict.pop("_id", None)
+    if not client_dict.get("credit_score"):
+        await db.clients.update_one(
+            {"id": client.id},
+            {"$set": {"credit_score": 500}}
+        )
     await log_audit(admin_id, AuditAction.CLIENT_CREATE, "client", client.id, client.name, f"Created client with phone {client.phone}")
     return client
 

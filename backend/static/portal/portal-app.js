@@ -585,7 +585,7 @@ async function renderClientDetail(el) {
           <td style="display:flex;gap:4px">
             <button class="btn btn-ghost btn-sm" onclick="showEditLoan('${l.id}','${c.id}')" title="Edit Loan"><i class="fas fa-edit"></i></button>
             <button class="btn btn-ghost btn-sm" onclick="deleteLoan('${l.id}','${c.id}')" title="Delete Loan" style="color:var(--error)"><i class="fas fa-trash"></i></button>
-            <button class="btn btn-ghost btn-sm" onclick="shareLoanContract('${l.id}')" title="Share Contract"><i class="fas fa-share-alt"></i></button>
+            <button class="btn btn-ghost btn-sm" onclick="downloadLoanContract('${l.id}')" title="Download Contract"><i class="fas fa-file-pdf"></i></button>
             <button class="btn btn-ghost btn-sm" onclick="showLoanSchedule('${l.id}','${c.id}')" title="View Schedule"><i class="fas fa-calendar"></i></button>
           </td>
         </tr>`}).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No loans</td></tr>'}
@@ -811,7 +811,42 @@ async function sendReminder(clientId, type) {
 }
 
 function downloadContract(clientId) {
-  window.open(`${API_BASE}/contracts/${clientId}/download?admin_token=${state.token}&language=${state.language}`, '_blank');
+  // Fetch client loans to check if multiple exist
+  api('GET', `/loans/client/${clientId}?status=all`).then(data => {
+    const activeLoans = (data.loans || []).filter(l => l.status === 'active');
+    if (activeLoans.length === 0) {
+      // Fallback to old contract per client
+      window.open(`${API_BASE}/contracts/${clientId}/download?admin_token=${state.token}&language=${state.language}`, '_blank');
+    } else if (activeLoans.length === 1) {
+      // Single loan - download directly
+      window.open(`${API_BASE}/contracts/loan/${activeLoans[0].id}/download?admin_token=${state.token}&language=${state.language}`, '_blank');
+    } else {
+      // Multiple loans - prompt which one
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.id = 'modal-overlay';
+      overlay.innerHTML = `<div class="modal">
+        <h3>Select Loan Contract</h3>
+        <p style="color:var(--text-muted);margin-bottom:16px">This client has ${activeLoans.length} active loans. Select which contract to download:</p>
+        ${activeLoans.map((l, i) => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:background 0.2s" 
+               onmouseover="this.style.background='var(--bg-input)'" onmouseout="this.style.background=''" 
+               onclick="window.open('${API_BASE}/contracts/loan/${l.id}/download?admin_token=${state.token}&language=${state.language}','_blank');closeModal()">
+            <div>
+              <div style="font-weight:600">Loan #${i+1} - ${cur(l.loan_amount || 0)}</div>
+              <div style="font-size:12px;color:var(--text-muted)">Rate: ${l.interest_rate||0}% | Due: ${l.due_date ? fmtDate(l.due_date) : '-'}</div>
+            </div>
+            <i class="fas fa-download" style="color:var(--primary)"></i>
+          </div>
+        `).join('')}
+        <button class="btn btn-ghost" onclick="closeModal()" style="margin-top:12px;width:100%">Cancel</button>
+      </div>`;
+      document.body.appendChild(overlay);
+    }
+  }).catch(err => {
+    // Fallback to old contract
+    window.open(`${API_BASE}/contracts/${clientId}/download?admin_token=${state.token}&language=${state.language}`, '_blank');
+  });
 }
 
 function showAddClient() {
@@ -1052,6 +1087,11 @@ async function deleteLoan(loanId, clientId) {
     state.selectedClient = state.clients.find(c => c.id === clientId);
     renderClientDetail(document.getElementById('page-content'));
   } catch(err) { toast(err.message, 'error'); }
+}
+
+// Download loan-specific contract PDF
+function downloadLoanContract(loanId) {
+  window.open(`${API_BASE}/contracts/loan/${loanId}/download?admin_token=${state.token}&language=${state.language}`, '_blank');
 }
 
 // Share loan contract function

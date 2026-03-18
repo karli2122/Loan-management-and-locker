@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCurrency } from '../../context/CurrencyContext';
@@ -14,6 +14,7 @@ export const MultiLoanOverview = ({
   onRecordPayment,
   onAddNewLoan,
   onEditLoan,
+  refreshKey,
 }) => {
   const { formatAmount } = useCurrency();
   const { t } = useLanguage();
@@ -21,6 +22,7 @@ export const MultiLoanOverview = ({
   const [loans, setLoans] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchLoans = useCallback(async () => {
     try {
@@ -42,26 +44,20 @@ export const MultiLoanOverview = ({
     }
   }, [clientId]);
 
-  // Refresh loans every time the screen comes into focus (fixes ~1min delay after adding loan)
+  // Fetch loans on mount and when screen regains focus
   useFocusEffect(
     useCallback(() => {
       fetchLoans();
     }, [fetchLoans])
   );
 
-  // Calculate due today amount based on payment schedule
-  const getDueTodayAmount = (loan) => {
-    if (!loan.next_payment_date) return 0;
-    const today = new Date().toISOString().split('T')[0];
-    if (loan.next_payment_date === today) {
-      return loan.next_payment_amount || loan.emi_amount || 0;
-    }
-    return 0;
-  };
+  // Also refresh when refreshKey changes (e.g., after payment from parent)
+  useEffect(() => {
+    if (refreshKey) fetchLoans();
+  }, [refreshKey]);
 
   // Calculate interest amount
   const getInterestAmount = (loan) => {
-    // Use pre-calculated interest_amount if available
     if (loan.interest_amount) return loan.interest_amount;
     const principal = loan.loan_amount || 0;
     const total = loan.total_amount_due || loan.total_amount || principal;
@@ -73,6 +69,56 @@ export const MultiLoanOverview = ({
     const totalDue = loan.total_amount_due || loan.total_amount || loan.outstanding_balance || 0;
     if (!totalDue || totalDue === 0) return 0;
     return ((loan.total_paid || 0) / totalDue * 100).toFixed(1);
+  };
+
+  // Delete a loan
+  const handleDeleteLoan = async (loanId: string) => {
+    Alert.alert(
+      'Delete Loan',
+      'Are you sure you want to delete this loan? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setActionLoading(loanId);
+            try {
+              const token = await AsyncStorage.getItem('admin_token');
+              const resp = await fetch(
+                `${API_URL}/api/loans/${loanId}?admin_token=${token}`,
+                { method: 'DELETE' }
+              );
+              if (resp.ok) {
+                Alert.alert('Success', 'Loan deleted successfully');
+                fetchLoans();
+              } else {
+                const err = await resp.json().catch(() => ({}));
+                Alert.alert('Error', err.detail || 'Failed to delete loan');
+              }
+            } catch (e) {
+              Alert.alert('Error', 'Failed to delete loan');
+            } finally {
+              setActionLoading(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Share contract - download PDF
+  const handleShareContract = async (loanId: string) => {
+    setActionLoading(loanId);
+    try {
+      const token = await AsyncStorage.getItem('admin_token');
+      const url = `${API_URL}/api/contracts/loan/${loanId}/download?admin_token=${token}&language=en`;
+      await Linking.openURL(url);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to open contract');
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   if (loading) {
@@ -168,8 +214,8 @@ export const MultiLoanOverview = ({
                 </View>
                 <View style={styles.loanRow}>
                   <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Due Today</Text>
-                  <Text style={[styles.loanValue, { color: getDueTodayAmount(loan) > 0 ? '#EF4444' : colors.textMuted }]}>
-                    {getDueTodayAmount(loan) > 0 ? formatAmount(getDueTodayAmount(loan)) : '-'}
+                  <Text style={[styles.loanValue, { color: (loan.due_today_amount || 0) > 0 ? '#EF4444' : colors.textMuted }]}>
+                    {(loan.due_today_amount || 0) > 0 ? formatAmount(loan.due_today_amount) : '-'}
                   </Text>
                 </View>
                 <View style={styles.loanRow}>
@@ -190,20 +236,47 @@ export const MultiLoanOverview = ({
                   <View 
                     style={[
                       styles.progressFill, 
-                      { width: `${getPaidPercentage(loan)}%` }
+                      { width: `${Math.min(parseFloat(getPaidPercentage(loan)), 100)}%` }
                     ]} 
                   />
                 </View>
               </View>
 
-              <TouchableOpacity
-                style={[styles.paymentBtn, { backgroundColor: '#10B981' }]}
-                onPress={() => onRecordPayment(loan.id, loan)}
-                data-testid={`record-payment-btn-${loan.id}`}
-              >
-                <Ionicons name="card" size={16} color="#fff" />
-                <Text style={styles.paymentBtnText}>Record Payment</Text>
-              </TouchableOpacity>
+              {/* Action Buttons Row */}
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: '#10B981' }]}
+                  onPress={() => onRecordPayment(loan.id, loan, loan.due_today_amount || 0)}
+                  data-testid={`record-payment-btn-${loan.id}`}
+                >
+                  <Ionicons name="card" size={14} color="#fff" />
+                  <Text style={styles.actionBtnText}>Record Payment</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: '#3B82F6' }]}
+                  onPress={() => handleShareContract(loan.id)}
+                  disabled={actionLoading === loan.id}
+                  data-testid={`share-contract-btn-${loan.id}`}
+                >
+                  {actionLoading === loan.id ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Ionicons name="document-text" size={14} color="#fff" />
+                      <Text style={styles.actionBtnText}>Contract</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: '#EF4444' }]}
+                  onPress={() => handleDeleteLoan(loan.id)}
+                  disabled={actionLoading === loan.id}
+                  data-testid={`delete-loan-btn-${loan.id}`}
+                >
+                  <Ionicons name="trash" size={14} color="#fff" />
+                  <Text style={styles.actionBtnText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
         </View>
@@ -382,34 +455,33 @@ const styles = StyleSheet.create({
   loanRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
   loanLabel: {
     fontSize: 13,
   },
   loanValue: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
   },
   progressContainer: {
     marginTop: 12,
-    marginBottom: 12,
   },
   progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 6,
   },
   progressLabel: {
     fontSize: 12,
   },
   progressPercent: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
   },
   progressBar: {
     height: 6,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#1E293B',
     borderRadius: 3,
     overflow: 'hidden',
   },
@@ -418,37 +490,38 @@ const styles = StyleSheet.create({
     backgroundColor: '#10B981',
     borderRadius: 3,
   },
-  progressText: {
-    fontSize: 11,
-    textAlign: 'right',
-    marginTop: 4,
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
   },
-  paymentBtn: {
+  actionBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
+    paddingVertical: 10,
     borderRadius: 8,
-    gap: 8,
+    gap: 4,
   },
-  paymentBtnText: {
+  actionBtnText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
   emptyState: {
-    alignItems: 'center',
     padding: 32,
-    borderRadius: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    gap: 8,
   },
   emptyTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginTop: 12,
   },
   emptySubtitle: {
     fontSize: 13,
-    marginTop: 4,
+    textAlign: 'center',
   },
 });
 

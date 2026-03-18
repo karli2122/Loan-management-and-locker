@@ -43,6 +43,7 @@ from routes import (
     sessions_router,
     analytics_router,
     document_vault_router,
+    stripe_connect_router,
 )
 from routes.backup import router as backup_router
 from routes.provisioning import router as provisioning_router
@@ -126,6 +127,7 @@ app.include_router(credit_score_router, prefix="/api")
 app.include_router(paid_loans_router, prefix="/api")
 app.include_router(bank_statements_router, prefix="/api")
 app.include_router(payments_router, prefix="/api")
+app.include_router(stripe_connect_router, prefix="/api")
 app.include_router(backup_router)
 app.include_router(provisioning_router)
 app.include_router(plans_router)

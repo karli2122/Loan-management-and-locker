@@ -33,22 +33,34 @@ async def get_client_loans(
         if not loan.get("next_payment_date") and loan.get("due_date"):
             loan["next_payment_date"] = loan["due_date"]
         
-        # Calculate due today amount (amount due if past due date)
-        if loan.get("due_date"):
+        # Calculate due today amount (simple interest by day: what client owes if paying today)
+        if loan.get("given_date") and loan.get("status") == "active":
             from datetime import datetime, timezone
             try:
-                due = loan["due_date"]
-                if isinstance(due, str):
-                    due = datetime.fromisoformat(due.replace("Z", "+00:00"))
-                if due.tzinfo is None:
-                    due = due.replace(tzinfo=timezone.utc)
+                given = loan["given_date"]
+                if isinstance(given, str):
+                    given = datetime.fromisoformat(given.replace("Z", "+00:00"))
+                if hasattr(given, 'tzinfo') and given.tzinfo is None:
+                    given = given.replace(tzinfo=timezone.utc)
                 now = datetime.now(timezone.utc)
-                if now >= due:
-                    loan["due_today_amount"] = loan.get("outstanding_balance", 0)
+                if hasattr(given, 'date'):
+                    days_elapsed = (now.date() - given.date()).days
                 else:
-                    loan["due_today_amount"] = 0
-            except:
-                loan["due_today_amount"] = 0
+                    days_elapsed = (now - given).days
+                if days_elapsed < 0:
+                    days_elapsed = 0
+                # Simple interest by day: Principal + Principal * (Rate/100) * (days/30)
+                principal = loan.get("loan_amount", 0)
+                rate = loan.get("interest_rate", 0)
+                interest_today = principal * (rate / 100) * (days_elapsed / 30)
+                total_due_today = round(principal + interest_today, 2)
+                already_paid = loan.get("total_paid", 0) or 0
+                loan["due_today_amount"] = max(0, round(total_due_today - already_paid, 2))
+                loan["days_elapsed"] = days_elapsed
+            except Exception:
+                loan["due_today_amount"] = loan.get("outstanding_balance", 0)
+        else:
+            loan["due_today_amount"] = loan.get("outstanding_balance", 0)
         
         # Calculate next payment amount
         if not loan.get("next_payment_amount"):
@@ -150,31 +162,42 @@ async def record_loan_payment(
     if loan.get("status") != "active":
         raise HTTPException(status_code=400, detail="Cannot record payment for archived loan")
     
-    # Calculate payment allocation
+    # Calculate due_today_amount (simple interest by day)
     outstanding = loan.get("outstanding_balance", 0)
     loan_amount = loan.get("loan_amount", 0)
     interest_rate = loan.get("interest_rate", 0)
-    interest_due = loan.get("total_amount_due", 0) - loan_amount
     
-    principal_portion = 0
-    interest_portion = 0
-    extra_interest = 0
+    due_today_amount = outstanding  # fallback
+    try:
+        given = loan.get("given_date")
+        if given and interest_rate > 0:
+            if isinstance(given, str):
+                given = datetime.fromisoformat(given.replace("Z", "+00:00"))
+            if hasattr(given, 'tzinfo') and given.tzinfo is None:
+                given = given.replace(tzinfo=timezone.utc)
+            now = datetime.now(timezone.utc)
+            if hasattr(given, 'date'):
+                days_elapsed = (now.date() - given.date()).days
+            else:
+                days_elapsed = (now - given).days
+            if days_elapsed < 0:
+                days_elapsed = 0
+            interest_today = loan_amount * (interest_rate / 100) * (days_elapsed / 30)
+            total_due_today = round(loan_amount + interest_today, 2)
+            already_paid = loan.get("total_paid", 0) or 0
+            due_today_amount = max(0, round(total_due_today - already_paid, 2))
+    except Exception:
+        pass
     
-    if amount >= outstanding:
-        # Full payoff or overpayment
-        if amount > outstanding:
-            extra_interest = round(amount - outstanding, 2)
-        principal_portion = loan_amount - (loan.get("total_paid", 0) or 0)
-        interest_portion = interest_due + extra_interest
+    # Determine if loan should be completed
+    # If payment covers due_today_amount (daily interest), loan is fully paid
+    if amount >= due_today_amount and due_today_amount > 0:
         new_outstanding = 0
-        new_status = "archived"  # Auto-archive when fully paid
+        new_status = "archived"
+    elif amount >= outstanding:
+        new_outstanding = 0
+        new_status = "archived"
     else:
-        # Partial payment
-        if amount <= interest_due:
-            interest_portion = amount
-        else:
-            interest_portion = interest_due
-            principal_portion = amount - interest_due
         new_outstanding = max(outstanding - amount, 0)
         new_status = "active"
     
@@ -198,8 +221,6 @@ async def record_loan_payment(
         "client_id": loan.get("client_id"),
         "admin_id": admin_id,
         "amount": amount,
-        "principal_portion": principal_portion,
-        "interest_portion": interest_portion,
         "payment_date": datetime.fromisoformat(payment_date) if payment_date else datetime.now(timezone.utc),
         "payment_method": "bank_transfer",
         "notes": notes or f"Payment for loan {loan_id}",
@@ -224,6 +245,36 @@ async def record_loan_payment(
                 "has_multiple_loans": len(active_loans) > 1,
             }}
         )
+    
+    # Update credit score based on payment timing
+    credit_score_change = 0
+    credit_score_reason = ""
+    try:
+        client = await db.clients.find_one({"id": client_id}, {"_id": 0}) if client_id else None
+        if client:
+            days_overdue = client.get("days_overdue", 0)
+            is_late = client.get("is_late", False)
+            if days_overdue > 0 or is_late:
+                credit_score_change = -10
+                credit_score_reason = f"late_payment_{days_overdue}_days_overdue"
+            else:
+                credit_score_change = 5
+                credit_score_reason = "on_time_payment"
+            
+            if new_status == "archived":
+                credit_score_change += 20
+                credit_score_reason += "_loan_completed"
+            
+            if credit_score_change != 0:
+                from routes.credit_score import update_credit_score
+                await update_credit_score(
+                    client_id=client_id,
+                    change_amount=credit_score_change,
+                    reason=credit_score_reason,
+                    admin_id=admin_id
+                )
+    except Exception as e:
+        logger.error(f"Credit score update failed for loan {loan_id}: {e}")
     
     return {
         "success": True,

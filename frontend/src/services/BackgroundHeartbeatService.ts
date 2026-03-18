@@ -136,7 +136,7 @@ async function sendHeartbeat(): Promise<boolean> {
       imei: payload.imei?.substring(0, 10) + '...',
     });
 
-    const response = await fetch(`${API_URL}/device/update-info`, {
+    const response = await fetch(`${API_URL}/api/device/update-info`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

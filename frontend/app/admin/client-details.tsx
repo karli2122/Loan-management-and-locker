@@ -19,7 +19,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
-import LoanRestructureModal from '../../src/components/admin/LoanRestructureModal';
 import DocumentVaultModal from '../../src/components/admin/DocumentVaultModal';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { useTheme } from '../../src/context/ThemeContext';
@@ -72,7 +71,8 @@ export default function ClientDetails() {
   const [editDeviceModal, setEditDeviceModal] = useState(false);
   const [editClientModal, setEditClientModal] = useState(false);
   const [editLoanModal, setEditLoanModal] = useState(false);
-  const [restructureModal, setRestructureModal] = useState(false);
+  // Remove unused restructure state
+  const [loanRefreshKey, setLoanRefreshKey] = useState(0);
   const [docVaultModal, setDocVaultModal] = useState(false);
 
   // Modal form state
@@ -498,6 +498,7 @@ export default function ClientDetails() {
       setPaymentNotes('');
       setSelectedLoanId(null);
       setSelectedLoan(null);
+      setLoanRefreshKey(prev => prev + 1);
       fetchClient();
     } catch (error) { Alert.alert(t('error'), error.message || 'Failed to record payment'); }
     finally { setActionLoading(false); }
@@ -731,10 +732,11 @@ export default function ClientDetails() {
             <MultiLoanOverview
               clientId={id}
               clientName={client?.name}
-              onRecordPayment={(loanId, loan) => {
+              refreshKey={loanRefreshKey}
+              onRecordPayment={(loanId, loan, dueTodayAmount) => {
                 setSelectedLoanId(loanId);
                 setSelectedLoan(loan);
-                setPaymentAmount('');
+                setPaymentAmount(dueTodayAmount > 0 ? String(dueTodayAmount) : '');
                 setPaymentModal(true);
               }}
               onAddNewLoan={() => router.push(`/admin/add-loan?clientId=${id}`)}
@@ -774,25 +776,8 @@ export default function ClientDetails() {
           canAccessDeviceLock={canAccess('device_lock')}
         />
 
-        {/* Restructure & Documents Buttons */}
+        {/* Documents Button */}
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 12, marginBottom: 16, paddingHorizontal: 16 }}>
-          {canAccess('loan_restructure') ? (
-            <TouchableOpacity onPress={() => setRestructureModal(true)}
-              style={{ flex: 1, backgroundColor: '#1E3A5F', borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="swap-horizontal" size={18} color="#3B82F6" />
-              <Text style={{ color: '#93C5FD', fontWeight: '600', fontSize: 13, marginLeft: 6 }}>Restructure</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity 
-              onPress={() => Alert.alert('Professional Feature', 'Loan restructuring requires the Professional plan or higher. Would you like to upgrade?', [
-                { text: t('cancel'), style: 'cancel' },
-                { text: 'Upgrade', onPress: () => router.push('/admin/settings') },
-              ])}
-              style={{ flex: 1, backgroundColor: '#1E3A5F', borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', opacity: 0.6 }}>
-              <Ionicons name="lock-closed" size={18} color="#64748B" />
-              <Text style={{ color: '#64748B', fontWeight: '600', fontSize: 13, marginLeft: 6 }}>Restructure</Text>
-            </TouchableOpacity>
-          )}
           {canAccess('document_vault') ? (
             <TouchableOpacity onPress={() => setDocVaultModal(true)}
               style={{ flex: 1, backgroundColor: '#1E3A5F', borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
@@ -1026,16 +1011,6 @@ export default function ClientDetails() {
         onFetchPreview={fetchLoanPreview}
         onConfirm={handleSaveLoan}
         onClose={() => { setEditLoanModal(false); setLoanPreview(null); }}
-      />
-
-      {/* Loan Restructure Modal */}
-      <LoanRestructureModal
-        clientId={client?.id || ''}
-        clientName={client?.name || ''}
-        adminToken={adminToken}
-        colors={colors}
-        visible={restructureModal}
-        onClose={() => setRestructureModal(false)}
       />
 
       {/* Document Vault Modal */}

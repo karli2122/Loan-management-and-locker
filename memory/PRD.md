@@ -3,7 +3,55 @@
 ## Original Problem Statement
 Full-stack loan management application "PayLock Pro" with tiered subscription model (Starter, Professional, Enterprise, Demo), React Native mobile apps (Admin + Client), FastAPI backend, static website, and web portal.
 
-## Latest Update: v1.3.6 - 2026-03-17
+## Latest Update: v1.4.0 - 2026-03-18
+
+### Features & Fixes Applied in This Session
+
+**1. Scoring System Fixed**
+- `record_loan_payment` now updates credit score after each payment (+5 on-time, -10 late, +20 loan completed)
+- New clients get initial credit score of 500
+- Integrated `update_credit_score` from `credit_score.py` into multi-loan payment flow
+
+**2. Due Today = Simple Interest by Day (Loan Completion)**
+- Backend calculates: `Principal + Principal × (Rate/100) × (DaysElapsed/30) - AlreadyPaid`
+- Paying `due_today_amount` fully completes/archives the loan
+- Amount prefills the "Record Payment" field in admin app
+
+**3. MultiLoanOverview Auto-Refresh**
+- Uses `useFocusEffect` for refresh on screen focus (after adding loan)
+- Added `refreshKey` prop incremented after payment for instant data update
+
+**4. Delete Loan & Share Contract Buttons (Admin App)**
+- Added "Contract" (PDF download) and "Delete" buttons to each active loan card
+- Contract downloads from `/api/contracts/loan/{loan_id}/download`
+- Delete with confirmation dialog
+
+**5. Restructure Removed from Client Details**
+- Removed Restructure button and modal from client-details UI
+
+**6. Web Portal Contract Improvements**
+- Top "Contract" button now asks which loan if client has multiple active loans
+- Active loans "Contract" button now downloads PDF (was text share)
+- New `downloadLoanContract()` function for per-loan PDF download
+
+**7. Stripe Connect - Payment Forwarding (NEW)**
+- Full Stripe Connect Express integration with 0.75% platform fee
+- Enterprise/Custom plans only
+- Endpoints: `/api/connect/onboard`, `/api/connect/status`, `/api/connect/payment-link`
+- Destination charges with automatic fee splitting
+- Connected account onboarding flow
+
+**8. Background Heartbeat URL Fix**
+- Fixed URL from `${API_URL}/device/update-info` to `${API_URL}/api/device/update-info`
+
+### New Files
+- `/app/backend/routes/stripe_connect.py` - Stripe Connect payment forwarding
+
+### Deployed
+- All backend changes deployed to VPS at `/opt/paylock/backend/`
+- EAS builds submitted for admin and client apps
+
+## Previous Update: v1.3.6 - 2026-03-17
 
 ### Fixes Applied in This Session
 

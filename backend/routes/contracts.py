@@ -519,3 +519,70 @@ async def download_contract(client_id: str, admin_token: str = Query(...), langu
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+
+@router.get("/contracts/loan/{loan_id}/download")
+async def download_loan_contract(loan_id: str, admin_token: str = Query(...), language: str = Query(default="et"), currency: str = Query(default="EUR")):
+    """Generate and download a loan contract PDF for a specific loan."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    
+    # Get the loan
+    loan = await db.loans.find_one({"id": loan_id}, {"_id": 0})
+    if not loan:
+        raise HTTPException(status_code=404, detail="Loan not found")
+    
+    # Get the client
+    client_id = loan.get("client_id")
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    await enforce_client_scope(client, admin_id)
+    
+    # Get admin (lender) info
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0, "password_hash": 0})
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    
+    # Get loan data
+    loan_amt = loan.get("loan_amount", 0)
+    interest_rate_val = loan.get("interest_rate", 0)
+    total_amount = loan.get("total_amount", 0) or loan.get("total_amount_due", 0)
+    if total_amount and total_amount > loan_amt:
+        total_repayment = total_amount
+    elif loan_amt > 0 and interest_rate_val > 0:
+        tenure = loan.get("tenure_months", 1) or 1
+        total_repayment = loan_amt + (loan_amt * interest_rate_val / 100 * tenure)
+    else:
+        total_repayment = loan_amt
+    
+    # Get due date
+    due_date = "N/A"
+    if loan.get("due_date"):
+        dd = loan["due_date"]
+        if isinstance(dd, datetime):
+            due_date = dd.strftime("%d.%m.%Y")
+        else:
+            due_date = str(dd)[:10]
+    
+    # Generate PDF using the same generator
+    pdf_bytes = generate_loan_contract_pdf(
+        lender=admin,
+        client=client,
+        loan_amount=loan_amt,
+        due_date=due_date,
+        total_repayment=round(total_repayment, 2),
+        interest_rate=interest_rate_val,
+        language=language,
+        currency=currency
+    )
+    
+    prefix = "loan_agreement" if language.lower()[:2] == "en" else "laenuleping"
+    filename = f"{prefix}_{client.get('name', 'client').replace(' ', '_')}_{loan_id[:8]}_{datetime.now().strftime('%Y%m%d')}.pdf"
+    
+    return StreamingResponse(
+        BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
