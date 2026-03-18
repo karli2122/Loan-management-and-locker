@@ -109,6 +109,14 @@ async def get_device_status(client_id: str):
     else:
         due_date_str = None
     
+    # Get admin's plan for client-side feature gating
+    admin_plan = None
+    admin_id = client.get("admin_id")
+    if admin_id:
+        admin = await db.admins.find_one({"id": admin_id}, {"_id": 0, "plan": 1})
+        if admin:
+            admin_plan = admin.get("plan")
+    
     return ClientStatusResponse(
         id=client["id"],
         name=client["name"],
@@ -122,6 +130,7 @@ async def get_device_status(client_id: str):
         uninstall_allowed=client.get("uninstall_allowed", False),
         is_deleted=client.get("is_deleted", False),
         lock_mode=client.get("lock_mode", "device_admin"),
+        admin_plan=admin_plan,
     )
 
 

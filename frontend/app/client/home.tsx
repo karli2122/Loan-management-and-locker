@@ -96,6 +96,7 @@ export default function ClientHome() {
   const maxRetries = 5;
   const [emergencyCallActive, setEmergencyCallActive] = useState(false);
   const emergencyCallCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [adminPlan, setAdminPlan] = useState<string | null>(null);
   
   // In-app messaging state
   const [showChat, setShowChat] = useState(false);
@@ -414,6 +415,11 @@ export default function ClientHome() {
       }
       
       setStatus(statusToSet);
+      
+      // Store admin plan for feature gating
+      if (data.admin_plan) {
+        setAdminPlan(data.admin_plan);
+      }
       
       // Show system notification when a NEW warning arrives
       if (statusToSet.warning_message && statusToSet.warning_message !== lastWarningRef.current) {
@@ -2046,7 +2052,8 @@ export default function ClientHome() {
         )}
       </ScrollView>
 
-      {/* Chat Floating Button */}
+      {/* Chat Floating Button - Only for enterprise/custom admin plans */}
+      {(adminPlan === 'enterprise' || adminPlan === 'custom') && (
       <TouchableOpacity
         style={{ position: 'absolute', bottom: 90, right: 24, backgroundColor: '#10B981', width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, zIndex: 100 }}
         onPress={() => { setShowChat(true); fetchMessages(); }}
@@ -2054,6 +2061,7 @@ export default function ClientHome() {
       >
         <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
       </TouchableOpacity>
+      )}
 
       {/* Chat Modal */}
       {showChat && (

@@ -644,3 +644,37 @@ async def send_payment_link_to_client(
     except stripe.error.StripeError as e:
         logger.error(f"Stripe Connect payment link error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/connect/platform-fee")
+async def get_platform_fee(admin_token: str = Query(...)):
+    """Get the current platform fee setting. Superadmin only."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0, "is_super_admin": 1})
+    if not admin or not admin.get("is_super_admin"):
+        raise HTTPException(status_code=403, detail="Superadmin access required")
+    
+    config = await db.platform_config.find_one({"key": "platform_fee"}, {"_id": 0})
+    fee = config["value"] if config else PLATFORM_FEE_PERCENT
+    return {"platform_fee_percent": fee}
+
+
+@router.put("/connect/platform-fee")
+async def set_platform_fee(admin_token: str = Query(...), fee_percent: float = Query(..., ge=0, le=10)):
+    """Set the platform fee percentage. Superadmin only. Range: 0-10%."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    admin = await db.admins.find_one({"id": admin_id}, {"_id": 0, "is_super_admin": 1})
+    if not admin or not admin.get("is_super_admin"):
+        raise HTTPException(status_code=403, detail="Superadmin access required")
+    
+    await db.platform_config.update_one(
+        {"key": "platform_fee"},
+        {"$set": {"key": "platform_fee", "value": fee_percent, "updated_at": datetime.now(timezone.utc).isoformat(), "updated_by": admin_id}},
+        upsert=True,
+    )
+    
+    global PLATFORM_FEE_PERCENT
+    PLATFORM_FEE_PERCENT = fee_percent
+    
+    logger.info(f"Platform fee updated to {fee_percent}% by superadmin {admin_id}")
+    return {"platform_fee_percent": fee_percent, "status": "updated"}

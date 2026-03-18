@@ -529,28 +529,7 @@ export default function Dashboard() {
           </View>
         )}
 
-        {/* Plan Badge */}
-        <View style={[styles.planBadgeContainer, { backgroundColor: colors.surface, borderColor: colors.border }]} data-testid="plan-badge">
-          <View style={styles.planBadgeContent}>
-            <Ionicons 
-              name={planFeatures.plan === 'enterprise' ? 'diamond' : planFeatures.plan === 'professional' ? 'star' : planFeatures.plan === 'demo' ? 'flask' : 'ribbon'} 
-              size={18} 
-              color={planFeatures.plan === 'enterprise' ? '#8B5CF6' : planFeatures.plan === 'professional' ? '#F59E0B' : planFeatures.plan === 'demo' ? '#6B7280' : '#3B82F6'} 
-            />
-            <Text style={[styles.planBadgeText, { color: colors.text }]}>
-              {planFeatures.plan.charAt(0).toUpperCase() + planFeatures.plan.slice(1)} Plan
-            </Text>
-          </View>
-          {(planFeatures.plan === 'starter' || planFeatures.plan === 'demo') && (
-            <TouchableOpacity 
-              style={styles.upgradePlanBtn}
-              onPress={() => router.push('/admin/subscription')}
-              data-testid="upgrade-plan-btn"
-            >
-              <Text style={styles.upgradePlanBtnText}>{t('upgrade') || 'Upgrade'}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        {/* Plan Badge removed per user request */}
 
         {/* Demo Mode Banner */}
         {planFeatures.plan === 'demo' && (
@@ -852,7 +831,7 @@ export default function Dashboard() {
         {hasFeature('heartbeat') ? (
           <TouchableOpacity
             style={[styles.heartbeatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => router.push('/admin/device-management')}
+            onPress={() => router.push('/admin/(tabs)/loans?filter=silent')}
             activeOpacity={0.8}
             data-testid="heartbeat-card"
           >

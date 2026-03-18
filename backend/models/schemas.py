@@ -191,6 +191,7 @@ class ClientStatusResponse(BaseModel):
     uninstall_allowed: bool = False
     is_deleted: bool = False
     lock_mode: str = "device_admin"
+    admin_plan: Optional[str] = None
 
 
 class DeviceRegistration(BaseModel):

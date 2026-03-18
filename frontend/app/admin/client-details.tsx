@@ -799,7 +799,8 @@ export default function ClientDetails() {
         </View>
       </ScrollView>
 
-      {/* Chat FAB */}
+      {/* Chat FAB - Only for enterprise/custom plans */}
+      {(plan === 'enterprise' || plan === 'custom') && (
       <TouchableOpacity
         style={{
           position: 'absolute', bottom: 60, right: 24, backgroundColor: '#10B981',
@@ -825,6 +826,7 @@ export default function ClientDetails() {
       >
         <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
       </TouchableOpacity>
+      )}
 
       {/* Chat Modal */}
       {showChat && (

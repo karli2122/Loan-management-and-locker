@@ -40,6 +40,8 @@ interface Client {
   credit_score?: number;
   imported?: boolean;
   import_needs_review?: boolean;
+  is_registered?: boolean;
+  last_heartbeat?: string;
 }
 
 interface PaidLoan {
@@ -151,6 +153,15 @@ export default function LoansTab() {
     }
   }, [filterParam]);
 
+  // Helper: is heartbeat silent (>12h ago or never)
+  const isHeartbeatSilent = (lastHeartbeat?: string): boolean => {
+    if (!lastHeartbeat) return true;
+    const hb = new Date(lastHeartbeat);
+    const now = new Date();
+    const diffMs = now.getTime() - hb.getTime();
+    return diffMs > 12 * 60 * 60 * 1000; // 12 hours
+  };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchClients();
@@ -198,6 +209,10 @@ export default function LoansTab() {
     } else if (filter === 'paid') {
       list = list.filter(
         (c) => getOutstanding(c) === 0 && (c.total_paid ?? 0) > 0
+      );
+    } else if (filter === 'silent') {
+      list = list.filter(
+        (c) => c.is_registered && isHeartbeatSilent(c.last_heartbeat)
       );
     }
 
@@ -293,11 +308,13 @@ export default function LoansTab() {
             {!item.import_needs_review && <Text style={[styles.clientPhone, { color: colors.textMuted }]}>{item.phone}</Text>}
           </View>
           <View style={[styles.statusBadge, item.is_locked ? styles.statusLocked : styles.statusUnlocked]}>
-            <Ionicons
-              name={item.is_locked ? 'lock-closed' : 'lock-open'}
-              size={14}
-              color="#fff"
-            />
+            {item.is_registered ? (
+              <Ionicons
+                name={item.is_locked ? 'lock-closed' : 'lock-open'}
+                size={14}
+                color="#fff"
+              />
+            ) : null}
           </View>
         </View>
         
@@ -331,7 +348,7 @@ export default function LoansTab() {
                 <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
                   {t('due')}
                 </Text>
-                <Text style={[styles.loanDetailValue, { color: outstanding > 0 ? colors.warning : colors.success }]}>
+                <Text style={[styles.loanDetailValue, { color: outstanding > 0 ? colors.warning : '#10B981' }]}>
                   {formatAmount(outstanding, 0)}
                 </Text>
               </View>
@@ -491,6 +508,8 @@ export default function LoansTab() {
           <Text style={[styles.filterText, { color: colors.textSecondary }]}>
             {filter === 'overdue'
               ? t('filterOverdue')
+              : filter === 'silent'
+              ? (t('filterSilent') || 'Silent Devices (No heartbeat >12h)')
               : t('filterPaid')}
           </Text>
           <TouchableOpacity onPress={() => setFilter(undefined)}>

@@ -119,7 +119,7 @@ export default function Dashboard() {
   const quickActions = [
     { icon: 'people', color: '#2563EB', label: t('viewClients'), route: '/admin/clients' },
     { icon: 'bar-chart', color: '#06B6D4', label: t('reports'), route: '/admin/reports' },
-    { icon: 'phone-portrait', color: '#F59E0B', label: t('deviceManagement'), route: '/admin/device-management' },
+    { icon: 'people', color: '#F59E0B', label: t('clientManagement') || t('deviceManagement'), route: '/admin/client-management' },
     { icon: 'notifications', color: '#EF4444', label: t('paymentReminders'), route: '/admin/payment-reminders' },
   ];
 

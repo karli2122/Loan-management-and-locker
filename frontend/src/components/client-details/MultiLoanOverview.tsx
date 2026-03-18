@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert, Linking, Share, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCurrency } from '../../context/CurrencyContext';
@@ -7,7 +7,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
-import * as IntentLauncher from 'expo-intent-launcher';
+import * as Sharing from 'expo-sharing';
 import API_URL from '../../constants/api';
 
 export const MultiLoanOverview = ({
@@ -167,26 +167,16 @@ export const MultiLoanOverview = ({
       const downloadResult = await FileSystem.downloadAsync(url, fileUri);
       
       if (downloadResult.status === 200) {
-        // Get content URI for sharing
-        const contentUri = await FileSystem.getContentUriAsync(downloadResult.uri);
-        
-        // Open Android native share dialog
-        if (Platform.OS === 'android') {
-          await IntentLauncher.startActivityAsync('android.intent.action.SEND', {
-            type: 'application/pdf',
-            extra: {
-              'android.intent.extra.STREAM': contentUri,
-              'android.intent.extra.SUBJECT': `Loan Contract - ${clientName || 'Client'}`,
-              'android.intent.extra.TEXT': `Loan contract for ${clientName || 'client'}.`,
-            },
-            flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(downloadResult.uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: `Loan Contract - ${clientName || 'Client'}`,
+            UTI: 'com.adobe.pdf',
           });
         } else {
-          // iOS fallback
-          await Share.share({
-            url: downloadResult.uri,
-            title: `Loan Contract - ${clientName || 'Client'}`,
-          });
+          // Fallback: open URL directly
+          await Linking.openURL(`${API_URL}/api/contracts/loan/${loanId}/download?admin_token=${token}&language=en`);
         }
       } else {
         Alert.alert('Error', 'Failed to download contract');

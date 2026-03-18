@@ -753,3 +753,86 @@ async def send_daily_digest():
             logger.error(f"Daily digest error: {e}")
         
         await asyncio.sleep(1800)  # Check every 30 minutes
+
+
+
+async def check_subscription_renewals():
+    """Check for expired subscriptions and handle downgrades. Runs every 6 hours."""
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            
+            # Find admins with expired subscriptions
+            expired_admins = await db.admins.find(
+                {
+                    "subscription_renewal_date": {"$lt": now},
+                    "plan": {"$nin": ["demo", None]},
+                    "subscription_status": "paid",
+                },
+                {"_id": 0, "id": 1, "email": 1, "plan": 1, "pending_plan": 1, "subscription_renewal_date": 1}
+            ).to_list(500)
+            
+            for admin in expired_admins:
+                admin_id = admin["id"]
+                pending_plan = admin.get("pending_plan")
+                
+                if pending_plan:
+                    # Apply pending downgrade
+                    new_role = "admin" if pending_plan in ("enterprise", "custom") else "user"
+                    await db.admins.update_one(
+                        {"id": admin_id},
+                        {
+                            "$set": {
+                                "plan": pending_plan,
+                                "subscription_plan": pending_plan,
+                                "role": new_role,
+                                "subscription_status": "expired",
+                            },
+                            "$unset": {"pending_plan": "", "pending_plan_date": ""}
+                        }
+                    )
+                    logger.info(f"Applied pending downgrade for admin {admin_id}: {admin.get('plan')} -> {pending_plan}")
+                else:
+                    # No pending downgrade — mark as expired, downgrade to demo after grace period
+                    grace_cutoff = now - timedelta(days=7)
+                    renewal_date = admin.get("subscription_renewal_date")
+                    if isinstance(renewal_date, str):
+                        renewal_date = datetime.fromisoformat(renewal_date.replace("Z", "+00:00"))
+                    if renewal_date and renewal_date < grace_cutoff:
+                        # 7-day grace period expired, downgrade to demo
+                        await db.admins.update_one(
+                            {"id": admin_id},
+                            {"$set": {
+                                "plan": "demo",
+                                "subscription_plan": "demo",
+                                "role": "user",
+                                "subscription_status": "expired",
+                            }}
+                        )
+                        logger.info(f"Admin {admin_id} downgraded to demo after grace period expired")
+                    else:
+                        # Within grace period — just mark as expired
+                        await db.admins.update_one(
+                            {"id": admin_id},
+                            {"$set": {"subscription_status": "expired"}}
+                        )
+                        
+                        # Send renewal reminder notification
+                        await db.notifications.insert_one({
+                            "id": str(uuid.uuid4()),
+                            "admin_id": admin_id,
+                            "type": "subscription_expiry",
+                            "title": "Subscription Expired",
+                            "message": f"Your {admin.get('plan', 'plan')} subscription has expired. Please renew to maintain access to premium features.",
+                            "created_at": now.isoformat(),
+                            "read": False,
+                        })
+                        logger.info(f"Sent renewal reminder to admin {admin_id}")
+            
+            if expired_admins:
+                logger.info(f"Processed {len(expired_admins)} expired subscriptions")
+        
+        except Exception as e:
+            logger.error(f"Subscription renewal check error: {e}")
+        
+        await asyncio.sleep(21600)  # Check every 6 hours
