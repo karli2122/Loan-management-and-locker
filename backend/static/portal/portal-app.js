@@ -516,7 +516,7 @@ async function renderClientDetail(el) {
         <button class="btn btn-warning btn-sm" onclick="sendWarning('${c.id}')" data-testid="warning-btn"><i class="fas fa-exclamation-triangle"></i> Warning</button>
         <button class="btn btn-primary btn-sm" onclick="showAddLoan('${c.id}')" data-testid="add-loan-btn"><i class="fas fa-plus-circle"></i> Add Loan</button>
         <button class="btn btn-outline btn-sm" onclick="showEditClient('${c.id}')" data-testid="edit-client-btn"><i class="fas fa-edit"></i> ${t('edit')}</button>
-        <button class="btn btn-outline btn-sm" onclick="sendReminder('${c.id}','email')" data-testid="send-email-btn"><i class="fas fa-envelope"></i> ${t('email')}</button>
+        <button class="btn btn-outline btn-sm" onclick="sendReminder('${c.id}','email')" data-testid="send-email-btn"><i class="fas fa-envelope"></i> ${t('send') || 'Send'}</button>
         <button class="btn btn-outline btn-sm" onclick="downloadContract('${c.id}')" data-testid="download-contract-btn"><i class="fas fa-file-pdf"></i> ${t('contract')}</button>
         <button class="btn btn-outline btn-sm" onclick="showLockHistory('${c.id}')" data-testid="lock-history-btn"><i class="fas fa-history"></i> Lock History</button>
       </div>
@@ -541,8 +541,11 @@ async function renderClientDetail(el) {
       <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
         <h3><i class="fas fa-key"></i> Device Registration</h3>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-primary btn-sm" onclick="generateRegKey('${c.id}', 8)" data-testid="gen-key-8"><i class="fas fa-key"></i> Generate 8-digit (Admin)</button>
-          <button class="btn btn-outline btn-sm" onclick="generateRegKey('${c.id}', 9)" data-testid="gen-key-9"><i class="fas fa-shield-alt"></i> Generate 9-digit (Owner)</button>
+          ${(state.user?.plan === 'enterprise' || state.user?.plan === 'custom')
+            ? `<button class="btn btn-primary btn-sm" onclick="generateRegKey('${c.id}', 8)" data-testid="gen-key-8"><i class="fas fa-key"></i> Generate Admin Code</button>
+               <button class="btn btn-outline btn-sm" onclick="generateRegKey('${c.id}', 9)" data-testid="gen-key-9"><i class="fas fa-shield-alt"></i> Generate Owner Code</button>`
+            : `<button class="btn btn-primary btn-sm" onclick="generateRegKey('${c.id}', 8)" data-testid="gen-key-default"><i class="fas fa-key"></i> Generate Code</button>`
+          }
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:12px;padding:0 20px 16px">
@@ -670,9 +673,13 @@ async function recordPayment(clientId, loanId = null) {
   
   if (loans.length > 1 && !loanId) {
     // Show loan selection modal
-    const loanOptions = loans.filter(l => l.status === 'active').map(l => 
-      `<option value="${l.id}">${l.description || 'Loan'} - ${cur(l.remaining_balance || l.loan_amount)} remaining</option>`
-    ).join('');
+    const loanOptions = loans.filter(l => l.status === 'active').map(l => {
+      const lp = l.amount || l.loan_amount || 0;
+      const td = l.total_amount_due || (lp * (1 + (l.interest_rate || 0) / 100));
+      const tp = l.total_paid || 0;
+      const rem = Math.max(0, td - tp);
+      return `<option value="${l.id}">${l.description || 'Loan'} - ${cur(rem)} remaining</option>`;
+    }).join('');
     
     const html = `
       <div style="padding:16px">
@@ -1755,6 +1762,12 @@ async function renderSettings(el) {
       </div>
       <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="saveAutomationSettings()" data-testid="save-automation-btn"><i class="fas fa-save"></i> Save Automation Settings</button>
     </div>
+    <div class="card"><div class="card-header"><h3><i class="fas fa-credit-card" style="margin-right:8px;color:#6366F1"></i> Stripe Connect</h3></div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Connect your Stripe account to receive payments directly from clients via payment links.</p>
+      <div id="stripe-connect-status" style="padding:12px;background:var(--bg-input);border-radius:8px;margin-bottom:12px">
+        <div class="spinner"></div>
+      </div>
+    </div>
     <div class="card"><div class="card-header"><h3>${t('change_password')}</h3></div>
       <div class="form-group"><label>${t('current_password')}</label><input id="pw-current" type="password" data-testid="current-password"></div>
       <div class="form-group"><label>${t('new_password')}</label><input id="pw-new" type="password" data-testid="new-password"></div>
@@ -1785,6 +1798,8 @@ async function renderSettings(el) {
     </div>`;
   // Load existing report schedules
   loadReportSchedules();
+  // Load Stripe Connect status
+  loadStripeConnectStatus();
 }
 
 async function saveSettings() {
@@ -1813,6 +1828,67 @@ async function saveAutomationSettings() {
     toast('Automation settings saved');
   } catch(e) { toast(e.message, 'error'); }
 }
+
+async function loadStripeConnectStatus() {
+  const el = document.getElementById('stripe-connect-status');
+  if (!el) return;
+  try {
+    const status = await api('GET', '/connect/status');
+    if (status.connected && status.status === 'active') {
+      el.innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px">
+          <i class="fas fa-check-circle" style="font-size:24px;color:var(--success)"></i>
+          <div>
+            <div style="font-weight:600;color:var(--success)">Connected</div>
+            <div style="font-size:12px;color:var(--text-muted)">Account: ${esc(status.account_id || '')} | Platform fee: ${status.platform_fee_percent}%</div>
+            <div style="font-size:12px;color:var(--text-muted)">Charges: ${status.charges_enabled ? 'Enabled' : 'Disabled'} | Payouts: ${status.payouts_enabled ? 'Enabled' : 'Disabled'}</div>
+          </div>
+        </div>`;
+    } else if (status.connected && status.status === 'pending') {
+      el.innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px">
+          <i class="fas fa-clock" style="font-size:24px;color:var(--warning)"></i>
+          <div>
+            <div style="font-weight:600;color:var(--warning)">Onboarding Incomplete</div>
+            <div style="font-size:12px;color:var(--text-muted)">Your Stripe account is connected but onboarding is not yet complete.</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="startStripeConnect()" style="margin-left:auto"><i class="fas fa-redo"></i> Resume Setup</button>
+        </div>`;
+    } else {
+      el.innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px">
+          <i class="fas fa-unlink" style="font-size:24px;color:var(--text-muted)"></i>
+          <div>
+            <div style="font-weight:600">Not Connected</div>
+            <div style="font-size:12px;color:var(--text-muted)">Connect your Stripe account to start accepting payments via payment links.</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="startStripeConnect()" style="margin-left:auto" data-testid="stripe-connect-btn"><i class="fas fa-plug"></i> Connect Stripe</button>
+        </div>`;
+    }
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--text-muted)">Unable to load Stripe Connect status</div>`;
+  }
+}
+
+async function startStripeConnect() {
+  const el = document.getElementById('stripe-connect-status');
+  if (el) el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const result = await api('POST', '/connect/create-account');
+    if (result.onboarding_url) {
+      window.open(result.onboarding_url, '_blank');
+      toast('Stripe onboarding opened in a new tab. Complete the setup there, then return here.');
+      // Re-check status after a short delay
+      setTimeout(() => loadStripeConnectStatus(), 5000);
+    } else {
+      toast('Failed to start Stripe Connect setup', 'error');
+    }
+  } catch(e) {
+    toast(e.message || 'Failed to start Stripe Connect', 'error');
+    loadStripeConnectStatus();
+  }
+}
+
 
 async function changePassword() {
   const curr = document.getElementById('pw-current').value;

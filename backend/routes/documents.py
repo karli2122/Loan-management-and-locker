@@ -59,11 +59,29 @@ async def upload_document(
 async def list_client_documents(client_id: str, admin_token: str = Query(...)):
     """List all documents for a client (without file data)."""
     await get_admin_id_from_token(admin_token)
-    docs = await db.documents.find(
+    # Check both collections: documents and document_vault
+    docs_main = await db.documents.find(
         {"client_id": client_id},
         {"_id": 0, "data": 0}
     ).sort("uploaded_at", -1).to_list(100)
-    return {"documents": docs, "total": len(docs)}
+    
+    docs_vault = await db.document_vault.find(
+        {"client_id": client_id},
+        {"_id": 0, "data": 0, "file_path": 0}
+    ).sort("uploaded_at", -1).to_list(100)
+    
+    # Merge and deduplicate by id
+    seen_ids = set()
+    all_docs = []
+    for d in docs_main + docs_vault:
+        doc_id = d.get("id")
+        if doc_id and doc_id not in seen_ids:
+            seen_ids.add(doc_id)
+            if not d.get("filename"):
+                d["filename"] = d.get("original_filename", "Unknown")
+            all_docs.append(d)
+    
+    return {"documents": all_docs, "total": len(all_docs)}
 
 
 @router.get("/{doc_id}/download")
