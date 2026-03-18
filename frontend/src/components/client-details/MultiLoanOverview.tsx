@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert, Linking, Share, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
+import * as IntentLauncher from 'expo-intent-launcher';
 import API_URL from '../../constants/api';
 
 export const MultiLoanOverview = ({
@@ -151,15 +153,52 @@ export const MultiLoanOverview = ({
     );
   };
 
-  // Share contract - download PDF
+  // Share contract - download PDF and open native share dialog
   const handleShareContract = async (loanId: string) => {
     setActionLoading(loanId);
     try {
       const token = await AsyncStorage.getItem('admin_token');
       const url = `${API_URL}/api/contracts/loan/${loanId}/download?admin_token=${token}&language=en`;
-      await Linking.openURL(url);
-    } catch (e) {
-      Alert.alert('Error', 'Failed to open contract');
+      
+      // Download PDF to local file system
+      const fileName = `loan_contract_${loanId.substring(0, 8)}.pdf`;
+      const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
+      
+      const downloadResult = await FileSystem.downloadAsync(url, fileUri);
+      
+      if (downloadResult.status === 200) {
+        // Get content URI for sharing
+        const contentUri = await FileSystem.getContentUriAsync(downloadResult.uri);
+        
+        // Open Android native share dialog
+        if (Platform.OS === 'android') {
+          await IntentLauncher.startActivityAsync('android.intent.action.SEND', {
+            type: 'application/pdf',
+            extra: {
+              'android.intent.extra.STREAM': contentUri,
+              'android.intent.extra.SUBJECT': `Loan Contract - ${clientName || 'Client'}`,
+              'android.intent.extra.TEXT': `Loan contract for ${clientName || 'client'}.`,
+            },
+            flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
+          });
+        } else {
+          // iOS fallback
+          await Share.share({
+            url: downloadResult.uri,
+            title: `Loan Contract - ${clientName || 'Client'}`,
+          });
+        }
+      } else {
+        Alert.alert('Error', 'Failed to download contract');
+      }
+    } catch (e: any) {
+      // Fallback to opening URL directly
+      try {
+        const token = await AsyncStorage.getItem('admin_token');
+        await Linking.openURL(`${API_URL}/api/contracts/loan/${loanId}/download?admin_token=${token}&language=en`);
+      } catch {
+        Alert.alert('Error', 'Failed to share contract');
+      }
     } finally {
       setActionLoading(null);
     }
@@ -553,21 +592,23 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     marginTop: 12,
+    flexWrap: 'wrap',
   },
   actionBtn: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
+    paddingHorizontal: 8,
     borderRadius: 8,
     gap: 4,
+    minWidth: 70,
   },
   actionBtnText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   emptyState: {
