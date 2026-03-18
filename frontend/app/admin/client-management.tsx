@@ -116,11 +116,11 @@ export default function ClientManagement() {
 
           <View style={[styles.statCard, { backgroundColor: '#1F3D2E' }]}>
             <View style={styles.statIcon}>
-              <Ionicons name="checkmark-circle" size={28} color="#10B981" />
+              <Ionicons name="cash" size={28} color="#10B981" />
             </View>
-            <Text style={styles.statValue}>{stats.registered_devices}</Text>
+            <Text style={styles.statValue}>{stats.active_loans ?? 0}</Text>
             <Text style={styles.statLabel}>
-              {t('registered')}
+              {t('loansActive') || 'Loans Active'}
             </Text>
           </View>
 

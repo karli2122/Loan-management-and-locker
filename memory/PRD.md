@@ -1,85 +1,57 @@
 # PayLock Pro - Product Requirements Document
 
 ## Original Problem Statement
-Full-stack loan management application with React Native Admin/Client apps and a FastAPI backend + MongoDB. The platform enables loan tracking, device management, payment processing, and client communication.
+Full-stack loan management application with React Native Admin/Client apps and a FastAPI backend + MongoDB.
 
 ## Core Architecture
-- **Backend**: FastAPI + MongoDB Atlas, deployed on VPS (37.148.202.159, service: paylock)
-- **Admin App**: React Native (Expo) - Admin manages clients, loans, devices
-- **Client App**: React Native (Expo) - Clients view loan status, communicate
-- **Web Portal**: Vanilla JS - Alternative admin interface (served at /api/portal)
+- **Backend**: FastAPI + MongoDB Atlas, VPS (37.148.202.159, service: paylock)
+- **Admin App**: React Native (Expo)
+- **Client App**: React Native (Expo)
+- **Web Portal**: Vanilla JS at /api/portal
 
 ## What's Been Implemented
 
 ### Loan Management
-- Month-based interest calculation (unified across all forms)
-- Loan creation, deletion, contract generation (PDF via fpdf2)
-- Data centralized in `loans` collection (single source of truth)
-- Auto-completion and archival when `due_today_amount` is paid
-- Delete/Share Contract buttons on both web portal and admin app
+- Month-based interest, CRUD, PDF contracts, auto-archival on full payment
+- Data centralized in `loans` collection
 
-### Stripe Connect (Payment Forwarding)
-- Destination charges model with configurable platform fee (default 0.75%)
-- GET/PUT `/api/connect/platform-fee` endpoints (superadmin-only, 0-10% range)
-- Onboarding UI in Admin App Settings AND Web Portal Settings
-- "Send Payment Link" in MultiLoanOverview
-- Superadmin dashboard for platform fees
+### Stripe Connect
+- Destination charges, configurable platform fee (0.75% default)
+- Onboarding in admin app settings AND web portal settings
+- Superadmin fee dashboard
 
-### Web Portal Fixes (2026-03-18)
-- **Document search by client** — fixed to query both `documents` and `document_vault` collections
-- **Email button** — changed to "Send" with envelope icon
-- **Generate code buttons** — plan-gated: enterprise/custom shows Admin + Owner code options
-- **Loan payment selector** — now shows remaining balance (total_due - total_paid), not given amount
-- **Stripe Connect in Settings** — full onboarding flow with status display
-
-### Admin App UI/UX
+### Admin App UI/UX (Latest: 2026-03-18)
+- "Device Management" → "Client Management" (files, routes, translations, icons)
+- "Client Overview" section title, "Registered" card → "Loans Active" showing actual active loan count
+- Dashboard Active Loans widget now queries `loans` collection (not clients)
+- Dashboard heartbeat click → `/admin/clients?filter=silent`
+- Clients page reads `filter` URL param, auto-selects silent filter
+- Silent filter, green "0" due amount, hidden unlocked badge for unregistered devices
+- Last Heartbeat indicator (color-coded) on client card + DeviceInfo
+- Contract Share uses `expo-sharing` with `getContentUriAsync()` for Android
+- Chat FAB gated to enterprise/custom plans
 - Plan Badge removed from dashboard
-- "Device Management" renamed to "Client Management" (file, routes, UI text)
-- "Silent" filter: clients with registered device but heartbeat > 12h ago
-- Dashboard Heartbeat widget navigates to loans with "silent" filter
-- Client card: Due Amount shows green "0" when paid, "Unlocked" badge hidden if no device
-- Last Heartbeat indicator on client card (color-coded: green <5m, yellow <12h, red >12h)
-- Last Heartbeat displayed in DeviceInfo component in client details
-- Contract Share uses `expo-sharing` for native share dialog
-- Messaging button gated to enterprise/custom plans (both admin + client apps)
+- Translation keys: clientManagement, clientOverview, loansActive, filterSilent
 
-### Silent Device Push Notifications
-- Background task `check_silent_devices()` runs every hour
-- Detects registered devices with last heartbeat >12h ago
-- Groups silent devices by admin, sends in-app notification + Expo push notification
-- Rate-limited: max 1 notification per admin per 6 hours
+### Web Portal (Latest: 2026-03-18)
+- Document search by client fixed (queries both `documents` + `document_vault`)
+- Email button → "Send" with envelope icon
+- Generate code buttons plan-gated (enterprise/custom: Admin + Owner codes)
+- Loan payment selector shows remaining balance (total_due - total_paid)
+- Stripe Connect setup in Settings
 
-### Subscription Management
-- Auto-renewal check background task (runs every 6 hours)
-- Handles expired subscriptions with 7-day grace period
-- Auto-downgrades to demo after grace period
-- Sends renewal reminder notifications
+### Background Tasks
+- Silent device push notifications (hourly, rate-limited per admin)
+- Subscription auto-renewal check (every 6h, 7-day grace, auto-downgrade)
 
-### Version Auto-Increment (Fixed 2026-03-18)
-- `bump-version.js` runs locally before EAS build (not on server)
-- Convenience scripts: `yarn build:admin`, `yarn build:client`
-- Current versions: Admin v1.3.9 (code 40), Client v1.4.0 (code 41)
-
-### Client App
-- Background heartbeat service (expo-background-fetch)
-- Chat FAB gated to enterprise/custom admin plans
-- Admin plan info returned via `/api/device/status/{client_id}`
-
-## Key DB Schema
-- **clients**: `{ id, name, phone, email, admin_id, device_id, is_registered, last_heartbeat, ... }`
-- **loans**: `{ id, client_id, loan_amount, interest_rate, tenure_months, due_date, total_due, given_date }`
-- **admins**: `{ id, email, role, plan, stripe_connect_id, is_super_admin, ... }`
-- **platform_config**: `{ key: "platform_fee", value: 0.75 }`
-- **notifications**: `{ id, admin_id, type, title, message, created_at, read }`
-- **document_vault**: `{ id, client_id, filename, doc_type, ... }` (primary document storage)
-
-## 3rd Party Integrations
-MongoDB Atlas, Stripe (Live + Connect), APScheduler, Resend, Chart.js/react-native-chart-kit, EAS, FCM, Emergent LLM Key (AI Vision OCR), fpdf2, nginx, expo-task-manager, expo-battery, expo-file-system, expo-sharing, expo-background-fetch
+### Version Management
+- Auto-increment via `bump-version.js` (local only, not on EAS server)
+- Current: Admin v1.4.1 (42), Client v1.4.2 (43)
 
 ## Credentials
 - **VPS**: karliv @ 37.148.202.159 / Nasvakas123!
 - **Super Admin**: karli1987 / nasvakas123
 
 ## Backlog
-- P1: Verify background heartbeat on real device with new builds
-- P2: Test subscription auto-renewal with real expired accounts
+- P1: Verify background heartbeat on real device
+- P2: Test subscription auto-renewal with expired accounts

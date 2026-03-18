@@ -831,7 +831,7 @@ export default function Dashboard() {
         {hasFeature('heartbeat') ? (
           <TouchableOpacity
             style={[styles.heartbeatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => router.push('/admin/(tabs)/loans?filter=silent')}
+            onPress={() => router.push('/admin/clients?filter=silent')}
             activeOpacity={0.8}
             data-testid="heartbeat-card"
           >

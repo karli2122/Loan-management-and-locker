@@ -167,27 +167,28 @@ export const MultiLoanOverview = ({
       const downloadResult = await FileSystem.downloadAsync(url, fileUri);
       
       if (downloadResult.status === 200) {
+        // Convert to content:// URI for Android compatibility
+        const contentUri = await FileSystem.getContentUriAsync(downloadResult.uri);
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
-          await Sharing.shareAsync(downloadResult.uri, {
+          await Sharing.shareAsync(contentUri, {
             mimeType: 'application/pdf',
             dialogTitle: `Loan Contract - ${clientName || 'Client'}`,
             UTI: 'com.adobe.pdf',
           });
         } else {
-          // Fallback: open URL directly
-          await Linking.openURL(`${API_URL}/api/contracts/loan/${loanId}/download?admin_token=${token}&language=en`);
+          await Linking.openURL(url);
         }
       } else {
-        Alert.alert('Error', 'Failed to download contract');
+        Alert.alert('Error', `Failed to download contract (status: ${downloadResult.status})`);
       }
     } catch (e: any) {
-      // Fallback to opening URL directly
+      console.error('Share contract error:', e);
       try {
         const token = await AsyncStorage.getItem('admin_token');
         await Linking.openURL(`${API_URL}/api/contracts/loan/${loanId}/download?admin_token=${token}&language=en`);
       } catch {
-        Alert.alert('Error', 'Failed to share contract');
+        Alert.alert('Error', 'Failed to share contract. Please try again.');
       }
     } finally {
       setActionLoading(null);

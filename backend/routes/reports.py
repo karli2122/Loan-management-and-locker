@@ -157,7 +157,9 @@ async def get_collection_report(
     total_outstanding = sum(c.get("outstanding_balance", 0) for c in clients)
     total_late_fees = sum(c.get("late_fees_accumulated", 0) for c in clients)
     
-    active_loans = sum(1 for c in clients if c.get("outstanding_balance", 0) > 0)
+    # Count actual active loans from the loans collection
+    client_ids = [c["id"] for c in clients]
+    active_loans = await db.loans.count_documents({"client_id": {"$in": client_ids}, "status": "active"}) if client_ids else 0
     completed_loans = sum(1 for c in clients if c.get("outstanding_balance", 0) <= 0 and c.get("loan_amount", 0) > 0)
     overdue_clients = sum(1 for c in clients if c.get("days_overdue", 0) > 0)
     
@@ -481,12 +483,34 @@ async def get_stats(admin_id: str = Query(default=None), admin_token: str = Quer
     locked_clients = await db.clients.count_documents({**base_query, "is_locked": True})
     unlocked_registered = await db.clients.count_documents({**base_query, "is_registered": True, "is_locked": False})
     
+    # Count actual active loans from the loans collection
+    admin_ids = []
+    if admin_token:
+        token_admin_id = await get_admin_id_from_token(admin_token)
+        admin = await db.admins.find_one({"id": token_admin_id}, {"_id": 0, "is_super_admin": 1, "enterprise_id": 1})
+        if admin and admin.get("is_super_admin"):
+            enterprise_id = admin.get("enterprise_id") or token_admin_id
+            members = await db.admins.find({"enterprise_id": enterprise_id}, {"_id": 0, "id": 1}).to_list(100)
+            admin_ids = [m["id"] for m in members]
+            if token_admin_id not in admin_ids:
+                admin_ids.append(token_admin_id)
+        else:
+            admin_ids = [token_admin_id]
+    elif admin_id:
+        admin_ids = [admin_id]
+    
+    loans_query = {"status": "active"}
+    if admin_ids:
+        loans_query["admin_id"] = {"$in": admin_ids} if len(admin_ids) > 1 else admin_ids[0]
+    active_loans = await db.loans.count_documents(loans_query)
+    
     return {
         "total_clients": total_clients,
         "registered_devices": registered_clients,
         "locked_devices": locked_clients,
         "unlocked_devices": unlocked_registered,
-        "unregistered_clients": total_clients - registered_clients
+        "unregistered_clients": total_clients - registered_clients,
+        "active_loans": active_loans,
     }
 
 

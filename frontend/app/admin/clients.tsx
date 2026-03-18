@@ -12,7 +12,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCurrency } from '../../src/context/CurrencyContext';
@@ -52,6 +52,7 @@ interface SilentClient {
 
 export default function ClientsList() {
   const router = useRouter();
+  const { filter: filterParam } = useLocalSearchParams<{ filter?: string }>();
   const { t, language } = useLanguage();
   const { formatAmount, currencySymbol } = useCurrency();
   const { colors } = useTheme();
@@ -63,6 +64,13 @@ export default function ClientsList() {
   const [filter, setFilter] = useState<'all' | 'locked' | 'unlocked' | 'silent'>('all');
   const [silentLoading, setSilentLoading] = useState(false);
   const [showFilterPicker, setShowFilterPicker] = useState(false);
+
+  // Sync filter from URL params (e.g., from dashboard heartbeat widget)
+  useEffect(() => {
+    if (filterParam === 'silent') {
+      setFilter('silent');
+    }
+  }, [filterParam]);
 
   const fetchClients = async () => {
     try {
