@@ -10,7 +10,10 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "postinstall": "patch-package",
-    "eas-build-pre-install": "rm -rf .expo && rm -rf node_modules/.cache && rm -rf /tmp/metro-cache"
+    "bump": "node scripts/bump-version.js",
+    "build:admin": "node scripts/bump-version.js && eas build --profile admin-production --platform android --non-interactive",
+    "build:client": "node scripts/bump-version.js && eas build --profile client-production --platform android --non-interactive",
+    "eas-build-pre-install": "node scripts/bump-version.js && rm -rf .expo && rm -rf node_modules/.cache && rm -rf /tmp/metro-cache"
   },
   "dependencies": {
     "@expo/ngrok": "^4.1.3",

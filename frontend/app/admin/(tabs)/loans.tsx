@@ -382,6 +382,36 @@ export default function LoansTab() {
                   </Text>
                 </View>
               )}
+              {item.is_registered && item.last_heartbeat && (
+                <View style={[styles.nextPaymentBadge, { backgroundColor: colors.surfaceAlt }]}>
+                  <Ionicons 
+                    name="pulse" 
+                    size={12} 
+                    color={(() => {
+                      const diff = Date.now() - new Date(item.last_heartbeat!).getTime();
+                      if (diff < 5 * 60 * 1000) return '#10B981';
+                      if (diff < 12 * 60 * 60 * 1000) return '#F59E0B';
+                      return '#EF4444';
+                    })()} 
+                  />
+                  <Text style={[styles.nextPaymentText, { color: (() => {
+                      const diff = Date.now() - new Date(item.last_heartbeat!).getTime();
+                      if (diff < 5 * 60 * 1000) return '#10B981';
+                      if (diff < 12 * 60 * 60 * 1000) return '#F59E0B';
+                      return '#EF4444';
+                    })() }]}>
+                    {(() => {
+                      const diff = Date.now() - new Date(item.last_heartbeat!).getTime();
+                      const mins = Math.floor(diff / 60000);
+                      if (mins < 1) return 'Online';
+                      if (mins < 60) return `${mins}m`;
+                      const hrs = Math.floor(mins / 60);
+                      if (hrs < 24) return `${hrs}h`;
+                      return `${Math.floor(hrs / 24)}d`;
+                    })()}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         )}

@@ -836,3 +836,92 @@ async def check_subscription_renewals():
             logger.error(f"Subscription renewal check error: {e}")
         
         await asyncio.sleep(21600)  # Check every 6 hours
+
+
+
+async def check_silent_devices():
+    """Check for silent devices (registered but heartbeat >12h ago) and notify admins. Runs every hour."""
+    while True:
+        try:
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=12)
+            
+            # Find clients with registered devices whose heartbeat is stale
+            silent_clients = await db.clients.find(
+                {
+                    "is_registered": True,
+                    "last_heartbeat": {"$lt": cutoff},
+                    "is_deleted": {"$ne": True},
+                },
+                {"_id": 0, "id": 1, "name": 1, "admin_id": 1, "last_heartbeat": 1}
+            ).to_list(500)
+            
+            if not silent_clients:
+                await asyncio.sleep(3600)
+                continue
+            
+            # Group silent clients by admin
+            admin_groups: dict[str, list] = {}
+            for c in silent_clients:
+                aid = c.get("admin_id")
+                if aid:
+                    admin_groups.setdefault(aid, []).append(c)
+            
+            for admin_id, clients in admin_groups.items():
+                # Check if we already notified this admin recently (within 6 hours)
+                recent = await db.notifications.find_one({
+                    "admin_id": admin_id,
+                    "type": "silent_device",
+                    "created_at": {"$gt": (datetime.now(timezone.utc) - timedelta(hours=6)).isoformat()},
+                }, {"_id": 1})
+                if recent:
+                    continue
+                
+                names = ", ".join(c["name"] for c in clients[:5])
+                extra = f" and {len(clients) - 5} more" if len(clients) > 5 else ""
+                
+                # Store in-app notification
+                await db.notifications.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "admin_id": admin_id,
+                    "type": "silent_device",
+                    "title": "Silent Devices Detected",
+                    "message": f"{len(clients)} device(s) went silent (no heartbeat >12h): {names}{extra}",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "read": False,
+                })
+                
+                # Send push notification to admin's registered tokens
+                admin_tokens = await db.push_tokens.find(
+                    {"admin_id": admin_id},
+                    {"_id": 0, "token": 1}
+                ).to_list(10)
+                
+                expo_tokens = [t["token"] for t in admin_tokens if t.get("token", "").startswith("ExponentPushToken")]
+                if expo_tokens:
+                    import httpx
+                    messages = [{
+                        "to": t,
+                        "title": "Silent Devices Detected",
+                        "body": f"{len(clients)} device(s) went silent: {names}{extra}",
+                        "sound": "default",
+                        "data": {"type": "silent_device", "filter": "silent"},
+                    } for t in expo_tokens]
+                    try:
+                        async with httpx.AsyncClient() as client_http:
+                            await client_http.post(
+                                "https://exp.host/--/api/v2/push/send",
+                                json=messages,
+                                headers={"Content-Type": "application/json"},
+                                timeout=15,
+                            )
+                        logger.info(f"Sent silent device push to admin {admin_id} ({len(expo_tokens)} tokens, {len(clients)} silent devices)")
+                    except Exception as push_err:
+                        logger.warning(f"Failed to send silent device push to admin {admin_id}: {push_err}")
+            
+            if silent_clients:
+                logger.info(f"Silent device check: {len(silent_clients)} silent devices across {len(admin_groups)} admins")
+        
+        except Exception as e:
+            logger.error(f"Silent device check error: {e}")
+        
+        await asyncio.sleep(3600)  # Check every hour
