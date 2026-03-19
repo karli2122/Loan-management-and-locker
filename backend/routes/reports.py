@@ -160,10 +160,21 @@ async def get_collection_report(
         {"_id": 0, "loan_amount": 1, "total_paid": 1, "outstanding_balance": 1, "due_date": 1, "given_date": 1, "interest_rate": 1, "tenure_months": 1, "client_id": 1}
     ).to_list(10000) if client_ids else []
     
+    # Also get archived loans from paid_loans for complete financial picture
+    archived_loans = await db.paid_loans.find(
+        {"admin_id": target_admin_id} if target_admin_id else {},
+        {"_id": 0, "loan_amount": 1, "total_paid": 1, "total_interest": 1}
+    ).to_list(10000)
+    
     # Calculate stats from loans collection (source of truth)
     now = datetime.now(timezone.utc)
-    total_disbursed = sum(l.get("loan_amount", 0) for l in all_loans)
-    total_collected = sum(l.get("total_paid", 0) or 0 for l in all_loans)
+    active_disbursed = sum(l.get("loan_amount", 0) for l in all_loans)
+    active_collected = sum(l.get("total_paid", 0) or 0 for l in all_loans)
+    archived_disbursed = sum(pl.get("loan_amount", 0) for pl in archived_loans)
+    archived_collected = sum(pl.get("total_paid", 0) for pl in archived_loans)
+    
+    total_disbursed = active_disbursed + archived_disbursed
+    total_collected = active_collected + archived_collected
     
     # Calculate outstanding dynamically using the due_today formula
     total_outstanding = 0
@@ -497,8 +508,31 @@ async def get_financial_report(
             "interest_earned": round(monthly_interest_map.get(month_key, 0), 2)
         })
 
-    total_disbursed = sum(c.get("loan_amount", 0) for c in clients)
-    total_outstanding = sum(c.get("outstanding_balance", 0) for c in clients)
+    # Calculate disbursed/outstanding from loans collection for active loans
+    client_ids_list = [c["id"] for c in clients]
+    active_loans = await db.loans.find(
+        {"client_id": {"$in": client_ids_list}, "status": "active"},
+        {"_id": 0, "loan_amount": 1, "outstanding_balance": 1}
+    ).to_list(10000) if client_ids_list else []
+    
+    # Include archived data from paid_loans by admin_id (consistent with dashboard)
+    if is_super:
+        enterprise_id = admin.get("enterprise_id") or admin_id
+        members = await db.admins.find({"enterprise_id": enterprise_id}, {"_id": 0, "id": 1}).to_list(100)
+        member_ids = [m["id"] for m in members]
+        if admin_id not in member_ids:
+            member_ids.append(admin_id)
+        archived_paid_query = {"admin_id": {"$in": member_ids}}
+    else:
+        archived_paid_query = {"admin_id": admin_id}
+    
+    archived_paid = await db.paid_loans.find(
+        archived_paid_query,
+        {"_id": 0, "loan_amount": 1, "total_paid": 1}
+    ).to_list(10000)
+    
+    total_disbursed = sum(l.get("loan_amount", 0) for l in active_loans) + sum(pl.get("loan_amount", 0) for pl in archived_paid)
+    total_outstanding = sum(l.get("outstanding_balance", 0) for l in active_loans)
 
     return {
         "total_payments": round(total_payments, 2),
@@ -584,7 +618,7 @@ async def get_dashboard_analytics(
     client_ids = [c["id"] for c in clients]
     all_active_loans = await db.loans.find(
         {"client_id": {"$in": client_ids}, "status": "active"},
-        {"_id": 0, "loan_amount": 1, "total_paid": 1, "due_date": 1, "given_date": 1, "interest_rate": 1, "tenure_months": 1, "client_id": 1}
+        {"_id": 0, "loan_amount": 1, "total_paid": 1, "due_date": 1, "given_date": 1, "interest_rate": 1, "tenure_months": 1, "client_id": 1, "outstanding_balance": 1}
     ).to_list(10000) if client_ids else []
     
     now_utc = datetime.now(timezone.utc) if hasattr(timezone, 'utc') else datetime.utcnow()

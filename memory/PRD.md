@@ -78,6 +78,16 @@ Where: `daily_interest = principal × (rate/100) / 30`
 
 ## Changelog
 - **v1.4.9 (Build #50, March 19 2026)**: Fixed JSX syntax error in loans.tsx (unclosed fragment/ternary), validated calculator fix, badge logic, and 100% Paid UI. Submitted new EAS builds.
+- **v1.4.9-hotfix (March 19 2026)**: Complete backend data consistency audit & fix:
+  - Clients endpoint: Resets financial fields to 0 for clients with no active loans (was showing stale data)
+  - Clients endpoint: Fixed total_amount_due calculation (was using tenure_avg=1 for all clients, now sums per-loan)
+  - Dashboard: Added outstanding_balance to loans projection (was undercounting for loans without given_date)
+  - Reports/Collection: Now includes archived data from paid_loans for disbursed/collected totals (was active-only)
+  - Reports/Financial: Fixed paid_loans query to use admin_id scoping (was missing deleted clients' data)
+  - Portfolio-Health: Refactored to use loans collection instead of stale clients collection
+  - Payment handler: Now updates client document's core financial fields (outstanding_balance, loan_amount, total_paid) on every payment
+  - All endpoints now show consistent data: Outstanding=2028.72, Disbursed=6991.22, Collected=5416.31
+  - Deployed to production VPS
 
 ## EAS Builds Submitted (v1.4.9, Build #50)
 - Admin: b5e89a98-3294-4f87-a72b-f7f68fd033a1

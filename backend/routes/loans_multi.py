@@ -328,9 +328,12 @@ async def record_loan_payment(
         await db.clients.update_one(
             {"id": client_id},
             {"$set": {
-                "total_loan_amount": sum(loan.get("loan_amount", 0) for loan in active_loans),
-                "total_outstanding_all_loans": sum(loan.get("outstanding_balance", 0) for loan in active_loans),
-                "total_paid_all_loans": sum(loan.get("total_paid", 0) for loan in active_loans),
+                "loan_amount": sum(l.get("loan_amount", 0) for l in active_loans),
+                "outstanding_balance": sum(l.get("outstanding_balance", 0) for l in active_loans),
+                "total_paid": sum(l.get("total_paid", 0) for l in active_loans),
+                "total_loan_amount": sum(l.get("loan_amount", 0) for l in active_loans),
+                "total_outstanding_all_loans": sum(l.get("outstanding_balance", 0) for l in active_loans),
+                "total_paid_all_loans": sum(l.get("total_paid", 0) for l in active_loans),
                 "active_loans_count": len(active_loans),
                 "has_multiple_loans": len(active_loans) > 1,
             }}

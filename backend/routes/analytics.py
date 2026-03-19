@@ -141,22 +141,35 @@ async def get_portfolio_health(admin_token: str = Query(...)):
     await check_plan_access(admin_id, "portfolio_health")
     base_query = await _get_enterprise_client_query(admin_id)
     
-    clients = await db.clients.find(
-        {**base_query, "loan_amount": {"$gt": 0}},
-        {"_id": 0, "id": 1, "name": 1, "loan_amount": 1, "outstanding_balance": 1,
-         "total_paid": 1, "days_overdue": 1, "is_locked": 1, "monthly_emi": 1,
-         "loan_start_date": 1, "next_payment_due": 1}
-    ).to_list(1000)
+    # Get client IDs for scoping
+    client_ids = [c["id"] async for c in db.clients.find(base_query, {"_id": 0, "id": 1})]
+    
+    # Get all active loans from loans collection (source of truth)
+    active_loans = await db.loans.find(
+        {"client_id": {"$in": client_ids}, "status": "active"},
+        {"_id": 0, "client_id": 1, "loan_amount": 1, "outstanding_balance": 1,
+         "total_paid": 1, "due_date": 1, "given_date": 1, "interest_rate": 1, "tenure_months": 1}
+    ).to_list(10000) if client_ids else []
+    
+    # Get client names for NPA list
+    client_names = {}
+    if active_loans:
+        loan_client_ids = list(set(l.get("client_id") for l in active_loans))
+        clients_info = await db.clients.find(
+            {"id": {"$in": loan_client_ids}},
+            {"_id": 0, "id": 1, "name": 1, "is_locked": 1}
+        ).to_list(1000)
+        client_names = {c["id"]: c for c in clients_info}
     
     now = datetime.now(timezone.utc)
     
     # Aging analysis buckets
     aging = {
-        "current": {"count": 0, "amount": 0},         # 0 days overdue
-        "1_30_days": {"count": 0, "amount": 0},        # 1-30 days
-        "31_60_days": {"count": 0, "amount": 0},       # 31-60 days
-        "61_90_days": {"count": 0, "amount": 0},       # 61-90 days
-        "90_plus_days": {"count": 0, "amount": 0},     # 90+ days (NPA)
+        "current": {"count": 0, "amount": 0},
+        "1_30_days": {"count": 0, "amount": 0},
+        "31_60_days": {"count": 0, "amount": 0},
+        "61_90_days": {"count": 0, "amount": 0},
+        "90_plus_days": {"count": 0, "amount": 0},
     }
     
     total_disbursed = 0
@@ -164,34 +177,53 @@ async def get_portfolio_health(admin_token: str = Query(...)):
     total_collected = 0
     npa_clients = []
     
-    for c in clients:
-        loan_amt = c.get("loan_amount", 0)
-        outstanding = c.get("outstanding_balance", 0)
-        paid = c.get("total_paid", 0)
-        overdue = c.get("days_overdue", 0)
+    for loan in active_loans:
+        principal = loan.get("loan_amount", 0)
+        paid = loan.get("total_paid", 0) or 0
+        outstanding = loan.get("outstanding_balance", 0) or 0
         
-        total_disbursed += loan_amt
-        total_outstanding += outstanding
+        total_disbursed += principal
         total_collected += paid
         
-        if overdue <= 0:
+        # Calculate days overdue
+        days_overdue = 0
+        due = loan.get("due_date")
+        if due:
+            try:
+                if isinstance(due, str):
+                    due_dt = datetime.fromisoformat(due.replace('Z', '+00:00'))
+                else:
+                    due_dt = due
+                if hasattr(due_dt, 'tzinfo') and due_dt.tzinfo is None:
+                    due_dt = due_dt.replace(tzinfo=timezone.utc)
+                diff = (due_dt.date() - now.date()).days
+                if diff < 0:
+                    days_overdue = abs(diff)
+            except (ValueError, TypeError):
+                pass
+        
+        total_outstanding += outstanding
+        
+        cid = loan.get("client_id", "")
+        cinfo = client_names.get(cid, {})
+        
+        if days_overdue <= 0:
             aging["current"]["count"] += 1
             aging["current"]["amount"] += outstanding
-        elif overdue <= 30:
+        elif days_overdue <= 30:
             aging["1_30_days"]["count"] += 1
             aging["1_30_days"]["amount"] += outstanding
-        elif overdue <= 60:
+        elif days_overdue <= 60:
             aging["31_60_days"]["count"] += 1
             aging["31_60_days"]["amount"] += outstanding
-        elif overdue <= 90:
+        elif days_overdue <= 90:
             aging["61_90_days"]["count"] += 1
             aging["61_90_days"]["amount"] += outstanding
         else:
             aging["90_plus_days"]["count"] += 1
             aging["90_plus_days"]["amount"] += outstanding
-            npa_clients.append({"id": c["id"], "name": c.get("name", ""), "days_overdue": overdue, "outstanding": outstanding})
+            npa_clients.append({"id": cid, "name": cinfo.get("name", ""), "days_overdue": days_overdue, "outstanding": outstanding})
     
-    # Round amounts
     for bucket in aging.values():
         bucket["amount"] = round(bucket["amount"], 2)
     
@@ -200,7 +232,7 @@ async def get_portfolio_health(admin_token: str = Query(...)):
     collection_rate = round(total_collected / total_disbursed * 100, 1) if total_disbursed > 0 else 0
     
     return {
-        "total_loans": len(clients),
+        "total_loans": len(active_loans),
         "total_disbursed": round(total_disbursed, 2),
         "total_outstanding": round(total_outstanding, 2),
         "total_collected": round(total_collected, 2),

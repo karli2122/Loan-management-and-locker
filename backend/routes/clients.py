@@ -198,15 +198,29 @@ async def list_clients(admin_token: str = Query(...)):
             if interest_rates:
                 client["interest_rate"] = interest_rates[0]
             
-            if client.get("loan_amount") and client.get("interest_rate"):
-                tenure_avg = 1
-                interest_amount = client["loan_amount"] * (client["interest_rate"] / 100) * tenure_avg
-                client["total_amount_due"] = client["loan_amount"] + interest_amount
-                client["interest_amount"] = interest_amount
+            # Calculate total_amount_due as sum of each loan's total due (principal + interest)
+            total_amount_due = 0
+            total_interest_amount = 0
+            for l in client_loans:
+                lp = l.get("loan_amount", 0) or 0
+                lr = l.get("interest_rate", 0) or 0
+                lt = l.get("tenure_months", 1) or 1
+                loan_interest = lp * (lr / 100) * lt
+                total_amount_due += lp + loan_interest
+                total_interest_amount += loan_interest
+            client["total_amount_due"] = round(total_amount_due, 2)
+            client["interest_amount"] = round(total_interest_amount, 2)
             
             client["loans"] = client_loans
         else:
+            # No active loans: reset financial fields to 0 so stale data doesn't show
             client["days_overdue"] = 0
+            client["outstanding_balance"] = 0
+            client["total_amount_due"] = 0
+            client["total_paid"] = 0
+            client["loan_amount"] = 0
+            client["interest_amount"] = 0
+            client["principal_amount"] = 0
         
         # Ensure loan fields are properly mapped for frontend compatibility
         if client.get("loan_amount") and not client.get("principal_amount"):
