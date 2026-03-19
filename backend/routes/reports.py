@@ -483,26 +483,9 @@ async def get_stats(admin_id: str = Query(default=None), admin_token: str = Quer
     locked_clients = await db.clients.count_documents({**base_query, "is_locked": True})
     unlocked_registered = await db.clients.count_documents({**base_query, "is_registered": True, "is_locked": False})
     
-    # Count actual active loans from the loans collection
-    admin_ids = []
-    if admin_token:
-        token_admin_id = await get_admin_id_from_token(admin_token)
-        admin = await db.admins.find_one({"id": token_admin_id}, {"_id": 0, "is_super_admin": 1, "enterprise_id": 1})
-        if admin and admin.get("is_super_admin"):
-            enterprise_id = admin.get("enterprise_id") or token_admin_id
-            members = await db.admins.find({"enterprise_id": enterprise_id}, {"_id": 0, "id": 1}).to_list(100)
-            admin_ids = [m["id"] for m in members]
-            if token_admin_id not in admin_ids:
-                admin_ids.append(token_admin_id)
-        else:
-            admin_ids = [token_admin_id]
-    elif admin_id:
-        admin_ids = [admin_id]
-    
-    loans_query = {"status": "active"}
-    if admin_ids:
-        loans_query["admin_id"] = {"$in": admin_ids} if len(admin_ids) > 1 else admin_ids[0]
-    active_loans = await db.loans.count_documents(loans_query)
+    # Count actual active loans via client_ids (consistent with reports/collection)
+    client_ids = [c["id"] async for c in db.clients.find(base_query, {"_id": 0, "id": 1})]
+    active_loans = await db.loans.count_documents({"client_id": {"$in": client_ids}, "status": "active"}) if client_ids else 0
     
     return {
         "total_clients": total_clients,

@@ -2022,10 +2022,9 @@ const styles = StyleSheet.create({
   },
   adminInfo: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
     marginLeft: 12,
-    gap: 8,
+    gap: 4,
   },
   adminName: {
     fontSize: 16,
@@ -2260,7 +2259,8 @@ const styles = StyleSheet.create({
   adminActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    flexShrink: 0,
+    gap: 4,
   },
   creditAssignButton: {
     width: 36,

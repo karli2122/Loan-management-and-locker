@@ -288,8 +288,9 @@ export const MultiLoanOverview = ({
                 </View>
                 <View style={styles.loanRow}>
                   <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Due Today</Text>
-                  <Text style={[styles.loanValue, { color: (loan.due_today_amount || 0) > 0 ? '#EF4444' : colors.textMuted }]}>
-                    {(loan.due_today_amount || 0) > 0 ? formatAmount(loan.due_today_amount) : '-'}
+                  <Text style={[styles.loanValue, { color: (loan.due_today_amount || 0) > 0 ? ((loan.days_overdue || 0) > 0 ? '#EF4444' : '#F59E0B') : '#10B981' }]}>
+                    {(loan.due_today_amount || 0) > 0 ? formatAmount(loan.due_today_amount) : formatAmount(0)}
+                    {(loan.days_overdue || 0) > 0 ? ` (+${loan.days_overdue}d overdue)` : ''}
                   </Text>
                 </View>
                 <View style={styles.loanRow}>

@@ -9,44 +9,33 @@ Full-stack loan management application with React Native Admin/Client apps and a
 - **Client App**: React Native (Expo)
 - **Web Portal**: Vanilla JS at /api/portal
 
-## What's Been Implemented
+## Latest Changes (2026-03-19)
 
-### Loan Management
-- Month-based interest, CRUD, PDF contracts, auto-archival on full payment
-- Data centralized in `loans` collection
+### Bug Fixes
+- **Contract sharing**: Fixed Android compatibility using `getContentUriAsync()` for content:// URI
+- **Active Loans count**: Now queries `loans` collection by client_ids (was incorrectly counting by admin_id)
+- **Demo mode upgrade button**: Fixed unmatched route `/admin/subscription` → `/admin/loan-plans`
+- **Demo mode add loan**: Button hidden for demo plan users
+- **Settings User Management**: Fixed layout overlay — changed adminInfo to column layout with flexShrink on actions
+- **Payment reminders**: Removed monthly EMI row from reminder cards
 
-### Stripe Connect
-- Destination charges, configurable platform fee (0.75% default)
-- Onboarding in admin app settings AND web portal settings
-- Superadmin fee dashboard
+### UI Enhancements
+- **Due amount color-coding** (clients.tsx + loans.tsx):
+  - Green (#10B981): paid (0)
+  - Yellow (#F59E0B): outstanding but not overdue
+  - Red (#EF4444): overdue with days count
+- **Multi-loan overview**: Due Today shows overdue days indicator with color coding
+- **Loans endpoint**: Now returns `days_overdue` per loan
+- **Client management**: "Registered" card → "Loans Active" with actual count
+- **Dashboard heartbeat**: Click navigates to `/admin/clients?filter=silent`
+- **Clients page**: Reads `filter` URL param for pre-selected silent filter
 
-### Admin App UI/UX (Latest: 2026-03-18)
-- "Device Management" → "Client Management" (files, routes, translations, icons)
-- "Client Overview" section title, "Registered" card → "Loans Active" showing actual active loan count
-- Dashboard Active Loans widget now queries `loans` collection (not clients)
-- Dashboard heartbeat click → `/admin/clients?filter=silent`
-- Clients page reads `filter` URL param, auto-selects silent filter
-- Silent filter, green "0" due amount, hidden unlocked badge for unregistered devices
-- Last Heartbeat indicator (color-coded) on client card + DeviceInfo
-- Contract Share uses `expo-sharing` with `getContentUriAsync()` for Android
-- Chat FAB gated to enterprise/custom plans
-- Plan Badge removed from dashboard
-- Translation keys: clientManagement, clientOverview, loansActive, filterSilent
+### Translations Added
+- clientManagement, clientOverview, loansActive, filterSilent (16 languages)
 
-### Web Portal (Latest: 2026-03-18)
-- Document search by client fixed (queries both `documents` + `document_vault`)
-- Email button → "Send" with envelope icon
-- Generate code buttons plan-gated (enterprise/custom: Admin + Owner codes)
-- Loan payment selector shows remaining balance (total_due - total_paid)
-- Stripe Connect setup in Settings
-
-### Background Tasks
-- Silent device push notifications (hourly, rate-limited per admin)
-- Subscription auto-renewal check (every 6h, 7-day grace, auto-downgrade)
-
-### Version Management
-- Auto-increment via `bump-version.js` (local only, not on EAS server)
-- Current: Admin v1.4.1 (42), Client v1.4.2 (43)
+## Current Versions
+- Admin: v1.4.3 (code 44)
+- Client: v1.4.4 (code 45)
 
 ## Credentials
 - **VPS**: karliv @ 37.148.202.159 / Nasvakas123!

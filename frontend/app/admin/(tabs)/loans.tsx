@@ -348,8 +348,9 @@ export default function LoansTab() {
                 <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
                   {t('due')}
                 </Text>
-                <Text style={[styles.loanDetailValue, { color: outstanding > 0 ? colors.warning : '#10B981' }]}>
+                <Text style={[styles.loanDetailValue, { color: outstanding <= 0 ? '#10B981' : (item.days_overdue ?? 0) > 0 ? '#EF4444' : '#F59E0B' }]}>
                   {formatAmount(outstanding, 0)}
+                  {(item.days_overdue ?? 0) > 0 && outstanding > 0 ? ` (${item.days_overdue}d)` : ''}
                 </Text>
               </View>
             </View>
@@ -525,12 +526,15 @@ export default function LoansTab() {
         <Text style={[styles.headerTitle, { color: colors.text }]}>
           {t('loans')}
         </Text>
+        {plan !== 'demo' && (
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => router.push('/admin/add-loan')}
+          data-testid="add-loan-btn"
         >
           <Ionicons name="add" size={24} color="#fff" />
         </TouchableOpacity>
+        )}
       </View>
 
       {filter && (

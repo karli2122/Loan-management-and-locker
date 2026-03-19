@@ -266,22 +266,22 @@ export default function ClientsList() {
           </View>
           <Text style={[styles.clientPhone, { color: colors.textMuted }]}>{item.phone || 'N/A'}</Text>
           <View style={styles.clientMeta}>
-            {(item.outstanding_balance || item.loan_amount || 0) > 0 ? (
-              <Text style={[styles.emiAmount, { color: '#EF4444' }]}>
-                {t('due')}: {formatAmount((() => {
-                  const loanAmt = item.loan_amount || 0;
-                  const rate = (item as any).interest_rate || 0;
-                  const totalDue = (item as any).total_amount_due || 0;
-                  if (totalDue > loanAmt) return totalDue;
-                  if (loanAmt > 0 && rate > 0) return Math.round(loanAmt + loanAmt * rate / 100);
-                  return (item.outstanding_balance || loanAmt);
-                })())}
-              </Text>
-            ) : (
-              <Text style={[styles.emiAmount, { color: colors.textSecondary }]}>
-                {t('emi')}: {currencySymbol}0
-              </Text>
-            )}
+            {(() => {
+              const outstanding = item.outstanding_balance || 0;
+              const totalDue = (item as any).total_amount_due || 0;
+              const loanAmt = item.loan_amount || 0;
+              const daysOverdue = (item as any).days_overdue || 0;
+              const dueAmt = totalDue > loanAmt ? totalDue : (outstanding > 0 ? outstanding : loanAmt);
+              const isPaid = outstanding <= 0 && loanAmt > 0;
+              const isOverdue = daysOverdue > 0 && outstanding > 0;
+              const dueColor = isPaid ? '#10B981' : isOverdue ? '#EF4444' : outstanding > 0 ? '#F59E0B' : colors.textSecondary;
+              return (
+                <Text style={[styles.emiAmount, { color: dueColor }]}>
+                  {t('due')}: {isPaid ? `${currencySymbol}0` : formatAmount(dueAmt)}
+                  {isOverdue ? ` (${daysOverdue}d ${t('overdue') || 'overdue'})` : ''}
+                </Text>
+              );
+            })()}
             {item.is_registered ? (
               <View style={styles.registeredBadge}>
                 <Ionicons name="checkmark-circle" size={14} color="#10B981" />

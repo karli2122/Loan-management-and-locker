@@ -57,6 +57,21 @@ async def get_client_loans(
                 already_paid = loan.get("total_paid", 0) or 0
                 loan["due_today_amount"] = max(0, round(total_due_today - already_paid, 2))
                 loan["days_elapsed"] = days_elapsed
+                
+                # Calculate days overdue
+                due_date = loan.get("due_date")
+                if due_date:
+                    if isinstance(due_date, str):
+                        due_date_dt = datetime.fromisoformat(due_date.replace("Z", "+00:00"))
+                    else:
+                        due_date_dt = due_date
+                    if hasattr(due_date_dt, 'date'):
+                        days_overdue = (now.date() - due_date_dt.date()).days
+                    else:
+                        days_overdue = (now - due_date_dt).days
+                    loan["days_overdue"] = max(0, days_overdue)
+                else:
+                    loan["days_overdue"] = 0
             except Exception:
                 loan["due_today_amount"] = loan.get("outstanding_balance", 0)
         else:

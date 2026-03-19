@@ -541,7 +541,7 @@ export default function Dashboard() {
             </View>
             <TouchableOpacity 
               style={{ backgroundColor: '#fff', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6 }}
-              onPress={() => router.push('/admin/subscription')}
+              onPress={() => router.push('/admin/loan-plans')}
             >
               <Text style={{ color: '#F59E0B', fontWeight: '600', fontSize: 13 }}>Upgrade</Text>
             </TouchableOpacity>

@@ -305,10 +305,6 @@ export default function PaymentReminders() {
 
               <View style={styles.reminderDetails}>
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>{t('monthlyEmi')}</Text>
-                  <Text style={styles.detailValue}>{formatAmount(reminder.monthly_emi, 2)}</Text>
-                </View>
-                <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>{t('outstanding')}</Text>
                   <Text style={styles.detailValue}>{formatAmount(reminder.outstanding_balance, 2)}</Text>
                 </View>
