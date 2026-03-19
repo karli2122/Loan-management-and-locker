@@ -86,8 +86,13 @@ Where: `daily_interest = principal × (rate/100) / 30`
   - Reports/Financial: Fixed paid_loans query to use admin_id scoping (was missing deleted clients' data)
   - Portfolio-Health: Refactored to use loans collection instead of stale clients collection
   - Payment handler: Now updates client document's core financial fields (outstanding_balance, loan_amount, total_paid) on every payment
-  - All endpoints now show consistent data: Outstanding=2028.72, Disbursed=6991.22, Collected=5416.31
-  - Deployed to production VPS
+- **v1.4.9-audit (March 19 2026)**: Full audit of all three apps:
+  - **Backend API**: All 25+ endpoints tested, all returning 200. Data consistent across all 6 financial endpoints.
+  - **Web Portal**: Dashboard, client list, client details, reports all verified via screenshots. Data matches backend.
+  - **Admin App**: Code reviewed - loans tab (JSX fixed), dashboard (correct data flow), transactions, client details, MultiLoanOverview (delete/share/edit buttons present).
+  - **Client App**: Code reviewed - heartbeat service, registration, permissions, background tasks all correctly implemented.
+  - **Production VPS**: Deployed and verified - all endpoints consistent (Outstanding=2028.72, Disbursed=6991.22, Collected=5416.31).
+  - **Fixed**: `logger` undefined in loans_multi.py (would cause crash on loan archival).
 
 ## EAS Builds Submitted (v1.4.9, Build #50)
 - Admin: b5e89a98-3294-4f87-a72b-f7f68fd033a1

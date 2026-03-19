@@ -1,9 +1,12 @@
 """Loans management - Support for multiple loans per client."""
 import uuid
+import logging
 from datetime import datetime, timezone
 from fastapi import APIRouter, Query, HTTPException
 from database import db
 from utils.auth import get_admin_id_from_token
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/loans", tags=["loans"])
 
