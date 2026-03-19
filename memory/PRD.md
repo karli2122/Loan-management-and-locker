@@ -76,6 +76,9 @@ Where: `daily_interest = principal × (rate/100) / 30`
 - [ ] Background heartbeat needs real-device verification
 - [ ] Subscription auto-renewal needs testing with expired accounts
 
-## EAS Builds Submitted (v1.4.8, Build #49)
-- Admin: c6c333db-9d49-4338-84fd-b4e834c1e2fe
-- Client: 5c3f9c59-a7fa-4738-a444-dff6d5568360
+## Changelog
+- **v1.4.9 (Build #50, March 19 2026)**: Fixed JSX syntax error in loans.tsx (unclosed fragment/ternary), validated calculator fix, badge logic, and 100% Paid UI. Submitted new EAS builds.
+
+## EAS Builds Submitted (v1.4.9, Build #50)
+- Admin: b5e89a98-3294-4f87-a72b-f7f68fd033a1
+- Client: 6b1c5398-de7d-4f1d-8183-39aeb59c9676
