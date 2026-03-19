@@ -33,7 +33,7 @@ async def get_client_loans(
         if not loan.get("next_payment_date") and loan.get("due_date"):
             loan["next_payment_date"] = loan["due_date"]
         
-        # Calculate due today amount (simple interest by day: what client owes if paying today)
+        # Calculate due today amount and outstanding
         if loan.get("given_date") and loan.get("status") == "active":
             from datetime import datetime, timezone
             try:
@@ -43,39 +43,50 @@ async def get_client_loans(
                 if hasattr(given, 'tzinfo') and given.tzinfo is None:
                     given = given.replace(tzinfo=timezone.utc)
                 now = datetime.now(timezone.utc)
-                if hasattr(given, 'date'):
-                    days_elapsed = (now.date() - given.date()).days
-                else:
-                    days_elapsed = (now - given).days
-                if days_elapsed < 0:
-                    days_elapsed = 0
-                # Simple interest by day: Principal + Principal * (Rate/100) * (days/30)
+                
                 principal = loan.get("loan_amount", 0)
                 rate = loan.get("interest_rate", 0)
-                interest_today = principal * (rate / 100) * (days_elapsed / 30)
-                total_due_today = round(principal + interest_today, 2)
+                tenure = loan.get("tenure_months", 1) or 1
                 already_paid = loan.get("total_paid", 0) or 0
-                loan["due_today_amount"] = max(0, round(total_due_today - already_paid, 2))
-                loan["days_elapsed"] = days_elapsed
+                
+                # Base interest = principal × rate% × tenure_months
+                base_interest = principal * (rate / 100) * tenure
+                base_total = principal + base_interest  # What's owed by due date
                 
                 # Calculate days overdue
                 due_date = loan.get("due_date")
+                days_overdue = 0
                 if due_date:
                     if isinstance(due_date, str):
                         due_date_dt = datetime.fromisoformat(due_date.replace("Z", "+00:00"))
                     else:
                         due_date_dt = due_date
                     if hasattr(due_date_dt, 'date'):
-                        days_overdue = (now.date() - due_date_dt.date()).days
+                        days_overdue = max(0, (now.date() - due_date_dt.date()).days)
                     else:
-                        days_overdue = (now - due_date_dt).days
-                    loan["days_overdue"] = max(0, days_overdue)
-                else:
-                    loan["days_overdue"] = 0
+                        days_overdue = max(0, (now - due_date_dt).days)
+                
+                loan["days_overdue"] = days_overdue
+                
+                # Late fee = daily interest × overdue days
+                daily_interest = principal * (rate / 100) / 30
+                late_fee = daily_interest * days_overdue if days_overdue > 0 else 0
+                
+                # Due today = base_total + late_fee - already_paid
+                due_today = max(0, round(base_total + late_fee - already_paid, 2))
+                loan["due_today_amount"] = due_today
+                loan["late_fee"] = round(late_fee, 2)
+                
+                # Outstanding = same calculation (what's owed right now)
+                loan["outstanding_balance"] = due_today
+                
             except Exception:
                 loan["due_today_amount"] = loan.get("outstanding_balance", 0)
+                loan["days_overdue"] = 0
         else:
             loan["due_today_amount"] = loan.get("outstanding_balance", 0)
+            loan["days_overdue"] = 0
+            loan["late_fee"] = 0
         
         # Calculate next payment amount
         if not loan.get("next_payment_amount"):

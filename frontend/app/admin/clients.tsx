@@ -268,16 +268,13 @@ export default function ClientsList() {
           <View style={styles.clientMeta}>
             {(() => {
               const outstanding = item.outstanding_balance || 0;
-              const totalDue = (item as any).total_amount_due || 0;
-              const loanAmt = item.loan_amount || 0;
               const daysOverdue = (item as any).days_overdue || 0;
-              const dueAmt = totalDue > loanAmt ? totalDue : (outstanding > 0 ? outstanding : loanAmt);
-              const isPaid = outstanding <= 0 && loanAmt > 0;
+              const isPaid = outstanding <= 0 && (item.loan_amount || 0) > 0;
               const isOverdue = daysOverdue > 0 && outstanding > 0;
               const dueColor = isPaid ? '#10B981' : isOverdue ? '#EF4444' : outstanding > 0 ? '#F59E0B' : colors.textSecondary;
               return (
                 <Text style={[styles.emiAmount, { color: dueColor }]}>
-                  {t('due')}: {isPaid ? `${currencySymbol}0` : formatAmount(dueAmt)}
+                  {t('due')}: {isPaid ? `${currencySymbol}0` : formatAmount(outstanding)}
                   {isOverdue ? ` (${daysOverdue}d ${t('overdue') || 'overdue'})` : ''}
                 </Text>
               );
