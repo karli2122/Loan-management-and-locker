@@ -28,6 +28,7 @@ export default function AdminLayout() {
       <Stack.Screen name="telegram" />
       <Stack.Screen name="team" />
       <Stack.Screen name="provisioning" />
+      <Stack.Screen name="upgrade-plan" />
     </Stack>
   );
 }

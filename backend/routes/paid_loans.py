@@ -240,8 +240,69 @@ async def get_paid_loans_summary(admin_token: str = Query(...)):
     total_collected = sum(pl.get("total_paid", 0) for pl in paid_loans)
     total_payments = sum(pl.get("payment_count", 0) for pl in paid_loans)
 
-    # Calculate interest directly from paid_loans records (not from re-deriving via active clients)
+    # Calculate interest directly from paid_loans records
     total_interest_earned = sum(pl.get("total_interest", 0) or 0 for pl in paid_loans)
+    
+    # Also include archived loans from the loans collection that may not have paid_loans records
+    # (loans archived via record_payment before the paid_loans sync was added)
+    paid_loan_ids = set(pl.get("loan_id") for pl in paid_loans if pl.get("loan_id"))
+    
+    if is_super:
+        archived_loans = await db.loans.find(
+            {"status": "archived"},
+            {"_id": 0, "id": 1, "loan_amount": 1, "total_paid": 1, "interest_rate": 1, "tenure_months": 1, "archived_at": 1, "client_id": 1}
+        ).to_list(10000)
+    else:
+        admin_clients = await db.clients.find(
+            {"admin_id": admin_id},
+            {"_id": 0, "id": 1}
+        ).to_list(10000)
+        admin_client_ids = [c["id"] for c in admin_clients]
+        archived_loans = await db.loans.find(
+            {"status": "archived", "client_id": {"$in": admin_client_ids}},
+            {"_id": 0, "id": 1, "loan_amount": 1, "total_paid": 1, "interest_rate": 1, "tenure_months": 1, "archived_at": 1, "client_id": 1}
+        ).to_list(10000)
+    
+    # Count archived loans not in paid_loans
+    extra_archived = 0
+    for al in archived_loans:
+        if al.get("id") not in paid_loan_ids:
+            principal = al.get("loan_amount", 0)
+            paid = al.get("total_paid", 0) or 0
+            interest = max(0, paid - principal)
+            total_interest_earned += interest
+            total_principal += principal
+            total_collected += paid
+            extra_archived += 1
+    
+    total_archived = len(paid_loans) + extra_archived
+    
+    # Also include interest earned from active loans with payments
+    if is_super:
+        active_loans = await db.loans.find(
+            {"status": "active"},
+            {"_id": 0, "loan_amount": 1, "total_paid": 1, "interest_rate": 1, "tenure_months": 1}
+        ).to_list(10000)
+    else:
+        if not admin_client_ids:
+            admin_clients = await db.clients.find(
+                {"admin_id": admin_id},
+                {"_id": 0, "id": 1}
+            ).to_list(10000)
+            admin_client_ids = [c["id"] for c in admin_clients]
+        active_loans = await db.loans.find(
+            {"status": "active", "client_id": {"$in": admin_client_ids}},
+            {"_id": 0, "loan_amount": 1, "total_paid": 1, "interest_rate": 1, "tenure_months": 1}
+        ).to_list(10000)
+    
+    active_interest_earned = 0
+    for loan in active_loans:
+        principal = loan.get("loan_amount", 0)
+        paid = loan.get("total_paid", 0) or 0
+        if paid > principal:
+            active_interest_earned += (paid - principal)
+    
+    total_interest_earned += active_interest_earned
 
     month_start = datetime(now.year, now.month, 1)
     current_month_interest = 0
@@ -261,12 +322,27 @@ async def get_paid_loans_summary(admin_token: str = Query(...)):
             if archived_at >= month_start:
                 current_month_interest += interest
                 current_month_count += 1
+    
+    # Also include archived loans from loans collection not in paid_loans
+    for al in archived_loans:
+        if al.get("id") not in paid_loan_ids:
+            archived_at = al.get("archived_at")
+            principal = al.get("loan_amount", 0)
+            paid = al.get("total_paid", 0) or 0
+            interest = max(0, paid - principal)
+            if isinstance(archived_at, datetime):
+                key = (archived_at.year, archived_at.month)
+                if key in trend_lookup:
+                    trend_lookup[key]["interest"] += interest
+                if archived_at >= month_start:
+                    current_month_interest += interest
+                    current_month_count += 1
 
     for entry in monthly_trend:
         entry["interest"] = round(entry["interest"], 2)
 
     return {
-        "total_loans_archived": len(paid_loans),
+        "total_loans_archived": total_archived,
         "total_principal_disbursed": round(total_principal, 2),
         "total_amount_collected": round(total_collected, 2),
         "total_interest_earned": round(total_interest_earned, 2),

@@ -626,7 +626,7 @@ export default function AddLoan() {
           )}
         </View>
 
-        {/* EMI Calculator Preview */}
+        {/* Loan Calculator Preview */}
         {emiPreview && (
           <View style={styles.emiPreviewCard} data-testid="emi-preview-card">
             <View style={styles.emiPreviewHeader}>
@@ -638,22 +638,6 @@ export default function AddLoan() {
             <View style={styles.emiPreviewGrid}>
               <View style={styles.emiPreviewItem}>
                 <Text style={styles.emiPreviewLabel}>
-                  {t('monthlyEmi')}
-                </Text>
-                <Text style={styles.emiPreviewValue}>
-                  {formatAmount(emiPreview.monthlyEmi)}
-                </Text>
-              </View>
-              <View style={styles.emiPreviewItem}>
-                <Text style={styles.emiPreviewLabel}>
-                  {t('tenure')}
-                </Text>
-                <Text style={styles.emiPreviewValueSmall}>
-                  {emiPreview.days} {language === 'et' ? 'päeva' : 'days'}
-                </Text>
-              </View>
-              <View style={styles.emiPreviewItem}>
-                <Text style={styles.emiPreviewLabel}>
                   {t('totalInterest')}
                 </Text>
                 <Text style={[styles.emiPreviewValueSmall, { color: '#F59E0B' }]}>
@@ -662,10 +646,18 @@ export default function AddLoan() {
               </View>
               <View style={styles.emiPreviewItem}>
                 <Text style={styles.emiPreviewLabel}>
-                  {t('totalPayable')}
+                  Due Amount
+                </Text>
+                <Text style={[styles.emiPreviewValue, { color: '#10B981' }]}>
+                  {formatAmount(emiPreview.totalPayable)}
+                </Text>
+              </View>
+              <View style={styles.emiPreviewItem}>
+                <Text style={styles.emiPreviewLabel}>
+                  {t('tenure')}
                 </Text>
                 <Text style={styles.emiPreviewValueSmall}>
-                  {formatAmount(emiPreview.totalAmount)}
+                  {emiPreview.days} {language === 'et' ? 'päeva' : 'days'}
                 </Text>
               </View>
             </View>

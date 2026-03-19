@@ -307,53 +307,63 @@ export default function LoansTab() {
             )}
             {!item.import_needs_review && <Text style={[styles.clientPhone, { color: colors.textMuted }]}>{item.phone}</Text>}
           </View>
-          <View style={[styles.statusBadge, item.is_locked ? styles.statusLocked : styles.statusUnlocked]}>
-            {item.is_registered ? (
-              <Ionicons
-                name={item.is_locked ? 'lock-closed' : 'lock-open'}
-                size={14}
-                color="#fff"
-              />
-            ) : null}
+          <View style={[styles.statusBadge, item.is_registered ? (item.is_locked ? styles.statusLocked : styles.statusUnlocked) : { backgroundColor: '#94A3B830' }]}>
+            <Ionicons
+              name={item.is_registered ? (item.is_locked ? 'lock-closed' : 'lock-open') : 'phone-portrait-outline'}
+              size={14}
+              color={item.is_registered ? '#fff' : '#94A3B8'}
+            />
           </View>
         </View>
         
         {hasLoanData && (
           <View style={[styles.loanInfo, { borderTopColor: colors.border }]}>
-            {/* Progress Bar */}
-            <View style={styles.progressContainer}>
-              <View style={[styles.progressBarBg, { backgroundColor: colors.surfaceAlt }]}>
-                <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
+            {/* Fully Paid Indicator */}
+            {outstanding <= 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#10B98120', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}>
+                  <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                  <Text style={{ color: '#10B981', fontWeight: '700', fontSize: 13 }}>100% Paid - No Active Loan</Text>
+                </View>
               </View>
-              <Text style={[styles.progressText, { color: colors.textSecondary }]}>{progressPercent.toFixed(0)}%</Text>
-            </View>
-            
-            {/* Loan Details Grid */}
-            <View style={styles.loanDetailsGrid}>
-              <View style={styles.loanDetailItem}>
-                <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
-                  {t('emi')}
-                </Text>
-                <Text style={[styles.loanDetailValue, { color: colors.text }]}>{formatAmount(totalLoan, 0)}</Text>
-              </View>
-              
-              <View style={styles.loanDetailItem}>
-                <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
-                  {t('paid')}
-                </Text>
-                <Text style={[styles.loanDetailValue, { color: colors.success }]}>{formatAmount(paid, 0)}</Text>
-              </View>
-              
-              <View style={styles.loanDetailItem}>
-                <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
-                  {t('due')}
-                </Text>
-                <Text style={[styles.loanDetailValue, { color: outstanding <= 0 ? '#10B981' : (item.days_overdue ?? 0) > 0 ? '#EF4444' : '#F59E0B' }]}>
-                  {formatAmount(outstanding, 0)}
-                  {(item.days_overdue ?? 0) > 0 && outstanding > 0 ? ` (${item.days_overdue}d)` : ''}
-                </Text>
-              </View>
-            </View>
+            ) : (
+              <>
+                {/* Progress Bar */}
+                <View style={styles.progressContainer}>
+                  <View style={[styles.progressBarBg, { backgroundColor: colors.surfaceAlt }]}>
+                    <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
+                  </View>
+                  <Text style={[styles.progressText, { color: colors.textSecondary }]}>{progressPercent.toFixed(0)}%</Text>
+                </View>
+                
+                {/* Loan Details Grid */}
+                <View style={styles.loanDetailsGrid}>
+                  <View style={styles.loanDetailItem}>
+                    <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
+                      {t('emi')}
+                    </Text>
+                    <Text style={[styles.loanDetailValue, { color: colors.text }]}>{formatAmount(totalLoan, 0)}</Text>
+                  </View>
+                  
+                  <View style={styles.loanDetailItem}>
+                    <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
+                      {t('paid')}
+                    </Text>
+                    <Text style={[styles.loanDetailValue, { color: colors.success }]}>{formatAmount(paid, 0)}</Text>
+                  </View>
+                  
+                  <View style={styles.loanDetailItem}>
+                    <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
+                      {t('due')}
+                    </Text>
+                    <Text style={[styles.loanDetailValue, { color: (item.days_overdue ?? 0) > 0 ? '#EF4444' : '#F59E0B' }]}>
+                      {formatAmount(outstanding, 0)}
+                      {(item.days_overdue ?? 0) > 0 && outstanding > 0 ? ` (${item.days_overdue}d)` : ''}
+                    </Text>
+                  </View>
+                </View>
+              </>
+            )}
             
             {/* Next Payment & Overdue Info */}
             <View style={styles.paymentInfoRow}>

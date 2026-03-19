@@ -51,33 +51,48 @@ async def get_client_loans(
                 
                 # Base interest = principal × rate% × tenure_months
                 base_interest = principal * (rate / 100) * tenure
-                base_total = principal + base_interest  # What's owed by due date
+                base_total = principal + base_interest  # Full amount owed by due date
                 
-                # Calculate days overdue
+                # Daily interest rate
+                daily_interest = principal * (rate / 100) / 30 if rate > 0 else 0
+                
+                # Calculate days overdue and days until due
                 due_date = loan.get("due_date")
                 days_overdue = 0
+                days_until_due = 0
                 if due_date:
                     if isinstance(due_date, str):
                         due_date_dt = datetime.fromisoformat(due_date.replace("Z", "+00:00"))
                     else:
                         due_date_dt = due_date
-                    if hasattr(due_date_dt, 'date'):
-                        days_overdue = max(0, (now.date() - due_date_dt.date()).days)
+                    if hasattr(due_date_dt, 'tzinfo') and due_date_dt.tzinfo is None:
+                        due_date_dt = due_date_dt.replace(tzinfo=timezone.utc)
+                    diff_days = (due_date_dt.date() - now.date()).days if hasattr(due_date_dt, 'date') else (due_date_dt - now).days
+                    if diff_days < 0:
+                        days_overdue = abs(diff_days)
                     else:
-                        days_overdue = max(0, (now - due_date_dt).days)
+                        days_until_due = diff_days
                 
                 loan["days_overdue"] = days_overdue
                 
-                # Late fee = daily interest × overdue days
-                daily_interest = principal * (rate / 100) / 30
-                late_fee = daily_interest * days_overdue if days_overdue > 0 else 0
+                # Due today calculation:
+                # Overdue: principal + interest + (daily_interest × days_overdue) - paid
+                # ≤2 days to due: principal + interest - paid  (full amount)
+                # 3+ days to due: principal + interest - (days_until_2_before_due × daily_interest) - paid
+                if days_overdue > 0:
+                    late_fee = daily_interest * days_overdue
+                    due_today = base_total + late_fee - already_paid
+                elif days_until_due <= 2:
+                    late_fee = 0
+                    due_today = base_total - already_paid
+                else:
+                    late_fee = 0
+                    days_discount = days_until_due - 2
+                    due_today = base_total - (days_discount * daily_interest) - already_paid
                 
-                # Due today = base_total + late_fee - already_paid
-                due_today = max(0, round(base_total + late_fee - already_paid, 2))
+                due_today = max(0, round(due_today, 2))
                 loan["due_today_amount"] = due_today
-                loan["late_fee"] = round(late_fee, 2)
-                
-                # Outstanding = same calculation (what's owed right now)
+                loan["late_fee"] = round(late_fee, 2) if days_overdue > 0 else 0
                 loan["outstanding_balance"] = due_today
                 
             except Exception:
@@ -239,6 +254,55 @@ async def record_loan_payment(
         update_data["archived_at"] = datetime.now(timezone.utc)
     
     await db.loans.update_one({"id": loan_id}, {"$set": update_data})
+    
+    # If loan is fully paid, create a paid_loans record for interest/archive tracking
+    if new_status == "archived":
+        principal = loan.get("loan_amount", 0)
+        rate = loan.get("interest_rate", 0)
+        tenure = loan.get("tenure_months", 1) or 1
+        final_total_paid = current_total_paid + amount
+        total_interest = max(0, final_total_paid - principal)
+        
+        # Get client info
+        client_doc = await db.clients.find_one({"id": loan.get("client_id")}, {"_id": 0, "name": 1, "phone": 1})
+        
+        # Get payment history for this loan
+        loan_payments = await db.payments.find(
+            {"loan_id": loan_id}, {"_id": 0}
+        ).sort("payment_date", 1).to_list(1000)
+        
+        paid_loan_record = {
+            "id": f"pl_{loan_id}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
+            "loan_id": loan_id,
+            "client_id": loan.get("client_id"),
+            "client_name": client_doc.get("name", "Unknown") if client_doc else "Unknown",
+            "client_phone": client_doc.get("phone", "") if client_doc else "",
+            "admin_id": admin_id,
+            "loan_amount": principal,
+            "interest_rate": rate,
+            "loan_tenure_months": tenure,
+            "total_amount_due": principal + (principal * (rate / 100) * tenure),
+            "total_paid": final_total_paid,
+            "total_interest": round(total_interest, 2),
+            "loan_start_date": loan.get("given_date"),
+            "loan_given_date": loan.get("given_date"),
+            "loan_due_date": loan.get("due_date"),
+            "paid_date": datetime.now(timezone.utc),
+            "archived_at": datetime.now(timezone.utc),
+            "payment_count": len(loan_payments) + 1,  # +1 for current payment
+            "payments_history": [
+                {
+                    "id": p.get("id"),
+                    "amount": p.get("amount", 0),
+                    "payment_date": p.get("payment_date").isoformat() if isinstance(p.get("payment_date"), datetime) else p.get("payment_date"),
+                    "payment_method": p.get("payment_method", "cash"),
+                    "notes": p.get("notes", ""),
+                } for p in loan_payments
+            ],
+            "status": "archived",
+        }
+        await db.paid_loans.insert_one(paid_loan_record)
+        logger.info(f"Loan {loan_id} archived to paid_loans with interest={total_interest}")
     
     # Record payment in payments collection
     payment_record = {

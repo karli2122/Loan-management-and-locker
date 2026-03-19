@@ -1,46 +1,81 @@
 # PayLock Pro - Product Requirements Document
 
 ## Original Problem Statement
-Full-stack loan management application with React Native Admin/Client apps and a FastAPI backend + MongoDB.
+A full-stack loan management application with FastAPI backend, React Native Admin/Client apps, and a vanilla JS web portal. The system manages client loans, tracks payments, generates contracts, monitors device heartbeats, and provides analytics dashboards.
 
-## Core Architecture
+## Architecture
 - **Backend**: FastAPI + MongoDB Atlas, VPS (37.148.202.159, service: paylock)
-- **Admin App**: React Native (Expo)
-- **Client App**: React Native (Expo)
-- **Web Portal**: Vanilla JS at /api/portal
+- **Admin App**: React Native (Expo SDK 54), EAS builds
+- **Client App**: React Native (Expo SDK 54), EAS builds
+- **Web Portal**: Vanilla JS served via FastAPI static files
+- **Database**: MongoDB Atlas (loans collection = single source of truth)
 
-## Latest Changes (2026-03-19)
+## Key Data Model
+- `loans` collection: Single source of truth for all loan data
+- `clients` collection: Client profile info, aggregated loan stats calculated dynamically
+- `paid_loans` collection: Archived fully-paid loan records with interest data
+- `payments` collection: Individual payment records
+- `document_vault` collection: Client documents
 
-### Bug Fixes
-- **Contract sharing**: Fixed Android compatibility using `getContentUriAsync()` for content:// URI
-- **Active Loans count**: Now queries `loans` collection by client_ids (was incorrectly counting by admin_id)
-- **Demo mode upgrade button**: Fixed unmatched route `/admin/subscription` → `/admin/loan-plans`
-- **Demo mode add loan**: Button hidden for demo plan users
-- **Settings User Management**: Fixed layout overlay — changed adminInfo to column layout with flexShrink on actions
-- **Payment reminders**: Removed monthly EMI row from reminder cards
-
-### UI Enhancements
-- **Due amount color-coding** (clients.tsx + loans.tsx):
-  - Green (#10B981): paid (0)
-  - Yellow (#F59E0B): outstanding but not overdue
-  - Red (#EF4444): overdue with days count
-- **Multi-loan overview**: Due Today shows overdue days indicator with color coding
-- **Loans endpoint**: Now returns `days_overdue` per loan
-- **Client management**: "Registered" card → "Loans Active" with actual count
-- **Dashboard heartbeat**: Click navigates to `/admin/clients?filter=silent`
-- **Clients page**: Reads `filter` URL param for pre-selected silent filter
-
-### Translations Added
-- clientManagement, clientOverview, loansActive, filterSilent (16 languages)
-
-## Current Versions
-- Admin: v1.4.3 (code 44)
-- Client: v1.4.4 (code 45)
+## Due Today Calculation Formula (v1.4.8)
+For loans with `given_date`:
+- **Overdue (past due date)**: `due_today = principal + interest + (daily_interest × days_overdue) - paid`
+- **Due in ≤2 days**: `due_today = principal + interest - paid` (full amount)
+- **Due in 3+ days**: `due_today = principal + interest - (days_until_2_before_due × daily_interest) - paid`
+Where: `daily_interest = principal × (rate/100) / 30`
 
 ## Credentials
 - **VPS**: karliv @ 37.148.202.159 / Nasvakas123!
 - **Super Admin**: karli1987 / nasvakas123
 
-## Backlog
-- P1: Verify background heartbeat on real device
-- P2: Test subscription auto-renewal with expired accounts
+## What's Implemented (as of March 19, 2026)
+
+### Core Features
+- [x] Unified loan data source (loans collection)
+- [x] Month-based interest calculation
+- [x] Due today formula with late fees (3-tier: overdue/near-due/future)
+- [x] Delete Loan functionality (backend + web portal)
+- [x] Share Contract functionality (backend PDF gen + frontend share dialog)
+- [x] Bulk import writes to loans collection
+- [x] Role assignment logic (user default, admin on enterprise/custom plan)
+- [x] Background heartbeat service (client app)
+- [x] Push notifications for silent devices
+
+### Dashboard & Analytics (Fixed v1.4.8)
+- [x] Interest Earned: now includes archived loans from both paid_loans AND loans collection
+- [x] Loans Archived: counts from both paid_loans AND archived loans in loans collection
+- [x] Monthly Interest Income: correctly calculated from archived loan interest
+- [x] Profit This Month: uses actual interest from archived/active loans
+- [x] Active Loans: counts from loans collection (not stale clients data)
+- [x] Overdue Loans: dynamically calculated from loan due dates
+- [x] Outstanding Balance: calculated with late fee formula
+- [x] paid_loans records now auto-created when loan fully paid
+
+### Admin App (v1.4.8)
+- [x] Month-based interest forms
+- [x] Demo mode restrictions (disabled Add Loan, Upgrade button → loan-plans)
+- [x] Color-coded due amount on client/loan cards (green=paid, red=overdue, yellow=due)
+- [x] 100% Paid indicator on cards when outstanding ≤ 0
+- [x] Registered device badge on cards (lock-open/lock-closed/phone icon)
+- [x] Late fee row in loan card (shows daily rate × days)
+- [x] Add Loan calculator shows Due Amount (removed Monthly EMI)
+- [x] Platform fee configuration UI for superadmins (in Stripe Connect settings)
+- [x] Share Contract uses legacy expo-file-system API (fixes deprecation error)
+- [x] Client list refreshes on focus (useFocusEffect)
+
+### Web Portal
+- [x] Delete/Share Contract buttons
+- [x] Document search fix
+- [x] Email button UI
+- [x] Plan-gated code generation
+- [x] Correct remaining amount in loan selector
+- [x] Stripe Connect setup in settings
+
+## Pending / Known Issues
+- [ ] Share Contract native share dialog needs real-device verification after build
+- [ ] Background heartbeat needs real-device verification
+- [ ] Subscription auto-renewal needs testing with expired accounts
+
+## EAS Builds Submitted (v1.4.8, Build #49)
+- Admin: c6c333db-9d49-4338-84fd-b4e834c1e2fe
+- Client: 5c3f9c59-a7fa-4738-a444-dff6d5568360

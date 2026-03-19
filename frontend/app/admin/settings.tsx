@@ -1073,7 +1073,7 @@ export default function AdminSettings() {
 
         {/* Stripe Connect - Enterprise/Custom Feature */}
         {(plan === 'enterprise' || plan === 'custom') ? (
-          <StripeConnectSection adminToken={adminToken} colors={colors} t={t} formatAmount={formatAmount} />
+          <StripeConnectSection adminToken={adminToken} colors={colors} t={t} formatAmount={formatAmount} isSuperAdmin={isSuperAdmin} />
         ) : (
           <View style={[styles.section, { opacity: 0.5 }]}>
             <Text style={styles.sectionTitle}>Stripe Connect</Text>

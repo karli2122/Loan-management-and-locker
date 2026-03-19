@@ -152,16 +152,70 @@ async def get_collection_report(
     query = {"admin_id": target_admin_id, "is_deleted": {"$ne": True}} if target_admin_id else {"is_deleted": {"$ne": True}}
     clients = await db.clients.find(query, {"_id": 0, "id": 1, "name": 1, "loan_amount": 1, "total_paid": 1, "outstanding_balance": 1, "late_fees_accumulated": 1, "days_overdue": 1, "is_deleted": 1, "created_at": 1}).to_list(1000)
     
-    total_disbursed = sum(c.get("loan_amount", 0) for c in clients)
-    total_collected = sum(c.get("total_paid", 0) for c in clients)
-    total_outstanding = sum(c.get("outstanding_balance", 0) for c in clients)
-    total_late_fees = sum(c.get("late_fees_accumulated", 0) for c in clients)
-    
-    # Count actual active loans from the loans collection
     client_ids = [c["id"] for c in clients]
-    active_loans = await db.loans.count_documents({"client_id": {"$in": client_ids}, "status": "active"}) if client_ids else 0
+    
+    # Fetch all active loans from loans collection for accurate stats
+    all_loans = await db.loans.find(
+        {"client_id": {"$in": client_ids}, "status": "active"},
+        {"_id": 0, "loan_amount": 1, "total_paid": 1, "outstanding_balance": 1, "due_date": 1, "given_date": 1, "interest_rate": 1, "tenure_months": 1, "client_id": 1}
+    ).to_list(10000) if client_ids else []
+    
+    # Calculate stats from loans collection (source of truth)
+    now = datetime.now(timezone.utc)
+    total_disbursed = sum(l.get("loan_amount", 0) for l in all_loans)
+    total_collected = sum(l.get("total_paid", 0) or 0 for l in all_loans)
+    
+    # Calculate outstanding dynamically using the due_today formula
+    total_outstanding = 0
+    overdue_client_ids = set()
+    for l in all_loans:
+        principal = l.get("loan_amount", 0)
+        rate = l.get("interest_rate", 0)
+        tenure = l.get("tenure_months", 1) or 1
+        already_paid = l.get("total_paid", 0) or 0
+        has_given = bool(l.get("given_date"))
+        
+        days_overdue = 0
+        days_until_due = 0
+        due = l.get("due_date")
+        if due:
+            try:
+                if isinstance(due, str):
+                    due_dt = datetime.fromisoformat(due.replace('Z', '+00:00'))
+                else:
+                    due_dt = due
+                if hasattr(due_dt, 'tzinfo') and due_dt.tzinfo is None:
+                    due_dt = due_dt.replace(tzinfo=timezone.utc)
+                diff = (due_dt.date() - now.date()).days if hasattr(due_dt, 'date') else (due_dt - now).days
+                if diff < 0:
+                    days_overdue = abs(diff)
+                else:
+                    days_until_due = diff
+            except (ValueError, TypeError):
+                pass
+        
+        if has_given:
+            base_interest = principal * (rate / 100) * tenure
+            base_total = principal + base_interest
+            daily_interest = principal * (rate / 100) / 30 if rate > 0 else 0
+            if days_overdue > 0:
+                loan_outstanding = max(0, base_total + (daily_interest * days_overdue) - already_paid)
+            elif days_until_due <= 2:
+                loan_outstanding = max(0, base_total - already_paid)
+            else:
+                loan_outstanding = max(0, base_total - ((days_until_due - 2) * daily_interest) - already_paid)
+        else:
+            loan_outstanding = l.get("outstanding_balance", 0) or max(0, principal - already_paid)
+        
+        total_outstanding += loan_outstanding
+        if days_overdue > 0:
+            overdue_client_ids.add(l.get("client_id"))
+    
+    total_late_fees = 0  # Late fees are included in outstanding
+    
+    active_loans = len(all_loans)
     completed_loans = sum(1 for c in clients if c.get("outstanding_balance", 0) <= 0 and c.get("loan_amount", 0) > 0)
-    overdue_clients = sum(1 for c in clients if c.get("days_overdue", 0) > 0)
+    overdue_clients = len(overdue_client_ids)
     
     collection_rate = (total_collected / total_disbursed * 100) if total_disbursed > 0 else 0
 
@@ -521,12 +575,36 @@ async def get_dashboard_analytics(
     
     clients = await db.clients.find(query, {"_id": 0, "id": 1, "name": 1, "is_registered": 1, "is_locked": 1, "outstanding_balance": 1, "days_overdue": 1, "loan_amount": 1, "total_paid": 1, "registered_at": 1, "last_tamper_attempt": 1, "device_model": 1, "interest_rate": 1}).to_list(1000)
     
-    # Overview metrics
+    # Overview metrics - use loans collection for accurate counts
     total_clients = len(clients)
     registered = sum(1 for c in clients if c.get("is_registered"))
     locked = sum(1 for c in clients if c.get("is_locked"))
-    active_loans = sum(1 for c in clients if c.get("outstanding_balance", 0) > 0)
-    overdue = sum(1 for c in clients if c.get("days_overdue", 0) > 0)
+    
+    # Calculate active loans and overdue from loans collection
+    client_ids = [c["id"] for c in clients]
+    all_active_loans = await db.loans.find(
+        {"client_id": {"$in": client_ids}, "status": "active"},
+        {"_id": 0, "loan_amount": 1, "total_paid": 1, "due_date": 1, "given_date": 1, "interest_rate": 1, "tenure_months": 1, "client_id": 1}
+    ).to_list(10000) if client_ids else []
+    
+    now_utc = datetime.now(timezone.utc) if hasattr(timezone, 'utc') else datetime.utcnow()
+    active_loans = len(all_active_loans)
+    overdue_client_ids = set()
+    for loan in all_active_loans:
+        due = loan.get("due_date")
+        if due:
+            try:
+                if isinstance(due, str):
+                    due_dt = datetime.fromisoformat(due.replace('Z', '+00:00'))
+                else:
+                    due_dt = due
+                if hasattr(due_dt, 'tzinfo') and due_dt.tzinfo is None:
+                    due_dt = due_dt.replace(tzinfo=timezone.utc)
+                if (now_utc.date() - due_dt.date()).days > 0:
+                    overdue_client_ids.add(loan.get("client_id"))
+            except (ValueError, TypeError):
+                pass
+    overdue = len(overdue_client_ids)
     
     # Build admin_id scope for paid_loans query (match client query scope)
     if filter_admin_id and is_super_admin:
@@ -549,16 +627,61 @@ async def get_dashboard_analytics(
         {"_id": 0, "client_id": 1, "total_paid": 1, "total_interest": 1, "loan_amount": 1, "archived_at": 1, "payments_history": 1}
     ).to_list(10000)
     
-    # Financial summary: include both active and archived data
-    active_disbursed = sum(c.get("loan_amount", 0) for c in clients)
-    archived_disbursed = sum(pl.get("loan_amount", 0) for pl in all_paid_loans)
-    total_disbursed = active_disbursed + archived_disbursed
+    # Financial summary: combine active loans data + archived data
+    # Active loans - calculate from loans collection
+    active_disbursed = sum(l.get("loan_amount", 0) for l in all_active_loans)
+    active_collected = sum(l.get("total_paid", 0) or 0 for l in all_active_loans)
     
-    active_collected = sum(c.get("total_paid", 0) for c in clients)
+    # Archived loans from paid_loans
+    archived_disbursed = sum(pl.get("loan_amount", 0) for pl in all_paid_loans)
     archived_collected = sum(pl.get("total_paid", 0) for pl in all_paid_loans)
+    
+    total_disbursed = active_disbursed + archived_disbursed
     total_collected = active_collected + archived_collected
     
-    total_outstanding = sum(c.get("outstanding_balance", 0) for c in clients)
+    # Calculate total outstanding dynamically from active loans
+    total_outstanding_calc = 0
+    for loan in all_active_loans:
+        principal = loan.get("loan_amount", 0)
+        rate = loan.get("interest_rate", 0)
+        tenure = loan.get("tenure_months", 1) or 1
+        already_paid = loan.get("total_paid", 0) or 0
+        has_given = bool(loan.get("given_date"))
+        
+        if has_given:
+            base_total = principal + principal * (rate / 100) * tenure
+            daily_interest = principal * (rate / 100) / 30 if rate > 0 else 0
+            due = loan.get("due_date")
+            days_overdue = 0
+            days_until_due = 0
+            if due:
+                try:
+                    if isinstance(due, str):
+                        due_dt = datetime.fromisoformat(due.replace('Z', '+00:00'))
+                    else:
+                        due_dt = due
+                    if hasattr(due_dt, 'tzinfo') and due_dt.tzinfo is None:
+                        due_dt = due_dt.replace(tzinfo=timezone.utc)
+                    diff = (due_dt.date() - now_utc.date()).days if hasattr(due_dt, 'date') else (due_dt - now_utc).days
+                    if diff < 0:
+                        days_overdue = abs(diff)
+                    else:
+                        days_until_due = diff
+                except (ValueError, TypeError):
+                    pass
+            
+            if days_overdue > 0:
+                loan_outstanding = max(0, base_total + daily_interest * days_overdue - already_paid)
+            elif days_until_due <= 2:
+                loan_outstanding = max(0, base_total - already_paid)
+            else:
+                loan_outstanding = max(0, base_total - (days_until_due - 2) * daily_interest - already_paid)
+        else:
+            loan_outstanding = loan.get("outstanding_balance", 0) or max(0, principal - already_paid)
+        
+        total_outstanding_calc += loan_outstanding
+    
+    total_outstanding = total_outstanding_calc
     collection_rate = (total_collected / total_disbursed * 100) if total_disbursed > 0 else 0
     
     # Recent activity (last 7 days)
@@ -603,40 +726,51 @@ async def get_dashboard_analytics(
                 month_key = pd_dt.strftime("%Y-%m")
                 monthly_revenue[month_key] = monthly_revenue.get(month_key, 0) + (ph.get("amount", 0) or 0)
 
-    # Monthly interest: calculate from payments based on client interest rates
-    # For each payment, estimate the interest portion based on the client's rate
+    # Monthly interest: calculate from paid_loans (accurate) + archived loans from loans collection + active loan interest
     monthly_interest = {}
-    client_rates = {}
-    for c in clients:
-        rate = c.get("interest_rate", 0) or 0
-        if rate > 0:
-            client_rates[c["id"]] = rate / 100.0 / 12  # monthly rate
-
-    # Interest from active loan payments
-    for payment in payments_all:
-        payment_date = payment.get("payment_date")
-        if not payment_date or payment_date < six_months_ago:
-            continue
-        client_id = payment.get("client_id")
-        amount = payment.get("amount", 0) or 0
-        monthly_rate = client_rates.get(client_id, 0)
-        if monthly_rate > 0 and amount > 0:
-            # Approximate interest portion of each payment
-            interest_portion = amount * (monthly_rate / (1 + monthly_rate)) if monthly_rate < 1 else amount * 0.1
-            month_key = payment_date.strftime("%Y-%m")
-            monthly_interest[month_key] = monthly_interest.get(month_key, 0) + interest_portion
-
-    # Also add interest from archived/paid loans
+    
+    # Track paid_loan loan_ids to avoid double counting
+    paid_loan_ids = set(pl.get("loan_id") for pl in all_paid_loans if pl.get("loan_id"))
+    
+    # Interest from paid_loans (archived via paid_loans collection)
     for pl in all_paid_loans:
         interest = pl.get("total_interest", 0) or 0
         if interest <= 0:
             continue
-        archived_at = pl.get("archived_at")
+        archived_at = pl.get("archived_at") or pl.get("paid_date")
         if not archived_at or not isinstance(archived_at, datetime):
             continue
         if archived_at >= six_months_ago:
             month_key = archived_at.strftime("%Y-%m")
             monthly_interest[month_key] = monthly_interest.get(month_key, 0) + interest
+    
+    # Interest from archived loans in the loans collection (not in paid_loans)
+    archived_loans_in_db = await db.loans.find(
+        {"client_id": {"$in": client_ids}, "status": "archived"},
+        {"_id": 0, "id": 1, "loan_amount": 1, "total_paid": 1, "archived_at": 1}
+    ).to_list(10000)
+    
+    for al in archived_loans_in_db:
+        if al.get("id") in paid_loan_ids:
+            continue
+        principal = al.get("loan_amount", 0)
+        paid = al.get("total_paid", 0) or 0
+        interest = max(0, paid - principal)
+        if interest <= 0:
+            continue
+        archived_at = al.get("archived_at")
+        if isinstance(archived_at, datetime) and archived_at >= six_months_ago:
+            month_key = archived_at.strftime("%Y-%m")
+            monthly_interest[month_key] = monthly_interest.get(month_key, 0) + interest
+    
+    # Interest from active loan payments where total_paid > principal
+    for loan in all_active_loans:
+        principal = loan.get("loan_amount", 0)
+        paid = loan.get("total_paid", 0) or 0
+        interest_from_loan = max(0, paid - principal)
+        if interest_from_loan > 0:
+            month_key = now_utc.strftime("%Y-%m") if hasattr(now_utc, 'strftime') else now.strftime("%Y-%m")
+            monthly_interest[month_key] = monthly_interest.get(month_key, 0) + interest_from_loan
 
     # Ensure all 6 months have entries
     for i in range(5, -1, -1):

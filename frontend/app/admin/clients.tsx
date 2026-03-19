@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCurrency } from '../../src/context/CurrencyContext';
@@ -152,6 +153,13 @@ export default function ClientsList() {
     fetchClients();
   }, []);
 
+  // Re-fetch clients when screen comes back into focus (e.g., after payment)
+  useFocusEffect(
+    useCallback(() => {
+      fetchClients();
+    }, [])
+  );
+
   useEffect(() => {
     if (filter === 'silent') {
       fetchSilentClients();
@@ -274,7 +282,7 @@ export default function ClientsList() {
               const dueColor = isPaid ? '#10B981' : isOverdue ? '#EF4444' : outstanding > 0 ? '#F59E0B' : colors.textSecondary;
               return (
                 <Text style={[styles.emiAmount, { color: dueColor }]}>
-                  {t('due')}: {isPaid ? `${currencySymbol}0` : formatAmount(outstanding)}
+                  {isPaid ? '100% Paid' : `${t('due')}: ${formatAmount(outstanding)}`}
                   {isOverdue ? ` (${daysOverdue}d ${t('overdue') || 'overdue'})` : ''}
                 </Text>
               );

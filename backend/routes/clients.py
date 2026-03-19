@@ -1,6 +1,6 @@
 """Client routes - CRUD, bulk operations, locations."""
 from fastapi import APIRouter, Query, HTTPException
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 import secrets
 import uuid
@@ -107,61 +107,111 @@ async def list_clients(admin_token: str = Query(...)):
             loans_by_client[cid].append(loan)
     
     # Aggregate loan data for each client
+    now = datetime.now(timezone.utc)
+    
     for client in clients:
         cid = client["id"]
         client_loans = loans_by_client.get(cid, [])
         
         if client_loans:
-            # Calculate totals from loans collection
-            total_loan_amount = sum(l.get("loan_amount", 0) or l.get("amount", 0) for l in client_loans)
-            total_outstanding = sum(l.get("outstanding_balance", 0) or (l.get("loan_amount", 0) - l.get("total_paid", 0)) for l in client_loans)
-            total_paid_loans = sum(l.get("total_paid", 0) for l in client_loans)
-            
-            # Get earliest due date and interest rate from active loans
-            # Normalize all dates to datetime objects for comparison
+            total_loan_amount = 0
+            total_outstanding_with_fees = 0
+            total_paid_loans = 0
             due_dates = []
+            interest_rates = []
+            max_overdue = 0
+            
             for l in client_loans:
+                principal = l.get("loan_amount", 0) or l.get("amount", 0)
+                rate = l.get("interest_rate", 0)
+                tenure = l.get("tenure_months", 1) or 1
+                already_paid = l.get("total_paid", 0) or 0
+                has_given_date = bool(l.get("given_date"))
+                
+                total_loan_amount += principal
+                total_paid_loans += already_paid
+                
+                # Calculate days overdue and days until due for this loan
+                days_overdue = 0
+                days_until_due = 0
                 due = l.get("due_date")
                 if due:
-                    if isinstance(due, str):
-                        try:
-                            due = datetime.fromisoformat(due.replace('Z', '+00:00'))
-                        except (ValueError, TypeError):
-                            continue
-                    due_dates.append(due)
+                    try:
+                        if isinstance(due, str):
+                            due_dt = datetime.fromisoformat(due.replace('Z', '+00:00'))
+                        else:
+                            due_dt = due
+                        if hasattr(due_dt, 'tzinfo') and due_dt.tzinfo is None:
+                            due_dt = due_dt.replace(tzinfo=timezone.utc)
+                        diff_days = (due_dt.date() - now.date()).days if hasattr(due_dt, 'date') else (due_dt - now).days
+                        if diff_days < 0:
+                            days_overdue = abs(diff_days)
+                        else:
+                            days_until_due = diff_days
+                        due_dates.append(due_dt)
+                    except (ValueError, TypeError):
+                        pass
+                
+                if days_overdue > max_overdue:
+                    max_overdue = days_overdue
+                
+                if rate:
+                    interest_rates.append(rate)
+                
+                # Only apply full calculation if loan has given_date
+                # (mirrors loans_multi.py logic)
+                if has_given_date:
+                    base_interest = principal * (rate / 100) * tenure
+                    base_total = principal + base_interest
+                    daily_interest = principal * (rate / 100) / 30 if rate > 0 else 0
+                    
+                    # Due today formula:
+                    # Overdue: base_total + (daily_interest × days_overdue) - paid
+                    # ≤2 days to due: base_total - paid
+                    # 3+ days to due: base_total - (days_until_2_before_due × daily_interest) - paid
+                    if days_overdue > 0:
+                        loan_due_today = max(0, round(base_total + (daily_interest * days_overdue) - already_paid, 2))
+                    elif days_until_due <= 2:
+                        loan_due_today = max(0, round(base_total - already_paid, 2))
+                    else:
+                        days_discount = days_until_due - 2
+                        loan_due_today = max(0, round(base_total - (days_discount * daily_interest) - already_paid, 2))
+                else:
+                    # No given_date: use stored outstanding_balance (same as loans_multi.py)
+                    loan_due_today = l.get("outstanding_balance", 0) or max(0, principal - already_paid)
+                
+                total_outstanding_with_fees += loan_due_today
             
-            interest_rates = [l.get("interest_rate", 0) for l in client_loans if l.get("interest_rate")]
-            
-            # Update client with aggregated data if loans collection has data
+            # Update client with aggregated data
             if total_loan_amount > 0:
                 client["loan_amount"] = total_loan_amount
-                client["outstanding_balance"] = max(0, total_outstanding)
-                client["total_paid"] = (client.get("total_paid", 0) or 0) + total_paid_loans
+                client["outstanding_balance"] = max(0, round(total_outstanding_with_fees, 2))
+                client["total_paid"] = total_paid_loans
+            
+            client["days_overdue"] = max_overdue
             
             if due_dates:
-                # Use earliest due date
                 earliest_due = min(due_dates)
                 client["loan_due_date"] = earliest_due.isoformat() if isinstance(earliest_due, datetime) else earliest_due
                 client["next_payment_due"] = earliest_due
             
             if interest_rates:
-                client["interest_rate"] = interest_rates[0]  # Use first loan's rate
+                client["interest_rate"] = interest_rates[0]
             
-            # Calculate total amount due with interest
             if client.get("loan_amount") and client.get("interest_rate"):
-                months = 1  # Default
-                interest_amount = client["loan_amount"] * (client["interest_rate"] / 100) * months
+                tenure_avg = 1
+                interest_amount = client["loan_amount"] * (client["interest_rate"] / 100) * tenure_avg
                 client["total_amount_due"] = client["loan_amount"] + interest_amount
                 client["interest_amount"] = interest_amount
             
-            # Store loans for multi-loan display
             client["loans"] = client_loans
+        else:
+            client["days_overdue"] = 0
         
         # Ensure loan fields are properly mapped for frontend compatibility
         if client.get("loan_amount") and not client.get("principal_amount"):
             client["principal_amount"] = client["loan_amount"]
         
-        # Calculate interest amount if not set
         if not client.get("interest_amount") and client.get("total_amount_due") and client.get("loan_amount"):
             client["interest_amount"] = max(0, client["total_amount_due"] - client["loan_amount"])
     

@@ -6,7 +6,7 @@ import { useCurrency } from '../../context/CurrencyContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import API_URL from '../../constants/api';
 
@@ -160,36 +160,33 @@ export const MultiLoanOverview = ({
       const token = await AsyncStorage.getItem('admin_token');
       const url = `${API_URL}/api/contracts/loan/${loanId}/download?admin_token=${token}&language=en`;
       
-      // Download PDF to local file system
-      const fileName = `loan_contract_${loanId.substring(0, 8)}.pdf`;
+      // Download PDF using legacy expo-file-system API (stable in SDK 54)
+      const fileName = `loan_contract_${loanId.substring(0, 8)}_${Date.now()}.pdf`;
       const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
       
       const downloadResult = await FileSystem.downloadAsync(url, fileUri);
       
-      if (downloadResult.status === 200) {
-        // Convert to content:// URI for Android compatibility
-        const contentUri = await FileSystem.getContentUriAsync(downloadResult.uri);
-        const isAvailable = await Sharing.isAvailableAsync();
-        if (isAvailable) {
-          await Sharing.shareAsync(contentUri, {
-            mimeType: 'application/pdf',
-            dialogTitle: `Loan Contract - ${clientName || 'Client'}`,
-            UTI: 'com.adobe.pdf',
-          });
-        } else {
-          await Linking.openURL(url);
-        }
-      } else {
+      if (downloadResult.status !== 200) {
         Alert.alert('Error', `Failed to download contract (status: ${downloadResult.status})`);
+        return;
       }
+
+      // Check if sharing is available on this device
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Sharing Unavailable', 'Sharing is not available on this device.');
+        return;
+      }
+
+      // Open native share sheet with the downloaded PDF
+      await Sharing.shareAsync(downloadResult.uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: `Loan Contract - ${clientName || 'Client'}`,
+        UTI: 'com.adobe.pdf',
+      });
     } catch (e: any) {
       console.error('Share contract error:', e);
-      try {
-        const token = await AsyncStorage.getItem('admin_token');
-        await Linking.openURL(`${API_URL}/api/contracts/loan/${loanId}/download?admin_token=${token}&language=en`);
-      } catch {
-        Alert.alert('Error', 'Failed to share contract. Please try again.');
-      }
+      Alert.alert('Share Error', `Failed to share contract: ${e.message || 'Unknown error'}`);
     } finally {
       setActionLoading(null);
     }
@@ -293,6 +290,14 @@ export const MultiLoanOverview = ({
                     {(loan.days_overdue || 0) > 0 ? ` (+${loan.days_overdue}d overdue)` : ''}
                   </Text>
                 </View>
+                {(loan.late_fee || 0) > 0 && (
+                  <View style={styles.loanRow}>
+                    <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Late Fee</Text>
+                    <Text style={[styles.loanValue, { color: '#EF4444', fontWeight: '700' }]}>
+                      {formatAmount(loan.late_fee)} ({loan.days_overdue}d x {formatAmount((loan.loan_amount || 0) * (loan.interest_rate || 0) / 100 / 30)}/day)
+                    </Text>
+                  </View>
+                )}
                 <View style={styles.loanRow}>
                   <Text style={[styles.loanLabel, { color: colors.textMuted }]}>Outstanding</Text>
                   <Text style={[styles.loanValue, { color: '#EF4444' }]}>
