@@ -649,7 +649,7 @@ export default function AddLoan() {
                   Due Amount
                 </Text>
                 <Text style={[styles.emiPreviewValue, { color: '#10B981' }]}>
-                  {formatAmount(emiPreview.totalPayable)}
+                  {formatAmount(emiPreview.totalAmount)}
                 </Text>
               </View>
               <View style={styles.emiPreviewItem}>

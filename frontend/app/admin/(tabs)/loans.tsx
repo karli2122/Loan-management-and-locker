@@ -307,11 +307,11 @@ export default function LoansTab() {
             )}
             {!item.import_needs_review && <Text style={[styles.clientPhone, { color: colors.textMuted }]}>{item.phone}</Text>}
           </View>
-          <View style={[styles.statusBadge, item.is_registered ? (item.is_locked ? styles.statusLocked : styles.statusUnlocked) : { backgroundColor: '#94A3B830' }]}>
+          <View style={[styles.statusBadge, item.is_registered ? (item.is_locked ? styles.statusLocked : styles.statusUnlocked) : { display: 'none' }]}>
             <Ionicons
-              name={item.is_registered ? (item.is_locked ? 'lock-closed' : 'lock-open') : 'phone-portrait-outline'}
+              name={item.is_locked ? 'lock-closed' : 'lock-open'}
               size={14}
-              color={item.is_registered ? '#fff' : '#94A3B8'}
+              color="#fff"
             />
           </View>
         </View>
@@ -362,21 +362,19 @@ export default function LoansTab() {
                     </Text>
                   </View>
                 </View>
-              </>
-            )}
-            
-            {/* Next Payment & Overdue Info */}
-            <View style={styles.paymentInfoRow}>
-              {item.next_payment_due && (
-                <View style={[styles.nextPaymentBadge, { backgroundColor: colors.surfaceAlt }]}>
-                  <Ionicons name="calendar" size={12} color={colors.primary} />
-                  <Text style={[styles.nextPaymentText, { color: colors.primary }]}>
-                    {formatPaymentDate(item.next_payment_due)}
-                  </Text>
-                </View>
-              )}
-              
-              {(item.days_overdue ?? 0) > 0 && (
+                
+                {/* Next Payment & Overdue Info */}
+                <View style={styles.paymentInfoRow}>
+                  {item.next_payment_due && (
+                    <View style={[styles.nextPaymentBadge, { backgroundColor: colors.surfaceAlt }]}>
+                      <Ionicons name="calendar" size={12} color={colors.primary} />
+                      <Text style={[styles.nextPaymentText, { color: colors.primary }]}>
+                        {formatPaymentDate(item.next_payment_due)}
+                      </Text>
+                    </View>
+                  )}
+                  
+                  {(item.days_overdue ?? 0) > 0 && (
                 <View style={styles.overdueBadge}>
                   <Ionicons name="alert-circle" size={12} color={colors.error} />
                   <Text style={[styles.overdueText, { color: colors.error }]}>
