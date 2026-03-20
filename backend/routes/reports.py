@@ -56,6 +56,15 @@ async def _get_enterprise_client_query(admin_id: str) -> dict:
     """Build a client query scoped to enterprise for superusers, or own data for team members."""
     admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
     if not admin:
+        return {"admin_id": admin_id, "is_deleted": {"$ne": True}}
+    if admin.get("is_super_admin"):
+        enterprise_id = admin.get("enterprise_id") or admin_id
+        members = await db.admins.find({"enterprise_id": enterprise_id}, {"_id": 0, "id": 1}).to_list(100)
+        member_ids = [m["id"] for m in members]
+        if admin_id not in member_ids:
+            member_ids.append(admin_id)
+        return {"admin_id": {"$in": member_ids}, "is_deleted": {"$ne": True}}
+    return {"admin_id": admin_id, "is_deleted": {"$ne": True}}
 
 
 async def _calc_interest_data(admin_id: str, client_ids: list, six_months_ago: datetime) -> dict:
@@ -166,15 +175,6 @@ async def _calc_interest_data(admin_id: str, client_ids: list, six_months_ago: d
         "total_principal_disbursed": round(total_principal, 2),
         "total_amount_collected": round(total_collected, 2),
     }
-        return {"admin_id": admin_id, "is_deleted": {"$ne": True}}
-    if admin.get("is_super_admin"):
-        enterprise_id = admin.get("enterprise_id") or admin_id
-        members = await db.admins.find({"enterprise_id": enterprise_id}, {"_id": 0, "id": 1}).to_list(100)
-        member_ids = [m["id"] for m in members]
-        if admin_id not in member_ids:
-            member_ids.append(admin_id)
-        return {"admin_id": {"$in": member_ids}, "is_deleted": {"$ne": True}}
-    return {"admin_id": admin_id, "is_deleted": {"$ne": True}}
 
 
 def calculate_interest_total(client: dict) -> float:
@@ -743,6 +743,21 @@ async def get_financial_report(
     now_utc = datetime.now(timezone.utc)
     total_outstanding = sum(_calc_loan_outstanding(l, now_utc) for l in active_loans)
 
+    # Use shared interest calculation for totals consistency
+    six_months_ago = now_utc - timedelta(days=180)
+    interest_data = await _calc_interest_data(admin_id, client_ids, six_months_ago)
+
+    # Build monthly_interest list from shared data (overrides payment-allocation method)
+    monthly_interest_list = []
+    for i in range(5, -1, -1):
+        month_date = now_utc - timedelta(days=30 * i)
+        month_key = month_date.strftime("%Y-%m")
+        month_name = month_date.strftime("%B %Y")
+        monthly_interest_list.append({
+            "month": month_name,
+            "interest_earned": round(interest_data["monthly_interest"].get(month_key, 0), 2)
+        })
+
     return {
         "total_payments": round(total_payments, 2),
         "total_late_fees": round(total_late_fees, 2),
@@ -753,7 +768,7 @@ async def get_financial_report(
         "monthly_interest": monthly_interest_list,
         "totals": {
             "total_revenue": round(total_payments + total_late_fees + total_processing_fees, 2),
-            "interest_earned": round(total_interest_earned, 2),
+            "interest_earned": interest_data["total_interest_earned"],
             "principal_disbursed": round(total_disbursed, 2),
             "principal_collected": round(total_principal_collected, 2),
             "processing_fees": round(total_processing_fees, 2),
@@ -938,7 +953,7 @@ async def get_dashboard_analytics(
         if c.get("last_tamper_attempt") and c["last_tamper_attempt"] > week_ago
     )
     
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     six_months_ago = now - timedelta(days=180)
     
     # Monthly revenue from active client payments
@@ -950,7 +965,11 @@ async def get_dashboard_analytics(
     monthly_revenue = {}
     for payment in payments_all:
         payment_date = payment.get("payment_date")
-        if not payment_date or payment_date < six_months_ago:
+        if not payment_date:
+            continue
+        if isinstance(payment_date, datetime) and payment_date.tzinfo is None:
+            payment_date = payment_date.replace(tzinfo=timezone.utc)
+        if payment_date < six_months_ago:
             continue
         month_key = payment_date.strftime("%Y-%m")
         monthly_revenue[month_key] = monthly_revenue.get(month_key, 0) + payment.get("amount", 0)
@@ -965,6 +984,8 @@ async def get_dashboard_analytics(
                 pd_dt = datetime.fromisoformat(str(pd_str)) if isinstance(pd_str, str) else pd_str
             except (ValueError, TypeError):
                 continue
+            if isinstance(pd_dt, datetime) and pd_dt.tzinfo is None:
+                pd_dt = pd_dt.replace(tzinfo=timezone.utc)
             if pd_dt >= six_months_ago:
                 month_key = pd_dt.strftime("%Y-%m")
                 monthly_revenue[month_key] = monthly_revenue.get(month_key, 0) + (ph.get("amount", 0) or 0)
@@ -1012,11 +1033,20 @@ async def get_dashboard_analytics(
             "total_outstanding": round(total_outstanding, 2),
             "collection_rate": round(collection_rate, 2)
         },
+        "interest_summary": {
+            "total_interest_earned": interest_data["total_interest_earned"],
+            "current_month_interest": interest_data["current_month_interest"],
+            "total_loans_archived": interest_data["total_loans_archived"],
+            "current_month_loans_archived": interest_data["current_month_loans_archived"],
+            "total_principal_disbursed": interest_data["total_principal_disbursed"],
+            "total_amount_collected": interest_data["total_amount_collected"],
+        },
         "recent_activity": {
             "registrations_7d": recent_registrations,
             "tamper_attempts_7d": recent_tamper_attempts
         },
         "monthly_revenue": monthly_revenue,
         "monthly_interest": monthly_interest,
+        "monthly_profit": monthly_profit,
         "activity_log": activity_log
     }
