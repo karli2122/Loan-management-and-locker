@@ -56,6 +56,116 @@ async def _get_enterprise_client_query(admin_id: str) -> dict:
     """Build a client query scoped to enterprise for superusers, or own data for team members."""
     admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
     if not admin:
+
+
+async def _calc_interest_data(admin_id: str, client_ids: list, six_months_ago: datetime) -> dict:
+    """Shared interest calculation for dashboard & paid-loans/summary. Single source of truth.
+    
+    Returns: {
+        'monthly_interest': {month_key: amount, ...},
+        'total_interest_earned': float,
+        'current_month_interest': float,
+        'current_month_loans_archived': int,
+        'total_loans_archived': int,
+        'total_principal_disbursed': float,
+        'total_amount_collected': float,
+    }
+    """
+    now = datetime.now(timezone.utc)
+    month_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
+    
+    # Get all paid_loans for this admin
+    all_paid_loans = await db.paid_loans.find(
+        {"admin_id": admin_id},
+        {"_id": 0, "loan_id": 1, "loan_amount": 1, "total_paid": 1,
+         "total_interest": 1, "archived_at": 1, "paid_date": 1}
+    ).to_list(10000)
+    
+    # Get archived loans from loans collection
+    archived_loans = await db.loans.find(
+        {"client_id": {"$in": client_ids}, "status": "archived"},
+        {"_id": 0, "id": 1, "loan_amount": 1, "total_paid": 1, "archived_at": 1}
+    ).to_list(10000)
+    
+    # Get active loans
+    active_loans = await db.loans.find(
+        {"client_id": {"$in": client_ids}, "status": "active"},
+        {"_id": 0, "loan_amount": 1, "total_paid": 1}
+    ).to_list(10000)
+    
+    # Track paid_loan loan_ids to avoid double-counting
+    paid_loan_ids = set(pl.get("loan_id") for pl in all_paid_loans if pl.get("loan_id"))
+    
+    monthly_interest = {}
+    total_interest = 0.0
+    current_month_interest = 0.0
+    current_month_count = 0
+    total_principal = 0.0
+    total_collected = 0.0
+    
+    # 1. Interest from paid_loans records
+    for pl in all_paid_loans:
+        interest = pl.get("total_interest", 0) or 0
+        principal = pl.get("loan_amount", 0) or 0
+        paid = pl.get("total_paid", 0) or 0
+        total_interest += interest
+        total_principal += principal
+        total_collected += paid
+        
+        archived_at = pl.get("archived_at") or pl.get("paid_date")
+        if isinstance(archived_at, datetime):
+            if hasattr(archived_at, 'tzinfo') and archived_at.tzinfo is None:
+                archived_at = archived_at.replace(tzinfo=timezone.utc)
+            if archived_at >= six_months_ago:
+                mk = archived_at.strftime("%Y-%m")
+                monthly_interest[mk] = monthly_interest.get(mk, 0) + interest
+            if archived_at >= month_start:
+                current_month_interest += interest
+                current_month_count += 1
+    
+    # 2. Interest from archived loans NOT in paid_loans
+    extra_archived = 0
+    for al in archived_loans:
+        if al.get("id") in paid_loan_ids:
+            continue
+        principal = al.get("loan_amount", 0)
+        paid = al.get("total_paid", 0) or 0
+        interest = max(0, paid - principal)
+        total_interest += interest
+        total_principal += principal
+        total_collected += paid
+        extra_archived += 1
+        
+        archived_at = al.get("archived_at")
+        if isinstance(archived_at, datetime):
+            if hasattr(archived_at, 'tzinfo') and archived_at.tzinfo is None:
+                archived_at = archived_at.replace(tzinfo=timezone.utc)
+            if archived_at >= six_months_ago:
+                mk = archived_at.strftime("%Y-%m")
+                monthly_interest[mk] = monthly_interest.get(mk, 0) + interest
+            if archived_at >= month_start:
+                current_month_interest += interest
+                current_month_count += 1
+    
+    # 3. Interest from active loan payments where paid > principal
+    for loan in active_loans:
+        principal = loan.get("loan_amount", 0)
+        paid = loan.get("total_paid", 0) or 0
+        if paid > principal:
+            active_interest = paid - principal
+            total_interest += active_interest
+            mk = now.strftime("%Y-%m")
+            monthly_interest[mk] = monthly_interest.get(mk, 0) + active_interest
+    
+    return {
+        "monthly_interest": {k: round(v, 2) for k, v in monthly_interest.items()},
+        "total_interest_earned": round(total_interest, 2),
+        "current_month_interest": round(current_month_interest, 2),
+        "current_month_loans_archived": current_month_count + extra_archived,
+        "total_loans_archived": len(all_paid_loans) + extra_archived,
+        "total_principal_disbursed": round(total_principal, 2),
+        "total_amount_collected": round(total_collected, 2),
+    }
         return {"admin_id": admin_id, "is_deleted": {"$ne": True}}
     if admin.get("is_super_admin"):
         enterprise_id = admin.get("enterprise_id") or admin_id
@@ -859,51 +969,9 @@ async def get_dashboard_analytics(
                 month_key = pd_dt.strftime("%Y-%m")
                 monthly_revenue[month_key] = monthly_revenue.get(month_key, 0) + (ph.get("amount", 0) or 0)
 
-    # Monthly interest: calculate from paid_loans (accurate) + archived loans from loans collection + active loan interest
-    monthly_interest = {}
-    
-    # Track paid_loan loan_ids to avoid double counting
-    paid_loan_ids = set(pl.get("loan_id") for pl in all_paid_loans if pl.get("loan_id"))
-    
-    # Interest from paid_loans (archived via paid_loans collection)
-    for pl in all_paid_loans:
-        interest = pl.get("total_interest", 0) or 0
-        if interest <= 0:
-            continue
-        archived_at = pl.get("archived_at") or pl.get("paid_date")
-        if not archived_at or not isinstance(archived_at, datetime):
-            continue
-        if archived_at >= six_months_ago:
-            month_key = archived_at.strftime("%Y-%m")
-            monthly_interest[month_key] = monthly_interest.get(month_key, 0) + interest
-    
-    # Interest from archived loans in the loans collection (not in paid_loans)
-    archived_loans_in_db = await db.loans.find(
-        {"client_id": {"$in": client_ids}, "status": "archived"},
-        {"_id": 0, "id": 1, "loan_amount": 1, "total_paid": 1, "archived_at": 1}
-    ).to_list(10000)
-    
-    for al in archived_loans_in_db:
-        if al.get("id") in paid_loan_ids:
-            continue
-        principal = al.get("loan_amount", 0)
-        paid = al.get("total_paid", 0) or 0
-        interest = max(0, paid - principal)
-        if interest <= 0:
-            continue
-        archived_at = al.get("archived_at")
-        if isinstance(archived_at, datetime) and archived_at >= six_months_ago:
-            month_key = archived_at.strftime("%Y-%m")
-            monthly_interest[month_key] = monthly_interest.get(month_key, 0) + interest
-    
-    # Interest from active loan payments where total_paid > principal
-    for loan in all_active_loans:
-        principal = loan.get("loan_amount", 0)
-        paid = loan.get("total_paid", 0) or 0
-        interest_from_loan = max(0, paid - principal)
-        if interest_from_loan > 0:
-            month_key = now_utc.strftime("%Y-%m") if hasattr(now_utc, 'strftime') else now.strftime("%Y-%m")
-            monthly_interest[month_key] = monthly_interest.get(month_key, 0) + interest_from_loan
+    # Use shared interest calculation (single source of truth)
+    interest_data = await _calc_interest_data(admin_id, client_ids, six_months_ago)
+    monthly_interest = interest_data["monthly_interest"]
 
     # Ensure all 6 months have entries
     for i in range(5, -1, -1):
@@ -915,6 +983,9 @@ async def get_dashboard_analytics(
     # Round values
     monthly_revenue = {k: round(v, 2) for k, v in monthly_revenue.items()}
     monthly_interest = {k: round(v, 2) for k, v in monthly_interest.items()}
+    
+    # Monthly profit = interest earned that month (for a lending business, profit = interest)
+    monthly_profit = {k: monthly_interest.get(k, 0) for k in monthly_revenue}
 
     # Activity log
     activity_log = []

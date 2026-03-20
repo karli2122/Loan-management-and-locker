@@ -211,19 +211,18 @@ async def get_paid_loans_summary(admin_token: str = Query(...)):
     """Get summary statistics for all archived loans, including current month breakdown and 6-month trend."""
     admin_id = await get_admin_id_from_token(admin_token)
     
-    # Check if superadmin — see all data
-    admin = await db.admins.find_one({"id": admin_id})
-    is_super = admin.get("is_super_admin", False) if admin else False
+    # Always scope to own data (consistent with dashboard)
+    paid_loans = await db.paid_loans.find(
+        {"admin_id": admin_id},
+        {"_id": 0, "client_id": 1, "loan_id": 1, "loan_amount": 1, "total_paid": 1, "total_interest": 1, "payment_count": 1, "archived_at": 1}
+    ).to_list(10000)
     
-    if is_super:
-        paid_loans = await db.paid_loans.find(
-            {}, {"_id": 0, "client_id": 1, "loan_amount": 1, "total_paid": 1, "total_interest": 1, "payment_count": 1, "archived_at": 1}
-        ).to_list(10000)
-    else:
-        paid_loans = await db.paid_loans.find(
-            {"admin_id": admin_id},
-            {"_id": 0, "client_id": 1, "loan_amount": 1, "total_paid": 1, "total_interest": 1, "payment_count": 1, "archived_at": 1}
-        ).to_list(10000)
+    # Get own clients for scoping archived loans in loans collection
+    admin_clients = await db.clients.find(
+        {"admin_id": admin_id},
+        {"_id": 0, "id": 1}
+    ).to_list(10000)
+    admin_client_ids = [c["id"] for c in admin_clients]
     
     # Build 6-month trend (always return 6 entries, even with no data)
     now = datetime.utcnow()
@@ -244,24 +243,12 @@ async def get_paid_loans_summary(admin_token: str = Query(...)):
     total_interest_earned = sum(pl.get("total_interest", 0) or 0 for pl in paid_loans)
     
     # Also include archived loans from the loans collection that may not have paid_loans records
-    # (loans archived via record_payment before the paid_loans sync was added)
     paid_loan_ids = set(pl.get("loan_id") for pl in paid_loans if pl.get("loan_id"))
     
-    if is_super:
-        archived_loans = await db.loans.find(
-            {"status": "archived"},
-            {"_id": 0, "id": 1, "loan_amount": 1, "total_paid": 1, "interest_rate": 1, "tenure_months": 1, "archived_at": 1, "client_id": 1}
-        ).to_list(10000)
-    else:
-        admin_clients = await db.clients.find(
-            {"admin_id": admin_id},
-            {"_id": 0, "id": 1}
-        ).to_list(10000)
-        admin_client_ids = [c["id"] for c in admin_clients]
-        archived_loans = await db.loans.find(
-            {"status": "archived", "client_id": {"$in": admin_client_ids}},
-            {"_id": 0, "id": 1, "loan_amount": 1, "total_paid": 1, "interest_rate": 1, "tenure_months": 1, "archived_at": 1, "client_id": 1}
-        ).to_list(10000)
+    archived_loans = await db.loans.find(
+        {"status": "archived", "client_id": {"$in": admin_client_ids}},
+        {"_id": 0, "id": 1, "loan_amount": 1, "total_paid": 1, "interest_rate": 1, "tenure_months": 1, "archived_at": 1, "client_id": 1}
+    ).to_list(10000)
     
     # Count archived loans not in paid_loans
     extra_archived = 0
@@ -278,22 +265,10 @@ async def get_paid_loans_summary(admin_token: str = Query(...)):
     total_archived = len(paid_loans) + extra_archived
     
     # Also include interest earned from active loans with payments
-    if is_super:
-        active_loans = await db.loans.find(
-            {"status": "active"},
-            {"_id": 0, "loan_amount": 1, "total_paid": 1, "interest_rate": 1, "tenure_months": 1}
-        ).to_list(10000)
-    else:
-        if not admin_client_ids:
-            admin_clients = await db.clients.find(
-                {"admin_id": admin_id},
-                {"_id": 0, "id": 1}
-            ).to_list(10000)
-            admin_client_ids = [c["id"] for c in admin_clients]
-        active_loans = await db.loans.find(
-            {"status": "active", "client_id": {"$in": admin_client_ids}},
-            {"_id": 0, "loan_amount": 1, "total_paid": 1, "interest_rate": 1, "tenure_months": 1}
-        ).to_list(10000)
+    active_loans = await db.loans.find(
+        {"status": "active", "client_id": {"$in": admin_client_ids}},
+        {"_id": 0, "loan_amount": 1, "total_paid": 1, "interest_rate": 1, "tenure_months": 1}
+    ).to_list(10000)
     
     active_interest_earned = 0
     for loan in active_loans:
