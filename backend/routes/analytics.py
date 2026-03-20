@@ -6,7 +6,7 @@ import logging
 from database import db
 from utils.auth import get_admin_id_from_token
 from utils.plan_gating import check_plan_access
-from routes.reports import _get_enterprise_client_query
+from routes.reports import _get_enterprise_client_query, _calc_loan_outstanding
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
@@ -180,7 +180,7 @@ async def get_portfolio_health(admin_token: str = Query(...)):
     for loan in active_loans:
         principal = loan.get("loan_amount", 0)
         paid = loan.get("total_paid", 0) or 0
-        outstanding = loan.get("outstanding_balance", 0) or 0
+        outstanding = _calc_loan_outstanding(loan, now)
         
         total_disbursed += principal
         total_collected += paid

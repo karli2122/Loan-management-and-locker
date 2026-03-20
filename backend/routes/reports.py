@@ -12,6 +12,46 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Reports"])
 
 
+def _calc_loan_outstanding(loan: dict, now: datetime) -> float:
+    """Calculate dynamic outstanding for a single loan, consistent with dashboard."""
+    principal = loan.get("loan_amount", 0) or 0
+    rate = loan.get("interest_rate", 0) or 0
+    tenure = loan.get("tenure_months", 1) or 1
+    already_paid = loan.get("total_paid", 0) or 0
+    has_given = bool(loan.get("given_date"))
+    
+    if has_given and rate > 0:
+        base_total = principal + principal * (rate / 100) * tenure
+        daily_interest = principal * (rate / 100) / 30
+        due = loan.get("due_date")
+        days_overdue = 0
+        days_until_due = 999
+        if due:
+            try:
+                if isinstance(due, str):
+                    due_dt = datetime.fromisoformat(due.replace('Z', '+00:00'))
+                else:
+                    due_dt = due
+                if hasattr(due_dt, 'tzinfo') and due_dt.tzinfo is None:
+                    due_dt = due_dt.replace(tzinfo=timezone.utc)
+                diff = (due_dt.date() - now.date()).days
+                if diff < 0:
+                    days_overdue = abs(diff)
+                else:
+                    days_until_due = diff
+            except (ValueError, TypeError):
+                pass
+        if days_overdue > 0:
+            return max(0, base_total + daily_interest * days_overdue - already_paid)
+        elif days_until_due <= 2:
+            return max(0, base_total - already_paid)
+        else:
+            return max(0, base_total - (days_until_due - 2) * daily_interest - already_paid)
+    else:
+        stored = loan.get("outstanding_balance", 0) or 0
+        return stored if stored > 0 else max(0, principal - already_paid)
+
+
 async def _get_enterprise_client_query(admin_id: str) -> dict:
     """Build a client query scoped to enterprise for superusers, or own data for team members."""
     admin = await db.admins.find_one({"id": admin_id}, {"_id": 0})
@@ -283,19 +323,54 @@ async def get_clients_report(admin_token: str = Query(...)):
     admin_id = await get_admin_id_from_token(admin_token)
     clients = await db.clients.find(
         {"admin_id": admin_id, "is_deleted": {"$ne": True}},
-        {"_id": 0, "registration_code": 0}
+        {"_id": 0, "id": 1, "name": 1, "phone": 1, "is_locked": 1, "created_at": 1}
     ).to_list(1000)
 
-    now = datetime.utcnow()
-    first_of_month = datetime(now.year, now.month, 1)
+    now = datetime.now(timezone.utc)
+    first_of_month = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
 
-    # Repeat customers = clients who currently have an active loan AND completed at least one before
-    active_client_ids = {c["id"] for c in clients}
+    # Get all active loans from loans collection (source of truth)
+    client_ids = [c["id"] for c in clients]
+    all_active_loans = await db.loans.find(
+        {"client_id": {"$in": client_ids}, "status": "active"},
+        {"_id": 0, "client_id": 1, "loan_amount": 1, "outstanding_balance": 1,
+         "total_paid": 1, "due_date": 1, "given_date": 1, "interest_rate": 1, "tenure_months": 1}
+    ).to_list(10000) if client_ids else []
+    
+    # Aggregate loan data per client
+    client_loan_data = {}
+    for loan in all_active_loans:
+        cid = loan.get("client_id")
+        if cid not in client_loan_data:
+            client_loan_data[cid] = {"loan_amount": 0, "outstanding": 0, "total_paid": 0, "days_overdue": 0}
+        
+        client_loan_data[cid]["loan_amount"] += loan.get("loan_amount", 0)
+        client_loan_data[cid]["outstanding"] += loan.get("outstanding_balance", 0) or 0
+        client_loan_data[cid]["total_paid"] += loan.get("total_paid", 0) or 0
+        
+        # Calculate days overdue from due_date
+        due = loan.get("due_date")
+        if due:
+            try:
+                if isinstance(due, str):
+                    due_dt = datetime.fromisoformat(due.replace('Z', '+00:00'))
+                else:
+                    due_dt = due
+                if hasattr(due_dt, 'tzinfo') and due_dt.tzinfo is None:
+                    due_dt = due_dt.replace(tzinfo=timezone.utc)
+                diff = (now - due_dt).days
+                if diff > 0:
+                    client_loan_data[cid]["days_overdue"] = max(client_loan_data[cid]["days_overdue"], diff)
+            except (ValueError, TypeError):
+                pass
+
+    # Repeat customers = clients who have active loans AND completed at least one before
     paid_loan_client_ids = set()
     async for pl in db.paid_loans.find({"admin_id": admin_id}, {"_id": 0, "client_id": 1}):
         if pl.get("client_id"):
             paid_loan_client_ids.add(pl["client_id"])
-    repeat_client_ids = active_client_ids & paid_loan_client_ids
+    active_loan_client_ids = set(client_loan_data.keys())
+    repeat_client_ids = active_loan_client_ids & paid_loan_client_ids
 
     on_time_list = []
     at_risk_list = []
@@ -304,13 +379,22 @@ async def get_clients_report(admin_token: str = Query(...)):
     new_this_month = 0
 
     for client in clients:
-        days_overdue = client.get("days_overdue", 0) or 0
-        loan_amount = client.get("loan_amount", 0) or 0
-        outstanding = client.get("outstanding_balance", 0) or 0
-        total_paid = client.get("total_paid", 0) or 0
+        cid = client["id"]
+        ld = client_loan_data.get(cid, {})
+        loan_amount = round(ld.get("loan_amount", 0), 2)
+        outstanding = round(ld.get("outstanding", 0), 2)
+        total_paid = round(ld.get("total_paid", 0), 2)
+        days_overdue = ld.get("days_overdue", 0)
+
+        # Skip clients with no loan data at all
+        has_active_loans = cid in client_loan_data
+        has_paid_history = cid in paid_loan_client_ids
+        
+        if not has_active_loans and not has_paid_history:
+            continue  # Never had loans, skip from report
 
         row = {
-            "id": client["id"],
+            "id": cid,
             "name": client["name"],
             "phone": client.get("phone", ""),
             "loan_amount": loan_amount,
@@ -321,10 +405,23 @@ async def get_clients_report(admin_token: str = Query(...)):
         }
 
         created_at = client.get("created_at")
-        if created_at and created_at >= first_of_month:
-            new_this_month += 1
+        if created_at:
+            try:
+                if isinstance(created_at, str):
+                    ca = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                else:
+                    ca = created_at
+                if hasattr(ca, 'tzinfo') and ca.tzinfo is None:
+                    ca = ca.replace(tzinfo=timezone.utc)
+                if ca >= first_of_month:
+                    new_this_month += 1
+            except (ValueError, TypeError):
+                pass
 
-        if outstanding <= 0 and loan_amount > 0:
+        if not has_active_loans and has_paid_history:
+            # All loans completed
+            completed_list.append(row)
+        elif outstanding <= 0 and loan_amount > 0:
             completed_list.append(row)
         elif days_overdue > 7:
             defaulted_list.append(row)
@@ -512,7 +609,8 @@ async def get_financial_report(
     client_ids_list = [c["id"] for c in clients]
     active_loans = await db.loans.find(
         {"client_id": {"$in": client_ids_list}, "status": "active"},
-        {"_id": 0, "loan_amount": 1, "outstanding_balance": 1}
+        {"_id": 0, "loan_amount": 1, "outstanding_balance": 1, "interest_rate": 1,
+         "tenure_months": 1, "given_date": 1, "due_date": 1, "total_paid": 1}
     ).to_list(10000) if client_ids_list else []
     
     # Include archived data from paid_loans by admin_id (consistent with dashboard)
@@ -532,7 +630,8 @@ async def get_financial_report(
     ).to_list(10000)
     
     total_disbursed = sum(l.get("loan_amount", 0) for l in active_loans) + sum(pl.get("loan_amount", 0) for pl in archived_paid)
-    total_outstanding = sum(l.get("outstanding_balance", 0) for l in active_loans)
+    now_utc = datetime.now(timezone.utc)
+    total_outstanding = sum(_calc_loan_outstanding(l, now_utc) for l in active_loans)
 
     return {
         "total_payments": round(total_payments, 2),

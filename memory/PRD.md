@@ -93,6 +93,11 @@ Where: `daily_interest = principal × (rate/100) / 30`
   - **Client App**: Code reviewed - heartbeat service, registration, permissions, background tasks all correctly implemented.
   - **Production VPS**: Deployed and verified - all endpoints consistent (Outstanding=2028.72, Disbursed=6991.22, Collected=5416.31).
   - **Fixed**: `logger` undefined in loans_multi.py (would cause crash on loan archival).
+  - **Fixed**: `reports/clients` was reading stale data from clients collection instead of loans collection - completely rewritten to use loans as source of truth.
+  - **Fixed**: `reports/financial` outstanding calculation used stored values instead of dynamic formula, caused 10.00 mismatch.
+  - **Fixed**: `reports/financial` projection was missing fields needed for dynamic outstanding calculation.
+  - **Created**: Shared `_calc_loan_outstanding()` utility used by reports/financial and portfolio-health.
+  - **RESULT**: ALL metrics now 100% consistent across all 5 financial endpoints (Clients, Dashboard, Reports/Collection, Reports/Financial, Portfolio-Health).
 
 ## EAS Builds Submitted (v1.4.9, Build #50)
 - Admin: b5e89a98-3294-4f87-a72b-f7f68fd033a1
