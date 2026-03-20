@@ -365,9 +365,23 @@ async def update_user_plan(admin_id: str, admin_token: str = Query(...), plan: s
     if plan not in valid_plans:
         raise ValidationException(f"Invalid plan. Choose from: {valid_plans}")
     
+    from datetime import datetime, timezone, timedelta
+    # When superadmin manually changes plan, also update subscription status
+    # so that get_admin_plan() doesn't revert to "demo" due to expired renewal date
+    update_fields = {
+        "subscription_plan": plan,
+        "plan": plan,
+        "subscription_status": "paid",
+        "subscription_renewal_date": (datetime.now(timezone.utc) + timedelta(days=365)).isoformat(),
+    }
+    # If upgrading from demo, also set the role to allow settings access
+    if target.get("plan") == "demo" or target.get("subscription_plan") == "demo":
+        if plan in ("starter", "professional", "enterprise", "custom"):
+            update_fields["role"] = "admin"
+    
     await db.admins.update_one(
         {"id": admin_id},
-        {"$set": {"subscription_plan": plan, "plan": plan}}
+        {"$set": update_fields}
     )
     
     return {"message": f"Plan updated to {plan}", "admin_id": admin_id, "plan": plan}

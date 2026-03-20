@@ -375,7 +375,13 @@ async def get_collection_report(
     total_late_fees = 0  # Late fees are included in outstanding
     
     active_loans = len(all_loans)
-    completed_loans = sum(1 for c in clients if c.get("outstanding_balance", 0) <= 0 and c.get("loan_amount", 0) > 0)
+    # Count completed loans from paid_loans (fully paid & archived) + archived in loans collection
+    archived_in_loans = await db.loans.count_documents(
+        {"client_id": {"$in": client_ids}, "status": "archived"}
+    ) if client_ids else 0
+    paid_loan_count = len(archived_loans)  # already fetched above from paid_loans
+    # Avoid double-counting: use the max of the two since they may overlap
+    completed_loans = max(paid_loan_count, archived_in_loans)
     overdue_clients = len(overdue_client_ids)
     
     collection_rate = (total_collected / total_disbursed * 100) if total_disbursed > 0 else 0

@@ -90,7 +90,15 @@ async def create_connect_account(request: Request, admin_token: str = Query(...)
         }
     except stripe.error.StripeError as e:
         logger.error(f"Stripe Connect error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        error_msg = str(e)
+        # Provide actionable guidance for common platform config errors
+        if "platform-profile" in error_msg or "managing losses" in error_msg:
+            error_msg = (
+                "Stripe Connect platform setup required. "
+                "Please go to https://dashboard.stripe.com/settings/connect/platform-profile "
+                "and review the loss liability settings for connected accounts, then try again."
+            )
+        raise HTTPException(status_code=500, detail=error_msg)
 
 
 @router.get("/connect/onboard/complete")
