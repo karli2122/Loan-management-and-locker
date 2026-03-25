@@ -985,6 +985,18 @@ export default function ClientHome() {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         fetchStatus(clientId).catch(() => {});
         updateLocation(clientId).catch(() => {});
+        
+        // CRITICAL: Immediately re-engage kiosk protection if device is locked
+        // This prevents the home button bypass (5-second gap)
+        if (Platform.OS === 'android' && wasLocked.current) {
+          devicePolicy.startKioskMode().catch(() => {});
+          devicePolicy.enableImmersiveMode().catch(() => {});
+          devicePolicy.collapseStatusBar().catch(() => {});
+          devicePolicy.startOverlayBlocker().catch(() => {});
+          devicePolicy.startForegroundMonitor().catch(() => {});
+          StatusBar.setHidden(true, 'none');
+        }
+        
         // Refresh all protection states on resume and detect permission revocation
         if (Platform.OS === 'android') {
           (async () => {
@@ -1395,19 +1407,31 @@ export default function ClientHome() {
     if (Platform.OS !== 'android') return;
     setEmergencyCallActive(true);
     
-    // CRITICAL: Must exit kiosk mode and re-enable status bar BEFORE dialing
-    // Kiosk mode blocks all other apps (including the dialer) from launching
+    // CRITICAL: Must stop ALL protection services before dialing
+    // Otherwise the overlay blocker covers the dialer, and the foreground monitor kills it
     try {
       await devicePolicy.stopKioskMode();
       await devicePolicy.setStatusBarDisabled(false);
       await devicePolicy.disableImmersiveMode();
-      // Small delay to let the system process the mode changes
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await devicePolicy.stopOverlayBlocker();
+      await devicePolicy.stopForegroundMonitor();
+      // Give system time to process all mode changes
+      await new Promise(resolve => setTimeout(resolve, 500));
     } catch (e) {
-      console.log('Failed to exit kiosk for emergency call:', e);
+      console.log('Failed to exit protections for emergency call:', e);
     }
     
-    await devicePolicy.dialEmergencyNumber('112');
+    // Try native dialer first, fallback to Linking
+    try {
+      await devicePolicy.dialEmergencyNumber('112');
+    } catch (e) {
+      console.log('Native dial failed, using Linking fallback:', e);
+      try {
+        await Linking.openURL('tel:112');
+      } catch (e2) {
+        console.log('Linking.openURL tel: also failed:', e2);
+      }
+    }
     
     // Monitor: poll every 2s to check if call has ended
     emergencyCallCheckRef.current = setInterval(async () => {
@@ -1421,6 +1445,8 @@ export default function ClientHome() {
         await devicePolicy.killDialerApps();
         // Re-engage all lock protections
         await devicePolicy.startKioskMode();
+        await devicePolicy.startOverlayBlocker();
+        await devicePolicy.startForegroundMonitor();
         await devicePolicy.setStatusBarDisabled(true);
         await devicePolicy.enableImmersiveMode();
         await devicePolicy.collapseStatusBar();

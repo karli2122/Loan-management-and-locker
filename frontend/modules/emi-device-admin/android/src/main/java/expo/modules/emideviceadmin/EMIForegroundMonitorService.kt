@@ -23,7 +23,7 @@ class EMIForegroundMonitorService : Service() {
         private const val TAG = "EMIForegroundMonitor"
         private const val PREFS_NAME = "emi_device_admin_prefs"
         private const val KEY_LOCKED = "is_locked"
-        private const val CHECK_INTERVAL_MS = 500L
+        private const val CHECK_INTERVAL_MS = 200L
     }
 
     private val handler = Handler(Looper.getMainLooper())
