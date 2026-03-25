@@ -16,6 +16,7 @@ import {
   Modal,
   TextInput,
   KeyboardAvoidingView,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -1636,9 +1637,10 @@ export default function ClientHome() {
                   const manufacturer = (dev?.manufacturer || '').toLowerCase();
                 const model = dev?.model || 'Device';
                 const ver = dev?.androidVersion || '';
+                const isSamsung = manufacturer.includes('samsung');
                 
                 let instructions = '';
-                if (manufacturer.includes('samsung')) {
+                if (isSamsung) {
                   instructions = language === 'et'
                     ? `${model} (Android ${ver})\n\nAvaneb rakenduse teave leht.\n\n1. Puudutage "Aku"\n2. Valige "Piiranguteta"\n\nSee tagab, et rakendus töötab taustal.`
                     : `${model} (Android ${ver})\n\nApp info page will open.\n\n1. Tap "Battery"\n2. Select "Unrestricted"\n\nThis ensures the app runs in the background.`;
@@ -1657,12 +1659,39 @@ export default function ClientHome() {
                       text: t('openSettings'),
                       onPress: async () => {
                         try {
-                          await devicePolicy.requestBatteryOptimization();
-                          await new Promise(r => setTimeout(r, 1000));
+                          if (isSamsung) {
+                            // Samsung: native requestBatteryOptimization may not work,
+                            // open app settings where user can find Battery > Unrestricted
+                            await Linking.openSettings();
+                          } else {
+                            await devicePolicy.requestBatteryOptimization();
+                          }
+                          await new Promise(r => setTimeout(r, 1500));
                           const granted = await devicePolicy.isIgnoringBatteryOptimizations();
-                          if (granted) setPermissionStates(prev => ({ ...prev, batteryOptimization: true }));
+                          if (granted) {
+                            setPermissionStates(prev => ({ ...prev, batteryOptimization: true }));
+                            // Samsung: auto-mark autostart when battery is set (Samsung manages it automatically)
+                            if (isSamsung) {
+                              setPermissionStates(prev => ({ ...prev, autoStart: true }));
+                              await AsyncStorage.setItem('autostart_enabled', 'true');
+                            }
+                          }
                         } catch (e) {
+                          // Fallback: open general app settings
+                          try { await Linking.openSettings(); } catch (_) {}
                           console.log('Battery optimization error:', e);
+                        }
+                      },
+                    },
+                    {
+                      text: language === 'et' ? 'Juba tehtud' : 'Already Done',
+                      onPress: async () => {
+                        setPermissionStates(prev => ({ ...prev, batteryOptimization: true }));
+                        await AsyncStorage.setItem('battery_optimization_done', 'true');
+                        // Samsung: auto-mark autostart too
+                        if (isSamsung) {
+                          setPermissionStates(prev => ({ ...prev, autoStart: true }));
+                          await AsyncStorage.setItem('autostart_enabled', 'true');
                         }
                       },
                     },
@@ -1713,6 +1742,8 @@ export default function ClientHome() {
                 onPress={() => {
                   if (isPermLocked(permissionStates.autoStart)) { showPermLockedWarning(); return; }
                 const dev = devicePolicy.getDeviceInfo();
+                const manufacturer = (dev?.manufacturer || '').toLowerCase();
+                const isSamsung = manufacturer.includes('samsung');
                 const info = getAutoStartInstructions(dev, language);
                 Alert.alert(info.title, info.steps, [
                   {
@@ -1723,8 +1754,16 @@ export default function ClientHome() {
                     text: t('openSettings'),
                     onPress: async () => {
                       try {
-                        await devicePolicy.openAutoStartSettings();
+                        if (isSamsung) {
+                          // Samsung doesn't have a separate autostart manager
+                          // Open app settings so user can verify battery is unrestricted
+                          await Linking.openSettings();
+                        } else {
+                          await devicePolicy.openAutoStartSettings();
+                        }
                       } catch (e) {
+                        // Fallback: open general app settings
+                        try { await Linking.openSettings(); } catch (_) {}
                         console.log('openAutoStartSettings error:', e);
                       }
                     },

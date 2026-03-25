@@ -220,7 +220,7 @@ async def verify_email(req: VerifyEmailRequest):
     }
 
 
-async def _send_welcome_email(email: str, first_name: str):
+async def _send_welcome_email(email: str, first_name: str, plan: str = "demo"):
     """Send welcome email after successful registration with download links."""
     if not RESEND_API_KEY:
         logger.warning("RESEND_API_KEY not configured, skipping welcome email")
@@ -232,6 +232,27 @@ async def _send_welcome_email(email: str, first_name: str):
         
         admin_app_link = "https://api.paylock.pro/api/download/admin-apk"
         portal_link = "https://api.paylock.pro/api/portal"
+        show_portal = plan in ("enterprise", "custom")
+        
+        portal_section = ""
+        if show_portal:
+            portal_section = f"""
+                        <tr>
+                          <td style="padding: 16px 0;">
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                              <tr>
+                                <td width="50" style="vertical-align: top;">
+                                  <div style="width: 40px; height: 40px; background: #8b5cf6; border-radius: 10px; text-align: center; line-height: 40px; color: white; font-size: 18px;">2</div>
+                                </td>
+                                <td style="vertical-align: top; padding-left: 12px;">
+                                  <h4 style="margin: 0 0 4px 0; font-size: 15px; color: #111827;">Access Web Portal</h4>
+                                  <p style="margin: 0 0 8px 0; font-size: 13px; color: #6b7280;">You can also manage everything from your browser using the web portal.</p>
+                                  <a href="{portal_link}" style="display: inline-block; padding: 10px 20px; background: #8b5cf6; color: white; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600;">Open Web Portal</a>
+                                </td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>"""
         
         html = f"""
         <!DOCTYPE html>
@@ -271,22 +292,7 @@ async def _send_welcome_email(email: str, first_name: str):
                             </table>
                           </td>
                         </tr>
-                        <tr>
-                          <td style="padding: 16px 0;">
-                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
-                              <tr>
-                                <td width="50" style="vertical-align: top;">
-                                  <div style="width: 40px; height: 40px; background: #8b5cf6; border-radius: 10px; text-align: center; line-height: 40px; color: white; font-size: 18px;">2</div>
-                                </td>
-                                <td style="vertical-align: top; padding-left: 12px;">
-                                  <h4 style="margin: 0 0 4px 0; font-size: 15px; color: #111827;">Access Web Portal</h4>
-                                  <p style="margin: 0 0 8px 0; font-size: 13px; color: #6b7280;">You can also manage everything from your browser using the web portal.</p>
-                                  <a href="{portal_link}" style="display: inline-block; padding: 10px 20px; background: #8b5cf6; color: white; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600;">Open Web Portal</a>
-                                </td>
-                              </tr>
-                            </table>
-                          </td>
-                        </tr>
+                        {portal_section}
                       </table>
                       <div style="margin-top: 24px; padding: 16px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #0ea5e9;">
                         <p style="margin: 0; font-size: 13px; color: #0c4a6e;">You're currently on the <b>Demo</b> plan. Upgrade anytime to unlock all features including client app, bulk imports, and more.</p>

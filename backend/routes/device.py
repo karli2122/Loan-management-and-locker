@@ -84,30 +84,46 @@ async def get_device_status(client_id: str):
         {"$set": {"last_heartbeat": datetime.utcnow()}}
     )
     
-    # Calculate total amount due with interest
-    loan_amount = client.get("loan_amount", 0)
-    interest_rate = client.get("interest_rate", 0)
-    total_amount_due = client.get("total_amount_due", 0)
-    outstanding_balance = client.get("outstanding_balance", 0)
+    # Check loans collection for active loan (single source of truth)
+    active_loan = await db.loans.find_one(
+        {"client_id": client_id, "status": "active"},
+        {"_id": 0, "loan_amount": 1, "interest_rate": 1, "total_amount_due": 1,
+         "outstanding_balance": 1, "total_paid": 1, "due_date": 1, "monthly_emi": 1}
+    )
     
-    # If total_amount_due was calculated by setup_loan, use it. Otherwise estimate.
-    if total_amount_due and total_amount_due > loan_amount:
-        amount_due = total_amount_due
-    elif loan_amount > 0 and interest_rate > 0:
-        # Simple interest estimate: principal + one month interest
-        amount_due = loan_amount + (loan_amount * interest_rate / 100)
-    else:
-        amount_due = outstanding_balance or loan_amount
-    
-    # Parse due date properly
-    raw_due = client.get("next_payment_due") or client.get("emi_due_date") or client.get("loan_due_date")
-    if raw_due:
-        if isinstance(raw_due, datetime):
-            due_date_str = raw_due.strftime("%Y-%m-%d")
+    if active_loan:
+        loan_amount = active_loan.get("loan_amount", 0)
+        interest_rate = active_loan.get("interest_rate", 0)
+        total_amount_due = active_loan.get("total_amount_due", 0)
+        outstanding_balance = active_loan.get("outstanding_balance", 0)
+        total_paid = active_loan.get("total_paid", 0) or 0
+        monthly_emi = active_loan.get("monthly_emi", 0) or 0
+        
+        # Calculate amount due
+        if outstanding_balance and outstanding_balance > 0:
+            amount_due = outstanding_balance
+        elif total_amount_due and total_amount_due > loan_amount:
+            amount_due = total_amount_due - total_paid
+        elif loan_amount > 0 and interest_rate > 0:
+            amount_due = loan_amount + (loan_amount * interest_rate / 100) - total_paid
         else:
-            due_date_str = str(raw_due)[:10]
+            amount_due = max(0, loan_amount - total_paid)
+        
+        # Parse due date from active loan
+        raw_due = active_loan.get("due_date")
+        if raw_due:
+            if isinstance(raw_due, datetime):
+                due_date_str = raw_due.strftime("%Y-%m-%d")
+            else:
+                due_date_str = str(raw_due)[:10]
+        else:
+            due_date_str = None
     else:
+        # No active loan — show zero
+        amount_due = 0
         due_date_str = None
+        monthly_emi = 0
+        outstanding_balance = 0
     
     # Get admin's plan for client-side feature gating
     admin_plan = None
@@ -125,8 +141,8 @@ async def get_device_status(client_id: str):
         warning_message=client.get("warning_message", ""),
         loan_amount=round(amount_due, 2),
         loan_due_date=due_date_str,
-        outstanding_balance=round(client.get("outstanding_balance", 0), 2),
-        monthly_emi=round(client.get("monthly_emi", 0), 2),
+        outstanding_balance=round(outstanding_balance, 2),
+        monthly_emi=round(monthly_emi, 2),
         uninstall_allowed=client.get("uninstall_allowed", False),
         is_deleted=client.get("is_deleted", False),
         lock_mode=client.get("lock_mode", "device_admin"),
