@@ -10,6 +10,8 @@ Full-stack loan management application with FastAPI backend, React Native mobile
 4. **Contract Generation**: PDF generation with key loan details
 5. **Background Heartbeat**: Client app sends device status every 5 minutes
 6. **Role Assignment**: Default "user" role, auto-elevate to "admin" on enterprise/custom plan
+7. **Contact Form Rate Limiting**: Max 3 submissions per IP/email per 5 minutes
+8. **Welcome Email**: Send APK download link after successful registration
 
 ## Architecture
 - **Backend**: FastAPI on port 8001 (production VPS: 37.148.202.159, service: paylock.service, path: /opt/paylock/backend/)
@@ -20,31 +22,22 @@ Full-stack loan management application with FastAPI backend, React Native mobile
 ## Key DB Collections
 - `loans`: Single source of truth for all active and historical loan data
 - `paid_loans`: Archived fully-paid loans
-- `clients`: Client profile info (financial fields deprecated in favor of live calc from `loans`)
+- `clients`: Client profile info
 - `payments`: Payment transaction log
-
-## Key API Endpoints
-- `POST /api/admin/login` - Admin authentication
-- `GET /api/analytics/dashboard` - Dashboard with interest_summary, monthly_profit, monthly_interest
-- `GET /api/paid-loans/summary` - Archived loan summary (uses shared _calc_interest_data)
-- `GET /api/reports/financial` - Financial report (uses shared _calc_interest_data)
-- `GET /api/reports/collection` - Collection report with completed_loans from paid_loans/archived
-- `PUT /api/admin/{admin_id}/plan` - Change user plan (sets subscription_status + renewal_date)
-- `DELETE /api/loans/{loan_id}` - Delete a loan
-- `GET /api/loans/{loan_id}/contract` - Generate PDF contract
 
 ## Credentials
 - Super Admin: karli1987 / nasvakas123
 - VPS: karliv @ 37.148.202.159 / Nasvakas123!
 
 ## What's Been Implemented
-- [2026-03-20] Fixed critical SyntaxError in reports.py (broken _get_enterprise_client_query)
-- [2026-03-20] Unified all 3 financial endpoints to use shared _calc_interest_data function
-- [2026-03-20] Fixed timezone-naive/aware datetime comparison bugs
-- [2026-03-20] Fixed completed_loans count to use paid_loans + archived loans instead of stale clients data
-- [2026-03-20] Fixed demo->paid plan change: now updates subscription_status, renewal_date, and role
-- [2026-03-20] Improved Stripe Connect error messaging for platform config issues
-- [2026-03-20] All fixes deployed to production VPS and verified
+- [2026-03-25] User Management pagination: 10 users per page with prev/next controls
+- [2026-03-25] Contact form rate limiting: max 3 per IP/email per 5 minutes (HTTP 429)
+- [2026-03-25] Welcome email with admin app download link sent after successful registration
+- [2026-03-20] Fixed critical SyntaxError in reports.py
+- [2026-03-20] Unified all 3 financial endpoints to use shared _calc_interest_data
+- [2026-03-20] Fixed completed_loans count to use paid_loans + archived loans
+- [2026-03-20] Fixed demo->paid plan change: subscription_status, renewal_date, role elevation
+- [2026-03-20] Improved Stripe Connect error messaging
 
 ## Pending Issues
 - P0: Build new Admin and Client APKs (EAS builds)

@@ -207,6 +207,10 @@ async def verify_email(req: VerifyEmailRequest):
     # Clean up pending registration
     await db.pending_registrations.delete_one({"email": req.email})
     
+    # Send welcome email with download links (async, don't block response)
+    import asyncio
+    asyncio.create_task(_send_welcome_email(new_admin["email"], new_admin["first_name"]))
+    
     return {
         "success": True,
         "message": "Account created successfully",
@@ -214,6 +218,103 @@ async def verify_email(req: VerifyEmailRequest):
         "token": token,
         "plan": "demo",
     }
+
+
+async def _send_welcome_email(email: str, first_name: str):
+    """Send welcome email after successful registration with download links."""
+    if not RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY not configured, skipping welcome email")
+        return
+    
+    try:
+        import resend
+        resend.api_key = RESEND_API_KEY
+        
+        admin_app_link = "https://api.paylock.pro/api/download/admin-apk"
+        portal_link = "https://api.paylock.pro/api/portal"
+        
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"></head>
+        <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6;">
+          <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: #f3f4f6; padding: 40px 20px;">
+            <tr>
+              <td align="center">
+                <table cellpadding="0" cellspacing="0" border="0" width="600" style="background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                  <tr>
+                    <td style="background: linear-gradient(135deg, #0ea5e9, #0284c7); padding: 32px; text-align: center;">
+                      <h1 style="margin: 0; color: white; font-size: 28px; font-weight: 800;">Welcome to PayLock Pro!</h1>
+                      <p style="margin: 8px 0 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Your account is ready</p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 32px;">
+                      <p style="font-size: 16px; color: #111827; margin: 0 0 16px 0;">Hi {first_name},</p>
+                      <p style="font-size: 14px; color: #4b5563; line-height: 1.6; margin: 0 0 24px 0;">
+                        Thank you for registering with PayLock Pro! Your account has been created successfully. Get started by downloading the admin app below.
+                      </p>
+                      <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                        <tr>
+                          <td style="padding: 16px 0; border-bottom: 1px solid #e5e7eb;">
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                              <tr>
+                                <td width="50" style="vertical-align: top;">
+                                  <div style="width: 40px; height: 40px; background: #2563EB; border-radius: 10px; text-align: center; line-height: 40px; color: white; font-size: 18px;">1</div>
+                                </td>
+                                <td style="vertical-align: top; padding-left: 12px;">
+                                  <h4 style="margin: 0 0 4px 0; font-size: 15px; color: #111827;">Download Admin App</h4>
+                                  <p style="margin: 0 0 8px 0; font-size: 13px; color: #6b7280;">Install the admin app on your Android device to manage loans and clients on the go.</p>
+                                  <a href="{admin_app_link}" style="display: inline-block; padding: 10px 20px; background: #2563EB; color: white; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600;">Download Admin APK</a>
+                                </td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 16px 0;">
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                              <tr>
+                                <td width="50" style="vertical-align: top;">
+                                  <div style="width: 40px; height: 40px; background: #8b5cf6; border-radius: 10px; text-align: center; line-height: 40px; color: white; font-size: 18px;">2</div>
+                                </td>
+                                <td style="vertical-align: top; padding-left: 12px;">
+                                  <h4 style="margin: 0 0 4px 0; font-size: 15px; color: #111827;">Access Web Portal</h4>
+                                  <p style="margin: 0 0 8px 0; font-size: 13px; color: #6b7280;">You can also manage everything from your browser using the web portal.</p>
+                                  <a href="{portal_link}" style="display: inline-block; padding: 10px 20px; background: #8b5cf6; color: white; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600;">Open Web Portal</a>
+                                </td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                      </table>
+                      <div style="margin-top: 24px; padding: 16px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #0ea5e9;">
+                        <p style="margin: 0; font-size: 13px; color: #0c4a6e;">You're currently on the <b>Demo</b> plan. Upgrade anytime to unlock all features including client app, bulk imports, and more.</p>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="background: #f9fafb; padding: 20px 32px; text-align: center; border-top: 1px solid #e5e7eb;">
+                      <p style="margin: 0; font-size: 12px; color: #9ca3af;">PayLock Pro - Loan Management Made Simple</p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+        """
+        
+        resend.Emails.send({
+            "from": "PayLock Pro <noreply@paylockpro.com>",
+            "to": email,
+            "subject": "Welcome to PayLock Pro - Download Your Admin App",
+            "html": html,
+        })
+        logger.info(f"Welcome email sent to {email}")
+    except Exception as e:
+        logger.error(f"Failed to send welcome email to {email}: {e}")
 
 
 @router.post("/resend-verification")

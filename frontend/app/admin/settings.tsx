@@ -94,6 +94,8 @@ export default function AdminSettings() {
   
   // User search state
   const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userPage, setUserPage] = useState(0);
+  const USERS_PER_PAGE = 10;
   
   // Late Fee & Auto-Lock settings states
   const [lateFeePercent, setLateFeePercent] = useState<string>('2.0');
@@ -1183,7 +1185,7 @@ export default function AdminSettings() {
                 placeholder={t('searchUsers')}
                 placeholderTextColor="#64748B"
                 value={userSearchQuery}
-                onChangeText={setUserSearchQuery}
+                onChangeText={(text) => { setUserSearchQuery(text); setUserPage(0); }}
                 data-testid="user-search-input"
               />
               {userSearchQuery.length > 0 && (
@@ -1193,11 +1195,19 @@ export default function AdminSettings() {
               )}
             </View>
 
-            {admins.filter(admin => 
-              admin.username.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-              (admin.first_name && admin.first_name.toLowerCase().includes(userSearchQuery.toLowerCase())) ||
-              (admin.last_name && admin.last_name.toLowerCase().includes(userSearchQuery.toLowerCase()))
-            ).map((admin) => (
+            {(() => {
+              const filteredAdmins = admins.filter(admin => 
+                admin.username.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+                (admin.first_name && admin.first_name.toLowerCase().includes(userSearchQuery.toLowerCase())) ||
+                (admin.last_name && admin.last_name.toLowerCase().includes(userSearchQuery.toLowerCase()))
+              );
+              const totalPages = Math.ceil(filteredAdmins.length / USERS_PER_PAGE);
+              const safePage = Math.min(userPage, Math.max(0, totalPages - 1));
+              const paginatedAdmins = filteredAdmins.slice(safePage * USERS_PER_PAGE, (safePage + 1) * USERS_PER_PAGE);
+              
+              return (
+                <>
+                  {paginatedAdmins.map((admin) => (
             <View key={admin.id} style={styles.adminCard}>
               <View style={styles.adminAvatarSmall}>
                 <Text style={styles.adminAvatarText}>{admin.username.charAt(0).toUpperCase()}</Text>
@@ -1310,6 +1320,33 @@ export default function AdminSettings() {
               </View>
             </View>
           ))}
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12, gap: 12 }}>
+                      <TouchableOpacity
+                        onPress={() => setUserPage(Math.max(0, safePage - 1))}
+                        disabled={safePage === 0}
+                        style={{ padding: 8, borderRadius: 8, backgroundColor: safePage === 0 ? '#1a2332' : '#1E3A5F', opacity: safePage === 0 ? 0.4 : 1 }}
+                        data-testid="user-page-prev"
+                      >
+                        <Ionicons name="chevron-back" size={18} color="#93C5FD" />
+                      </TouchableOpacity>
+                      <Text style={{ color: '#94A3B8', fontSize: 13 }}>
+                        {safePage + 1} / {totalPages} ({filteredAdmins.length} users)
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setUserPage(Math.min(totalPages - 1, safePage + 1))}
+                        disabled={safePage >= totalPages - 1}
+                        style={{ padding: 8, borderRadius: 8, backgroundColor: safePage >= totalPages - 1 ? '#1a2332' : '#1E3A5F', opacity: safePage >= totalPages - 1 ? 0.4 : 1 }}
+                        data-testid="user-page-next"
+                      >
+                        <Ionicons name="chevron-forward" size={18} color="#93C5FD" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </>
+              );
+            })()}
           </View>
         )}
 
