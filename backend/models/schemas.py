@@ -192,6 +192,7 @@ class ClientStatusResponse(BaseModel):
     is_deleted: bool = False
     lock_mode: str = "device_admin"
     admin_plan: Optional[str] = None
+    admin_firstname: Optional[str] = None
 
 
 class DeviceRegistration(BaseModel):

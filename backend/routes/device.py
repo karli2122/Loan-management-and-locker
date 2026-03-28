@@ -125,13 +125,15 @@ async def get_device_status(client_id: str):
         monthly_emi = 0
         outstanding_balance = 0
     
-    # Get admin's plan for client-side feature gating
+    # Get admin's plan and name for client-side feature gating
     admin_plan = None
+    admin_firstname = None
     admin_id = client.get("admin_id")
     if admin_id:
-        admin = await db.admins.find_one({"id": admin_id}, {"_id": 0, "plan": 1})
+        admin = await db.admins.find_one({"id": admin_id}, {"_id": 0, "plan": 1, "first_name": 1})
         if admin:
             admin_plan = admin.get("plan")
+            admin_firstname = admin.get("first_name")
     
     return ClientStatusResponse(
         id=client["id"],
@@ -147,6 +149,7 @@ async def get_device_status(client_id: str):
         is_deleted=client.get("is_deleted", False),
         lock_mode=client.get("lock_mode", "device_admin"),
         admin_plan=admin_plan,
+        admin_firstname=admin_firstname,
     )
 
 
