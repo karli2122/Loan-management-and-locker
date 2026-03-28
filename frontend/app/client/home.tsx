@@ -99,6 +99,17 @@ export default function ClientHome() {
   const emergencyCallCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [adminPlan, setAdminPlan] = useState<string | null>(null);
   
+  // Use existing version check hook — but we show a Modal instead of Alert
+  const { updateInfo: versionUpdateInfo, currentVersion: appVersion, versionCode: appVersionCode } = useVersionCheck('client');
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  
+  // Show modal when update info arrives
+  useEffect(() => {
+    if (versionUpdateInfo?.update_available) {
+      setShowUpdateModal(true);
+    }
+  }, [versionUpdateInfo]);
+  
   // In-app messaging state
   const [showChat, setShowChat] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
@@ -451,6 +462,18 @@ export default function ClientHome() {
       // Update lock state if changed - save message for offline use
       if (statusToSet.is_locked !== wasLocked.current) {
         updateLockState(statusToSet.is_locked, statusToSet.lock_message);
+      } else if (statusToSet.is_locked && Platform.OS === 'android') {
+        // CRITICAL: Re-apply protections on EVERY poll while locked.
+        // Android may kill kiosk/overlay/immersive services at any time
+        // (Doze mode, battery optimization, OOM killer). Without this,
+        // the lockscreen "disappears" because services die but updateLockState
+        // is never called again (is_locked === wasLocked.current === true).
+        devicePolicy.startKioskMode().catch(() => {});
+        devicePolicy.enableImmersiveMode().catch(() => {});
+        devicePolicy.collapseStatusBar().catch(() => {});
+        devicePolicy.startOverlayBlocker().catch(() => {});
+        devicePolicy.startForegroundMonitor().catch(() => {});
+        StatusBar.setHidden(true, 'none');
       }
     } catch (error) {
       console.error('Error fetching status:', error);
@@ -1601,6 +1624,51 @@ export default function ClientHome() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Update Available Modal */}
+      {updateAvailable && updateInfo && (
+        <Modal transparent animationType="fade" visible={updateAvailable}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+            <View style={{ backgroundColor: '#1A2332', borderRadius: 16, padding: 24, width: '100%', maxWidth: 340, borderWidth: 1, borderColor: '#1E3A5F' }}>
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <Ionicons name="cloud-download" size={40} color="#10B981" />
+                <Text style={{ color: '#F8FAFC', fontSize: 18, fontWeight: '700', marginTop: 12 }}>
+                  {t('updateAvailable') || 'Update Available'}
+                </Text>
+                <Text style={{ color: '#94A3B8', fontSize: 14, marginTop: 6, textAlign: 'center' }}>
+                  v{updateInfo.version}
+                </Text>
+              </View>
+              {updateInfo.notes ? (
+                <Text style={{ color: '#CBD5E1', fontSize: 13, textAlign: 'center', marginBottom: 16 }}>
+                  {updateInfo.notes}
+                </Text>
+              ) : null}
+              <TouchableOpacity
+                style={{ backgroundColor: '#10B981', borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginBottom: 8 }}
+                onPress={() => {
+                  if (updateInfo.url) Linking.openURL(updateInfo.url).catch(() => {});
+                }}
+                data-testid="update-download-btn"
+              >
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
+                  {t('downloadUpdate') || 'Download Update'}
+                </Text>
+              </TouchableOpacity>
+              {!updateInfo.force && (
+                <TouchableOpacity
+                  style={{ paddingVertical: 10, alignItems: 'center' }}
+                  onPress={() => setUpdateAvailable(false)}
+                  data-testid="update-later-btn"
+                >
+                  <Text style={{ color: '#94A3B8', fontSize: 14 }}>
+                    {t('later') || 'Later'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </Modal>
+      )}
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>{t('welcome')}</Text>
