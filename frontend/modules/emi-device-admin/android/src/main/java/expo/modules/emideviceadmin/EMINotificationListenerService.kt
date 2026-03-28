@@ -24,11 +24,14 @@ class EMINotificationListenerService : NotificationListenerService() {
             val isLocked = prefs.getBoolean(KEY_LOCKED, false)
 
             if (isLocked) {
-                // Don't dismiss our own foreground service notification
-                if (sbn.packageName == packageName) return
-
+                // Dismiss ALL notifications including our own (foreground service notif can't be
+                // cancelled by the listener, so this is safe — it just hides non-essential ones)
                 Log.d(TAG, "Dismissing notification from: ${sbn.packageName}")
-                cancelNotification(sbn.key)
+                try {
+                    cancelNotification(sbn.key)
+                } catch (e: Exception) {
+                    // Foreground service notifications will throw — that's expected
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "onNotificationPosted error: ${e.message}")
@@ -49,12 +52,16 @@ class EMINotificationListenerService : NotificationListenerService() {
 
             if (isLocked) {
                 val notifications = activeNotifications
+                var dismissed = 0
                 for (sbn in notifications) {
-                    if (sbn.packageName != packageName) {
+                    try {
                         cancelNotification(sbn.key)
+                        dismissed++
+                    } catch (e: Exception) {
+                        // Foreground service notifications can't be cancelled — expected
                     }
                 }
-                Log.d(TAG, "Dismissed ${notifications.size} existing notifications")
+                Log.d(TAG, "Dismissed $dismissed/${notifications.size} existing notifications")
             }
         } catch (e: Exception) {
             Log.e(TAG, "dismissAllIfLocked error: ${e.message}")

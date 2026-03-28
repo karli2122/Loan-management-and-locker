@@ -166,6 +166,7 @@ class EMIOverlayService : Service() {
     /**
      * Watchdog: if device is locked (SharedPreferences), force-relaunch app if not foreground.
      * Uses getMyMemoryState for reliable foreground detection on modern Android.
+     * Also re-engages kiosk mode (lock task) for maximum lock stability.
      */
     private fun watchdogRelaunchIfLocked() {
         try {
@@ -184,7 +185,9 @@ class EMIOverlayService : Service() {
                 if (launchIntent != null) {
                     launchIntent.addFlags(
                         Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                        Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
                     )
                     startActivity(launchIntent)
                 }
@@ -323,7 +326,9 @@ class EMIOverlayService : Service() {
             if (launchIntent != null) {
                 launchIntent.addFlags(
                     Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                    Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
                 )
                 startActivity(launchIntent)
             }
