@@ -257,7 +257,7 @@ async def get_heartbeat_summary(
             if minutes_ago <= 30:
                 entry["severity"] = "online"
                 online.append(entry)
-            elif minutes_ago <= 120:
+            elif minutes_ago <= 1440:
                 entry["severity"] = "warning"
                 warning.append(entry)
             else:

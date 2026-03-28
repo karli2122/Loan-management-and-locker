@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { styles } from './styles';
 import { LoanHistoryItem } from './types';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useLanguage } from '../../context/LanguageContext';
+
+const ITEMS_PER_PAGE = 5;
 
 interface Props {
   loanHistory: LoanHistoryItem[];
@@ -95,7 +97,10 @@ const LoanHistoryList = ({
 }) => {
   const { formatAmount } = useCurrency();
   const { t } = useLanguage();
+  const [page, setPage] = useState(0);
   const query = loanHistorySearch.toLowerCase().trim();
+
+  // Filter
   const filtered = query
     ? loanHistory.filter((loan) => {
         const amount = formatAmount(loan.loan_amount || 0);
@@ -107,6 +112,21 @@ const LoanHistoryList = ({
         return searchable.includes(query);
       })
     : loanHistory;
+
+  // Sort by most recent (archived_at descending)
+  const sorted = [...filtered].sort((a, b) => {
+    const dateA = a.archived_at ? new Date(a.archived_at).getTime() : 0;
+    const dateB = b.archived_at ? new Date(b.archived_at).getTime() : 0;
+    return dateB - dateA;
+  });
+
+  // Paginate
+  const totalPages = Math.ceil(sorted.length / ITEMS_PER_PAGE);
+  const safePage = Math.min(page, Math.max(0, totalPages - 1));
+  const pageItems = sorted.slice(safePage * ITEMS_PER_PAGE, (safePage + 1) * ITEMS_PER_PAGE);
+
+  // Reset page when search changes
+  React.useEffect(() => { setPage(0); }, [loanHistorySearch]);
 
   if (filtered.length === 0) {
     return (
@@ -121,13 +141,13 @@ const LoanHistoryList = ({
 
   return (
     <>
-      {filtered.map((loan, index) => (
+      {pageItems.map((loan, index) => (
         <View
           key={loan.id}
           style={[
             styles.loanHistoryCard,
             { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
-            index < filtered.length - 1 && { marginBottom: 12 },
+            index < pageItems.length - 1 && { marginBottom: 12 },
           ]}
         >
           <View style={styles.loanHistoryCardHeader}>
@@ -185,6 +205,30 @@ const LoanHistoryList = ({
           </View>
         </View>
       ))}
+
+      {totalPages > 1 && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12, gap: 12 }}>
+          <TouchableOpacity
+            onPress={() => setPage(Math.max(0, safePage - 1))}
+            disabled={safePage === 0}
+            style={{ padding: 8, borderRadius: 8, backgroundColor: safePage === 0 ? colors.surfaceAlt : colors.primary, opacity: safePage === 0 ? 0.4 : 1 }}
+            data-testid="loan-history-page-prev"
+          >
+            <Ionicons name="chevron-back" size={18} color={safePage === 0 ? colors.textMuted : '#fff'} />
+          </TouchableOpacity>
+          <Text style={{ color: colors.textMuted, fontSize: 13 }}>
+            {safePage + 1} / {totalPages}
+          </Text>
+          <TouchableOpacity
+            onPress={() => setPage(Math.min(totalPages - 1, safePage + 1))}
+            disabled={safePage >= totalPages - 1}
+            style={{ padding: 8, borderRadius: 8, backgroundColor: safePage >= totalPages - 1 ? colors.surfaceAlt : colors.primary, opacity: safePage >= totalPages - 1 ? 0.4 : 1 }}
+            data-testid="loan-history-page-next"
+          >
+            <Ionicons name="chevron-forward" size={18} color={safePage >= totalPages - 1 ? colors.textMuted : '#fff'} />
+          </TouchableOpacity>
+        </View>
+      )}
     </>
   );
 };
