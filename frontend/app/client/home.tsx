@@ -54,6 +54,7 @@ interface ClientStatus {
   uninstall_allowed?: boolean;
   is_deleted?: boolean;
   lock_mode?: string;
+  admin_firstname?: string;
 }
 
 export default function ClientHome() {
@@ -77,7 +78,6 @@ export default function ClientHome() {
     location: false,
     notification: false,
     usageStats: false,
-    notificationListener: false,
   });
   const [showProtectionSetup, setShowProtectionSetup] = useState(false);
   const [protectionComplete, setProtectionComplete] = useState(false);
@@ -98,6 +98,7 @@ export default function ClientHome() {
   const [emergencyCallActive, setEmergencyCallActive] = useState(false);
   const emergencyCallCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [adminPlan, setAdminPlan] = useState<string | null>(null);
+  const [adminFirstName, setAdminFirstName] = useState<string | null>(null);
   
   // In-app messaging state
   const [showChat, setShowChat] = useState(false);
@@ -421,6 +422,9 @@ export default function ClientHome() {
       if (data.admin_plan) {
         setAdminPlan(data.admin_plan);
       }
+      if (data.admin_firstname) {
+        setAdminFirstName(data.admin_firstname);
+      }
       
       // Show system notification when a NEW warning arrives
       if (statusToSet.warning_message && statusToSet.warning_message !== lastWarningRef.current) {
@@ -428,7 +432,9 @@ export default function ClientHome() {
         try {
           await Notifications.scheduleNotificationAsync({
             content: {
-              title: t('warningFromAdministrator'),
+              title: adminFirstName
+                ? `${t('warningFrom') || 'Warning from'} ${adminFirstName}`
+                : t('warningFromAdministrator'),
               body: statusToSet.warning_message,
               sound: true,
               priority: Notifications.AndroidNotificationPriority.HIGH,
@@ -864,13 +870,9 @@ export default function ClientHome() {
             
             // Check new security permissions
             let usageStatsPerm = false;
-            let notifListenerPerm = false;
             try {
               usageStatsPerm = await devicePolicy.hasUsageStatsPermission();
             } catch (e) { console.log('Usage stats check error:', e); }
-            try {
-              notifListenerPerm = await devicePolicy.hasNotificationListenerPermission();
-            } catch (e) { console.log('Notification listener check error:', e); }
             
             setIsAdminActive(admin);
             
@@ -882,7 +884,6 @@ export default function ClientHome() {
               location: locationPerm,
               notification: notifPerm,
               usageStats: usageStatsPerm,
-              notificationListener: notifListenerPerm,
             };
             setPermissionStates(newPermStates);
             
@@ -1034,7 +1035,6 @@ export default function ClientHome() {
                 location: locationBgPerm,
                 notification: notifPerm,
                 usageStats: usageStatsPerm,
-                notificationListener: notifListenerPerm,
               };
               
               // Detect permission revocation (tampering)
@@ -1050,7 +1050,6 @@ export default function ClientHome() {
                 if (prevStates.batteryOptimization && !realPermStates.batteryOptimization) revokedPerms.push('batteryOptimization');
                 if (prevStates.autoStart && !realPermStates.autoStart) revokedPerms.push('autoStart');
                 if (prevStates.usageStats && !realPermStates.usageStats) revokedPerms.push('usageStats');
-                if (prevStates.notificationListener && !realPermStates.notificationListener) revokedPerms.push('notificationListener');
                 
                 if (revokedPerms.length > 0) {
                   const uninstallAllowed = status?.uninstall_allowed === true;
@@ -1365,13 +1364,12 @@ export default function ClientHome() {
     devicePolicy.startForegroundMonitor().catch(() => {});
     devicePolicy.setCameraDisabled(true).catch(() => {});
     
-    // Auto-collapse status bar every 50ms (max aggressive) + re-engage immersive mode
+    // Auto-collapse status bar every 500ms + re-engage immersive mode
     const collapseInterval = setInterval(() => {
       StatusBar.setHidden(true, 'none');
       devicePolicy.collapseStatusBar().catch(() => {});
       devicePolicy.enableImmersiveMode().catch(() => {});
-      devicePolicy.cancelAllNotifications().catch(() => {});
-    }, 50);
+    }, 500);
     
     return () => {
       clearInterval(collapseInterval);
@@ -1511,13 +1509,8 @@ export default function ClientHome() {
   if (status?.is_locked) {
     const isDeviceOwner = status.lock_mode === 'device_owner';
     return (
-      <Pressable 
+      <View 
         style={[styles.lockContainer, { paddingTop: 0 }]}
-        onPress={() => {
-          if (Platform.OS === 'android') {
-            devicePolicy.collapseStatusBar().catch(() => {});
-          }
-        }}
       >
         <StatusBar hidden translucent backgroundColor="transparent" />
         <View style={styles.lockContent}>
@@ -1584,7 +1577,7 @@ export default function ClientHome() {
             </View>
           )}
         </View>
-      </Pressable>
+      </View>
     );
   }
 
@@ -1907,7 +1900,7 @@ export default function ClientHome() {
                 <Text style={styles.permLabel}>{t('notifications')}</Text>
               </TouchableOpacity>
 
-              {/* Row 4: Usage Stats + Notification Listener (new security permissions) */}
+              {/* Row 4: Usage Stats */}
               <TouchableOpacity
                 style={[styles.permCard, isPermLocked(permissionStates.usageStats) && { opacity: 0.5 }]}
                 onPress={async () => {
@@ -1948,72 +1941,6 @@ export default function ClientHome() {
                 <Text style={styles.permLabel}>{t('usageStats')}</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.permCard, isPermLocked(permissionStates.notificationListener) && { opacity: 0.5 }]}
-                onPress={async () => {
-                  if (isPermLocked(permissionStates.notificationListener)) { showPermLockedWarning(); return; }
-                const dev = devicePolicy.getDeviceInfo();
-                const model = dev?.model || 'Device';
-                const ver = dev?.androidVersion || '';
-                const isSamsung = (dev?.manufacturer || '').toLowerCase().includes('samsung');
-                const needsRestricted = dev.sdkVersion >= 33;
-                let instructions = language === 'et'
-                  ? `${model} (Android ${ver})\n\nSee luba on vajalik, et rakendus saaks blokeerida t\u00f5kestusteatisi.\n\n1. Avaneb seadete leht\n2. Leidke "PayLock Client"\n3. L\u00fclitage SISSE`
-                  : `${model} (Android ${ver})\n\nThis permission is needed so the app can block interruption notifications.\n\n1. Settings page will open\n2. Find "PayLock Client"\n3. Toggle ON`;
-                if (needsRestricted) {
-                  instructions += language === 'et'
-                    ? '\n\nNB: Android 13+ n\u00f5uab "Piiratud seadete" lubamist rakenduse info lehel enne selle loa aktiveerimist.'
-                    : '\n\nNote: Android 13+ requires "Allow restricted settings" from App Info page before this permission can be enabled.';
-                }
-                const buttons: any[] = [
-                  { text: t('cancel'), style: 'cancel' },
-                ];
-                if (needsRestricted && isSamsung) {
-                  buttons.push({
-                    text: t('step1OpenAppInfo'),
-                    onPress: async () => { await devicePolicy.openAppInfo(); },
-                  });
-                  buttons.push({
-                    text: t('step2OpenSettings'),
-                    onPress: async () => {
-                      try {
-                        await devicePolicy.requestNotificationListenerPermission();
-                        await new Promise(r => setTimeout(r, 2000));
-                        const granted = await devicePolicy.hasNotificationListenerPermission();
-                        if (granted) setPermissionStates(prev => ({ ...prev, notificationListener: true }));
-                      } catch (e) {
-                        console.log('Notification listener permission error:', e);
-                      }
-                    },
-                  });
-                } else {
-                  buttons.push({
-                    text: t('openSettings'),
-                    onPress: async () => {
-                      try {
-                        await devicePolicy.requestNotificationListenerPermission();
-                        await new Promise(r => setTimeout(r, 2000));
-                        const granted = await devicePolicy.hasNotificationListenerPermission();
-                        if (granted) setPermissionStates(prev => ({ ...prev, notificationListener: true }));
-                      } catch (e) {
-                        console.log('Notification listener permission error:', e);
-                      }
-                    },
-                  });
-                }
-                Alert.alert(
-                  t('notificationListener'),
-                  instructions,
-                  buttons
-                );
-              }}
-              data-testid="perm-notif-listener-card"
-              >
-                <View style={[styles.permCircle, permissionStates.notificationListener ? styles.permOk : styles.permBad]}>
-                  <Ionicons name={permissionStates.notificationListener ? "checkmark" : "close"} size={28} color="#FFF" />
-                </View>
-                <Text style={styles.permLabel}>{t('notifListener')}</Text>
-              </TouchableOpacity>
             </View>
 
             {/* Summary bar */}
