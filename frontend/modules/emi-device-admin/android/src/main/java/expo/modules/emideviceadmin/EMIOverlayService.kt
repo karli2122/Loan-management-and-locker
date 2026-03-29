@@ -8,26 +8,42 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Color
+import android.graphics.Outline
 import android.graphics.PixelFormat
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
+import android.telecom.TelecomManager
+import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewOutlineProvider
 import android.view.WindowManager
-import android.util.Log
+import android.widget.FrameLayout
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
 
 /**
- * Overlay Service - Transparent bar blockers that prevent status bar pull-down
- * and navigation bar gestures. The visible lock UI is rendered by React Native.
+ * Native Overlay Lock Service — the BLUE lockscreen.
  *
- * Runs as a FOREGROUND service for resilience against Android killing it.
- * Watchdog loop every 200ms re-creates blockers if they are removed.
- * Cross-monitors EMIForegroundMonitorService and restarts it if dead.
+ * When is_locked=true:
+ *   • Shows a full-screen, opaque, TOUCHABLE overlay with lock UI
+ *   • Only the emergency-call button is interactive
+ *   • Status-bar and nav-bar blockers sit on top to absorb swipes
+ *
+ * When is_locked=false:
+ *   • All overlay views are removed
+ *
+ * Runs as a FOREGROUND service with a partial wake-lock.
  */
 class EMIOverlayService : Service() {
 
@@ -35,234 +51,351 @@ class EMIOverlayService : Service() {
         private const val TAG = "EMIOverlayService"
         private const val PREFS_NAME = "emi_device_admin_prefs"
         private const val KEY_LOCKED = "is_locked"
+        private const val KEY_MESSAGE = "lock_message"
         private const val CHANNEL_ID = "emi_overlay_channel"
         private const val NOTIFICATION_ID = 1001
         private const val WATCHDOG_INTERVAL_MS = 200L
-        @Volatile
-        var isRunning = false
+        @Volatile var isRunning = false
     }
 
-    private var windowManager: WindowManager? = null
+    private var wm: WindowManager? = null
+    private var fullScreenView: View? = null
     private var statusBarBlocker: View? = null
     private var navBarBlocker: View? = null
     private val handler = Handler(Looper.getMainLooper())
-    private var watchdogRunnable: Runnable? = null
+    private var watchdog: Runnable? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private lateinit var prefs: SharedPreferences
+
+    // ─── Lifecycle ──────────────────────────────────────────────────
 
     override fun onCreate() {
         super.onCreate()
         isRunning = true
         prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        wm = getSystemService(WINDOW_SERVICE) as WindowManager
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification())
         acquireWakeLock()
-        Log.d(TAG, "Overlay service created (foreground)")
+        Log.d(TAG, "Overlay service started (foreground)")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startWatchdogLoop()
+        startWatchdog()
         return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        if (prefs.getBoolean(KEY_LOCKED, false)) EMIRestartReceiver.scheduleRestart(this, 1000)
+    }
+
+    override fun onDestroy() {
+        isRunning = false
+        watchdog?.let { handler.removeCallbacks(it) }; watchdog = null
+        removeAll()
+        try { wakeLock?.release() } catch (_: Exception) {}; wakeLock = null
+        if (prefs.getBoolean(KEY_LOCKED, false)) {
+            Log.w(TAG, "Killed while locked — scheduling restart")
+            EMIRestartReceiver.scheduleRestart(this, 2000)
+        }
+        super.onDestroy()
+    }
+
+    // ─── Notification (hidden) ──────────────────────────────────────
+
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID, "Device Protection",
-                NotificationManager.IMPORTANCE_NONE
-            ).apply {
-                description = "Active device protection"
-                setShowBadge(false)
-                lockscreenVisibility = Notification.VISIBILITY_SECRET
-                enableLights(false)
-                enableVibration(false)
-                setSound(null, null)
+            val ch = NotificationChannel(CHANNEL_ID, "Device Protection", NotificationManager.IMPORTANCE_NONE).apply {
+                setShowBadge(false); lockscreenVisibility = Notification.VISIBILITY_SECRET
+                enableLights(false); enableVibration(false); setSound(null, null)
             }
-            getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
+            getSystemService(NotificationManager::class.java)?.createNotificationChannel(ch)
         }
     }
 
     private fun buildNotification(): Notification {
-        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(this, CHANNEL_ID)
-        } else {
-            @Suppress("DEPRECATION")
-            Notification.Builder(this)
-        }
-        return builder
-            .setSmallIcon(android.R.drawable.ic_lock_lock)
-            .setOngoing(true)
-            .setPriority(Notification.PRIORITY_MIN)
-            .build()
+        val b = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            Notification.Builder(this, CHANNEL_ID) else @Suppress("DEPRECATION") Notification.Builder(this)
+        return b.setSmallIcon(android.R.drawable.ic_lock_lock).setOngoing(true)
+            .setPriority(Notification.PRIORITY_MIN).build()
     }
 
     private fun acquireWakeLock() {
         try {
             val pm = getSystemService(POWER_SERVICE) as? PowerManager
-            wakeLock = pm?.newWakeLock(
-                PowerManager.PARTIAL_WAKE_LOCK,
-                "emi:overlay_service"
-            )?.apply { acquire(24 * 60 * 60 * 1000L) }
-        } catch (e: Exception) {
-            Log.e(TAG, "Wake lock error: ${e.message}")
-        }
+            wakeLock = pm?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "emi:overlay")?.apply {
+                acquire(24 * 60 * 60 * 1000L)
+            }
+        } catch (e: Exception) { Log.e(TAG, "WakeLock error: ${e.message}") }
     }
 
-    // ─── Watchdog Loop ──────────────────────────────────────────────
+    // ─── Watchdog ───────────────────────────────────────────────────
 
-    private fun startWatchdogLoop() {
-        watchdogRunnable?.let { handler.removeCallbacks(it) }
-
-        watchdogRunnable = object : Runnable {
+    private fun startWatchdog() {
+        watchdog?.let { handler.removeCallbacks(it) }
+        watchdog = object : Runnable {
             override fun run() {
                 try {
-                    val isLocked = prefs.getBoolean(KEY_LOCKED, false)
-
-                    if (isLocked) {
-                        // Ensure status bar blocker exists
-                        if (statusBarBlocker == null || !statusBarBlocker!!.isAttachedToWindow) {
-                            createStatusBarBlocker()
+                    val locked = prefs.getBoolean(KEY_LOCKED, false)
+                    if (locked) {
+                        if (fullScreenView == null || !fullScreenView!!.isAttachedToWindow) {
+                            removeAll()
+                            createFullScreen()
+                            createBarBlocker(top = true)
+                            createBarBlocker(top = false)
                         }
-                        // Ensure nav bar blocker exists
-                        if (navBarBlocker == null || !navBarBlocker!!.isAttachedToWindow) {
-                            createNavBarBlocker()
-                        }
-
-                        // Cross-check: restart foreground monitor if dead
+                        // Cross-monitor
                         if (!EMIForegroundMonitorService.isRunning) {
-                            try {
-                                val monitorIntent = Intent(this@EMIOverlayService, EMIForegroundMonitorService::class.java)
-                                startForegroundService(monitorIntent)
-                            } catch (_: Exception) {}
+                            try { startForegroundService(Intent(this@EMIOverlayService, EMIForegroundMonitorService::class.java)) }
+                            catch (_: Exception) {}
                         }
-
-                        // Collapse status bar
                         collapseStatusBar()
                     } else {
-                        // Not locked — remove all blockers
-                        removeAllBlockers()
+                        removeAll()
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Watchdog error: ${e.message}")
-                }
+                } catch (e: Exception) { Log.e(TAG, "Watchdog: ${e.message}") }
                 handler.postDelayed(this, WATCHDOG_INTERVAL_MS)
             }
         }
-        handler.post(watchdogRunnable!!)
-        Log.d(TAG, "Watchdog started (${WATCHDOG_INTERVAL_MS}ms)")
+        handler.post(watchdog!!)
     }
 
-    // ─── Status Bar Blocker (prevent pull-down) ─────────────────────
+    // ─── Full-Screen Lock UI ────────────────────────────────────────
 
-    private fun createStatusBarBlocker() {
+    private fun createFullScreen() {
         if (!Settings.canDrawOverlays(this)) return
         try {
-            val blocker = View(this).apply { setBackgroundColor(Color.TRANSPARENT) }
-            val params = WindowManager.LayoutParams(
+            val msg = prefs.getString(KEY_MESSAGE, "") ?: ""
+            val root = buildLockUI(msg)
+
+            val lp = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
-                dp(50),
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                else
-                    @Suppress("DEPRECATION")
-                    WindowManager.LayoutParams.TYPE_SYSTEM_ERROR,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
-                PixelFormat.TRANSPARENT
+                WindowManager.LayoutParams.MATCH_PARENT,
+                overlayType(),
+                // NOT_TOUCH_MODAL lets the emergency button receive touches
+                // LAYOUT_IN_SCREEN covers status bar area
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
+                PixelFormat.OPAQUE
             ).apply { gravity = Gravity.TOP or Gravity.START }
 
-            windowManager?.addView(blocker, params)
-            statusBarBlocker = blocker
-            Log.d(TAG, "Status bar blocker created")
-        } catch (e: Exception) {
-            Log.e(TAG, "createStatusBarBlocker error: ${e.message}")
-        }
+            wm?.addView(root, lp)
+            fullScreenView = root
+            Log.d(TAG, "Full-screen lock UI created")
+        } catch (e: Exception) { Log.e(TAG, "createFullScreen: ${e.message}") }
     }
 
-    // ─── Nav Bar Blocker (prevent gesture nav) ──────────────────────
+    @Suppress("DEPRECATION")
+    private fun buildLockUI(lockMessage: String): FrameLayout {
+        val bg = Color.parseColor("#0B1527")
+        val accent = Color.parseColor("#3B82F6") // blue accent
+        val textPrimary = Color.WHITE
+        val textSecondary = Color.parseColor("#94A3B8")
+        val emergencyRed = Color.parseColor("#EF4444")
 
-    private fun createNavBarBlocker() {
+        val root = FrameLayout(this).apply {
+            setBackgroundColor(bg)
+            isClickable = true
+            isFocusable = true
+            // Consume all touches except where we place interactive buttons
+            setOnTouchListener { _, _ -> true }
+        }
+
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(32), dp(80), dp(32), dp(40))
+        }
+
+        // Lock icon circle
+        val iconBg = FrameLayout(this).apply {
+            val s = dp(110)
+            layoutParams = LinearLayout.LayoutParams(s, s).apply {
+                gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = dp(28)
+            }
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.parseColor("#1E3A5F"))
+            }
+        }
+        val icon = ImageView(this).apply {
+            setImageResource(android.R.drawable.ic_lock_lock)
+            setColorFilter(accent)
+            layoutParams = FrameLayout.LayoutParams(dp(52), dp(52), Gravity.CENTER)
+        }
+        iconBg.addView(icon)
+        content.addView(iconBg)
+
+        // Title
+        content.addView(TextView(this).apply {
+            text = "Device Locked"
+            setTextColor(textPrimary); textSize = 26f
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            gravity = Gravity.CENTER
+            layoutParams = llp().apply { bottomMargin = dp(12) }
+        })
+
+        // Subtitle / lock message
+        if (lockMessage.isNotEmpty()) {
+            content.addView(TextView(this).apply {
+                text = lockMessage; setTextColor(textSecondary); textSize = 15f
+                gravity = Gravity.CENTER
+                layoutParams = llp().apply { bottomMargin = dp(24) }
+            })
+        }
+
+        // "Protected" badge
+        content.addView(TextView(this).apply {
+            text = "PayLock Protection Active"
+            setTextColor(accent); textSize = 13f; gravity = Gravity.CENTER
+            layoutParams = llp().apply { topMargin = dp(16); bottomMargin = dp(48) }
+        })
+
+        // ── Emergency Call Button ───────────────────────────────────
+        val emergencyBtn = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(dp(24), dp(14), dp(24), dp(14))
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = dp(28).toFloat()
+                setStroke(dp(2), emergencyRed)
+                setColor(Color.parseColor("#1A0000"))
+            }
+            isClickable = true
+            isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { gravity = Gravity.CENTER_HORIZONTAL; topMargin = dp(8) }
+        }
+        emergencyBtn.addView(ImageView(this).apply {
+            setImageResource(android.R.drawable.ic_menu_call)
+            setColorFilter(emergencyRed)
+            layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { rightMargin = dp(10) }
+        })
+        emergencyBtn.addView(TextView(this).apply {
+            text = "Emergency Call 112"
+            setTextColor(emergencyRed); textSize = 15f
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+        })
+        emergencyBtn.setOnClickListener { handleEmergencyCall() }
+
+        content.addView(emergencyBtn)
+
+        root.addView(content, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            Gravity.CENTER
+        ))
+        return root
+    }
+
+    // ─── Emergency Call Logic ───────────────────────────────────────
+
+    private fun handleEmergencyCall() {
+        Log.d(TAG, "Emergency call 112 triggered from native overlay")
+
+        // Set flag so monitor allows the dialer
+        prefs.edit().putBoolean("emergency_call_active", true).commit()
+
+        // Remove overlay to let the dialer show
+        removeAll()
+
+        // Dial 112
+        try {
+            val callIntent = Intent(Intent.ACTION_CALL, Uri.parse("tel:112")).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(callIntent)
+        } catch (e: Exception) {
+            Log.e(TAG, "ACTION_CALL failed, trying ACTION_DIAL: ${e.message}")
+            try {
+                val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:112")).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(dialIntent)
+            } catch (e2: Exception) {
+                Log.e(TAG, "ACTION_DIAL also failed: ${e2.message}")
+            }
+        }
+
+        // Schedule: wait for call to end, then re-apply lock
+        handler.postDelayed(object : Runnable {
+            override fun run() {
+                val stillInCall = isInCall()
+                if (stillInCall) {
+                    handler.postDelayed(this, 3000)
+                } else {
+                    Log.d(TAG, "Emergency call ended — re-applying lock")
+                    prefs.edit().putBoolean("emergency_call_active", false).commit()
+                    // Re-create the lock overlay
+                    startWatchdog()
+                }
+            }
+        }, 5000) // First check after 5 seconds
+    }
+
+    private fun isInCall(): Boolean {
+        return try {
+            val tm = getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
+            tm?.isInCall ?: false
+        } catch (_: Exception) { false }
+    }
+
+    // ─── Bar Blockers (status bar / nav bar) ────────────────────────
+
+    private fun createBarBlocker(top: Boolean) {
         if (!Settings.canDrawOverlays(this)) return
         try {
             val blocker = View(this).apply { setBackgroundColor(Color.TRANSPARENT) }
-            val params = WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                dp(80),
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                else
-                    @Suppress("DEPRECATION")
-                    WindowManager.LayoutParams.TYPE_SYSTEM_ERROR,
+            val h = if (top) dp(50) else dp(80)
+            val lp = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT, h, overlayType(),
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
                 PixelFormat.TRANSPARENT
-            ).apply { gravity = Gravity.BOTTOM or Gravity.START }
-
-            windowManager?.addView(blocker, params)
-            navBarBlocker = blocker
-            Log.d(TAG, "Nav bar blocker created")
-        } catch (e: Exception) {
-            Log.e(TAG, "createNavBarBlocker error: ${e.message}")
-        }
+            ).apply { gravity = (if (top) Gravity.TOP else Gravity.BOTTOM) or Gravity.START }
+            wm?.addView(blocker, lp)
+            if (top) statusBarBlocker = blocker else navBarBlocker = blocker
+        } catch (e: Exception) { Log.e(TAG, "createBarBlocker($top): ${e.message}") }
     }
 
-    // ─── Remove All Blockers ────────────────────────────────────────
+    // ─── Remove Everything ──────────────────────────────────────────
 
-    private fun removeAllBlockers() {
-        listOf(statusBarBlocker, navBarBlocker).forEach { view ->
-            try {
-                view?.let {
-                    if (it.isAttachedToWindow) windowManager?.removeView(it)
-                }
-            } catch (_: Exception) {}
+    private fun removeAll() {
+        listOf(fullScreenView, statusBarBlocker, navBarBlocker).forEach {
+            try { it?.let { v -> if (v.isAttachedToWindow) wm?.removeView(v) } } catch (_: Exception) {}
         }
-        statusBarBlocker = null
-        navBarBlocker = null
+        fullScreenView = null; statusBarBlocker = null; navBarBlocker = null
     }
 
     // ─── Helpers ────────────────────────────────────────────────────
 
-    private fun dp(value: Int): Int {
-        return TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, value.toFloat(), resources.displayMetrics
-        ).toInt()
-    }
+    private fun dp(v: Int) = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics
+    ).toInt()
+
+    private fun llp() = LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.MATCH_PARENT,
+        LinearLayout.LayoutParams.WRAP_CONTENT
+    )
+
+    private fun overlayType() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+    else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_SYSTEM_ERROR
 
     private fun collapseStatusBar() {
         try {
             @Suppress("DEPRECATION")
-            val sbService = getSystemService("statusbar")
-            val sbClass = Class.forName("android.app.StatusBarManager")
-            sbClass.getMethod("collapsePanels").invoke(sbService)
+            val sb = getSystemService("statusbar")
+            Class.forName("android.app.StatusBarManager").getMethod("collapsePanels").invoke(sb)
         } catch (_: Exception) {}
-    }
-
-    // ─── Lifecycle: Auto-restart on kill ────────────────────────────
-
-    override fun onTaskRemoved(rootIntent: Intent?) {
-        super.onTaskRemoved(rootIntent)
-        if (prefs.getBoolean(KEY_LOCKED, false)) {
-            EMIRestartReceiver.scheduleRestart(this, 1000)
-        }
-    }
-
-    override fun onDestroy() {
-        isRunning = false
-        watchdogRunnable?.let { handler.removeCallbacks(it) }
-        watchdogRunnable = null
-        removeAllBlockers()
-        try { wakeLock?.release() } catch (_: Exception) {}
-        wakeLock = null
-
-        if (prefs.getBoolean(KEY_LOCKED, false)) {
-            Log.w(TAG, "Overlay service killed while locked — scheduling restart")
-            EMIRestartReceiver.scheduleRestart(this, 2000)
-        }
-        super.onDestroy()
     }
 }

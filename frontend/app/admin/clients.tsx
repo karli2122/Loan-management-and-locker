@@ -115,7 +115,7 @@ export default function ClientsList() {
       if (!adminToken) return;
       
       // Silent clients: haven't sent heartbeat in 60 minutes
-      const response = await fetch(`${API_URL}/api/clients/silent?admin_token=${adminToken}&minutes=60`);
+      const response = await fetch(`${API_URL}/api/clients/silent?admin_token=${adminToken}&minutes=1440`);
       if (response.ok) {
         const data = await response.json();
         setSilentClients(data.silent_clients || []);
