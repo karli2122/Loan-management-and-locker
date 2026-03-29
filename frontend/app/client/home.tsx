@@ -60,7 +60,6 @@ export default function ClientHome() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
   const { formatAmount } = useCurrency();
-  useVersionCheck('client');
   const [status, setStatus] = useState<ClientStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -99,7 +98,7 @@ export default function ClientHome() {
   const emergencyCallCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [adminPlan, setAdminPlan] = useState<string | null>(null);
   
-  // Use existing version check hook — but we show a Modal instead of Alert
+  // Version check — uses Modal instead of Alert to escape overlay blocker
   const { updateInfo: versionUpdateInfo, currentVersion: appVersion, versionCode: appVersionCode } = useVersionCheck('client');
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   
@@ -1625,8 +1624,8 @@ export default function ClientHome() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Update Available Modal */}
-      {updateAvailable && updateInfo && (
-        <Modal transparent animationType="fade" visible={updateAvailable}>
+      {showUpdateModal && versionUpdateInfo && (
+        <Modal transparent animationType="fade" visible={showUpdateModal}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
             <View style={{ backgroundColor: '#1A2332', borderRadius: 16, padding: 24, width: '100%', maxWidth: 340, borderWidth: 1, borderColor: '#1E3A5F' }}>
               <View style={{ alignItems: 'center', marginBottom: 16 }}>
@@ -1635,18 +1634,18 @@ export default function ClientHome() {
                   {t('updateAvailable') || 'Update Available'}
                 </Text>
                 <Text style={{ color: '#94A3B8', fontSize: 14, marginTop: 6, textAlign: 'center' }}>
-                  v{updateInfo.version}
+                  v{versionUpdateInfo.latest_version}
                 </Text>
               </View>
-              {updateInfo.notes ? (
+              {versionUpdateInfo.release_notes ? (
                 <Text style={{ color: '#CBD5E1', fontSize: 13, textAlign: 'center', marginBottom: 16 }}>
-                  {updateInfo.notes}
+                  {versionUpdateInfo.release_notes}
                 </Text>
               ) : null}
               <TouchableOpacity
                 style={{ backgroundColor: '#10B981', borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginBottom: 8 }}
                 onPress={() => {
-                  if (updateInfo.url) Linking.openURL(updateInfo.url).catch(() => {});
+                  if (versionUpdateInfo.download_url) Linking.openURL(versionUpdateInfo.download_url).catch(() => {});
                 }}
                 data-testid="update-download-btn"
               >
@@ -1654,10 +1653,10 @@ export default function ClientHome() {
                   {t('downloadUpdate') || 'Download Update'}
                 </Text>
               </TouchableOpacity>
-              {!updateInfo.force && (
+              {!versionUpdateInfo.force_update && (
                 <TouchableOpacity
                   style={{ paddingVertical: 10, alignItems: 'center' }}
-                  onPress={() => setUpdateAvailable(false)}
+                  onPress={() => setShowUpdateModal(false)}
                   data-testid="update-later-btn"
                 >
                   <Text style={{ color: '#94A3B8', fontSize: 14 }}>

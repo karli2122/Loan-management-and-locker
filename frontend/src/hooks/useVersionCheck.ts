@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Linking, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import * as Application from 'expo-application';
 import API_URL from '../constants/api';
@@ -36,35 +36,8 @@ export function useVersionCheck(appType: 'admin' | 'client') {
       const data: VersionInfo = await res.json();
       if (data.update_available) {
         setUpdateInfo(data);
-        showUpdateAlert(data);
       }
     } catch {}
-  };
-
-  const showUpdateAlert = (info: VersionInfo) => {
-    const buttons: any[] = [];
-    if (!info.force_update) {
-      buttons.push({ text: 'Later', style: 'cancel' });
-    }
-    if (info.download_url) {
-      buttons.push({
-        text: 'Update Now',
-        onPress: () => {
-          if (Platform.OS === 'android' && info.download_url) {
-            Linking.openURL(info.download_url);
-          }
-        },
-      });
-    } else {
-      buttons.push({ text: 'OK' });
-    }
-
-    Alert.alert(
-      `Update Available (v${info.latest_version})`,
-      info.release_notes || 'A new version is available. Please update for the best experience.',
-      buttons,
-      { cancelable: !info.force_update }
-    );
   };
 
   return { updateInfo, currentVersion: APP_VERSION, versionCode: VERSION_CODE, checkVersion };

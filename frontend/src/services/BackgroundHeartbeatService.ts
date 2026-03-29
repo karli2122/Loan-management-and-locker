@@ -116,7 +116,7 @@ async function collectDeviceData(): Promise<Omit<HeartbeatData, 'client_id'>> {
  */
 async function sendHeartbeat(): Promise<boolean> {
   try {
-    const clientId = await AsyncStorage.getItem('clientId');
+    const clientId = await AsyncStorage.getItem('client_id');
     if (!clientId) {
       console.log('[Heartbeat] No client ID, skipping');
       return false;
