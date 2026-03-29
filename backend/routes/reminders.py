@@ -171,12 +171,16 @@ async def get_pending_reminders(admin_token: str = Query(...)):
         else:
             continue  # Skip clients with payments more than a week away
         
+        late_fees = client.get("late_fees_accumulated", 0) if client.get("days_overdue", 0) > 0 else 0
+        raw_outstanding = client.get("outstanding_balance", 0)
         reminder_data = {
             "client_id": client["id"],
             "client_name": client["name"],
             "phone": client.get("phone", ""),
             "monthly_emi": client.get("monthly_emi", 0),
-            "outstanding_balance": client.get("outstanding_balance", 0),
+            "outstanding_balance": round(raw_outstanding + late_fees, 2),
+            "outstanding_base": raw_outstanding,
+            "late_fees": round(late_fees, 2),
             "next_payment_due": next_due.isoformat() if isinstance(next_due, datetime) else next_due,
             "days_until_due": days_until_due,
             "reminder_type": reminder_type,

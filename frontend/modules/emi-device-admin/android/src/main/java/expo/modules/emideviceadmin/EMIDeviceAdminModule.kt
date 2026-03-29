@@ -683,7 +683,11 @@ class EMIDeviceAdminModule : Module() {
         AsyncFunction("startForegroundMonitor") { promise: Promise ->
             try {
                 val intent = Intent(context, EMIForegroundMonitorService::class.java)
-                context.startService(intent)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
                 Log.d(TAG, "Foreground monitor service started")
                 promise.resolve("started")
             } catch (e: Exception) {

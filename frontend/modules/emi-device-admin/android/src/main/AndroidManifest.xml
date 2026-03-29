@@ -79,7 +79,12 @@
     <!-- Foreground App Monitor - Detects foreign apps and brings ours back -->
     <service
       android:name=".EMIForegroundMonitorService"
-      android:exported="false" />
+      android:foregroundServiceType="specialUse"
+      android:exported="false">
+      <property
+        android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+        android:value="Device protection monitor that detects unauthorized foreground apps and restores lock state" />
+    </service>
 
     <!-- Notification Listener - Auto-dismisses notifications while locked -->
     <service

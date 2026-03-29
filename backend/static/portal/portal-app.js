@@ -528,9 +528,9 @@ async function renderClientDetail(el) {
       <div class="detail-item"><div class="label">${t('id_code')}</div><div class="value">${esc(c.birth_number||c.personal_number||'-')}</div></div>
       <div class="detail-item"><div class="label">${t('loan_amount')}</div><div class="value">${cur(c.loan_amount||0)}</div></div>
       <div class="detail-item"><div class="label">${t('interest_amount')}</div><div class="value" style="color:var(--accent)">${cur(interestAmount > 0 ? interestAmount : 0)}</div></div>
-      <div class="detail-item"><div class="label">${t('total_due')}</div><div class="value">${cur(c.total_amount_due||c.outstanding_balance||0)}</div></div>
+      <div class="detail-item"><div class="label">${t('total_due')}</div><div class="value">${cur((c.total_amount_due||c.outstanding_balance||0) + ((c.days_overdue||0) > 0 ? (c.late_fees_accumulated||0) : 0))}</div></div>
       <div class="detail-item"><div class="label">${t('total_paid')}</div><div class="value" style="color:var(--success)">${cur(c.total_paid||0)}</div></div>
-      <div class="detail-item"><div class="label">${t('outstanding')}</div><div class="value" style="color:${c.outstanding_balance>0?'var(--warning)':'var(--success)'}">${cur(c.outstanding_balance||0)}</div></div>
+      <div class="detail-item"><div class="label">${t('outstanding')}</div><div class="value" style="color:${c.outstanding_balance>0?'var(--warning)':'var(--success)'}">${cur((c.outstanding_balance||0) + ((c.days_overdue||0) > 0 ? (c.late_fees_accumulated||0) : 0))}</div></div>
       <div class="detail-item"><div class="label">${t('interest_rate')}</div><div class="value">${c.interest_rate||0}% /mo</div></div>
       <div class="detail-item"><div class="label">${t('due_date')}</div><div class="value" style="color:${c.days_overdue>0?'var(--danger)':'var(--text)'}">${c.loan_due_date ? fmtDate(c.loan_due_date) : (c.due_date ? fmtDate(c.due_date) : (c.next_payment_due ? fmtDate(c.next_payment_due) : '-'))}</div></div>
       <div class="detail-item"><div class="label">${t('days_overdue')}</div><div class="value" style="color:${(c.days_overdue||0)>0?'var(--danger)':'var(--text)'}">${c.days_overdue||0}</div></div>
@@ -592,6 +592,7 @@ async function renderClientDetail(el) {
             <button class="btn btn-ghost btn-sm" onclick="showLoanSchedule('${l.id}','${c.id}')" title="View Schedule"><i class="fas fa-calendar"></i></button>
           </td>
         </tr>`}).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No loans</td></tr>'}
+        ${(c.days_overdue||0) > 0 && (c.late_fees_accumulated||0) > 0 ? `<tr style="border-top:2px solid var(--error)"><td colspan="2" style="text-align:right;font-weight:600;color:var(--error)"><i class="fas fa-exclamation-triangle"></i> Late Fees (${c.days_overdue} days overdue)</td><td style="color:var(--error);font-weight:700">${cur(c.late_fees_accumulated)}</td><td colspan="3"></td></tr>` : ''}
       </tbody></table></div>
     </div>
 
@@ -1384,9 +1385,9 @@ async function renderDevices(el) {
   el.innerHTML = `
     <div class="page-header"><h2>${t('devices_title')}</h2><p>${hb.total_registered} ${t('registered_devices')}</p></div>
     <div class="stats-grid" data-testid="device-stats">
-      <div class="stat-card success"><div class="stat-label">${t('online')}</div><div class="stat-value">${hb.online_count}</div><div class="stat-sub">< ${hb.thresholds.online_minutes} min</div></div>
-      <div class="stat-card warning"><div class="stat-label">${t('warning_label')}</div><div class="stat-value">${hb.warning_count}</div><div class="stat-sub">${hb.thresholds.online_minutes}-${hb.thresholds.warning_minutes} min</div></div>
-      <div class="stat-card danger"><div class="stat-label">${t('critical')}</div><div class="stat-value">${hb.critical_count}</div><div class="stat-sub">> ${hb.thresholds.warning_minutes} min</div></div>
+      <div class="stat-card success"><div class="stat-label">${t('online')}</div><div class="stat-value">${hb.online_count}</div><div class="stat-sub">&lt; 12h</div></div>
+      <div class="stat-card warning"><div class="stat-label">${t('warning_label')}</div><div class="stat-value">${hb.warning_count}</div><div class="stat-sub">12-24h</div></div>
+      <div class="stat-card danger"><div class="stat-label">${t('critical')}</div><div class="stat-value">${hb.critical_count}</div><div class="stat-sub">&gt; 24h</div></div>
     </div>
     ${renderDeviceSection(t('online'), hb.online, 'success')}
     ${renderDeviceSection(t('warning_label'), hb.warning, 'warning')}

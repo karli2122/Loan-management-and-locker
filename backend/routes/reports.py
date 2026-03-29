@@ -254,7 +254,7 @@ async def get_heartbeat_summary(
             minutes_ago = (now - hb).total_seconds() / 60
             entry["minutes_ago"] = round(minutes_ago)
             
-            if minutes_ago <= 30:
+            if minutes_ago <= 720:
                 entry["severity"] = "online"
                 online.append(entry)
             elif minutes_ago <= 1440:
@@ -275,8 +275,8 @@ async def get_heartbeat_summary(
         "warning": warning,
         "critical": all_critical,
         "thresholds": {
-            "online_minutes": 30,
-            "warning_minutes": 120,
+            "online_minutes": 720,
+            "warning_minutes": 1440,
         }
     }
 

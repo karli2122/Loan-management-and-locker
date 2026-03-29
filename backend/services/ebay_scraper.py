@@ -170,14 +170,85 @@ def scrape_swappa(slug: str, display_name: str) -> dict:
         return {"success": False, "message": str(e)}
 
 
+def scrape_ebay_de(display_name: str) -> dict:
+    """Scrape eBay.de sold listings for used phone prices in EUR.
+    Uses regex extraction since eBay.de's HTML structure varies."""
+    query = f"{display_name} gebraucht"
+    url = "https://www.ebay.de/sch/i.html"
+    params = {
+        "_nkw": query,
+        "_sacat": "9355",   # Cell Phones & Smartphones
+        "LH_Sold": "1",     # Sold listings for accurate market prices
+        "LH_Complete": "1",
+    }
+    try:
+        logger.info(f"Scraping eBay.de: {query}")
+        with httpx.Client(follow_redirects=True, timeout=15) as client:
+            response = client.get(url, params=params, headers={
+                **HEADERS,
+                "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
+            })
+
+        if response.status_code != 200:
+            logger.warning(f"eBay.de returned {response.status_code}")
+            return {"success": False, "message": f"eBay.de returned {response.status_code}"}
+
+        # Extract EUR prices from raw HTML using regex (reliable across layout changes)
+        prices = []
+        for m in re.finditer(r'EUR\s*([\d]+[.,][\d]+|[\d]+)', response.text):
+            txt = m.group(1).replace('.', '').replace(',', '.')
+            try:
+                price = float(txt)
+                if 50 < price < 5000:
+                    prices.append(price)
+            except ValueError:
+                continue
+
+        if not prices:
+            return {"success": False, "message": "No sold listings found on eBay.de"}
+
+        # Remove outliers (keep middle 80%)
+        prices.sort()
+        if len(prices) > 5:
+            trim = max(1, len(prices) // 10)
+            prices = prices[trim:-trim]
+
+        result = {
+            "success": True,
+            "display_name": display_name,
+            "median_price_eur": round(statistics.median(prices), 2),
+            "avg_price_eur": round(statistics.mean(prices), 2),
+            "min_price_eur": round(min(prices), 2),
+            "max_price_eur": round(max(prices), 2),
+            "listing_count": len(prices),
+            "source": "ebay.de",
+            "source_url": str(response.url),
+            "sample_listings": [
+                {"title": display_name, "price": round(p, 2)}
+                for p in sorted(prices)[:5]
+            ],
+        }
+        logger.info(f"eBay.de prices for '{display_name}': median={result['median_price_eur']}EUR, {len(prices)} sold listings")
+        return result
+
+    except httpx.TimeoutException:
+        logger.error(f"eBay.de timeout for: {display_name}")
+        return {"success": False, "message": "Request timed out"}
+    except Exception as e:
+        logger.error(f"eBay.de error for '{display_name}': {e}")
+        return {"success": False, "message": str(e)}
+
+
 def fetch_used_phone_price(device_model: str, device_make: str = "") -> dict:
     """
-    Main entry point: fetch used phone price from Swappa.
+    Main entry point: fetch used phone price.
+    Tries Swappa first, falls back to eBay.de.
     Returns price data with source info.
     """
     display_name, slug = normalize_model(device_model, device_make)
     logger.info(f"Fetching price for: {device_model} -> {display_name} (slug: {slug})")
 
+    # Try Swappa first
     result = scrape_swappa(slug, display_name)
 
     if result["success"]:
@@ -193,7 +264,24 @@ def fetch_used_phone_price(device_model: str, device_make: str = "") -> dict:
             "sample_listings": result.get("sample_listings", []),
         }
 
-    # Fallback: try with just the model code if the mapped name didn't work
+    # Fallback: try eBay.de
+    logger.info(f"Swappa failed, trying eBay.de for: {display_name}")
+    ebay_result = scrape_ebay_de(display_name)
+
+    if ebay_result["success"]:
+        return {
+            "price_eur": ebay_result["median_price_eur"],
+            "avg_price_eur": ebay_result["avg_price_eur"],
+            "min_price_eur": ebay_result["min_price_eur"],
+            "max_price_eur": ebay_result["max_price_eur"],
+            "listing_count": ebay_result["listing_count"],
+            "search_query": display_name,
+            "source": ebay_result["source"],
+            "source_url": ebay_result.get("source_url", ""),
+            "sample_listings": ebay_result.get("sample_listings", []),
+        }
+
+    # Retry Swappa with raw slug
     if slug != re.sub(r'[^a-z0-9]+', '-', device_model.lower()).strip('-'):
         raw_slug = re.sub(r'[^a-z0-9]+', '-', device_model.lower()).strip('-')
         logger.info(f"Retrying with raw slug: {raw_slug}")
@@ -215,6 +303,6 @@ def fetch_used_phone_price(device_model: str, device_make: str = "") -> dict:
         "price_eur": None,
         "listing_count": 0,
         "search_query": display_name,
-        "source": "swappa.com",
+        "source": "swappa.com/ebay.de",
         "error": result.get("message", "No listings found"),
     }

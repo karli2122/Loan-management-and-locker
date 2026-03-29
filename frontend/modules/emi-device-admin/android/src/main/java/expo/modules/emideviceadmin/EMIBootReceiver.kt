@@ -76,7 +76,11 @@ class EMIBootReceiver : BroadcastReceiver() {
             // Start foreground monitor service to prevent app switching
             try {
                 val monitorIntent = Intent(context, EMIForegroundMonitorService::class.java)
-                context.startService(monitorIntent)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(monitorIntent)
+                } else {
+                    context.startService(monitorIntent)
+                }
                 Log.d(TAG, "Foreground monitor started on boot")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to start monitor on boot: ${e.message}")

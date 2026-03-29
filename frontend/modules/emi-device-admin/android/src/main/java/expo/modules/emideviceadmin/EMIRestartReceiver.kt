@@ -94,7 +94,7 @@ class EMIRestartReceiver : BroadcastReceiver() {
             // Restart the foreground monitor
             val monitorIntent = Intent(context, EMIForegroundMonitorService::class.java)
             try {
-                context.startService(monitorIntent)
+                context.startForegroundService(monitorIntent)
                 Log.d(TAG, "Foreground monitor restarted")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to restart monitor: ${e.message}")
