@@ -54,6 +54,7 @@ interface ClientStatus {
   uninstall_allowed?: boolean;
   is_deleted?: boolean;
   lock_mode?: string;
+  admin_firstname?: string;
 }
 
 export default function ClientHome() {
@@ -436,9 +437,13 @@ export default function ClientHome() {
       if (statusToSet.warning_message && statusToSet.warning_message !== lastWarningRef.current) {
         lastWarningRef.current = statusToSet.warning_message;
         try {
+          const adminName = statusToSet.admin_firstname || '';
+          const title = adminName
+            ? `${t('warningFrom') || 'Warning from'} ${adminName}`
+            : t('warningFromAdministrator');
           await Notifications.scheduleNotificationAsync({
             content: {
-              title: t('warningFromAdministrator'),
+              title,
               body: statusToSet.warning_message,
               sound: true,
               priority: Notifications.AndroidNotificationPriority.HIGH,
@@ -1429,6 +1434,11 @@ export default function ClientHome() {
     if (Platform.OS !== 'android') return;
     setEmergencyCallActive(true);
     
+    // Set native flag so services know emergency call is active
+    try {
+      await devicePolicy.setEmergencyCallActive(true);
+    } catch (_) {}
+    
     // CRITICAL: Must stop ALL protection services before dialing
     // Otherwise the overlay blocker covers the dialer, and the foreground monitor kills it
     try {
@@ -1463,6 +1473,10 @@ export default function ClientHome() {
         clearInterval(emergencyCallCheckRef.current!);
         emergencyCallCheckRef.current = null;
         setEmergencyCallActive(false);
+        // Clear native flag
+        try {
+          await devicePolicy.setEmergencyCallActive(false);
+        } catch (_) {}
         // Kill dialer and return to lock screen
         await devicePolicy.killDialerApps();
         // Re-engage all lock protections

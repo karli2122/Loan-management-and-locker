@@ -59,7 +59,7 @@ class EMIForegroundMonitorService : Service() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Device Monitor",
-                NotificationManager.IMPORTANCE_MIN
+                NotificationManager.IMPORTANCE_NONE
             ).apply {
                 description = "Monitors device state"
                 setShowBadge(false)

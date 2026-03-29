@@ -193,16 +193,24 @@ export default function ClientsList() {
     const date = new Date(dateStr);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
+    const rawMins = Math.floor(diffMs / 60000);
+    // Round to nearest 5 minutes
+    const diffMins = Math.round(rawMins / 5) * 5;
     const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
+    const remainMins = Math.round((diffMins % 60) / 5) * 5;
+    const diffDays = Math.floor(diffMins / 1440);
+    const remainHours = Math.floor((diffMins % 1440) / 60);
     
     if (diffDays > 0) {
-      return language === 'et' ? `${diffDays} päeva tagasi` : `${diffDays} days ago`;
+      const suffix = remainHours > 0 ? ` ${remainHours}h` : '';
+      return language === 'et' ? `${diffDays}p${suffix} tagasi` : `${diffDays}d${suffix} ago`;
     } else if (diffHours > 0) {
-      return language === 'et' ? `${diffHours} tundi tagasi` : `${diffHours} hours ago`;
+      const suffix = remainMins > 0 ? ` ${remainMins}m` : '';
+      return language === 'et' ? `${diffHours}h${suffix} tagasi` : `${diffHours}h${suffix} ago`;
+    } else if (diffMins < 5) {
+      return language === 'et' ? '< 5 min tagasi' : '< 5 min ago';
     } else {
-      return language === 'et' ? `${diffMins} minutit tagasi` : `${diffMins} minutes ago`;
+      return language === 'et' ? `${diffMins} min tagasi` : `${diffMins} min ago`;
     }
   };
 
@@ -302,12 +310,16 @@ export default function ClientsList() {
           {item.last_heartbeat ? (
             <Text style={[styles.regCode, { color: colors.textMuted }]}>
               {t('lastSeen2')}: {(() => {
-                const mins = Math.floor((Date.now() - new Date(item.last_heartbeat).getTime()) / 60000);
-                if (mins < 1) return t('justNow');
+                const rawMins = Math.floor((Date.now() - new Date(item.last_heartbeat).getTime()) / 60000);
+                const mins = Math.round(rawMins / 5) * 5;
+                if (mins < 5) return '< 5 min ' + t('ago');
                 if (mins < 60) return `${mins}m ${t('ago')}`;
                 const hours = Math.floor(mins / 60);
-                if (hours < 24) return `${hours}h ${t('ago')}`;
-                return `${Math.floor(hours / 24)}d ${t('ago')}`;
+                const remainMins = Math.round((mins % 60) / 5) * 5;
+                if (hours < 24) return remainMins > 0 ? `${hours}h ${remainMins}m ${t('ago')}` : `${hours}h ${t('ago')}`;
+                const days = Math.floor(mins / 1440);
+                const remainHours = Math.floor((mins % 1440) / 60);
+                return remainHours > 0 ? `${days}d ${remainHours}h ${t('ago')}` : `${days}d ${t('ago')}`;
               })()}
             </Text>
           ) : item.registration_code ? (

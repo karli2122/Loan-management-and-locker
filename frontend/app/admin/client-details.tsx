@@ -751,6 +751,16 @@ export default function ClientDetails() {
                 setEditLoanModal(true);
               }}
             />
+            <LoanHistory
+              loanHistory={loanHistory}
+              loanHistoryLoading={loanHistoryLoading}
+              showLoanHistory={showLoanHistory}
+              loanHistorySearch={loanHistorySearch}
+              language={language}
+              colors={colors}
+              onToggle={() => setShowLoanHistory(!showLoanHistory)}
+              onSearchChange={setLoanHistorySearch}
+            />
           </>
         )}
 

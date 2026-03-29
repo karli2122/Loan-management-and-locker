@@ -850,24 +850,24 @@ export default function Dashboard() {
               <View style={styles.heartbeatItem}>
                 <View style={[styles.heartbeatDot, { backgroundColor: '#10B981' }]} />
                 <Text style={[styles.heartbeatCount, { color: colors.text }]}>{heartbeat.online_count}</Text>
-                <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{t('online')}</Text>
+                <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>&lt; 12h</Text>
               </View>
               <View style={styles.heartbeatItem}>
                 <View style={[styles.heartbeatDot, { backgroundColor: '#F59E0B' }]} />
                 <Text style={[styles.heartbeatCount, { color: colors.text }]}>{heartbeat.warning_count}</Text>
-                <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{t('warning')}</Text>
+                <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>12-24h</Text>
               </View>
               <View style={styles.heartbeatItem}>
                 <View style={[styles.heartbeatDot, { backgroundColor: '#EF4444' }]} />
                 <Text style={[styles.heartbeatCount, { color: colors.text }]}>{heartbeat.critical_count}</Text>
-                <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>{t('critical')}</Text>
+                <Text style={[styles.heartbeatLabel, { color: colors.textMuted }]}>&gt; 24h</Text>
               </View>
             </View>
             {heartbeat.critical_count > 0 && (
               <View style={[styles.heartbeatAlert, { borderTopColor: colors.border }]}>
                 <Ionicons name="warning" size={14} color="#EF4444" />
                 <Text style={styles.heartbeatAlertText}>
-                  {heartbeat.critical_count} {t('devicesUnresponsive2h')}
+                  {heartbeat.critical_count} {t('devicesUnresponsive24h') || 'devices unresponsive > 24h'}
                 </Text>
               </View>
             )}

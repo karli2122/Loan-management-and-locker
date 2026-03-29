@@ -1418,9 +1418,16 @@ function renderDeviceSection(title, devices, type) {
 
 function formatLastSeen(minutes) {
   if (minutes === null || minutes === undefined) return t('never');
-  if (minutes < 60) return `${minutes} ${t('min_ago')}`;
-  if (minutes < 1440) return `${Math.floor(minutes/60)} ${t('hours_ago')}`;
-  return `${Math.floor(minutes/1440)} ${t('days_ago')}`;
+  // Round to nearest 5 minutes for accuracy
+  const rounded = Math.round(minutes / 5) * 5;
+  if (rounded < 5) return `< 5 ${t('min_ago')}`;
+  if (rounded < 60) return `${rounded} ${t('min_ago')}`;
+  const hours = Math.floor(rounded / 60);
+  const remainMins = Math.round((rounded % 60) / 5) * 5;
+  if (rounded < 1440) return remainMins > 0 ? `${hours}h ${remainMins}m ${t('ago') || 'ago'}` : `${hours}h ${t('ago') || 'ago'}`;
+  const days = Math.floor(rounded / 1440);
+  const remainHours = Math.floor((rounded % 1440) / 60);
+  return remainHours > 0 ? `${days}d ${remainHours}h ${t('ago') || 'ago'}` : `${days}d ${t('ago') || 'ago'}`;
 }
 
 async function showDeviceDetails(clientId) {
