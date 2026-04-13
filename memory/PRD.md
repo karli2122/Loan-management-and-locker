@@ -40,21 +40,21 @@ Full-stack loan management ecosystem with device lockscreen enforcement for loan
 
 ### Admin App (v1.5.4 - Build submitted)
 - Dashboard heartbeat shows < 12h / 12-24h / > 24h labels
-- Clicking heartbeat card → clients list with `filter=silent` (shows critical >24h devices)
+- Clicking heartbeat card -> clients list with `filter=silent` (shows critical >24h devices)
 - Silent filter fetches `minutes=1440` (was 60)
 - Client details renders `<LoanHistory>` with 5-per-page pagination
 - "Last seen" displays with 5-minute accuracy
 
 ## Client App Workflow
 ### Admin Mode (8-char code)
-1. Registration → permissions → activate device admin
+1. Registration -> permissions -> activate device admin
 2. Device is FULLY USABLE (no pinning, no kiosk)
-3. When `is_locked === true` → Blue native lockscreen overlay (un-removable)
+3. When `is_locked === true` -> Blue native lockscreen overlay (un-removable)
 
 ### Device Owner Mode (9-char code)
-1. Registration → full kiosk mode (configurable by admin)
+1. Registration -> full kiosk mode (configurable by admin)
 2. Device usable within configured constraints
-3. When `is_locked === true` → Full lockscreen with kiosk lock task
+3. When `is_locked === true` -> Full lockscreen with kiosk lock task
 
 ## Architecture
 - Backend: FastAPI + MongoDB Atlas
@@ -62,6 +62,14 @@ Full-stack loan management ecosystem with device lockscreen enforcement for loan
 - Native Modules: Kotlin Android services for device lockscreen
 - Deployment: VPS (37.148.202.159) + EAS Build for APKs
 
+## Git Hygiene (Resolved Apr 2026)
+- `.gitignore` cleaned (removed 80+ lines of duplicate `-e` artifacts)
+- `frontend/.env` and `frontend/credentials/paylock.keystore` untracked from git via `git rm --cached`
+- `backend/.env` already untracked; `translations.js` never contained secrets
+- User should use **"Save to Github"** button to push (no git remote in container)
+
 ## Pending / Backlog
+- P1: User verification of Client App v1.5.4 & Admin App builds (physical device testing)
 - P2: Subscription auto-renewal logic
 - P3: Superadmin UI for Stripe Connect platform fee config
+- P3: Refactor `portal-app.js` (3000+ lines)
