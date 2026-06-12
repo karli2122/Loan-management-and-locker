@@ -35,6 +35,7 @@ import API_URL from '../../src/constants/api';
 import devicePolicy from '../../src/utils/DevicePolicy';
 import { getApiErrors, getDiagnosticLogs } from '../../src/utils/diagnostics';
 import { StripeConnectSection } from '../../src/components/admin/StripeConnectSection';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 
 interface Admin {
@@ -105,7 +106,7 @@ export default function AdminSettings() {
   const [diagnosticExporting, setDiagnosticExporting] = useState(false);
 
   const handleAuthError = async () => {
-    await AsyncStorage.multiRemove(['admin_token', 'admin_stay_signed_in']);
+    await Promise.all([deleteSecureItem('admin_token'), AsyncStorage.multiRemove(['admin_stay_signed_in'])]);
     Alert.alert(
       t('sessionExpired'),
       t('pleaseLogInAgain'),
@@ -119,8 +120,8 @@ export default function AdminSettings() {
 
   const loadData = async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
-      const adminId = await AsyncStorage.getItem('admin_id');
+      const token = await getSecureItem('admin_token');
+      const adminId = await getSecureItem('admin_id');
       const username = await AsyncStorage.getItem('admin_username');
       const role = await AsyncStorage.getItem('admin_role');
       const firstName = await AsyncStorage.getItem('admin_first_name');
@@ -726,7 +727,7 @@ export default function AdminSettings() {
           text: t('logout'),
           style: 'destructive',
           onPress: async () => {
-            await AsyncStorage.multiRemove(['admin_token', 'admin_id', 'admin_username']);
+            await Promise.all([deleteSecureItem('admin_token'), deleteSecureItem('admin_id'), AsyncStorage.multiRemove(['admin_username'])]);
             router.replace('/');
           },
         },

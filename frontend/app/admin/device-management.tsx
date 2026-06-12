@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../../src/context/LanguageContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 
 interface DeviceStats {
@@ -39,7 +40,7 @@ export default function DeviceManagement() {
 
   const fetchStats = async () => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       const url = adminToken
         ? `${API_URL}/api/stats?admin_token=${adminToken}`
         : `${API_URL}/api/stats`;
@@ -48,7 +49,7 @@ export default function DeviceManagement() {
       setStats(data);
       
       // Check plan limits for Business Management visibility
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       if (token) {
         try {
           const planResp = await fetch(`${API_URL}/api/plans/limits?admin_token=${token}`);

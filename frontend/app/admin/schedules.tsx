@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../src/context/ThemeContext';
 import { EnterpriseGate } from '../../src/components/EnterpriseGate';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 interface Schedule {
   id: string;
@@ -42,7 +43,7 @@ function SchedulesContent() {
 
   const fetchSchedules = async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       const res = await fetch(`${API_URL}/api/schedules?admin_token=${token}`);
       const data = await res.json();
       if (Array.isArray(data)) setSchedules(data);
@@ -58,7 +59,7 @@ function SchedulesContent() {
   const onRefresh = useCallback(async () => { setRefreshing(true); await fetchSchedules(); setRefreshing(false); }, []);
 
   const toggleSchedule = async (id: string, active: boolean) => {
-    const token = await AsyncStorage.getItem('admin_token');
+    const token = await getSecureItem('admin_token');
     await fetch(`${API_URL}/api/schedules/${id}/toggle?admin_token=${token}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -72,7 +73,7 @@ function SchedulesContent() {
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete', style: 'destructive', onPress: async () => {
-          const token = await AsyncStorage.getItem('admin_token');
+          const token = await getSecureItem('admin_token');
           await fetch(`${API_URL}/api/schedules/${id}?admin_token=${token}`, { method: 'DELETE' });
           fetchSchedules();
         },

@@ -386,7 +386,11 @@ async def generate_registration_code(
     if not is_super_admin and credits < 1:
         raise ValidationException("Insufficient credits. Please contact super admin to get more credits.")
     
-    # 8-char hex for device_admin, 9-char for device_owner (extra nibble)
+    # NOTE: code LENGTH encodes lock mode (8 = device_admin, 9 = device_owner)
+    # and the device register endpoint depends on this. Do not change the
+    # lengths without updating routes/device.py. Brute-force is mitigated by
+    # (a) login requiring BOTH phone and code and (b) rate limiting on
+    # /client/login. token_hex(4) = 8 hex chars = ~4.3e9 combinations.
     if lock_mode == "device_owner":
         new_code = (secrets.token_hex(4) + secrets.token_hex(1)[0]).upper()[:9]
     else:

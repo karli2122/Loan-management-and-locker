@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../src/context/ThemeContext';
 import { EnterpriseGate } from '../../src/components/EnterpriseGate';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 interface BotInfo {
   configured: boolean;
@@ -44,7 +45,7 @@ function TelegramContent() {
 
   const fetchData = async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       const [botRes, clientsRes] = await Promise.all([
         fetch(`${API_URL}/api/telegram/bot-info?admin_token=${token}`),
         fetch(`${API_URL}/api/clients?admin_token=${token}`),
@@ -70,7 +71,7 @@ function TelegramContent() {
       return;
     }
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       const res = await fetch(`${API_URL}/api/telegram/link-client?admin_token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -91,7 +92,7 @@ function TelegramContent() {
   };
 
   const sendTestMessage = async (chatId: string) => {
-    const token = await AsyncStorage.getItem('admin_token');
+    const token = await getSecureItem('admin_token');
     const res = await fetch(`${API_URL}/api/telegram/send-test?admin_token=${token}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

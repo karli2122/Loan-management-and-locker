@@ -20,6 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import API_URL, { API_BASE_URL, buildApiUrl } from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -39,7 +40,7 @@ export default function AdminLogin() {
       try {
         const stay = await AsyncStorage.getItem('admin_stay_signed_in');
         if (stay === 'true') {
-          const token = await AsyncStorage.getItem('admin_token');
+          const token = await getSecureItem('admin_token');
           if (token) {
             try {
               const res = await fetch(`${API_URL}/api/admin/verify/${token}`);
@@ -49,7 +50,7 @@ export default function AdminLogin() {
               }
               // Only clear token if server explicitly says it's invalid (not a network error)
               if (res.status === 401 || res.status === 403) {
-                await AsyncStorage.multiRemove(['admin_token', 'admin_stay_signed_in']);
+                await Promise.all([deleteSecureItem('admin_token'), AsyncStorage.multiRemove(['admin_stay_signed_in'])]);
               } else {
                 // Server error or timeout — keep token and redirect, home will handle it
                 router.replace('/admin/(tabs)');
@@ -269,7 +270,7 @@ export default function AdminLogin() {
         );
       }
 
-      await AsyncStorage.setItem('admin_token', token);
+      await setSecureItem('admin_token', token);
       
       // Safely extract admin data with fallbacks
       const adminData = parsed.data || {};
@@ -290,7 +291,7 @@ export default function AdminLogin() {
         );
       }
       
-      await AsyncStorage.setItem('admin_id', adminData.id);
+      await setSecureItem('admin_id', adminData.id);
       await AsyncStorage.setItem('admin_username', adminData.username);
       await AsyncStorage.setItem('admin_role', adminData.role || 'user');
       await AsyncStorage.setItem('is_super_admin', adminData.is_super_admin ? 'true' : 'false');

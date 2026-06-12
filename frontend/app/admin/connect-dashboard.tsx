@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 export default function ConnectDashboard() {
   const { colors } = useTheme();
@@ -19,7 +20,7 @@ export default function ConnectDashboard() {
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       if (!token) return;
       const resp = await fetch(`${API_URL}/api/connect/dashboard?admin_token=${token}`);
       if (resp.ok) setData(await resp.json());

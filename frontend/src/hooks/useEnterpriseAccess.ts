@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '../constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 const PLAN_LEVELS: Record<string, number> = {
   starter: 0,
@@ -29,7 +30,7 @@ export function useEnterpriseAccess(): PlanAccess {
   useEffect(() => {
     (async () => {
       try {
-        const token = await AsyncStorage.getItem('admin_token');
+        const token = await getSecureItem('admin_token');
         if (!token) { setLoading(false); return; }
 
         const res = await fetch(`${API_URL}/api/admin/feature-access?admin_token=${token}`);

@@ -97,3 +97,14 @@ credentials.json
 *.pem
 *.key
 .credentials
+
+# Service-account / Firebase keys (NEVER commit)
+*firebase-adminsdk*.json
+*service-account*.json
+
+# Generated artifacts
+test_reports/
+translations_output.json
+translation_log.txt
+model.patch
+missing_lt.json

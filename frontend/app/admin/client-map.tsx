@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 interface ClientLocation {
   id: string;
@@ -39,7 +40,7 @@ export default function ClientMapScreen() {
 
   const fetchLocations = async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       if (!token) {
         router.replace('/admin/login');
         return;

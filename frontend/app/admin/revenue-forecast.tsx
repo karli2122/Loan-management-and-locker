@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '../../src/constants/api';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { EnterpriseGate } from '../../src/components/EnterpriseGate';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -21,7 +22,7 @@ export default function RevenueForecastScreen() {
 
   const fetchForecast = useCallback(async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       if (!token) return;
       const resp = await fetch(`${API_URL}/api/forecasting/revenue?admin_token=${token}&days=${days}`);
       if (resp.ok) {

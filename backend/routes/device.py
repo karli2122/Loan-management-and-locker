@@ -1,5 +1,5 @@
 """Device routes - registration, status, location updates."""
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Depends
 from datetime import datetime, timedelta
 import logging
 
@@ -9,6 +9,8 @@ from models.schemas import (
     DeviceRegistration, LocationUpdate, PushTokenUpdate, DeviceInfoUpdate
 )
 from utils.exceptions import ValidationException
+from utils.auth import verify_device, enforce_client_scope, sign_lock_state
+from utils.dependencies import require_admin
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Device"])
@@ -72,11 +74,14 @@ async def register_device(registration: DeviceRegistration):
 
 
 @router.get("/device/status/{client_id}", response_model=ClientStatusResponse)
-async def get_device_status(client_id: str):
-    """Get device status for a client."""
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+async def get_device_status(client_id: str, device_token: str = Query(default="")):
+    """Get device status for a client.
+
+    Requires the per-device token issued at registration. This endpoint drives
+    the lock/unlock decision on the device, so it must not be callable (or
+    spoofable) by anyone who merely knows the client_id.
+    """
+    client = await verify_device(client_id, device_token)
     
     # Update heartbeat
     await db.clients.update_one(
@@ -135,10 +140,14 @@ async def get_device_status(client_id: str):
             admin_plan = admin.get("plan")
             admin_firstname = admin.get("first_name")
     
+    is_locked_val = client.get("is_locked", False)
+    issued_at = int(datetime.utcnow().timestamp())
+    lock_sig = sign_lock_state(client_id, is_locked_val, device_token, issued_at)
+
     return ClientStatusResponse(
         id=client["id"],
         name=client["name"],
-        is_locked=client.get("is_locked", False),
+        is_locked=is_locked_val,
         lock_message=client.get("lock_message", ""),
         warning_message=client.get("warning_message", ""),
         loan_amount=round(amount_due, 2),
@@ -150,16 +159,18 @@ async def get_device_status(client_id: str):
         lock_mode=client.get("lock_mode", "device_admin"),
         admin_plan=admin_plan,
         admin_firstname=admin_firstname,
+        lock_signature=lock_sig,
+        lock_issued_at=issued_at,
     )
 
 
 @router.post("/device/location")
 async def update_location(location: LocationUpdate):
     """Update device location and store in location history."""
-    client = await db.clients.find_one({"id": location.client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    
+    # Authenticate the device — a bare client_id is not enough to read/write
+    # a borrower's location.
+    await verify_device(location.client_id, location.device_token)
+
     now = datetime.utcnow()
     
     # Update current location on client
@@ -188,6 +199,7 @@ async def update_location(location: LocationUpdate):
 @router.get("/device/location-history/{client_id}")
 async def get_location_history(
     client_id: str,
+    admin_id: str = Depends(require_admin),
     limit: int = Query(default=100, le=500),
     days: int = Query(default=7, le=30),
 ):
@@ -195,6 +207,9 @@ async def get_location_history(
     client = await db.clients.find_one({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+
+    # Location history is sensitive — restrict to the owning admin.
+    await enforce_client_scope(client, admin_id)
     
     cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
     
@@ -213,10 +228,8 @@ async def get_location_history(
 @router.post("/device/push-token")
 async def update_push_token(data: PushTokenUpdate):
     """Update Expo push notification token for a device."""
-    client = await db.clients.find_one({"id": data.client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    
+    await verify_device(data.client_id, data.device_token)
+
     await db.clients.update_one(
         {"id": data.client_id},
         {"$set": {
@@ -229,23 +242,23 @@ async def update_push_token(data: PushTokenUpdate):
 
 
 @router.post("/device/clear-warning/{client_id}")
-async def clear_warning(client_id: str):
+async def clear_warning(client_id: str, device_token: str = Query(default="")):
     """Clear warning message after client acknowledgment."""
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    
+    await verify_device(client_id, device_token)
+
     await db.clients.update_one({"id": client_id}, {"$set": {"warning_message": ""}})
     return {"message": "Warning cleared", "client_id": client_id}
 
 
 @router.post("/device/report-admin-status")
-async def report_admin_status(client_id: str = Query(...), admin_active: bool = Query(...)):
+async def report_admin_status(
+    client_id: str = Query(...),
+    admin_active: bool = Query(...),
+    device_token: str = Query(default=""),
+):
     """Report device admin mode status."""
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    
+    await verify_device(client_id, device_token)
+
     await db.clients.update_one(
         {"id": client_id},
         {"$set": {
@@ -263,10 +276,8 @@ async def update_device_info(data: DeviceInfoUpdate):
     """Update device information (battery, storage, etc.) during heartbeat.
     This should be called by the client app periodically to keep device info updated.
     """
-    client = await db.clients.find_one({"id": data.client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    
+    client = await verify_device(data.client_id, data.device_token)
+
     update_data = {"last_heartbeat": datetime.utcnow()}
     
     if data.battery_level is not None:

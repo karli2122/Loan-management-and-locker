@@ -25,6 +25,7 @@ import API_URL from '../../../src/constants/api';
 import { LineChart } from 'react-native-chart-kit';
 import * as Notifications from 'expo-notifications';
 import NetInfo from '@react-native-community/netinfo';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../../src/utils/secureStorage';
 
 
 interface LoanStats {
@@ -127,7 +128,7 @@ export default function Dashboard() {
 
   const fetchAdminList = async () => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) return;
       
       const response = await fetch(`${API_URL}/api/admin/list?admin_token=${adminToken}`);
@@ -143,7 +144,7 @@ export default function Dashboard() {
   const fetchStats = async (filterAdminId?: string | null) => {
     const baseUrl = API_URL;
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) {
         console.error('Admin token not found');
         return;
@@ -179,7 +180,7 @@ export default function Dashboard() {
 
   const fetchHeartbeat = async (filterAdminId?: string | null) => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) return;
       
       let url = `${API_URL}/api/heartbeat/summary?admin_token=${adminToken}`;
@@ -204,7 +205,7 @@ export default function Dashboard() {
 
   const fetchRevenueChart = async (filterAdminId?: string | null) => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) return;
       
       let url = `${API_URL}/api/analytics/dashboard?admin_token=${adminToken}`;
@@ -246,7 +247,7 @@ export default function Dashboard() {
 
   const fetchInterestSummary = async () => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) return;
       const response = await fetch(`${API_URL}/api/paid-loans/summary?admin_token=${adminToken}`);
       if (response.ok) {
@@ -276,7 +277,7 @@ export default function Dashboard() {
 
   const fetchPlanFeatures = async () => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) return;
       const response = await fetch(`${API_URL}/api/admin/feature-access?admin_token=${adminToken}`);
       if (response.ok) {
@@ -295,7 +296,7 @@ export default function Dashboard() {
     const storedUsername = await AsyncStorage.getItem('admin_username');
     const role = await AsyncStorage.getItem('admin_role');
     const storedFirst = await AsyncStorage.getItem('admin_first_name');
-    const token = await AsyncStorage.getItem('admin_token');
+    const token = await getSecureItem('admin_token');
     if (storedUsername) setUsername(storedUsername);
     if (storedFirst) setFirstName(storedFirst);
     if (role) setUserRole(role);
@@ -362,7 +363,7 @@ export default function Dashboard() {
         if (finalStatus === 'granted') {
           const projectId = '7be3aec1-6fef-4200-9987-5868c4320a07';
           const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
-          const adminToken = await AsyncStorage.getItem('admin_token');
+          const adminToken = await getSecureItem('admin_token');
           if (adminToken && tokenData?.data) {
             fetch(`${API_URL}/api/push/register-token?token=${encodeURIComponent(tokenData.data)}&admin_token=${adminToken}`, { method: 'POST' }).catch(() => {});
           }
@@ -376,7 +377,7 @@ export default function Dashboard() {
     // Check payments due today
     const checkDueToday = async () => {
       try {
-        const adminToken = await AsyncStorage.getItem('admin_token');
+        const adminToken = await getSecureItem('admin_token');
         if (!adminToken) return;
         const resp = await fetch(`${API_URL}/api/push/due-today?admin_token=${adminToken}`);
         if (resp.ok) {
@@ -422,7 +423,7 @@ export default function Dashboard() {
   const syncOfflineQueue = async () => {
     if (offlineQueue.length === 0) return;
     setSyncingOffline(true);
-    const adminToken = await AsyncStorage.getItem('admin_token');
+    const adminToken = await getSecureItem('admin_token');
     let remaining: any[] = [];
     for (const action of offlineQueue) {
       try {

@@ -667,17 +667,57 @@ async def record_payment(
     )
     
     await db.payments.insert_one(payment.dict())
-    
-    # Update client balances
-    new_total_paid = client.get("total_paid", 0) + payment_data.amount
-    new_outstanding = max(0, client.get("outstanding_balance", 0) - payment_data.amount)
-    
+
+    # Atomically increment paid / decrement outstanding so concurrent payments
+    # (or retries) cannot clobber each other via read-modify-write.
+    from pymongo import ReturnDocument
+
+    # Move to next payment date (computed from the snapshot; acceptable since
+    # the schedule advances by one period per recorded payment).
+    next_due = client.get("next_payment_due")
+    if next_due:
+        if isinstance(next_due, str):
+            try:
+                next_due = datetime.strptime(next_due, "%Y-%m-%d") + relativedelta(months=1)
+            except ValueError:
+                next_due = datetime.utcnow() + relativedelta(months=1)
+        else:
+            next_due = next_due + relativedelta(months=1)
+
+    updated = await db.clients.find_one_and_update(
+        {"id": client_id},
+        {
+            "$inc": {
+                "total_paid": payment_data.amount,
+                "outstanding_balance": -payment_data.amount,
+            },
+            "$set": {
+                "last_payment_date": payment.payment_date,
+                "next_payment_due": next_due,
+                "days_overdue": 0,
+                "is_late": False,
+                "late_fees_accumulated": 0,
+            },
+        },
+        return_document=ReturnDocument.AFTER,
+    )
+
+    # Guard against floating-point/overshoot driving outstanding below zero.
+    new_total_paid = round(updated.get("total_paid", 0), 2)
+    new_outstanding = updated.get("outstanding_balance", 0)
+    if new_outstanding < 0:
+        new_outstanding = 0
+        await db.clients.update_one(
+            {"id": client_id}, {"$set": {"outstanding_balance": 0}}
+        )
+    new_outstanding = round(new_outstanding, 2)
+
     # Determine if payment is on-time or late for credit score adjustment
     days_overdue = client.get("days_overdue", 0)
     is_late = client.get("is_late", False)
     credit_score_change = 0
     credit_score_reason = ""
-    
+
     if days_overdue > 0 or is_late:
         # Late payment: -10 credit score
         credit_score_change = CREDIT_SCORE_LATE_PAYMENT
@@ -686,7 +726,7 @@ async def record_payment(
         # On-time payment: +5 credit score
         credit_score_change = CREDIT_SCORE_ON_TIME_PAYMENT
         credit_score_reason = "on_time_payment"
-    
+
     # Apply credit score adjustment
     if credit_score_change != 0:
         from routes.credit_score import update_credit_score
@@ -715,31 +755,7 @@ async def record_payment(
             new_credit_score = client.get("credit_score", 500)
     else:
         new_credit_score = client.get("credit_score", 500)
-    
-    # Move to next payment date
-    next_due = client.get("next_payment_due")
-    if next_due:
-        if isinstance(next_due, str):
-            try:
-                next_due = datetime.strptime(next_due, "%Y-%m-%d") + relativedelta(months=1)
-            except ValueError:
-                next_due = datetime.utcnow() + relativedelta(months=1)
-        else:
-            next_due = next_due + relativedelta(months=1)
-    
-    await db.clients.update_one(
-        {"id": client_id},
-        {"$set": {
-            "total_paid": new_total_paid,
-            "outstanding_balance": new_outstanding,
-            "last_payment_date": payment.payment_date,
-            "next_payment_due": next_due,
-            "days_overdue": 0,
-            "is_late": False,
-            "late_fees_accumulated": 0
-        }}
-    )
-    
+
     # Unlock if balance is cleared
     auto_archived = None
     if new_outstanding <= 0:

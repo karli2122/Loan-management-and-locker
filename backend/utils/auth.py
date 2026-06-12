@@ -86,6 +86,67 @@ async def get_admin_id_from_token(admin_token: str) -> str:
     return token_doc["admin_id"]
 
 
+def extract_token(authorization: str = None, admin_token: str = None) -> str:
+    """Resolve an admin token from the Authorization header (preferred) or a
+    legacy query/body param. Header form: 'Authorization: Bearer <token>'.
+
+    Passing tokens in the URL query string leaks them into access logs, proxy
+    logs and browser history, so the header is strongly preferred. The query
+    fallback exists only for backward compatibility with older app builds and
+    should be removed once all clients are updated.
+    """
+    if authorization:
+        parts = authorization.split(" ", 1)
+        if len(parts) == 2 and parts[0].lower() == "bearer":
+            return parts[1].strip()
+        # Allow a bare token in the header too.
+        return authorization.strip()
+    if admin_token:
+        return admin_token
+    return ""
+
+
+def sign_lock_state(client_id: str, is_locked: bool, device_token: str, issued_at: int) -> str:
+    """Produce a tamper-evident signature for a lock decision.
+
+    Keyed with the per-device token (a shared secret the device already holds),
+    so the device can verify the server really issued this is_locked value and a
+    network attacker cannot forge an "unlocked" response. issued_at (unix
+    seconds) lets the device reject stale/replayed payloads.
+    """
+    import hmac
+    import hashlib
+    msg = f"{client_id}|{1 if is_locked else 0}|{issued_at}".encode()
+    return hmac.new(str(device_token).encode(), msg, hashlib.sha256).hexdigest()
+
+
+async def verify_device(client_id: str, device_token: str) -> dict:
+    """Verify a device's identity using the device_token issued at registration.
+
+    Device-facing endpoints (location, push token, status reports) must call
+    this instead of trusting a bare client_id, otherwise anyone who knows or
+    guesses a client_id could read a borrower's location or tamper with their
+    lock state. Returns the client document on success.
+    """
+    if _db is None:
+        raise RuntimeError("Database not initialized for auth")
+
+    if not client_id or not device_token:
+        raise AuthenticationException("Device authentication required")
+
+    client = await _db.clients.find_one({"id": client_id})
+    if not client:
+        raise AuthenticationException("Invalid device credentials")
+
+    stored = client.get("device_token")
+    # Constant-time comparison to avoid timing attacks.
+    import hmac
+    if not stored or not hmac.compare_digest(str(stored), str(device_token)):
+        raise AuthenticationException("Invalid device credentials")
+
+    return client
+
+
 async def enforce_client_scope(client: dict, admin_id: str):
     """Ensure the requested client belongs to the provided admin scope.
     Super admins can access all clients in their enterprise."""

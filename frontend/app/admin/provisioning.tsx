@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../src/context/ThemeContext';
 import { EnterpriseGate } from '../../src/components/EnterpriseGate';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 export default function ProvisioningPage() {
   return (
@@ -30,7 +31,7 @@ function ProvisioningContent() {
   const generateQR = async () => {
     setLoading(true);
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       let url = `${API_URL}/api/provisioning/qr-code?admin_token=${token}`;
       if (wifiSsid) url += `&wifi_ssid=${encodeURIComponent(wifiSsid)}`;
       if (wifiPassword) url += `&wifi_password=${encodeURIComponent(wifiPassword)}`;

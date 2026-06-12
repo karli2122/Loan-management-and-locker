@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../src/context/ThemeContext';
 import { EnterpriseGate } from '../../src/components/EnterpriseGate';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 interface TeamMember {
   id: string;
@@ -49,7 +50,7 @@ function TeamContent() {
 
   const fetchTeam = async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       const res = await fetch(`${API_URL}/api/team/members?admin_token=${token}`);
       const data = await res.json();
       if (Array.isArray(data)) setMembers(data);
@@ -71,7 +72,7 @@ function TeamContent() {
     }
     setAdding(true);
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       const res = await fetch(`${API_URL}/api/team/members?admin_token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -98,7 +99,7 @@ function TeamContent() {
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Remove', style: 'destructive', onPress: async () => {
-          const token = await AsyncStorage.getItem('admin_token');
+          const token = await getSecureItem('admin_token');
           await fetch(`${API_URL}/api/team/members/${memberId}?admin_token=${token}`, { method: 'DELETE' });
           fetchTeam();
         },

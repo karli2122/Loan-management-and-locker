@@ -18,6 +18,7 @@ import { useLanguage } from '../../../src/context/LanguageContext';
 import { useTheme } from '../../../src/context/ThemeContext';
 import { useEnterpriseAccess } from '../../../src/hooks/useEnterpriseAccess';
 import API_URL from '../../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../../src/utils/secureStorage';
 
 
 interface Transaction {
@@ -45,7 +46,7 @@ export default function TransactionsTab() {
 
   const fetchTransactions = async () => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) {
         setTransactions([]);
         return;

@@ -54,7 +54,7 @@ class EMIOverlayService : Service() {
         private const val KEY_MESSAGE = "lock_message"
         private const val CHANNEL_ID = "emi_overlay_channel"
         private const val NOTIFICATION_ID = 1001
-        private const val WATCHDOG_INTERVAL_MS = 200L
+        private const val WATCHDOG_INTERVAL_MS = 500L
         @Volatile var isRunning = false
     }
 
@@ -126,10 +126,18 @@ class EMIOverlayService : Service() {
     private fun acquireWakeLock() {
         try {
             val pm = getSystemService(POWER_SERVICE) as? PowerManager
-            wakeLock = pm?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "emi:overlay")?.apply {
-                acquire(24 * 60 * 60 * 1000L)
-            }
+            // The lock UI uses FLAG_KEEP_SCREEN_ON for display; this partial
+            // wake-lock only needs to cover the watchdog. Bound it to 30 min and
+            // renew via the watchdog while locked rather than holding 24h, which
+            // drains the battery and trips OEM battery managers.
+            wakeLock = pm?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "emi:overlay")
+            renewWakeLock()
         } catch (e: Exception) { Log.e(TAG, "WakeLock error: ${e.message}") }
+    }
+
+    private fun renewWakeLock() {
+        try { wakeLock?.let { if (!it.isHeld) it.acquire(30 * 60 * 1000L) } }
+        catch (e: Exception) { Log.e(TAG, "renewWakeLock: ${e.message}") }
     }
 
     // ─── Watchdog ───────────────────────────────────────────────────
@@ -141,6 +149,7 @@ class EMIOverlayService : Service() {
                 try {
                     val locked = prefs.getBoolean(KEY_LOCKED, false)
                     if (locked) {
+                        renewWakeLock()
                         if (fullScreenView == null || !fullScreenView!!.isAttachedToWindow) {
                             removeAll()
                             createFullScreen()
@@ -155,6 +164,7 @@ class EMIOverlayService : Service() {
                         collapseStatusBar()
                     } else {
                         removeAll()
+                        try { if (wakeLock?.isHeld == true) wakeLock?.release() } catch (_: Exception) {}
                     }
                 } catch (e: Exception) { Log.e(TAG, "Watchdog: ${e.message}") }
                 handler.postDelayed(this, WATCHDOG_INTERVAL_MS)
@@ -302,7 +312,10 @@ class EMIOverlayService : Service() {
         Log.d(TAG, "Emergency call 112 triggered from native overlay")
 
         // Set flag so monitor allows the dialer
-        prefs.edit().putBoolean("emergency_call_active", true).commit()
+        prefs.edit()
+            .putBoolean("emergency_call_active", true)
+            .putLong("emergency_call_started_at", System.currentTimeMillis())
+            .commit()
 
         // Remove overlay to let the dialer show
         removeAll()
@@ -333,7 +346,10 @@ class EMIOverlayService : Service() {
                     handler.postDelayed(this, 3000)
                 } else {
                     Log.d(TAG, "Emergency call ended — re-applying lock")
-                    prefs.edit().putBoolean("emergency_call_active", false).commit()
+                    prefs.edit()
+                        .putBoolean("emergency_call_active", false)
+                        .putLong("emergency_call_started_at", 0L)
+                        .commit()
                     // Re-create the lock overlay
                     startWatchdog()
                 }

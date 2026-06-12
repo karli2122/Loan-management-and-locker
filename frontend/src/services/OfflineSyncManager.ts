@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
+import { hmacSha256Hex, timingSafeEqualHex } from '../utils/hmac';
 
 interface CachedStatus {
   is_locked: boolean;
@@ -50,6 +51,36 @@ class OfflineSyncManager {
       // Default to online mode if listener fails
       this.isOnline = true;
       this.initialized = true;
+    }
+  }
+
+  /**
+   * Verify the server's signed lock decision. Returns true only if the
+   * signature matches HMAC(device_token, "clientId|isLocked|issuedAt") and the
+   * timestamp is recent. Callers treat an unverified UNLOCK as "stay locked".
+   */
+  async verifyLockSignature(clientId: string, status: any): Promise<boolean> {
+    try {
+      const sig: string | undefined = status?.lock_signature;
+      const issuedAt: number | undefined = status?.lock_issued_at;
+      if (!sig || !issuedAt) return false;
+
+      // Reject stale/replayed payloads (>10 min skew).
+      const nowSec = Math.floor(Date.now() / 1000);
+      if (Math.abs(nowSec - issuedAt) > 600) {
+        console.warn('[OfflineSync] Lock signature timestamp out of range');
+        return false;
+      }
+
+      const devTok = (await AsyncStorage.getItem('client_device_token')) || '';
+      if (!devTok) return false;
+
+      const isLockedInt = status?.is_locked ? 1 : 0;
+      const expected = await hmacSha256Hex(devTok, `${clientId}|${isLockedInt}|${issuedAt}`);
+      return timingSafeEqualHex(expected, sig);
+    } catch (e) {
+      console.warn('[OfflineSync] Lock signature verify error:', e);
+      return false;
     }
   }
 
@@ -133,11 +164,15 @@ class OfflineSyncManager {
         const timeoutId = setTimeout(() => controller.abort(), timeout);
         
         try {
-          const response = await fetch(`${apiUrl}/api/device/status/${clientId}`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-            signal: controller.signal,
-          });
+          const devTok = (await AsyncStorage.getItem('client_device_token')) || '';
+          const response = await fetch(
+            `${apiUrl}/api/device/status/${clientId}?device_token=${encodeURIComponent(devTok)}`,
+            {
+              method: 'GET',
+              headers: { 'Content-Type': 'application/json' },
+              signal: controller.signal,
+            },
+          );
           clearTimeout(timeoutId);
 
           if (!response.ok) {
@@ -145,6 +180,11 @@ class OfflineSyncManager {
           }
 
           const status = await response.json();
+
+          // Verify the signed lock decision before trusting it. If the server
+          // says "unlocked" but the signature is missing/invalid, we keep the
+          // device locked — a MITM cannot forge an unlock.
+          status._lock_verified = await this.verifyLockSignature(clientId, status);
           
           if (attempt > 0) {
             console.log(`[OfflineSync] API recovered on retry ${attempt}`);
@@ -201,11 +241,13 @@ class OfflineSyncManager {
         try {
           switch (action.type) {
             case 'location':
+              const devTok = await AsyncStorage.getItem('client_device_token');
               await fetch(`${apiUrl}/api/device/location`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   client_id: clientId,
+                  device_token: devTok || '',
                   ...action.data,
                 }),
               });

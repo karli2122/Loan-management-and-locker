@@ -2,6 +2,20 @@
 from datetime import datetime
 
 
+def money(value) -> float:
+    """Round a monetary value to 2 decimal places.
+
+    NOTE: balances are stored as floats throughout this codebase. Floats cannot
+    represent all decimal cents exactly, so always pass amounts through money()
+    before persisting or comparing, and treat values within 0.005 as equal. For
+    a stricter ledger, migrate to integer minor units (cents) or Decimal.
+    """
+    try:
+        return round(float(value or 0), 2)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def calculate_day_count_interest(principal: float, monthly_rate: float, loan_period_days: int) -> dict:
     """
     Calculate interest based on day count.

@@ -18,6 +18,7 @@ const HEARTBEAT_INTERVAL_SECONDS = 5 * 60; // 5 minutes
 
 interface HeartbeatData {
   client_id: string;
+  device_token?: string;
   battery_level: number | null;
   storage_free_gb: number | null;
   storage_total_gb: number | null;
@@ -123,9 +124,11 @@ async function sendHeartbeat(): Promise<boolean> {
     }
 
     const deviceData = await collectDeviceData();
-    
+    const devTok = await AsyncStorage.getItem('client_device_token');
+
     const payload: HeartbeatData = {
       client_id: clientId,
+      device_token: devTok || '',
       ...deviceData,
     };
 

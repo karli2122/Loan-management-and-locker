@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -134,8 +135,8 @@ export default function RegisterScreen() {
       }
       
       // Save token and log in
-      await AsyncStorage.setItem('admin_token', data.token);
-      await AsyncStorage.setItem('admin_id', data.admin_id);
+      await setSecureItem('admin_token', data.token);
+      await setSecureItem('admin_id', data.admin_id);
       await AsyncStorage.setItem('admin_username', username);
       await AsyncStorage.setItem('admin_first_name', firstName);
       await AsyncStorage.setItem('admin_last_name', lastName);

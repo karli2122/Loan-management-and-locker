@@ -68,11 +68,44 @@ logger = logging.getLogger(__name__)
 # Create the main app
 app = FastAPI(title="Loan Phone Lock API", version="2.0.0")
 
+# ----- Rate limiting -----
+# Protects auth endpoints (admin + client login) from brute force. slowapi
+# uses the client IP by default; behind a proxy, ensure X-Forwarded-For is set.
+try:
+    from slowapi import _rate_limit_exceeded_handler
+    from slowapi.errors import RateLimitExceeded
+    from utils.ratelimit import limiter as _shared_limiter
+
+    if _shared_limiter is not None:
+        app.state.limiter = _shared_limiter
+        app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+        RATE_LIMITING_ENABLED = True
+    else:
+        RATE_LIMITING_ENABLED = False
+except ImportError:  # slowapi not installed yet
+    RATE_LIMITING_ENABLED = False
+    logging.getLogger(__name__).warning(
+        "slowapi not installed; rate limiting is disabled. "
+        "Run 'pip install -r requirements.txt'."
+    )
+
 # CORS middleware
+# A wildcard origin combined with allow_credentials=True is unsafe and
+# disallowed by browsers. Configure ALLOWED_ORIGINS as a comma-separated list
+# of your admin/portal domains in the environment.
+_origins_env = os.environ.get("ALLOWED_ORIGINS", "").strip()
+allowed_origins = [o.strip() for o in _origins_env.split(",") if o.strip()] or ["*"]
+allow_credentials = allowed_origins != ["*"]
+if allowed_origins == ["*"]:
+    logger.warning(
+        "ALLOWED_ORIGINS is not set; falling back to '*' with credentials "
+        "disabled. Set ALLOWED_ORIGINS in production."
+    )
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=allowed_origins,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )

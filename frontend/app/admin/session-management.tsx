@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '../../src/constants/api';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { EnterpriseGate } from '../../src/components/EnterpriseGate';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 export default function SessionManagementScreen() {
   const router = useRouter();
@@ -19,7 +20,7 @@ export default function SessionManagementScreen() {
 
   const fetchSessions = useCallback(async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       if (!token) return;
       const resp = await fetch(`${API_URL}/api/sessions?admin_token=${token}`);
       if (resp.ok) {
@@ -43,7 +44,7 @@ export default function SessionManagementScreen() {
         text: t('revoke') || 'Revoke', style: 'destructive', onPress: async () => {
           setRevoking(sessionId);
           try {
-            const token = await AsyncStorage.getItem('admin_token');
+            const token = await getSecureItem('admin_token');
             await fetch(`${API_URL}/api/sessions/${sessionId}?admin_token=${token}`, { method: 'DELETE' });
             fetchSessions();
           } catch (e) { console.log(e); }
@@ -60,7 +61,7 @@ export default function SessionManagementScreen() {
         text: t('revokeAll') || 'Revoke All', style: 'destructive', onPress: async () => {
           setLoading(true);
           try {
-            const token = await AsyncStorage.getItem('admin_token');
+            const token = await getSecureItem('admin_token');
             await fetch(`${API_URL}/api/sessions?admin_token=${token}`, { method: 'DELETE' });
             fetchSessions();
           } catch (e) { console.log(e); }

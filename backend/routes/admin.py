@@ -1,5 +1,6 @@
 """Admin routes - authentication, profile, credits management."""
 from fastapi import APIRouter, Query, Request
+from utils.ratelimit import limit
 from datetime import datetime, timedelta
 import secrets
 import logging
@@ -101,6 +102,7 @@ async def register_admin(admin_data: AdminCreate, admin_token: str = Query(defau
 
 
 @router.post("/admin/login", response_model=AdminResponse)
+@limit("10/minute")
 async def login_admin(login_data: AdminLogin, request: Request = None):
     """Authenticate admin and return token."""
     admin = await db.admins.find_one({"username": login_data.username})

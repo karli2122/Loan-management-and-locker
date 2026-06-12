@@ -19,6 +19,7 @@ import { useLanguage } from '../../src/context/LanguageContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import { EnterpriseGate } from '../../src/components/EnterpriseGate';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 interface AnalysisResult {
   id: string;
@@ -136,7 +137,7 @@ function BankAnalyzerContent() {
     setError('');
     setResult(null);
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) {
         setError(t('notLoggedIn'));
         return;
@@ -175,7 +176,7 @@ function BankAnalyzerContent() {
     setSebLikely(sebDetected);
     setUploading(true);
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) {
         setError(t('notLoggedIn'));
         return;

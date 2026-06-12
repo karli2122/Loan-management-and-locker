@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { styles } from './styles';
 import { Client, LoanHistoryItem } from './types';
 import API_URL from '../../constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../../src/utils/secureStorage';
 
 interface Props {
   client: Client;
@@ -29,7 +30,7 @@ export const ActionButtons = ({
 
   const sendEmailReminder = async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       if (!token) return;
       const resp = await fetch(`${API_URL}/api/reminders/send-email/${client.id}?admin_token=${token}`, { method: 'POST' });
       const data = await resp.json();
@@ -39,7 +40,7 @@ export const ActionButtons = ({
 
   const sendWhatsAppReminder = async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       if (!token) return;
       const resp = await fetch(`${API_URL}/api/reminders/whatsapp-link/${client.id}?admin_token=${token}`);
       const data = await resp.json();

@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 interface Notification {
   id: string;
@@ -36,7 +37,7 @@ export default function NotificationsScreen() {
 
   const fetchNotifications = async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       if (!token) {
         router.replace('/admin/login');
         return;
@@ -67,7 +68,7 @@ export default function NotificationsScreen() {
 
   const markAllRead = async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       await fetch(`${API_URL}/api/notifications/mark-all-read?admin_token=${token}`, {
         method: 'POST',
       });

@@ -20,6 +20,7 @@ import { useCurrency } from '../../src/context/CurrencyContext';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 
 interface Client {
@@ -75,7 +76,7 @@ export default function ClientsList() {
 
   const fetchClients = async () => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) {
         console.error('No admin token found');
         return;
@@ -111,7 +112,7 @@ export default function ClientsList() {
   const fetchSilentClients = async () => {
     setSilentLoading(true);
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) return;
       
       // Silent clients: haven't sent heartbeat in 60 minutes

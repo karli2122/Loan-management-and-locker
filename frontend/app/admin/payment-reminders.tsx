@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 interface PendingReminder {
   client_id: string;
@@ -53,7 +54,7 @@ export default function PaymentReminders() {
 
   const fetchReminders = async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       if (!token) {
         router.replace('/admin/login');
         return;
@@ -97,7 +98,7 @@ export default function PaymentReminders() {
           onPress: async () => {
             setSending(true);
             try {
-              const token = await AsyncStorage.getItem('admin_token');
+              const token = await getSecureItem('admin_token');
               const response = await fetch(`${API_URL}/api/reminders/send-push?admin_token=${token}`, {
                 method: 'POST',
               });
@@ -128,7 +129,7 @@ export default function PaymentReminders() {
   const sendSingleReminder = async (clientId: string, clientName: string) => {
     setSendingClient(clientId);
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       const response = await fetch(`${API_URL}/api/reminders/send-single/${clientId}?admin_token=${token}`, {
         method: 'POST',
       });

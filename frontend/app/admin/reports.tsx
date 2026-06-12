@@ -24,6 +24,7 @@ import { useLanguage } from '../../src/context/LanguageContext';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -72,7 +73,7 @@ export default function Reports() {
 
   const fetchReports = async () => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) {
         console.error('Admin token not found');
         return;
@@ -110,7 +111,7 @@ export default function Reports() {
   const handleCalculateLateFees = async () => {
     setCalculatingFees(true);
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       const response = await fetch(`${API_URL}/api/late-fees/calculate-all?admin_token=${token}`, {
         method: 'POST',
       });
@@ -236,7 +237,7 @@ export default function Reports() {
     setGeneratingPdf(true);
     try {
       // Get current user info
-      const adminId = await AsyncStorage.getItem('admin_id');
+      const adminId = await getSecureItem('admin_id');
       const adminFirstName = await AsyncStorage.getItem('admin_first_name') || '';
       const adminLastName = await AsyncStorage.getItem('admin_last_name') || '';
       const adminUsername = await AsyncStorage.getItem('admin_username') || 'Admin User';

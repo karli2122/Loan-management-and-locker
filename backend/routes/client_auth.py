@@ -1,18 +1,20 @@
 """Client authentication routes - login, status, payment history for self-service portal."""
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Request
 from datetime import datetime
 from typing import Optional
 import logging
 
 from database import db
 from utils.exceptions import ValidationException, AuthenticationException
+from utils.ratelimit import limit
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Client Auth"])
 
 
 @router.post("/client/login")
-async def client_login(phone: str, registration_code: str):
+@limit("10/minute")
+async def client_login(phone: str, registration_code: str, request: Request = None):
     """Authenticate a client using phone number and registration code."""
     if not phone or not registration_code:
         raise ValidationException("Phone number and registration code are required")

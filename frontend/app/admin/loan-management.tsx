@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 
 interface LoanDetails {
@@ -98,7 +99,7 @@ export default function LoanManagement() {
 
   const getAdminId = async () => {
     if (adminId) return adminId;
-    const stored = await AsyncStorage.getItem('admin_id');
+    const stored = await getSecureItem('admin_id');
     if (stored) {
       setAdminId(stored);
       return stored;
@@ -233,7 +234,7 @@ export default function LoanManagement() {
 
     setActionLoading(true);
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       const response = await fetch(`${API_URL}/api/loans/${id}/payments?admin_token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

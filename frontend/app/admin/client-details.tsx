@@ -45,6 +45,7 @@ import {
   EditLoanModal,
 } from '../../src/components/client-details';
 import type { Client, LoanHistoryItem, LoanPreview } from '../../src/components/client-details';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 export default function ClientDetails() {
   const router = useRouter();
@@ -114,10 +115,10 @@ export default function ClientDetails() {
   const chatScrollRef = useRef<ScrollView>(null);
 
   // ─── Auth helpers ──────────────────────────────────────────────
-  const getAdminToken = async () => await AsyncStorage.getItem('admin_token');
+  const getAdminToken = async () => await getSecureItem('admin_token');
 
   const handleAuthFailure = async () => {
-    await AsyncStorage.multiRemove(['admin_token', 'admin_id', 'admin_username', 'admin_stay_signed_in']);
+    await Promise.all([deleteSecureItem('admin_token'), deleteSecureItem('admin_id'), AsyncStorage.multiRemove(['admin_username', 'admin_stay_signed_in'])]);
     Alert.alert(
       t('sessionExpired'),
       t('pleaseLogInAgain'),
@@ -266,7 +267,7 @@ export default function ClientDetails() {
           onPress: async () => {
             setGeneratingCode(true);
             try {
-              const token = await AsyncStorage.getItem('admin_token');
+              const token = await getSecureItem('admin_token');
               if (!token) { Alert.alert(t('error'), 'Not authenticated'); return; }
               const response = await fetch(`${API_URL}/api/clients/${id}/generate-code?admin_token=${token}&lock_mode=${lockMode}`, { method: 'POST' });
               if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error || errorData.detail || 'Failed to generate code'); }
@@ -469,7 +470,7 @@ export default function ClientDetails() {
     }
     setActionLoading(true);
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       
       // Use loan-specific endpoint if a loan is selected, otherwise use legacy endpoint
       const endpoint = selectedLoanId 
@@ -526,7 +527,7 @@ export default function ClientDetails() {
     if (!editLoanAmount || !editInterestRate || !editLoanStartDate || !editLoanDueDate) return;
     setPreviewLoading(true);
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       const params = new URLSearchParams({
         loan_amount: editLoanAmount, interest_rate: editInterestRate,
         loan_start_date: editLoanStartDate, due_date: editLoanDueDate, admin_token: token || '',
@@ -546,7 +547,7 @@ export default function ClientDetails() {
     }
     setActionLoading(true);
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       
       // Use the specific loan ID if editing individual loan, otherwise use client ID
       const endpoint = selectedLoanId 
@@ -591,7 +592,7 @@ export default function ClientDetails() {
 
   const handleDownloadContract = async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       if (!token) { Alert.alert(t('error'), 'Not authenticated'); return; }
       await Linking.openURL(`${API_URL}/api/contracts/${id}/download?admin_token=${token}&language=${language}`);
     } catch (error: any) { Alert.alert(t('error'), error.message); }
@@ -599,7 +600,7 @@ export default function ClientDetails() {
 
   const handleShareContract = async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       if (!token) { Alert.alert(t('error'), 'Not authenticated'); return; }
       const downloadUrl = `${API_URL}/api/contracts/${id}/download?admin_token=${token}&language=${language}`;
       const fileUri = `${FileSystem.cacheDirectory}loan-contract-${id}.pdf`;

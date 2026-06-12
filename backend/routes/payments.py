@@ -361,6 +361,27 @@ async def stripe_webhook(request: Request):
     body = await request.body()
     signature = request.headers.get("Stripe-Signature", "")
 
+    # Explicitly verify the webhook signature against the signing secret before
+    # trusting any event. Without this, anyone could POST a forged
+    # "payment succeeded" event and grant themselves a paid plan. Set
+    # STRIPE_WEBHOOK_SECRET (the 'whsec_...' value from the Stripe dashboard).
+    webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+    if webhook_secret:
+        try:
+            import stripe
+            stripe.Webhook.construct_event(body, signature, webhook_secret)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid payload")
+        except stripe.error.SignatureVerificationError:
+            logger.warning("Rejected Stripe webhook with invalid signature")
+            raise HTTPException(status_code=400, detail="Invalid signature")
+    else:
+        logger.error(
+            "STRIPE_WEBHOOK_SECRET is not set; refusing to process webhook to "
+            "avoid trusting unverified events."
+        )
+        raise HTTPException(status_code=500, detail="Webhook secret not configured")
+
     host_url = str(request.base_url)
     webhook_url = f"{host_url}api/webhook/stripe"
     stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)

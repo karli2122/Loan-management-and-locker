@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../../src/context/LanguageContext';
 import { LanguagePicker } from '../../../src/components/LanguagePicker';
 import { useEnterpriseAccess } from '../../../src/hooks/useEnterpriseAccess';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../../src/utils/secureStorage';
 
 type PlanTier = 'starter' | 'professional' | 'enterprise';
 
@@ -61,10 +62,7 @@ export default function FeaturesTab() {
         text: t('logout'),
         style: 'destructive',
         onPress: async () => {
-          await AsyncStorage.multiRemove([
-            'admin_token', 'admin_id', 'admin_username',
-            'admin_role', 'is_super_admin', 'admin_first_name', 'admin_last_name',
-          ]);
+          await Promise.all([deleteSecureItem('admin_token'), deleteSecureItem('admin_id'), AsyncStorage.multiRemove(['admin_username', 'admin_role', 'is_super_admin', 'admin_first_name', 'admin_last_name'])]);
           router.replace('/');
         },
       },

@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import API_URL from '../../constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../../src/utils/secureStorage';
 
 export const MultiLoanOverview = ({
   clientId,
@@ -29,7 +30,7 @@ export const MultiLoanOverview = ({
 
   const fetchLoans = useCallback(async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       if (!token) return;
       
       const resp = await fetch(
@@ -92,7 +93,7 @@ export const MultiLoanOverview = ({
           onPress: async () => {
             setActionLoading(loanId + '_pay');
             try {
-              const token = await AsyncStorage.getItem('admin_token');
+              const token = await getSecureItem('admin_token');
               const resp = await fetch(
                 `${API_URL}/api/connect/send-payment-link?admin_token=${token}&client_id=${clientId}&loan_id=${loanId}&amount=${dueTodayAmount}`,
                 { method: 'POST' }
@@ -130,7 +131,7 @@ export const MultiLoanOverview = ({
           onPress: async () => {
             setActionLoading(loanId);
             try {
-              const token = await AsyncStorage.getItem('admin_token');
+              const token = await getSecureItem('admin_token');
               const resp = await fetch(
                 `${API_URL}/api/loans/${loanId}?admin_token=${token}`,
                 { method: 'DELETE' }
@@ -157,7 +158,7 @@ export const MultiLoanOverview = ({
   const handleShareContract = async (loanId: string) => {
     setActionLoading(loanId);
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       const url = `${API_URL}/api/contracts/loan/${loanId}/download?admin_token=${token}&language=en`;
       
       // Download PDF using legacy expo-file-system API (stable in SDK 54)

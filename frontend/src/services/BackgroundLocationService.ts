@@ -32,6 +32,7 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
       try {
         const clientId = await AsyncStorage.getItem('client_id');
         const apiUrl = await AsyncStorage.getItem('api_url');
+        const deviceToken = await AsyncStorage.getItem('client_device_token');
 
         if (!clientId || !apiUrl) {
           console.log('[BackgroundLocation] No client ID or API URL stored');
@@ -43,6 +44,7 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             client_id: clientId,
+            device_token: deviceToken || '',
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
             source: 'background',

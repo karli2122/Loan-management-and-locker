@@ -13,6 +13,7 @@ import { useLanguage } from '../../src/context/LanguageContext';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { EnterpriseGate } from '../../src/components/EnterpriseGate';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 export default function BulkImportPage() {
   return (
@@ -42,7 +43,7 @@ function BulkImportContent() {
       setUploading(true);
       setImportResult(null);
 
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       const formData = new FormData();
       formData.append('admin_token', token || '');
       formData.append('skip_duplicates', 'true');
@@ -96,7 +97,7 @@ function BulkImportContent() {
       setUploading(true);
       setReconcileResult(null);
 
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       const formData = new FormData();
       formData.append('admin_token', token || '');
       

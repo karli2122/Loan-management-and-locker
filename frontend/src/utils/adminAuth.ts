@@ -1,11 +1,16 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import API_URL from '../constants/api';
+import { getSecureItem, clearSecureAuth } from './secureStorage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
  * Shared admin authentication utilities.
  * Centralises token retrieval, validation, and 401 handling
  * so every admin screen behaves consistently.
+ *
+ * Sensitive credentials (admin_token, admin_id) live in the device keystore via
+ * secureStorage; non-sensitive preferences (e.g. admin_stay_signed_in) stay in
+ * AsyncStorage.
  */
 
 export interface AuthInfo {
@@ -14,12 +19,20 @@ export interface AuthInfo {
 }
 
 /**
- * Retrieve the current admin token and id from storage.
+ * Build the Authorization header for admin requests.
+ * Prefer this over appending ?admin_token= to URLs, which leaks tokens to logs.
+ */
+export function authHeader(token: string): Record<string, string> {
+  return { Authorization: `Bearer ${token}` };
+}
+
+/**
+ * Retrieve the current admin token and id from secure storage.
  * Returns null if either value is missing.
  */
 export async function getAuthInfo(): Promise<AuthInfo | null> {
-  const token = await AsyncStorage.getItem('admin_token');
-  const adminId = await AsyncStorage.getItem('admin_id');
+  const token = await getSecureItem('admin_token');
+  const adminId = await getSecureItem('admin_id');
   if (!token || !adminId) return null;
   return { token, adminId };
 }
@@ -33,11 +46,8 @@ export async function handleAuthFailure(
   router: { replace: (path: string) => void },
   language: string = 'en',
 ) {
-  await AsyncStorage.multiRemove([
-    'admin_token',
-    'admin_id',
-    'admin_stay_signed_in',
-  ]);
+  await clearSecureAuth();
+  await AsyncStorage.removeItem('admin_stay_signed_in').catch(() => {});
   Alert.alert(
     language === 'et' ? 'Seanss aegunud' : 'Session Expired',
     language === 'et'
@@ -71,7 +81,7 @@ export async function authFetch(
  */
 export async function verifyTokenSilent(): Promise<boolean> {
   try {
-    const token = await AsyncStorage.getItem('admin_token');
+    const token = await getSecureItem('admin_token');
     if (!token) return false;
     const res = await fetch(`${API_URL}/api/admin/verify/${token}`);
     return res.ok;

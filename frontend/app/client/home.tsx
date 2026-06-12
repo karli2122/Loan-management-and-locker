@@ -144,10 +144,11 @@ export default function ClientHome() {
       if (!token) return;
       
       await AsyncStorage.setItem('push_token', token);
+      const devTok = await AsyncStorage.getItem('client_device_token');
       const response = await fetch(`${API_URL}/api/device/push-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: id, push_token: token })
+        body: JSON.stringify({ client_id: id, device_token: devTok || '', push_token: token })
       });
       
       if (!response.ok) {
@@ -414,7 +415,22 @@ export default function ClientHome() {
       
       // Create a copy of data for potential modifications (avoid mutating original)
       let statusToSet = { ...data };
-      
+
+      // SECURITY: only honor an UNLOCK when the server's signed lock decision
+      // verifies. If the response says unlocked but the signature is missing or
+      // invalid (e.g. a MITM/forged response), keep the device locked.
+      if (!data.offline && data.is_locked === false && data._lock_verified !== true) {
+        const cachedState = await devicePolicy.getCachedLockState();
+        if (cachedState.isLocked) {
+          console.warn('[Security] Unverified unlock ignored — staying locked');
+          statusToSet = {
+            ...data,
+            is_locked: true,
+            lock_message: cachedState.lockMessage,
+          };
+        }
+      }
+
       // If offline, also check cached lock state to ensure enforcement
       if (data.offline) {
         const cachedState = await devicePolicy.getCachedLockState();
@@ -560,11 +576,13 @@ export default function ClientHome() {
 
       // Check if online
       if (OfflineSyncManager.isDeviceOnline()) {
+        const devTok = await AsyncStorage.getItem('client_device_token');
         await fetch(`${API_URL}/api/device/location`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             client_id: id,
+            device_token: devTok || '',
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
           }),
@@ -1265,7 +1283,8 @@ export default function ClientHome() {
   const reportAdminStatus = async (id: string, adminActive: boolean) => {
     if (!id) return;
     try {
-      await fetch(`${API_URL}/api/device/report-admin-status?client_id=${id}&admin_active=${adminActive}`, {
+      const devTok = await AsyncStorage.getItem('client_device_token');
+      await fetch(`${API_URL}/api/device/report-admin-status?client_id=${id}&admin_active=${adminActive}&device_token=${encodeURIComponent(devTok || '')}`, {
         method: 'POST',
       });
       console.log(`Admin mode status reported: ${adminActive}`);
@@ -1363,7 +1382,8 @@ export default function ClientHome() {
   const handleClearWarning = async () => {
     if (!clientId) return;
     try {
-      await fetch(`${API_URL}/api/device/clear-warning/${clientId}`, {
+      const devTok = await AsyncStorage.getItem('client_device_token');
+      await fetch(`${API_URL}/api/device/clear-warning/${clientId}?device_token=${encodeURIComponent(devTok || '')}`, {
         method: 'POST',
       });
       await fetchStatus(clientId);

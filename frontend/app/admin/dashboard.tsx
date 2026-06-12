@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -46,7 +47,7 @@ export default function Dashboard() {
 
   const fetchStats = async () => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) return;
       const response = await fetch(`${API_URL}/api/reports/collection?admin_token=${adminToken}`);
       if (!response.ok) return;
@@ -66,7 +67,7 @@ export default function Dashboard() {
 
   const fetchAnalytics = async () => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) return;
       const [healthResp, trendsResp] = await Promise.all([
         fetch(`${API_URL}/api/analytics/portfolio-health?admin_token=${adminToken}`).catch(() => null),

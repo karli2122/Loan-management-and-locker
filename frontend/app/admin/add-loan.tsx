@@ -19,6 +19,7 @@ import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
 import { getErrorMessage } from '../../src/utils/errorHandler';
 import { DatePicker } from '../../src/components/DatePicker';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 interface Client {
   id: string;
@@ -99,7 +100,7 @@ export default function AddLoan() {
 
   const fetchLastLoanForRenewal = async () => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) {
         console.log('No admin token found for renewal fetch');
         return;
@@ -161,7 +162,7 @@ export default function AddLoan() {
 
   const fetchClients = async () => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       const query = adminToken ? `?limit=500&admin_token=${adminToken}` : '?limit=500';
       const response = await fetch(`${API_URL}/api/clients${query}`);
       if (response.ok) {
@@ -178,7 +179,7 @@ export default function AddLoan() {
 
   const fetchLoanPlans = async () => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) {
         console.error('Admin token not found');
         return;
@@ -286,7 +287,7 @@ export default function AddLoan() {
 
       // Create new client if needed
       if (clientMode === 'new') {
-        const adminToken = await AsyncStorage.getItem('admin_token');
+        const adminToken = await getSecureItem('admin_token');
         const newClientData = {
           name: newClientName.trim(),
           phone: newClientPhone.trim(),
@@ -335,7 +336,7 @@ export default function AddLoan() {
       }
 
       // Setup loan for the client
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       const loanData = {
         loan_amount: loanAmountNum,
         interest_rate: interestRateNum,

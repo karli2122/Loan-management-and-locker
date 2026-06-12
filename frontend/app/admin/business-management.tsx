@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 type ActivationMethod = 'adb' | 'qr' | 'nfc';
 
@@ -94,7 +95,7 @@ export default function BusinessManagement() {
               : '1. Factory reset the device\n2. Tap 6 times rapidly on welcome screen\n3. Connect to WiFi\n4. Scan the QR code\n5. Device configures Device Owner automatically'}</Text>
             <TouchableOpacity style={s.genBtn} onPress={async () => {
               try {
-                const token = await AsyncStorage.getItem('admin_token');
+                const token = await getSecureItem('admin_token');
                 if (!token) return;
                 const resp = await fetch(`${API_URL}/api/provisioning/qr-code?admin_token=${token}`);
                 if (!resp.ok) throw new Error('Failed');
@@ -116,7 +117,7 @@ export default function BusinessManagement() {
               : '1. Requires NFC programming device\n2. Factory reset target device\n3. Tap NFC tag to device\n4. Device Owner activates automatically'}</Text>
             <TouchableOpacity style={s.genBtn} onPress={async () => {
               try {
-                const token = await AsyncStorage.getItem('admin_token');
+                const token = await getSecureItem('admin_token');
                 if (!token) return;
                 const resp = await fetch(`${API_URL}/api/provisioning/qr-code?admin_token=${token}`);
                 if (!resp.ok) throw new Error('Failed');

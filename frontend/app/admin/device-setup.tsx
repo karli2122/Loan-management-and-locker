@@ -15,6 +15,7 @@ import QRCode from 'react-native-qrcode-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 
 // Android Enterprise provisioning QR code data
@@ -54,7 +55,7 @@ export default function DeviceSetup() {
 
   const fetchClients = async () => {
     try {
-      const adminId = await AsyncStorage.getItem('admin_id');
+      const adminId = await getSecureItem('admin_id');
       const query = adminId ? `?admin_id=${adminId}` : '';
       const response = await fetch(`${API_URL}/api/clients${query}`);
       const data = await response.json();

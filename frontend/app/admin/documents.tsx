@@ -12,6 +12,7 @@ import * as Sharing from 'expo-sharing';
 import { useTheme } from '../../src/context/ThemeContext';
 import { EnterpriseGate } from '../../src/components/EnterpriseGate';
 import API_URL from '../../src/constants/api';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 interface Document {
   id: string;
@@ -43,7 +44,7 @@ function DocumentsContent() {
 
   const fetchDocs = async () => {
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       // Fetch all documents from vault (all clients)
       const res = await fetch(`${API_URL}/api/documents/vault/all?admin_token=${token}`);
       const data = await res.json();
@@ -62,7 +63,7 @@ function DocumentsContent() {
   const handleDownload = async (doc: Document) => {
     setDownloading(doc.id);
     try {
-      const token = await AsyncStorage.getItem('admin_token');
+      const token = await getSecureItem('admin_token');
       const resp = await fetch(`${API_URL}/api/documents/vault/${doc.client_id}/${doc.id}/download?admin_token=${token}`);
       if (!resp.ok) {
         const errorData = await resp.json().catch(() => ({}));
@@ -118,7 +119,7 @@ function DocumentsContent() {
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete', style: 'destructive', onPress: async () => {
-          const token = await AsyncStorage.getItem('admin_token');
+          const token = await getSecureItem('admin_token');
           await fetch(`${API_URL}/api/documents/vault/${doc.client_id}/${doc.id}?admin_token=${token}`, { method: 'DELETE' });
           fetchDocs();
         },

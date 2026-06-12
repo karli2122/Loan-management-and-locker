@@ -68,7 +68,19 @@ Full-stack loan management ecosystem with device lockscreen enforcement for loan
 - `backend/.env` already untracked; `translations.js` never contained secrets
 - User should use **"Save to Github"** button to push (no git remote in container)
 
+## Security Fixes Pass (Jun 2026 — applied from user-provided Loan-management-fixed.zip)
+- 66 files updated. Verified working via curl after apply.
+- Device endpoints (`/device/location`, `/device/push-token`, `/device/update-info`, `/device/clear-warning`, `/device/report-admin-status`) now require per-device `device_token` (constant-time compare). Client app updated to send it.
+- Admin/client login rate-limited (slowapi, 10/min/IP). `slowapi` added to requirements.
+- Stripe webhook now requires signature verification via `STRIPE_WEBHOOK_SECRET` (added to backend/.env, EMPTY — user must fill from Stripe dashboard for webhooks to work).
+- CORS hardened: `ALLOWED_ORIGINS` env (added, empty = fallback `*` with credentials disabled).
+- Admin token storage moved AsyncStorage → expo-secure-store (`src/utils/secureStorage.ts`), `expo-secure-store` installed.
+- Leaked `frontend/comm-route-firebase-adminsdk.json` untracked from git (file kept on disk for FCM; gitignored). USER MUST rotate this key in Google Cloud Console + purge git history with git filter-repo.
+- Native lockscreen: wake-lock bounded to 30min with watchdog renewal (battery-friendly), watchdog interval 500ms, emergency call timestamps persisted.
+- NOTE: native/client-app changes require a new EAS build to take effect on devices.
+
 ## Pending / Backlog
+- P1: User to push via "Save to Github" button; rotate Firebase service-account key; set STRIPE_WEBHOOK_SECRET
 - P1: User verification of Client App v1.5.4 & Admin App builds (physical device testing)
 - P2: Subscription auto-renewal logic
 - P3: Superadmin UI for Stripe Connect platform fee config

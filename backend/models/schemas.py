@@ -193,6 +193,11 @@ class ClientStatusResponse(BaseModel):
     lock_mode: str = "device_admin"
     admin_plan: Optional[str] = None
     admin_firstname: Optional[str] = None
+    # Tamper-evident lock decision: HMAC over (client_id|is_locked|issued_at)
+    # using the per-device token as the key. The device verifies this before
+    # acting on is_locked, so a MITM cannot flip a locked device to unlocked.
+    lock_signature: Optional[str] = None
+    lock_issued_at: Optional[int] = None
 
 
 class DeviceRegistration(BaseModel):
@@ -209,6 +214,7 @@ class DeviceRegistration(BaseModel):
 
 class LocationUpdate(BaseModel):
     client_id: str
+    device_token: str = ""  # Required for device authentication
     latitude: float
     longitude: float
     source: str = "foreground"  # "foreground" or "background"
@@ -216,6 +222,7 @@ class LocationUpdate(BaseModel):
 
 class PushTokenUpdate(BaseModel):
     client_id: str
+    device_token: str = ""  # Required for device authentication
     push_token: str
     admin_id: Optional[str] = None
 
@@ -223,6 +230,7 @@ class PushTokenUpdate(BaseModel):
 class DeviceInfoUpdate(BaseModel):
     """Model for updating device info during heartbeat/status updates."""
     client_id: str
+    device_token: str = ""  # Required for device authentication
     battery_level: Optional[int] = None  # Battery percentage 0-100
     storage_free_gb: Optional[float] = None
     storage_total_gb: Optional[float] = None
@@ -291,7 +299,7 @@ class Payment(BaseModel):
 
 
 class PaymentCreate(BaseModel):
-    amount: float
+    amount: float = Field(gt=0, le=10_000_000, description="Payment amount; must be positive")
     payment_date: Optional[datetime] = None
     payment_method: str = "cash"
     notes: str = ""

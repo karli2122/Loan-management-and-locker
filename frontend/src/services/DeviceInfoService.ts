@@ -6,6 +6,7 @@ import * as Device from 'expo-device';
 import * as Battery from 'expo-battery';
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '../constants/api';
 
 export interface DeviceInfo {
@@ -132,7 +133,8 @@ export async function sendDeviceInfoUpdate(clientId: string): Promise<boolean> {
       return false;
     }
     
-    const payload: any = { client_id: clientId };
+    const deviceToken = await AsyncStorage.getItem('client_device_token');
+    const payload: any = { client_id: clientId, device_token: deviceToken || '' };
     
     if (info.battery_level !== null) {
       payload.battery_level = info.battery_level;

@@ -27,7 +27,9 @@ class EMIForegroundMonitorService : Service() {
         private const val TAG = "EMIForegroundMonitor"
         private const val PREFS_NAME = "emi_device_admin_prefs"
         private const val KEY_LOCKED = "is_locked"
-        private const val CHECK_INTERVAL_MS = 200L
+        private const val CHECK_INTERVAL_MS = 1000L
+        private const val WAKELOCK_RENEW_MS = 5 * 60 * 1000L // renew window: 5 min
+        private const val EMERGENCY_MAX_MS = 10 * 60 * 1000L // max emergency-call window: 10 min
         private const val CHANNEL_ID = "emi_monitor_channel"
         private const val NOTIFICATION_ID = 1002
         @Volatile
@@ -92,15 +94,29 @@ class EMIForegroundMonitorService : Service() {
     private fun acquireWakeLock() {
         try {
             val pm = getSystemService(POWER_SERVICE) as? PowerManager
+            // Hold a short, renewable wake-lock instead of a continuous 24h hold.
+            // The monitor renews it each check while locked, so the CPU only
+            // stays awake as long as enforcement is actually active. A permanent
+            // 24h PARTIAL_WAKE_LOCK drains the battery and is flagged by OEM
+            // battery managers (which then kill the service).
             wakeLock = pm?.newWakeLock(
                 PowerManager.PARTIAL_WAKE_LOCK,
                 "emi:foreground_monitor"
-            )?.apply {
-                acquire(24 * 60 * 60 * 1000L) // 24 hours max
-            }
-            Log.d(TAG, "Wake lock acquired")
+            )
+            renewWakeLock()
+            Log.d(TAG, "Wake lock initialized (renewable)")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to acquire wake lock: ${e.message}")
+        }
+    }
+
+    private fun renewWakeLock() {
+        try {
+            wakeLock?.let { wl ->
+                if (!wl.isHeld) wl.acquire(WAKELOCK_RENEW_MS)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "renewWakeLock error: ${e.message}")
         }
     }
 
@@ -114,19 +130,31 @@ class EMIForegroundMonitorService : Service() {
                     val isLocked = prefs.getBoolean(KEY_LOCKED, false)
 
                     if (isLocked) {
+                        renewWakeLock()
                         val foregroundPackage = getForegroundPackage()
                         if (foregroundPackage != null && foregroundPackage != packageName) {
-                            // Phone/Dialer apps: only allow during emergency calls
-                            val isPhoneApp = foregroundPackage.contains("dialer") ||
-                                             foregroundPackage.contains("incall") ||
-                                             foregroundPackage.contains("telecom") ||
-                                             foregroundPackage.contains("phone") ||
-                                             foregroundPackage == "com.android.dialer" ||
-                                             foregroundPackage == "com.google.android.dialer" ||
-                                             foregroundPackage == "com.samsung.android.dialer"
+                            // Phone/Dialer apps: only allow during emergency calls.
+                            // Match an allowlist of known dialer packages rather
+                            // than broad substrings like "phone", which a
+                            // maliciously-named app could satisfy to escape lock.
+                            val knownDialers = setOf(
+                                "com.android.dialer",
+                                "com.google.android.dialer",
+                                "com.samsung.android.dialer",
+                                "com.android.server.telecom",
+                                "com.android.incallui",
+                                "com.android.phone"
+                            )
+                            val isPhoneApp = foregroundPackage in knownDialers
                             if (isPhoneApp) {
                                 val emergencyActive = prefs.getBoolean("emergency_call_active", false)
-                                if (emergencyActive) {
+                                // Cap the emergency window: if it's been open too
+                                // long (e.g. call ended but flag wasn't cleared),
+                                // force it closed so the lock re-asserts.
+                                val startedAt = prefs.getLong("emergency_call_started_at", 0L)
+                                val withinWindow = startedAt > 0 &&
+                                    (System.currentTimeMillis() - startedAt) < EMERGENCY_MAX_MS
+                                if (emergencyActive && withinWindow) {
                                     Log.d(TAG, "Emergency call active - allowing dialer: $foregroundPackage")
                                 } else {
                                     Log.d(TAG, "Locked: Rejecting regular call, killing dialer: $foregroundPackage")
@@ -154,6 +182,9 @@ class EMIForegroundMonitorService : Service() {
                                 Log.e(TAG, "Failed to restart overlay: ${e.message}")
                             }
                         }
+                    } else {
+                        // Not locked: release the wake-lock so the CPU can sleep.
+                        try { if (wakeLock?.isHeld == true) wakeLock?.release() } catch (_: Exception) {}
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Monitor check error: ${e.message}")

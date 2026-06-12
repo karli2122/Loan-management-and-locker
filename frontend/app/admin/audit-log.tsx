@@ -16,6 +16,7 @@ import { useLanguage } from '../../src/context/LanguageContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import API_URL from '../../src/constants/api';
 import { EnterpriseGate } from '../../src/components/EnterpriseGate';
+import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 interface AuditLog {
   id: string;
@@ -51,7 +52,7 @@ export default function AuditLogPage() {
 
   const fetchLogs = async () => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) return;
 
       let url = `${API_URL}/api/audit-logs?admin_token=${adminToken}&limit=100`;
@@ -71,7 +72,7 @@ export default function AuditLogPage() {
 
   const fetchSummary = async () => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) return;
 
       const response = await fetch(`${API_URL}/api/audit-logs/summary?admin_token=${adminToken}&days=7`);
@@ -86,7 +87,7 @@ export default function AuditLogPage() {
 
   const fetchActionTypes = async () => {
     try {
-      const adminToken = await AsyncStorage.getItem('admin_token');
+      const adminToken = await getSecureItem('admin_token');
       if (!adminToken) return;
 
       const response = await fetch(`${API_URL}/api/audit-logs/action-types?admin_token=${adminToken}`);
