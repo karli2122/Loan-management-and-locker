@@ -2,7 +2,6 @@
 from fastapi import APIRouter, Query, HTTPException
 from datetime import datetime, timezone
 from dateutil.relativedelta import relativedelta
-from typing import Optional
 import logging
 import uuid
 
@@ -15,8 +14,14 @@ from utils.auth import get_admin_id_from_token, enforce_client_scope
 from utils.exceptions import ValidationException
 from utils.calculations import (
     calculate_simple_interest_emi, calculate_reducing_balance_emi,
-    calculate_flat_rate_emi, calculate_all_methods, calculate_late_fee
+    calculate_flat_rate_emi, calculate_all_methods, calculate_late_fee,
+    calculate_setup_interest, calculate_setup_interest_for_dates,
+    resolve_principal, tenure_months_from_dates, money,
 )
+from utils.ledger import payment_ledger_updates, apply_payment_to_client_and_loan
+from utils.overdue import apply_overdue_for_client
+from utils.lock_notify import notify_device_lock_change
+from utils.timeutils import as_utc, date_only, utc_now
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Loans"])
@@ -206,15 +211,17 @@ async def setup_loan(client_id: str, loan_data: LoanSetup, admin_token: str = Qu
     except (ValueError, TypeError):
         raise HTTPException(status_code=400, detail="Invalid due_date format. Use YYYY-MM-DD.")
     
-    # Calculate months between loan start and due date
-    diff_days = (due_date_parsed - loan_start).days
-    tenure_months = max(1, round(diff_days / 30))  # Round to nearest month
-    
-    # SIMPLE MONTH-BASED INTEREST CALCULATION
-    # Interest = Principal × (Rate/100) × Months
-    principal = loan_data.loan_amount - loan_data.down_payment
-    total_interest = principal * (loan_data.interest_rate / 100) * tenure_months
-    total_amount = principal + total_interest
+    amounts = calculate_setup_interest_for_dates(
+        loan_data.loan_amount,
+        loan_data.down_payment,
+        loan_data.interest_rate,
+        loan_start,
+        due_date_parsed,
+    )
+    principal = amounts["principal"]
+    tenure_months = amounts["tenure_months"]
+    total_interest = amounts["total_interest"]
+    total_amount = amounts["total_amount"]
     
     # Generate loan ID
     loan_id = str(uuid.uuid4())
@@ -238,6 +245,10 @@ async def setup_loan(client_id: str, loan_data: LoanSetup, admin_token: str = Qu
         "loan_due_date": due_date_iso,
         "loan_given_date": given_date_iso,
         "active_loan_id": loan_id,
+        "payment_type": "single",
+        "installment_amount": round(total_amount, 2),
+        "late_fees_accumulated": 0,
+        "late_score_penalized": False,
     }
     
     await db.clients.update_one(
@@ -258,9 +269,12 @@ async def setup_loan(client_id: str, loan_data: LoanSetup, admin_token: str = Qu
         "interest_amount": round(total_interest, 2),
         "total_interest": round(total_interest, 2),
         "total_amount": round(total_amount, 2),
+        "total_amount_due": round(total_amount, 2),
         "outstanding_balance": round(total_amount, 2),
         "total_paid": 0,
         "emi_amount": round(total_amount, 2),
+        "monthly_emi": round(total_amount, 2),
+        "installment_amount": round(total_amount, 2),
         "tenure_months": tenure_months,
         "given_date": given_date_iso,
         "due_date": due_date_iso,
@@ -273,7 +287,19 @@ async def setup_loan(client_id: str, loan_data: LoanSetup, admin_token: str = Qu
     }
     
     await db.loans.insert_one(new_loan)
-    
+
+    # Attach the default loan plan when the client does not already have one
+    # so late-fee percent and plan metadata resolve correctly.
+    if not client.get("loan_plan_id"):
+        default_plan = await db.loan_plans.find_one(
+            {"name": "One-Time Simple 50% Monthly"}, {"_id": 0, "id": 1}
+        )
+        if default_plan and default_plan.get("id"):
+            await db.clients.update_one(
+                {"id": client_id},
+                {"$set": {"loan_plan_id": default_plan["id"]}},
+            )
+
     # Update client's multi-loan summary
     active_loans = await db.loans.find(
         {"client_id": client_id, "status": "active"}
@@ -343,13 +369,7 @@ async def edit_loan(client_id: str, loan_data: LoanEdit, admin_token: str = Quer
     if loan_data.due_date:
         try:
             due_date_parsed = datetime.fromisoformat(loan_data.due_date.replace('Z', '+00:00').split('T')[0])
-            # Calculate months between start date and due date
-            diff = relativedelta(due_date_parsed, loan_start)
-            tenure_months = diff.years * 12 + diff.months
-            if diff.days > 0:
-                tenure_months += 1  # Round up partial months
-            if tenure_months < 1:
-                tenure_months = 1
+            tenure_months = tenure_months_from_dates(loan_start, due_date_parsed)
         except (ValueError, TypeError):
             raise HTTPException(status_code=400, detail="Invalid due_date format. Use YYYY-MM-DD.")
     else:
@@ -359,29 +379,30 @@ async def edit_loan(client_id: str, loan_data: LoanEdit, admin_token: str = Quer
     # Calculate down payment (keep existing)
     down_payment = client.get("down_payment", 0)
     
-    # Calculate EMI using reducing balance method
-    principal = loan_amount - down_payment
+    principal = resolve_principal(loan_amount, down_payment)
     if principal <= 0:
         raise HTTPException(status_code=400, detail="Loan amount must be greater than down payment")
-    
-    emi_data = calculate_reducing_balance_emi(principal, interest_rate * 12, tenure_months)  # monthly rate * 12 = annual
-    
-    # Calculate next payment due date (from start date + 1 month)
-    next_due = loan_start + relativedelta(months=1)
-    
-    # Calculate new outstanding balance (total amount - already paid)
-    total_paid = client.get("total_paid", 0)
-    new_outstanding = max(0, emi_data["total_amount"] - total_paid)
-    
+
+    emi_data = calculate_setup_interest(principal, interest_rate, tenure_months)
+
+    # One-time loans keep the contractual due date; do not invent start+1 month.
+    due_for_next = due_date_parsed if loan_data.due_date else (as_utc(client.get("loan_due_date") or client.get("next_payment_due")) or loan_start)
+    next_due = date_only(due_for_next) or date_only(loan_start)
+
+    total_paid = money(client.get("total_paid", 0))
+    new_outstanding = money(max(0, emi_data["total_amount"] - total_paid))
+
     update_fields = {
         "loan_amount": loan_amount,
         "interest_rate": interest_rate,
         "loan_tenure_months": tenure_months,
-        "monthly_emi": emi_data["monthly_emi"],
+        "monthly_emi": emi_data["total_amount"],
+        "installment_amount": emi_data["total_amount"],
+        "payment_type": client.get("payment_type") or "single",
         "total_amount_due": emi_data["total_amount"],
         "outstanding_balance": new_outstanding,
-        "loan_start_date": loan_start,
-        "next_payment_due": next_due
+        "loan_start_date": date_only(loan_start) or loan_start,
+        "next_payment_due": next_due,
     }
     
     if loan_data.due_date:
@@ -391,7 +412,32 @@ async def edit_loan(client_id: str, loan_data: LoanEdit, admin_token: str = Quer
         {"id": client_id},
         {"$set": update_fields}
     )
-    
+
+    active_loan_id = client.get("active_loan_id")
+    if active_loan_id:
+        await db.loans.update_one(
+            {"id": active_loan_id},
+            {"$set": {
+                "loan_amount": loan_amount,
+                "down_payment": down_payment,
+                "principal_amount": principal,
+                "interest_rate": interest_rate,
+                "interest_amount": emi_data["total_interest"],
+                "total_interest": emi_data["total_interest"],
+                "total_amount": emi_data["total_amount"],
+                "total_amount_due": emi_data["total_amount"],
+                "outstanding_balance": new_outstanding,
+                "emi_amount": emi_data["total_amount"],
+                "monthly_emi": emi_data["total_amount"],
+                "installment_amount": emi_data["total_amount"],
+                "tenure_months": tenure_months,
+                "due_date": update_fields.get("loan_due_date") or client.get("loan_due_date"),
+                "next_payment_date": next_due,
+                "next_payment_amount": emi_data["total_amount"],
+                "updated_at": utc_now(),
+            }},
+        )
+
     return {
         "message": "Loan updated successfully",
         "client_id": client_id,
@@ -564,34 +610,26 @@ async def preview_loan_calculation(
     except (ValueError, TypeError):
         raise HTTPException(status_code=400, detail="Invalid due_date format. Use YYYY-MM-DD.")
     
-    # Calculate tenure in months
-    diff = relativedelta(due_date_parsed, loan_start)
-    tenure_months = diff.years * 12 + diff.months
-    if diff.days > 0:
-        tenure_months += 1
-    if tenure_months < 1:
-        tenure_months = 1
-    
-    # Get down payment
     down_payment = client.get("down_payment", 0)
-    principal = loan_amount - down_payment
-    
+    emi_data = calculate_setup_interest_for_dates(
+        loan_amount, down_payment, interest_rate, loan_start, due_date_parsed
+    )
+    principal = emi_data["principal"]
+    tenure_months = emi_data["tenure_months"]
     if principal <= 0:
         raise HTTPException(status_code=400, detail="Loan amount must be greater than down payment")
-    
-    # Calculate EMI
-    emi_data = calculate_reducing_balance_emi(principal, interest_rate * 12, tenure_months)  # monthly rate * 12 = annual
-    
+
     return {
         "preview": {
             "loan_amount": loan_amount,
             "interest_rate": interest_rate,
             "tenure_months": tenure_months,
-            "monthly_emi": emi_data["monthly_emi"],
+            "monthly_emi": emi_data["total_amount"],
             "total_amount_due": emi_data["total_amount"],
             "total_interest": emi_data["total_interest"],
             "down_payment": down_payment,
-            "principal": principal
+            "principal": principal,
+            "method": emi_data["method"],
         }
     }
 
@@ -668,49 +706,26 @@ async def record_payment(
     
     await db.payments.insert_one(payment.dict())
 
-    # Atomically increment paid / decrement outstanding so concurrent payments
-    # (or retries) cannot clobber each other via read-modify-write.
-    from pymongo import ReturnDocument
+    # Apply the payment to BOTH the client document and the active loan.
+    # The device status endpoint treats the loan row as the ledger, so a
+    # client-only update left the lock screen showing a stale balance.
+    active_loan = None
+    active_loan_id = client.get("active_loan_id")
+    if active_loan_id:
+        active_loan = await db.loans.find_one({"id": active_loan_id, "status": {"$ne": "deleted"}})
+    if not active_loan:
+        active_loan = await db.loans.find_one({"client_id": client_id, "status": "active"})
 
-    # Move to next payment date (computed from the snapshot; acceptable since
-    # the schedule advances by one period per recorded payment).
-    next_due = client.get("next_payment_due")
-    if next_due:
-        if isinstance(next_due, str):
-            try:
-                next_due = datetime.strptime(next_due, "%Y-%m-%d") + relativedelta(months=1)
-            except ValueError:
-                next_due = datetime.utcnow() + relativedelta(months=1)
-        else:
-            next_due = next_due + relativedelta(months=1)
-
-    updated = await db.clients.find_one_and_update(
-        {"id": client_id},
-        {
-            "$inc": {
-                "total_paid": payment_data.amount,
-                "outstanding_balance": -payment_data.amount,
-            },
-            "$set": {
-                "last_payment_date": payment.payment_date,
-                "next_payment_due": next_due,
-                "days_overdue": 0,
-                "is_late": False,
-                "late_fees_accumulated": 0,
-            },
-        },
-        return_document=ReturnDocument.AFTER,
+    ledger = payment_ledger_updates(
+        client,
+        payment_data.amount,
+        loan=active_loan,
+        payment_date=payment.payment_date,
     )
+    await apply_payment_to_client_and_loan(db, client_id, ledger, loan=active_loan)
 
-    # Guard against floating-point/overshoot driving outstanding below zero.
-    new_total_paid = round(updated.get("total_paid", 0), 2)
-    new_outstanding = updated.get("outstanding_balance", 0)
-    if new_outstanding < 0:
-        new_outstanding = 0
-        await db.clients.update_one(
-            {"id": client_id}, {"$set": {"outstanding_balance": 0}}
-        )
-    new_outstanding = round(new_outstanding, 2)
+    new_total_paid = ledger["total_paid_after"]
+    new_outstanding = ledger["outstanding_after"]
 
     # Determine if payment is on-time or late for credit score adjustment
     days_overdue = client.get("days_overdue", 0)
@@ -718,12 +733,13 @@ async def record_payment(
     credit_score_change = 0
     credit_score_reason = ""
 
+    # Late-payment credit penalties are applied once in the overdue pipeline
+    # (late_score_penalized). Do not charge a second -10 here. Reward on-time
+    # payments only.
     if days_overdue > 0 or is_late:
-        # Late payment: -10 credit score
-        credit_score_change = CREDIT_SCORE_LATE_PAYMENT
+        credit_score_change = 0
         credit_score_reason = f"late_payment_{days_overdue}_days_overdue"
     else:
-        # On-time payment: +5 credit score
         credit_score_change = CREDIT_SCORE_ON_TIME_PAYMENT
         credit_score_reason = "on_time_payment"
 
@@ -908,104 +924,31 @@ async def calculate_all_late_fees(admin_token: str = Query(...), apply_auto_lock
     updated_count = 0
     total_late_fees = 0.0
     auto_locked_count = 0
-    
-    now = datetime.utcnow()
-    
-    for client in clients:
-        next_due = client.get("next_payment_due")
-        if not next_due:
-            continue
-        
-        # Handle both datetime and string formats
-        if isinstance(next_due, str):
-            try:
-                next_due = datetime.fromisoformat(next_due.replace('Z', '+00:00').replace('+00:00', ''))
-            except (ValueError, AttributeError):
-                continue
-        
-        # Calculate days overdue
-        days_overdue = (now - next_due).days
-        
-        if days_overdue <= 0:
-            # Not overdue - ensure is_late is False
-            await db.clients.update_one(
-                {"id": client["id"]},
-                {"$set": {
-                    "days_overdue": 0,
-                    "is_late": False
-                }}
-            )
-            continue
-        
-        # Get late fee percentage (default 2%)
-        late_fee_percent = 2.0
-        
-        # Try to get from loan plan if client has one
-        loan_plan_id = client.get("loan_plan_id")
-        if loan_plan_id:
-            loan_plan = await db.loan_plans.find_one({"id": loan_plan_id})
-            if loan_plan:
-                late_fee_percent = loan_plan.get("late_fee_percent", 2.0)
-        
-        # Calculate late fee
-        monthly_emi = client.get("monthly_emi", 0)
-        late_fee = calculate_late_fee(monthly_emi, late_fee_percent, days_overdue)
-        
-        # Prepare update
-        update_data = {
-            "days_overdue": days_overdue,
-            "late_fees_accumulated": late_fee,
-            "is_late": True
-        }
-        
-        # Check if auto-lock should be applied
-        if apply_auto_lock:
-            auto_lock_enabled = client.get("auto_lock_enabled", True)
-            grace_days = client.get("auto_lock_grace_days", 3)
-            is_currently_locked = client.get("is_locked", False)
-            
-            if auto_lock_enabled and days_overdue > grace_days and not is_currently_locked:
-                update_data["is_locked"] = True
-                update_data["lock_message"] = f"Device auto-locked: Payment is {days_overdue} days overdue. Please contact your lender to unlock."
-                auto_locked_count += 1
-                
-                # Create notification for admin
-                from models.schemas import Notification
-                notification = Notification(
-                    admin_id=admin_id,
-                    type="auto_lock",
-                    title="Device Auto-Locked",
-                    message=f"Client {client['name']}'s device was auto-locked ({days_overdue} days overdue)",
-                    client_id=client["id"],
-                    client_name=client["name"]
-                )
-                await db.notifications.insert_one(notification.dict())
-        
-        # Apply credit score penalty for late payments (only if transitioning to late)
-        was_late = client.get("is_late", False)
-        if not was_late and days_overdue > 0:
-            # First time becoming late - apply penalty
-            from routes.credit_score import update_credit_score
-            try:
-                await update_credit_score(
-                    client_id=client["id"],
-                    change_amount=CREDIT_SCORE_LATE_PAYMENT,
-                    reason=f"late_payment_detected_{days_overdue}_days",
-                    admin_id=admin_id
-                )
-                logger.info(f"Credit score penalty applied to client {client['id']}: {CREDIT_SCORE_LATE_PAYMENT} (late payment)")
-            except Exception as e:
-                logger.error(f"Failed to apply credit score penalty for client {client['id']}: {e}")
-        
-        # Update client
-        await db.clients.update_one(
-            {"id": client["id"]},
-            {"$set": update_data}
+
+    admin_settings = await db.admin_settings.find_one({"admin_id": admin_id}, {"_id": 0}) or {}
+
+    async def _notify(client_doc, locked, message, reason):
+        await notify_device_lock_change(
+            db, client_doc, is_locked=locked, reason=reason, message=message
         )
-        
-        updated_count += 1
-        total_late_fees += late_fee
-    
+
+    for client in clients:
+        result = await apply_overdue_for_client(
+            db,
+            client,
+            admin_settings=admin_settings,
+            apply_lock=apply_auto_lock,
+            apply_fees=True,
+            notify=_notify,
+        )
+        if result.get("skipped"):
+            continue
+        if result.get("days_overdue", 0) > 0 or result.get("fee_applied") or result.get("locked"):
+            updated_count += 1
+        total_late_fees += result.get("fee_applied") or 0
+        if result.get("locked"):
+            auto_locked_count += 1
+
     return {
         "message": "Late fee calculation complete",
         "clients_processed": len(clients),

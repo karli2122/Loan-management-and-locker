@@ -193,6 +193,10 @@ class ClientStatusResponse(BaseModel):
     lock_mode: str = "device_admin"
     admin_plan: Optional[str] = None
     admin_firstname: Optional[str] = None
+    admin_phone: Optional[str] = None
+    admin_email: Optional[str] = None
+    payment_instructions: Optional[str] = None
+    late_fees_accumulated: float = 0.0
     # Tamper-evident lock decision: HMAC over (client_id|is_locked|issued_at)
     # using the per-device token as the key. The device verifies this before
     # acting on is_locked, so a MITM cannot flip a locked device to unlocked.
