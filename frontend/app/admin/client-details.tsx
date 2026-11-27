@@ -234,8 +234,8 @@ export default function ClientDetails() {
       Alert.alert(
         t('generateNewKey'),
         language === 'et'
-          ? 'Valige lukurežiim:\n\nDevice Admin (16-kohaline kood) — Standardne lukustus, ülekate\nDevice Owner (17-kohaline kood) — Täielik kiosk ja rakenduste peatamine'
-          : 'Select lock mode:\n\nDevice Admin (16-character code) — Standard overlay lock\nDevice Owner (17-character code) — Silent kiosk and app restrictions',
+          ? 'Valige lukurežiim:\n\nDevice Admin (8-kohaline kood) — Standardne lukustus, ülekate\nDevice Owner (9-kohaline kood) — Täielik kiosk ja rakenduste peatamine'
+          : 'Select lock mode:\n\nDevice Admin (8-digit code) — Standard overlay lock\nDevice Owner (9-digit code) — Silent kiosk and app restrictions',
         [
           { text: t('cancel'), style: 'cancel' },
           {
@@ -277,7 +277,7 @@ export default function ClientDetails() {
               if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error || errorData.detail || 'Failed to generate code'); }
               const data = await response.json();
               if (client) setClient({ ...client, registration_code: data.registration_code, lock_mode: data.lock_mode });
-              const modeLabel = lockMode === 'device_owner' ? 'Device Owner (17-character code)' : 'Device Admin (16-character code)';
+              const modeLabel = lockMode === 'device_owner' ? 'Device Owner (9-digit code)' : 'Device Admin (8-digit code)';
               Alert.alert(
                 t('success'),
                 language === 'et'

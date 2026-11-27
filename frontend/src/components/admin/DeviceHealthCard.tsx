@@ -72,8 +72,8 @@ export function DeviceHealthCard({ clientId, colors }: { clientId: string; color
       icon: 'shield',
       label: 'Enrollment',
       value: (health.lock_mode || health.capabilities?.enrollment || 'device_admin') === 'device_owner'
-        ? 'Device Owner (17-char code)'
-        : 'Device Admin (16-char code)',
+        ? 'Device Owner (9-digit code)'
+        : 'Device Admin (8-digit code)',
     },
     {
       icon: 'shield-checkmark',

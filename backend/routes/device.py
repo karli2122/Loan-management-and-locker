@@ -13,32 +13,18 @@ from utils.auth import verify_device, enforce_client_scope, sign_lock_state
 from utils.dependencies import require_admin
 from utils.calculations import amount_due_from_loan, money
 from utils.timeutils import date_only, utc_now
+from utils.registration_codes import lock_mode_from_registration_code
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Device"])
-
-
-def lock_mode_from_registration_code(code: str, stored: str = None) -> str:
-    """Resolve lock mode from a registration code.
-
-    New codes: 16 hex chars = device_admin, 17 = device_owner.
-    Legacy codes: 8 = device_admin, 9 = device_owner.
-    If the client already has an explicit lock_mode, that wins.
-    """
-    if stored in ("device_admin", "device_owner"):
-        return stored
-    n = len((code or "").strip())
-    if n >= 17 or n == 9:
-        return "device_owner"
-    return "device_admin"
 
 
 @router.post("/device/register")
 async def register_device(registration: DeviceRegistration):
     """Register a device with a registration code.
 
-    16-char code = Device Admin mode, 17-char code = Device Owner mode.
-    Legacy 8/9-character codes are still accepted.
+    8-char code = Device Admin mode, 9-char code = Device Owner mode.
+    Existing 16/17-character codes are still accepted.
     """
     import uuid
     client = await db.clients.find_one({"registration_code": registration.registration_code})

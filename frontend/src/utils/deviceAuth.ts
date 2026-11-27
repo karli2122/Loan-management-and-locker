@@ -21,8 +21,10 @@ export function deviceAuthHeaders(token?: string): Record<string, string> {
 }
 
 export function lockModeFromRegistrationCode(code: string, stored?: string | null): 'device_admin' | 'device_owner' {
+  // New codes: 8 = device_admin, 9 = device_owner.
+  // Existing 16/17-character codes are still accepted.
   if (stored === 'device_admin' || stored === 'device_owner') return stored;
   const n = (code || '').trim().length;
-  if (n >= 17 || n === 9) return 'device_owner';
+  if (n === 9 || n === 17 || n >= 17) return 'device_owner';
   return 'device_admin';
 }

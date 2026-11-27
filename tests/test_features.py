@@ -245,7 +245,7 @@ def test_device_owner_supports_restricted():
 
 
 def test_intended_owner_enrollment_without_report_is_admin():
-    # A 17-char code is not proof the phone is Device Owner yet.
+    # A Device Owner *code* is not proof the phone is Device Owner yet.
     caps = device_capabilities(
         lock_mode="device_owner",
         device_owner_active=False,
@@ -277,3 +277,26 @@ def test_tamper_admin_disable_locks_unless_uninstall_allowed():
     assert allowed == {"admin_mode_active": False, "device_owner_active": False}
     other = tamper_lock_updates("unknown", uninstall_allowed=False)
     assert other == {}
+
+
+def test_new_registration_codes_are_8_and_9_chars():
+    from utils.registration_codes import generate_registration_code_value, lock_mode_from_registration_code
+    admin_code = generate_registration_code_value("device_admin")
+    owner_code = generate_registration_code_value("device_owner")
+    assert len(admin_code) == 8
+    assert len(owner_code) == 9
+    assert admin_code == admin_code.upper()
+    assert owner_code == owner_code.upper()
+    assert lock_mode_from_registration_code(admin_code) == "device_admin"
+    assert lock_mode_from_registration_code(owner_code) == "device_owner"
+
+
+def test_existing_16_and_17_char_codes_still_resolve():
+    from utils.registration_codes import lock_mode_from_registration_code
+    assert lock_mode_from_registration_code("AABBCCDDEEFF0011") == "device_admin"
+    assert len("AABBCCDDEEFF0011") == 16
+    assert lock_mode_from_registration_code("AABBCCDDEEFF00112") == "device_owner"
+    assert len("AABBCCDDEEFF00112") == 17
+    # Explicit stored mode always wins, even if the length disagrees.
+    assert lock_mode_from_registration_code("AABBCCDD", "device_owner") == "device_owner"
+    assert lock_mode_from_registration_code("AABBCCDDE", "device_admin") == "device_admin"

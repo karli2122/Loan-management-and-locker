@@ -367,8 +367,8 @@ async def generate_registration_code(
     lock_mode: str = Query("device_admin", regex="^(device_admin|device_owner)$"),
 ):
     """Generate new registration code for a client (uses 1 credit for non-superadmins).
-    16-char code = device_admin, 17-char code = device_owner
-    (legacy 8/9-char codes still work).
+    8-char code = device_admin, 9-char code = device_owner.
+    Existing 16/17-character codes remain valid.
     """
     admin_id = await get_admin_id_from_token(admin_token)
     
@@ -390,13 +390,10 @@ async def generate_registration_code(
     
     # Code LENGTH encodes lock mode and must stay in sync with
     # routes/device.py::lock_mode_from_registration_code:
-    #   16 hex chars = device_admin, 17 = device_owner
-    #   legacy 8 / 9 char codes issued before this change still work.
-    # token_hex(8) = 16 hex chars = 64 bits of entropy.
-    if lock_mode == "device_owner":
-        new_code = (secrets.token_hex(8) + secrets.token_hex(1)[0]).upper()[:17]
-    else:
-        new_code = secrets.token_hex(8).upper()
+    #   new: 8 hex chars = device_admin, 9 = device_owner
+    #   existing 16/17-char codes issued earlier are still accepted.
+    from utils.registration_codes import generate_registration_code_value
+    new_code = generate_registration_code_value(lock_mode)
     
     await db.clients.update_one(
         {"id": client_id},

@@ -124,7 +124,7 @@ def device_capabilities(
 ) -> dict:
     """What this enrollment can actually do on Android.
 
-    Device Admin (the 16-char code) can force-lock the keyguard, disable the
+    Device Admin (the 8-digit registration code; existing 16-char codes also work) can force-lock the keyguard, disable the
     camera, and (while still active) request a factory reset. It cannot
     suspend packages, pin the app without a user prompt, or set a default
     launcher. Those need Device Owner.
