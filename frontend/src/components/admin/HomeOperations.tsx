@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { authedFetch } from '../../utils/adminAuth';
 import API_URL from '../../constants/api';
+import { StatusChip } from '../../theme/StatusChip';
+import { LOAN_STATUS } from '../../theme/loanStatus';
 
 type HomeRow = {
   id: string;
@@ -118,7 +120,19 @@ export function HomeOperations({
             style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.border || '#1E3050' }}
           >
             <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.text, fontWeight: '600' }}>{row.name}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <Text style={{ color: colors.text, fontWeight: '600' }}>{row.name}</Text>
+                <StatusChip
+                  input={{
+                    is_locked: row.is_locked,
+                    lock_level: row.lock_level,
+                    outstanding_balance: row.outstanding_balance,
+                    days_overdue: row.days_overdue,
+                    next_payment_due: row.next_payment_due,
+                  }}
+                  compact
+                />
+              </View>
               <Text style={{ color: colors.textMuted, fontSize: 12 }}>
                 {formatAmount(row.outstanding_balance || 0)}
                 {row.days_overdue ? ` · ${row.days_overdue}d overdue` : ''}
@@ -164,9 +178,9 @@ export function HomeOperations({
           <Ionicons name="refresh" size={20} color={colors.textMuted} />
         </TouchableOpacity>
       </View>
-      <Card title={t('dueToday') || "Today's due payments"} count={data.counts.due_today} color="#2563EB" icon="today" rows={data.due_today} />
-      <Card title={t('overdueClients') || 'Overdue clients'} count={data.counts.overdue} color="#DC2626" icon="alert-circle" rows={data.overdue} />
-      <Card title={t('lockedDevices') || 'Locked devices'} count={data.counts.locked_devices} color="#7C3AED" icon="lock-closed" rows={data.locked_devices} />
+      <Card title={t('dueToday') || "Today's due payments"} count={data.counts.due_today} color={LOAN_STATUS.dueSoon.color} icon="today" rows={data.due_today} />
+      <Card title={t('overdueClients') || 'Overdue clients'} count={data.counts.overdue} color={LOAN_STATUS.overdue.color} icon="alert-circle" rows={data.overdue} />
+      <Card title={t('lockedDevices') || 'Locked devices'} count={data.counts.locked_devices} color={LOAN_STATUS.locked.color} icon="lock-closed" rows={data.locked_devices} />
     </View>
   );
 }

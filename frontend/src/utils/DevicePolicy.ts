@@ -492,6 +492,39 @@ class DevicePolicyManager {
     catch { return 'error'; }
   }
 
+  /** Prepare lock-task allowlist / drop overlay, then open the emergency dialer. */
+  async beginEmergencyCall(number: string = '112'): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      if (nativeModule?.beginEmergencyCall) {
+        return (await nativeModule.beginEmergencyCall(number)) || 'error';
+      }
+      return (await nativeModule?.dialEmergencyNumber?.(number)) || 'error';
+    } catch {
+      return 'error';
+    }
+  }
+
+  /** True when the emergency session should return to and re-enforce the lock screen. */
+  async shouldRelockEmergencyCall(): Promise<boolean> {
+    if (Platform.OS !== 'android') return false;
+    try { return (await nativeModule?.shouldRelockEmergencyCall?.()) || false; }
+    catch { return false; }
+  }
+
+  /** End the emergency session, close the dialer, and restore lock containment. */
+  async finishEmergencyCall(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      if (nativeModule?.finishEmergencyCall) {
+        return (await nativeModule.finishEmergencyCall()) || 'error';
+      }
+      return (await nativeModule?.killDialerApps?.()) || 'error';
+    } catch {
+      return 'error';
+    }
+  }
+
   /** Kill all dialer/phone apps and clear emergency flag */
   async killDialerApps(): Promise<string> {
     if (Platform.OS !== 'android') return 'not_supported';

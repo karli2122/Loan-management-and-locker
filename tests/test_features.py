@@ -300,3 +300,64 @@ def test_existing_16_and_17_char_codes_still_resolve():
     # Explicit stored mode always wins, even if the length disagrees.
     assert lock_mode_from_registration_code("AABBCCDD", "device_owner") == "device_owner"
     assert lock_mode_from_registration_code("AABBCCDDE", "device_admin") == "device_admin"
+
+
+def test_loan_countdown_percent_and_days():
+    from utils.loan_countdown import loan_countdown
+    d = loan_countdown({
+        "total_amount": 1000,
+        "total_paid": 250,
+        "outstanding_balance": 750,
+        "next_payment_amount": 100,
+        "due_date": "2026-12-01",
+    }, today=date(2026, 11, 27))
+    assert d["percent_paid"] == 25.0
+    assert d["days_until_due"] == 4
+    assert d["next_payment_amount"] == 100.0
+    assert d["outstanding_balance"] == 750.0
+    assert d["next_payment_due"] == "2026-12-01"
+    assert d["total_paid"] == 250.0
+    assert d["total_amount"] == 1000.0
+
+
+def test_loan_countdown_overdue_paid_and_derived_total():
+    from utils.loan_countdown import loan_countdown
+    overdue = loan_countdown({
+        "total_amount": 500,
+        "total_paid": 100,
+        "outstanding_balance": 400,
+        "monthly_emi": 50,
+        "due_date": "2026-11-20",
+    }, today=date(2026, 11, 27))
+    assert overdue["days_until_due"] == -7
+    assert overdue["percent_paid"] == 20.0
+    assert overdue["next_payment_amount"] == 50.0
+
+    paid = loan_countdown({
+        "total_amount": 500,
+        "total_paid": 500,
+        "outstanding_balance": 0,
+        "due_date": "2026-12-01",
+        "next_payment_amount": 0,
+    }, today=date(2026, 11, 27))
+    assert paid["percent_paid"] == 100.0
+    assert paid["outstanding_balance"] == 0
+    assert paid["next_payment_amount"] == 0
+
+    derived = loan_countdown({
+        "total_paid": 80,
+        "outstanding_balance": 20,
+        "next_payment_due": "2026-11-28",
+    }, today=date(2026, 11, 27))
+    assert derived["total_amount"] == 100.0
+    assert derived["percent_paid"] == 80.0
+    assert derived["days_until_due"] == 1
+    assert derived["next_payment_amount"] == 20.0
+
+
+def test_loan_countdown_missing_due_date():
+    from utils.loan_countdown import loan_countdown
+    d = loan_countdown({"total_amount": 200, "total_paid": 0, "outstanding_balance": 200}, today=date(2026, 11, 27))
+    assert d["days_until_due"] is None
+    assert d["percent_paid"] == 0.0
+    assert d["next_payment_amount"] == 200.0

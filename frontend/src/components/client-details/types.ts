@@ -44,6 +44,8 @@ export interface Client {
   emi_amount: number;
   emi_due_date: string | null;
   is_locked: boolean;
+  lock_level?: string;
+  next_payment_due?: string | null;
   lock_message: string;
   warning_message: string;
   latitude: number | null;

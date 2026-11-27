@@ -29,7 +29,7 @@ class EMIForegroundMonitorService : Service() {
         private const val KEY_LOCKED = "is_locked"
         private const val CHECK_INTERVAL_MS = 1000L
         private const val WAKELOCK_RENEW_MS = 5 * 60 * 1000L // renew window: 5 min
-        private const val EMERGENCY_MAX_MS = 10 * 60 * 1000L // max emergency-call window: 10 min
+        private const val EMERGENCY_MAX_MS = 30 * 60 * 1000L // safety valve; session also caps at 30 min
         private const val CHANNEL_ID = "emi_monitor_channel"
         private const val NOTIFICATION_ID = 1002
         @Volatile
@@ -132,29 +132,22 @@ class EMIForegroundMonitorService : Service() {
                     if (isLocked) {
                         renewWakeLock()
                         val foregroundPackage = getForegroundPackage()
+                        val emergencyActive = EmergencyCallSession.isActive(this@EMIForegroundMonitorService)
+                        if (emergencyActive && EmergencyCallSession.shouldRelock(this@EMIForegroundMonitorService)) {
+                            Log.d(TAG, "Emergency session should relock — finishing")
+                            EmergencyCallSession.finish(this@EMIForegroundMonitorService, null)
+                        }
+                        val emergencyStillActive = EmergencyCallSession.isActive(this@EMIForegroundMonitorService)
                         if (foregroundPackage != null && foregroundPackage != packageName) {
-                            // Phone/Dialer apps: only allow during emergency calls.
-                            // Match an allowlist of known dialer packages rather
-                            // than broad substrings like "phone", which a
-                            // maliciously-named app could satisfy to escape lock.
-                            val knownDialers = setOf(
-                                "com.android.dialer",
-                                "com.google.android.dialer",
-                                "com.samsung.android.dialer",
-                                "com.android.server.telecom",
-                                "com.android.incallui",
-                                "com.android.phone"
+                            // Phone/Dialer apps: only allow during a live emergency session.
+                            // Use the session allowlist (known OEM dialers + packages that
+                            // resolve the emergency / ACTION_DIAL intents). Never match
+                            // broad substrings like "phone".
+                            val isPhoneApp = EmergencyCallSession.isDialerPackage(
+                                foregroundPackage, this@EMIForegroundMonitorService
                             )
-                            val isPhoneApp = foregroundPackage in knownDialers
                             if (isPhoneApp) {
-                                val emergencyActive = prefs.getBoolean("emergency_call_active", false)
-                                // Cap the emergency window: if it's been open too
-                                // long (e.g. call ended but flag wasn't cleared),
-                                // force it closed so the lock re-asserts.
-                                val startedAt = prefs.getLong("emergency_call_started_at", 0L)
-                                val withinWindow = startedAt > 0 &&
-                                    (System.currentTimeMillis() - startedAt) < EMERGENCY_MAX_MS
-                                if (emergencyActive && withinWindow) {
+                                if (emergencyStillActive) {
                                     Log.d(TAG, "Emergency call active - allowing dialer: $foregroundPackage")
                                 } else {
                                     Log.d(TAG, "Locked: Rejecting regular call, killing dialer: $foregroundPackage")
@@ -172,8 +165,9 @@ class EMIForegroundMonitorService : Service() {
                             }
                         }
 
-                        // Also ensure overlay service is alive
-                        if (!EMIOverlayService.isRunning) {
+                        // Do not restart the overlay while a valid emergency session is
+                        // in progress — it would cover the dialer.
+                        if (!emergencyStillActive && !EMIOverlayService.isRunning) {
                             Log.w(TAG, "Overlay service not running while locked - restarting it")
                             try {
                                 val overlayIntent = Intent(this@EMIForegroundMonitorService, EMIOverlayService::class.java)

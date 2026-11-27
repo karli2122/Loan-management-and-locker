@@ -22,6 +22,8 @@ import { useLanguage } from '../../src/context/LanguageContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import API_URL from '../../src/constants/api';
 import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
+import { StatusChip } from '../../src/theme/StatusChip';
+import { resolveLoanStatus } from '../../src/theme/loanStatus';
 
 
 interface Client {
@@ -41,6 +43,10 @@ interface Client {
   tamper_attempts?: number;
   outstanding_balance?: number;
   loan_amount?: number;
+  lock_level?: string;
+  days_overdue?: number;
+  loan_due_date?: string | null;
+  next_payment_due?: string | null;
 }
 
 interface SilentClient {
@@ -271,16 +277,17 @@ export default function ClientsList() {
         <View style={styles.clientInfo}>
           <View style={styles.clientHeader}>
             <Text style={[styles.clientName, { color: colors.text }]}>{item.name || 'N/A'}</Text>
-            <View style={[styles.statusBadge, item.is_locked ? styles.lockedBadge : styles.unlockedBadge]}>
-              <Ionicons
-                name={item.is_locked ? 'lock-closed' : 'lock-open'}
-                size={12}
-                color={item.is_locked ? '#EF4444' : '#10B981'}
-              />
-              <Text style={[styles.statusText, item.is_locked ? styles.lockedText : styles.unlockedText]}>
-                {item.is_locked ? t('locked') : t('unlocked')}
-              </Text>
-            </View>
+            <StatusChip
+              input={{
+                is_locked: item.is_locked,
+                lock_level: item.lock_level,
+                outstanding_balance: item.outstanding_balance,
+                days_overdue: item.days_overdue,
+                loan_due_date: item.loan_due_date || item.emi_due_date,
+                next_payment_due: item.next_payment_due,
+              }}
+              compact
+            />
           </View>
           <Text style={[styles.clientPhone, { color: colors.textMuted }]}>{item.phone || 'N/A'}</Text>
           <View style={styles.clientMeta}>
@@ -289,7 +296,14 @@ export default function ClientsList() {
               const daysOverdue = (item as any).days_overdue || 0;
               const isPaid = outstanding <= 0 && (item.loan_amount || 0) > 0;
               const isOverdue = daysOverdue > 0 && outstanding > 0;
-              const dueColor = isPaid ? '#10B981' : isOverdue ? '#EF4444' : outstanding > 0 ? '#F59E0B' : colors.textSecondary;
+              const dueColor = resolveLoanStatus({
+                is_locked: item.is_locked,
+                lock_level: item.lock_level,
+                outstanding_balance: outstanding,
+                days_overdue: daysOverdue,
+                loan_due_date: item.loan_due_date || item.emi_due_date,
+                next_payment_due: item.next_payment_due,
+              }).color;
               return (
                 <Text style={[styles.emiAmount, { color: dueColor }]}>
                   {isPaid ? '100% Paid' : `${t('due')}: ${formatAmount(outstanding)}`}

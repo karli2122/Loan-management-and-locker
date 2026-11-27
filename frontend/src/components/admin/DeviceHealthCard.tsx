@@ -3,6 +3,7 @@ import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { authedFetch } from '../../utils/adminAuth';
 import API_URL from '../../constants/api';
+import { StatusChip } from '../../theme/StatusChip';
 
 const STATUS_COLOR: Record<string, string> = {
   online: '#10B981',
@@ -98,6 +99,18 @@ export function DeviceHealthCard({ clientId, colors }: { clientId: string; color
     <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 14, marginBottom: 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
         <Text style={{ color: colors.text, fontWeight: '700', fontSize: 16, flex: 1 }}>Device health</Text>
+        <StatusChip
+          input={{
+            is_locked: health.is_locked,
+            lock_level: health.lock_level,
+            outstanding_balance: health.outstanding_balance,
+            days_overdue: health.days_overdue,
+            days_until_due: health.days_until_due,
+            next_payment_due: health.next_payment_due,
+          }}
+          compact
+          style={{ marginRight: 8 }}
+        />
         <View style={{ backgroundColor: color, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, marginRight: 8 }}>
           <Text style={{ color: '#fff', fontWeight: '700', fontSize: 11, textTransform: 'uppercase' }}>{status}</Text>
         </View>

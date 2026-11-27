@@ -14,6 +14,7 @@ from utils.dependencies import require_admin
 from utils.calculations import amount_due_from_loan, money
 from utils.timeutils import date_only, utc_now
 from utils.registration_codes import lock_mode_from_registration_code
+from utils.loan_countdown import loan_countdown
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Device"])
@@ -96,8 +97,11 @@ async def get_device_status(client_id: str, device_token: str = Query(default=""
     # Check loans collection for active loan (single source of truth)
     active_loan = await db.loans.find_one(
         {"client_id": client_id, "status": "active"},
-        {"_id": 0, "loan_amount": 1, "interest_rate": 1, "total_amount_due": 1,
-         "outstanding_balance": 1, "total_paid": 1, "due_date": 1, "monthly_emi": 1}
+        {"_id": 0, "loan_amount": 1, "interest_rate": 1, "interest_amount": 1,
+         "total_amount": 1, "total_amount_due": 1, "outstanding_balance": 1,
+         "total_paid": 1, "due_date": 1, "monthly_emi": 1, "installment_amount": 1,
+         "next_payment_amount": 1, "next_payment_date": 1, "late_fees_accumulated": 1,
+         "duration_months": 1, "tenure_months": 1}
     )
     
     late_fees = float(client.get("late_fees_accumulated") or 0)
@@ -153,6 +157,11 @@ async def get_device_status(client_id: str, device_token: str = Query(default=""
         client.get("lock_message", "") if lock_level_val == "warning" else ""
     )
 
+    countdown_source = dict(client)
+    if active_loan:
+        countdown_source.update({k: v for k, v in active_loan.items() if v is not None})
+    countdown = loan_countdown(countdown_source)
+
     return ClientStatusResponse(
         id=client["id"],
         name=client["name"],
@@ -176,6 +185,11 @@ async def get_device_status(client_id: str, device_token: str = Query(default=""
         lock_issued_at=issued_at,
         lock_level=lock_level_val,
         lock_allowlist=lock_allowlist_val,
+        percent_paid=countdown["percent_paid"],
+        total_paid=countdown["total_paid"],
+        total_amount=countdown["total_amount"],
+        days_until_due=countdown["days_until_due"],
+        next_payment_amount=countdown["next_payment_amount"],
     )
 
 

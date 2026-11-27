@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator, Share } from 'react-na
 import { Ionicons } from '@expo/vector-icons';
 import { styles } from './styles';
 import { Client } from './types';
+import { StatusChip } from '../../theme/StatusChip';
 
 // Credit score color helper
 const getCreditScoreColor = (score: number) => {
@@ -60,16 +61,17 @@ export const ClientInfoCard = ({
         </Text>
       </View>
     ) : canAccessDeviceLock && (
-      <View style={[styles.statusBadge, client.is_locked ? styles.lockedBadge : styles.unlockedBadge]}>
-        <Ionicons
-          name={client.is_locked ? 'lock-closed' : 'lock-open'}
-          size={14}
-          color={client.is_locked ? colors.error : colors.success}
-        />
-        <Text style={[styles.statusText, client.is_locked ? styles.lockedText : styles.unlockedText]}>
-          {client.is_locked ? t('locked') : t('unlocked')}
-        </Text>
-      </View>
+      <StatusChip
+        input={{
+          is_locked: client.is_locked,
+          lock_level: (client as any).lock_level,
+          outstanding_balance: client.outstanding_balance,
+          days_overdue: client.days_overdue,
+          loan_due_date: client.loan_due_date,
+          next_payment_due: (client as any).next_payment_due,
+        }}
+        label={client.is_locked ? (t('locked') || 'Locked') : undefined}
+      />
     )}
     {/* Hide admin mode section if uninstall allowed */}
     {client.is_registered && !isUninstallAllowed && (

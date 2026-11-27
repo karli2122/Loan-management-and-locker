@@ -310,51 +310,11 @@ class EMIOverlayService : Service() {
 
     private fun handleEmergencyCall() {
         Log.d(TAG, "Emergency call 112 triggered from native overlay")
-
-        // Set flag so monitor allows the dialer
-        prefs.edit()
-            .putBoolean("emergency_call_active", true)
-            .putLong("emergency_call_started_at", System.currentTimeMillis())
-            .commit()
-
-        // Remove overlay to let the dialer show
-        removeAll()
-
-        // Dial 112
-        try {
-            val callIntent = Intent(Intent.ACTION_CALL, Uri.parse("tel:112")).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            startActivity(callIntent)
-        } catch (e: Exception) {
-            Log.e(TAG, "ACTION_CALL failed, trying ACTION_DIAL: ${e.message}")
-            try {
-                val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:112")).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                startActivity(dialIntent)
-            } catch (e2: Exception) {
-                Log.e(TAG, "ACTION_DIAL also failed: ${e2.message}")
-            }
-        }
-
-        // Schedule: wait for call to end, then re-apply lock
-        handler.postDelayed(object : Runnable {
-            override fun run() {
-                val stillInCall = isInCall()
-                if (stillInCall) {
-                    handler.postDelayed(this, 3000)
-                } else {
-                    Log.d(TAG, "Emergency call ended — re-applying lock")
-                    prefs.edit()
-                        .putBoolean("emergency_call_active", false)
-                        .putLong("emergency_call_started_at", 0L)
-                        .commit()
-                    // Re-create the lock overlay
-                    startWatchdog()
-                }
-            }
-        }, 5000) // First check after 5 seconds
+        // Drop views first so nothing covers the dialer. The shared session
+        // opens ACTION_DIAL / the system emergency dialer only, owns telephony
+        // + watchdog polling, and restores the overlay in finish().
+        try { removeAll() } catch (_: Exception) {}
+        EmergencyCallSession.start(applicationContext, null, "112")
     }
 
     private fun isInCall(): Boolean {

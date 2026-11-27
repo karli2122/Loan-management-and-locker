@@ -19,6 +19,7 @@ from utils.lock_levels import (
     normalize_lock_level,
 )
 from utils.timeutils import date_only, utc_now
+from utils.loan_countdown import loan_countdown
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Dashboard"])
@@ -70,6 +71,10 @@ async def device_health(client_id: str, admin_id: str = Depends(require_admin)):
 
     last_hb = client.get("last_heartbeat")
     status = classify_heartbeat(last_hb)
+    countdown = loan_countdown(client)
+    outstanding = float(countdown["outstanding_balance"] or 0)
+    days_until = countdown.get("days_until_due")
+    days_overdue = max(0, -(days_until or 0)) if outstanding > 0 else 0
     return {
         "client_id": client_id,
         "name": client.get("name"),
@@ -112,6 +117,13 @@ async def device_health(client_id: str, admin_id: str = Depends(require_admin)):
         "android_version": client.get("android_version"),
         "device_model": client.get("device_model"),
         "is_registered": bool(client.get("is_registered")),
+        "is_locked": bool(client.get("is_locked")),
+        "outstanding_balance": outstanding,
+        "next_payment_due": countdown.get("next_payment_due") or date_only(
+            client.get("next_payment_due") or client.get("loan_due_date")
+        ),
+        "days_overdue": days_overdue,
+        "days_until_due": days_until,
     }
 
 

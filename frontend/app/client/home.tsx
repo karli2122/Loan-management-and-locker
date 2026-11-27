@@ -17,6 +17,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Linking,
+  PermissionsAndroid,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -40,6 +41,7 @@ import { sendDeviceInfoUpdateThrottled } from '../../src/services/DeviceInfoServ
 import { registerHeartbeatTask, sendHeartbeat, getHeartbeatStatus } from '../../src/services/BackgroundHeartbeatService';
 import API_URL from '../../src/constants/api';
 import * as ScreenCapture from 'expo-screen-capture';
+import { LoanCountdown } from '../../src/components/LoanCountdown';
 
 
 interface ClientStatus {
@@ -65,6 +67,11 @@ interface ClientStatus {
   lock_level?: 'none' | 'warning' | 'restricted' | 'full' | string;
   lock_allowlist?: string[];
   _lock_verified?: boolean;
+  percent_paid?: number;
+  total_paid?: number;
+  total_amount?: number;
+  days_until_due?: number | null;
+  next_payment_amount?: number;
 }
 
 export default function ClientHome() {
@@ -106,6 +113,8 @@ export default function ClientHome() {
   const retryCountRef = useRef(0); // Track consecutive API failures for backoff
   const maxRetries = 5;
   const [emergencyCallActive, setEmergencyCallActive] = useState(false);
+  const emergencyCallActiveRef = useRef(false);
+  const finishEmergencyAndRelockRef = useRef<(() => Promise<void>) | null>(null);
   const emergencyCallCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [adminPlan, setAdminPlan] = useState<string | null>(null);
   
@@ -1105,7 +1114,11 @@ export default function ClientHome() {
         
         // CRITICAL: Immediately re-engage kiosk protection if device is locked
         // This prevents the home button bypass (5-second gap)
-        if (Platform.OS === 'android' && wasLocked.current) {
+        if (Platform.OS === 'android' && emergencyCallActiveRef.current) {
+          devicePolicy.shouldRelockEmergencyCall().then((should) => {
+            if (should) finishEmergencyAndRelockRef.current?.();
+          }).catch(() => {});
+        } else if (Platform.OS === 'android' && wasLocked.current) {
           devicePolicy.startKioskMode().catch(() => {});
           devicePolicy.enableImmersiveMode().catch(() => {});
           devicePolicy.collapseStatusBar().catch(() => {});
@@ -1552,70 +1565,98 @@ export default function ClientHome() {
     };
   }, [status?.is_locked]);
 
-  // Emergency call handler
-  const handleEmergencyCall = async () => {
-    if (Platform.OS !== 'android') return;
-    setEmergencyCallActive(true);
-    
-    // Set native flag so services know emergency call is active
+  const finishEmergencyAndRelock = async () => {
+    if (emergencyCallCheckRef.current) {
+      clearInterval(emergencyCallCheckRef.current);
+      emergencyCallCheckRef.current = null;
+    }
+    emergencyCallActiveRef.current = false;
+    setEmergencyCallActive(false);
     try {
-      await devicePolicy.setEmergencyCallActive(true);
+      await devicePolicy.finishEmergencyCall();
     } catch (_) {}
-    
-    // CRITICAL: Must stop ALL protection services before dialing
-    // Otherwise the overlay blocker covers the dialer, and the foreground monitor kills it
-    try {
-      await devicePolicy.stopKioskMode();
-      await devicePolicy.setStatusBarDisabled(false);
-      await devicePolicy.disableImmersiveMode();
-      await devicePolicy.stopOverlayBlocker();
-      await devicePolicy.stopForegroundMonitor();
-      // Give system time to process all mode changes
-      await new Promise(resolve => setTimeout(resolve, 500));
-    } catch (e) {
-      console.log('Failed to exit protections for emergency call:', e);
-    }
-    
-    // Try native dialer first, fallback to Linking
-    try {
-      await devicePolicy.dialEmergencyNumber('112');
-    } catch (e) {
-      console.log('Native dial failed, using Linking fallback:', e);
+    if (Platform.OS === 'android' && wasLocked.current) {
       try {
-        await Linking.openURL('tel:112');
-      } catch (e2) {
-        console.log('Linking.openURL tel: also failed:', e2);
-      }
-    }
-    
-    // Monitor: poll every 2s to check if call has ended
-    emergencyCallCheckRef.current = setInterval(async () => {
-      const stillActive = await devicePolicy.isEmergencyCallActive();
-      if (!stillActive) {
-        // Call ended — cleanup
-        clearInterval(emergencyCallCheckRef.current!);
-        emergencyCallCheckRef.current = null;
-        setEmergencyCallActive(false);
-        // Clear native flag
-        try {
-          await devicePolicy.setEmergencyCallActive(false);
-        } catch (_) {}
-        // Kill dialer and return to lock screen
-        await devicePolicy.killDialerApps();
-        // Re-engage all lock protections
         await devicePolicy.startKioskMode();
         await devicePolicy.startOverlayBlocker();
         await devicePolicy.startForegroundMonitor();
         await devicePolicy.setStatusBarDisabled(true);
         await devicePolicy.enableImmersiveMode();
         await devicePolicy.collapseStatusBar();
+        StatusBar.setHidden(true, 'none');
+      } catch (e) {
+        console.log('Failed to re-enforce lock after emergency call:', e);
       }
-    }, 2000);
+    }
+  };
+  finishEmergencyAndRelockRef.current = finishEmergencyAndRelock;
+
+  // Emergency call: open only the emergency dialer, keep lock containment,
+  // and return to the lock screen when the call ends or the user leaves the dialer.
+  const handleEmergencyCall = async () => {
+    if (Platform.OS !== 'android') return;
+    if (emergencyCallActiveRef.current) return;
+    emergencyCallActiveRef.current = true;
+    setEmergencyCallActive(true);
+
+    // READ_PHONE_STATE lets us detect call end. Denial is non-blocking:
+    // we still open the dialer and fall back to AppState / foreground checks.
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
+        {
+          title: 'Phone state',
+          message: 'Needed to return to the lock screen when an emergency call ends.',
+          buttonPositive: 'OK',
+          buttonNegative: 'Deny',
+        }
+      );
+      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+        console.log('READ_PHONE_STATE denied; using resume/foreground re-lock only');
+      }
+    } catch (e) {
+      console.log('READ_PHONE_STATE request failed:', e);
+    }
+
+    // Do not stop kiosk mode or the foreground monitor — that would create an escape route.
+    // Native beginEmergencyCall allowlists the dialer (Device Owner) or drops only the overlay (Device Admin).
+    try {
+      const result = await devicePolicy.beginEmergencyCall('112');
+      if (!result || result === 'error' || String(result).startsWith('error')) {
+        await Linking.openURL('tel:112');
+      }
+    } catch (e) {
+      console.log('Native emergency dial failed, using Linking fallback:', e);
+      try {
+        await Linking.openURL('tel:112');
+      } catch (e2) {
+        console.log('Linking.openURL tel: also failed:', e2);
+        await finishEmergencyAndRelock();
+        return;
+      }
+    }
+
+    emergencyCallCheckRef.current = setInterval(async () => {
+      try {
+        const should = await devicePolicy.shouldRelockEmergencyCall();
+        if (should) {
+          await finishEmergencyAndRelock();
+        }
+      } catch (_) {}
+    }, 1000);
   };
 
-  // Cleanup emergency call check on unmount
+  // Cleanup emergency call check on unmount; also re-lock on foreground resume.
   useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active' && emergencyCallActiveRef.current) {
+        devicePolicy.shouldRelockEmergencyCall().then((should) => {
+          if (should) finishEmergencyAndRelockRef.current?.();
+        }).catch(() => {});
+      }
+    });
     return () => {
+      sub.remove();
       if (emergencyCallCheckRef.current) {
         clearInterval(emergencyCallCheckRef.current);
       }
@@ -1767,7 +1808,7 @@ export default function ClientHome() {
               onPress={handleEmergencyCall}
             >
               <Ionicons name="call" size={20} color="#fff" />
-              <Text style={styles.emergencyCallText}>Emergency Call (112)</Text>
+              <Text style={styles.emergencyCallText}>Emergency call</Text>
             </Pressable>
           ) : (
             <View style={styles.emergencyCallActive}>
@@ -1865,6 +1906,21 @@ export default function ClientHome() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10B981" />
         }
       >
+        <LoanCountdown
+          percentPaid={status?.percent_paid}
+          daysUntilDue={status?.days_until_due}
+          nextPaymentAmount={status?.next_payment_amount ?? status?.monthly_emi ?? status?.loan_amount}
+          outstandingBalance={status?.outstanding_balance ?? status?.loan_amount}
+          formatAmount={formatAmount}
+          t={t}
+          statusInput={{
+            is_locked: status?.is_locked,
+            lock_level: status?.lock_level,
+            outstanding_balance: status?.outstanding_balance ?? status?.loan_amount,
+            days_until_due: status?.days_until_due,
+            loan_due_date: status?.loan_due_date,
+          }}
+        />
         {/* Device Protection Setup — 2 column grid like screenshot */}
         {showProtectionSetup && Platform.OS === 'android' && (() => {
           const uninstallBlocked = status?.uninstall_allowed === false || status?.uninstall_allowed === undefined;
@@ -2882,18 +2938,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    backgroundColor: 'rgba(239, 68, 68, 0.3)',
-    paddingHorizontal: 28,
-    paddingVertical: 14,
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
     borderRadius: 28,
-    marginTop: 20,
+    marginTop: 24,
+    minWidth: 260,
     borderWidth: 2,
-    borderColor: 'rgba(239, 68, 68, 0.5)',
+    borderColor: '#FECACA',
+    elevation: 6,
+    shadowColor: '#DC2626',
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
   emergencyCallText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '800',
     color: '#fff',
+    letterSpacing: 0.3,
   },
   emergencyCallActive: {
     flexDirection: 'row',

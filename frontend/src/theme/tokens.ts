@@ -124,3 +124,5 @@ export const gradients = {
 
 export const tokens = { palette, space, radius, type, shadow, gradients };
 export default tokens;
+
+export { LOAN_STATUS, DUE_SOON_DAYS, resolveLoanStatus } from './loanStatus';

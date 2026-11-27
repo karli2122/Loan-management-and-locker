@@ -1,6 +1,8 @@
 package expo.modules.emideviceadmin
 
+import android.app.ActivityOptions
 import android.app.admin.DeviceAdminReceiver
+import android.os.Build
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -105,4 +107,30 @@ class EMIDeviceAdminReceiver : DeviceAdminReceiver() {
             "Contact your administrator."
         }
     }
+
+    override fun onLockTaskModeExiting(context: Context, intent: Intent) {
+        super.onLockTaskModeExiting(context, intent)
+        val prefs = getPrefs(context)
+        if (!prefs.getBoolean("is_locked", false)) return
+        if (EmergencyCallSession.isActive(context)) return
+        Log.w(TAG, "Lock-task exited while still locked — relaunching")
+        try {
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return
+            launchIntent.addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val opts = ActivityOptions.makeBasic()
+                opts.setLockTaskEnabled(true)
+                context.startActivity(launchIntent, opts.toBundle())
+            } else {
+                context.startActivity(launchIntent)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to relaunch after lock-task exit: ${e.message}")
+        }
+    }
 }
+

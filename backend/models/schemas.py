@@ -204,6 +204,12 @@ class ClientStatusResponse(BaseModel):
     lock_issued_at: Optional[int] = None
     lock_level: str = "none"
     lock_allowlist: Optional[list] = None
+    # Repayment countdown (client home). loan_amount remains the amount currently due.
+    percent_paid: float = 0.0
+    total_paid: float = 0.0
+    total_amount: float = 0.0
+    days_until_due: Optional[int] = None
+    next_payment_amount: float = 0.0
 
 
 class DeviceRegistration(BaseModel):

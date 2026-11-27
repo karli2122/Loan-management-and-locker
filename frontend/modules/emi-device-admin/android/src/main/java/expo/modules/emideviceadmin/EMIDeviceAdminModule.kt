@@ -1033,58 +1033,41 @@ class EMIDeviceAdminModule : Module() {
             }
         }
 
-        // Start an emergency call (dials the number via Intent)
-        // IMPORTANT: If in lock task (kiosk) mode, we must exit it first so the dialer can open
+        // Open the emergency dialer without leaving lock-task / creating an escape route.
+        // Device Owner: temporarily allowlist dialer packages. Device Admin: drop overlay only.
+        AsyncFunction("beginEmergencyCall") { number: String, promise: Promise ->
+            try {
+                val result = EmergencyCallSession.start(context, activity, number)
+                promise.resolve(result)
+            } catch (e: Exception) {
+                Log.e(TAG, "beginEmergencyCall error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        AsyncFunction("shouldRelockEmergencyCall") { promise: Promise ->
+            try {
+                promise.resolve(EmergencyCallSession.shouldRelock(context))
+            } catch (e: Exception) {
+                Log.e(TAG, "shouldRelockEmergencyCall error: ${e.message}")
+                promise.resolve(false)
+            }
+        }
+
+        AsyncFunction("finishEmergencyCall") { promise: Promise ->
+            try {
+                promise.resolve(EmergencyCallSession.finish(context, activity))
+            } catch (e: Exception) {
+                Log.e(TAG, "finishEmergencyCall error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // Legacy name kept for JS compatibility. Delegates to the contained session.
         AsyncFunction("dialEmergencyNumber") { number: String, promise: Promise ->
             try {
-                prefs.edit().putBoolean("emergency_call_active", true).commit()
-                
-                // Exit kiosk mode if active so dialer can launch
-                val currentActivity = activity
-                if (currentActivity != null) {
-                    val am = currentActivity.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && am.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE) {
-                        try {
-                            // Re-enable status bar for the call
-                            if (dpm.isDeviceOwnerApp(context.packageName)) {
-                                dpm.setStatusBarDisabled(adminComponent, false)
-                            }
-                            currentActivity.stopLockTask()
-                            Log.d(TAG, "dialEmergencyNumber: Exited kiosk mode for emergency call")
-                            // Give system time to process the mode change
-                            Thread.sleep(300)
-                        } catch (e: Exception) {
-                            Log.w(TAG, "dialEmergencyNumber: Failed to exit kiosk: ${e.message}")
-                        }
-                    }
-                }
-                
-                // Register a call state listener to auto-clear emergency flag when call ends
-                try {
-                    val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
-                    tm.listen(object : android.telephony.PhoneStateListener() {
-                        @Deprecated("Deprecated in Java")
-                        override fun onCallStateChanged(state: Int, phoneNumber: String?) {
-                            if (state == android.telephony.TelephonyManager.CALL_STATE_IDLE) {
-                                // Call ended — clear emergency flag
-                                Log.d(TAG, "Emergency call ended — clearing flag")
-                                prefs.edit().putBoolean("emergency_call_active", false).commit()
-                                // Unregister this listener
-                                tm.listen(this, android.telephony.PhoneStateListener.LISTEN_NONE)
-                            }
-                        }
-                    }, android.telephony.PhoneStateListener.LISTEN_CALL_STATE)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to register call state listener: ${e.message}")
-                }
-                
-                // Use ACTION_DIAL instead of ACTION_CALL to avoid CALL_PHONE permission requirement
-                val intent = Intent(Intent.ACTION_DIAL)
-                intent.data = Uri.parse("tel:$number")
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
-                Log.d(TAG, "Emergency call initiated to $number")
-                promise.resolve("success")
+                val result = EmergencyCallSession.start(context, activity, number)
+                promise.resolve(if (result == "started" || result == "resumed") "success" else result)
             } catch (e: Exception) {
                 Log.e(TAG, "dialEmergencyNumber error: ${e.message}")
                 promise.resolve("error: ${e.message}")

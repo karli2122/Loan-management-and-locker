@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.util.Log
 
 /**
@@ -29,12 +30,24 @@ class EMIRestartReceiver : BroadcastReceiver() {
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
                 val am = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-                am?.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    System.currentTimeMillis() + delayMs,
-                    pendingIntent
-                )
-                Log.d(TAG, "Restart alarm scheduled in ${delayMs}ms")
+                    ?: return
+                val triggerAt = System.currentTimeMillis() + delayMs
+                val exactAllowed = try {
+                    Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
+                } catch (_: Exception) {
+                    false
+                }
+                try {
+                    if (exactAllowed) {
+                        am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+                    } else {
+                        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "exact alarm failed, falling back: ${e.message}")
+                    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+                }
+                Log.d(TAG, "Restart alarm scheduled in ${delayMs}ms (exact=$exactAllowed)")
             } catch (e: Exception) {
                 Log.e(TAG, "scheduleRestart error: ${e.message}")
             }
@@ -100,8 +113,10 @@ class EMIRestartReceiver : BroadcastReceiver() {
                 Log.e(TAG, "Failed to restart monitor: ${e.message}")
             }
 
-            // Schedule next restart check in case we get killed again
-            scheduleRestart(context, 5000)
+            // Watchdog: tight interval only if a protection service is down.
+            // A 5s exact loop is throttled under Doze and burns budget.
+            val bothRunning = EMIOverlayService.isRunning && EMIForegroundMonitorService.isRunning
+            scheduleRestart(context, if (bothRunning) 120_000 else 10_000)
         } catch (e: Exception) {
             Log.e(TAG, "Restart error: ${e.message}")
         }
