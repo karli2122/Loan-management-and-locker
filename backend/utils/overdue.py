@@ -160,6 +160,7 @@ async def apply_overdue_for_client(
         )
         update.update({
             "is_locked": True,
+            "lock_level": "full",
             "lock_message": lock_message,
             "lock_reason": "auto_lock",
         })

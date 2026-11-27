@@ -23,6 +23,7 @@ from .sessions import router as sessions_router
 from .analytics import router as analytics_router
 from .document_vault import router as document_vault_router
 from .stripe_connect import router as stripe_connect_router
+from .dashboard import router as dashboard_router
 
 __all__ = [
     "admin_router",
@@ -49,4 +50,5 @@ __all__ = [
     "analytics_router",
     "document_vault_router",
     "stripe_connect_router",
+    "dashboard_router",
 ]

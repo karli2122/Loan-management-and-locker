@@ -125,6 +125,138 @@ async def export_csv(
     )
 
 
+
+
+def _client_status_label(c: dict) -> str:
+    outstanding = c.get("outstanding_balance", 0)
+    days_overdue = c.get("days_overdue", 0)
+    if outstanding <= 0 and c.get("loan_amount", 0) > 0:
+        return "Completed"
+    if days_overdue > 7:
+        return "Defaulted"
+    if days_overdue > 0:
+        return "At Risk"
+    if c.get("loan_amount", 0) > 0:
+        return "Active"
+    return "No Loan"
+
+
+async def _report_table(admin_id: str, report_type: str):
+    """Return (sheet_name, headers, rows) for CSV/XLSX/PDF-adjacent tabular exports."""
+    clients = await _get_clients_data(admin_id)
+    now = datetime.utcnow().strftime("%Y-%m-%d")
+    if report_type == "clients":
+        headers = ["Name", "Phone", "ID Code", "Loan Amount", "Total Paid",
+                   "Outstanding", "Days Overdue", "Status", "Device Locked"]
+        rows = []
+        for c in clients:
+            rows.append([
+                c.get("name", ""), c.get("phone", ""), c.get("id_code", ""),
+                c.get("loan_amount", 0), c.get("total_paid", 0),
+                c.get("outstanding_balance", 0), c.get("days_overdue", 0),
+                _client_status_label(c), bool(c.get("is_locked", False)),
+            ])
+        return "Clients", headers, rows
+    if report_type == "payments":
+        client_ids = [c["id"] for c in clients]
+        payments = await _get_payments_data(client_ids)
+        client_map = {c["id"]: c.get("name", "") for c in clients}
+        headers = ["Date", "Client", "Amount", "Method", "Note"]
+        rows = []
+        for pay in sorted(payments, key=lambda x: x.get("payment_date") or datetime.min, reverse=True):
+            pay_date = pay.get("payment_date", "")
+            if isinstance(pay_date, datetime):
+                pay_date = pay_date.strftime("%Y-%m-%d")
+            rows.append([
+                str(pay_date),
+                client_map.get(pay.get("client_id"), ""),
+                pay.get("amount", 0),
+                pay.get("method", ""),
+                pay.get("note", ""),
+            ])
+        return "Payments", headers, rows
+    if report_type == "collection":
+        total_disbursed = sum(c.get("loan_amount", 0) for c in clients)
+        total_collected = sum(c.get("total_paid", 0) for c in clients)
+        total_outstanding = sum(c.get("outstanding_balance", 0) for c in clients)
+        total_late_fees = sum(c.get("late_fees_accumulated", 0) for c in clients)
+        active = sum(1 for c in clients if c.get("outstanding_balance", 0) > 0)
+        overdue = sum(1 for c in clients if c.get("days_overdue", 0) > 0)
+        rate = (total_collected / total_disbursed * 100) if total_disbursed else 0
+        headers = ["Metric", "Value"]
+        rows = [
+            ["Report Date", now],
+            ["Total Clients", len(clients)],
+            ["Active Loans", active],
+            ["Overdue Clients", overdue],
+            ["Total Disbursed", round(total_disbursed, 2)],
+            ["Total Collected", round(total_collected, 2)],
+            ["Total Outstanding", round(total_outstanding, 2)],
+            ["Total Late Fees", round(total_late_fees, 2)],
+            ["Collection Rate", f"{rate:.1f}%"],
+        ]
+        return "Collection", headers, rows
+    # financial
+    total_disbursed = sum(c.get("loan_amount", 0) for c in clients)
+    total_collected = sum(c.get("total_paid", 0) for c in clients)
+    total_outstanding = sum(c.get("outstanding_balance", 0) for c in clients)
+    total_late_fees = sum(c.get("late_fees_accumulated", 0) for c in clients)
+    total_processing_fees = sum(c.get("processing_fee", 0) for c in clients)
+    total_interest = sum(calculate_interest_total(c) for c in clients)
+    headers = ["Metric", "Value (EUR)"]
+    rows = [
+        ["Report Date", now],
+        ["Total Disbursed", round(total_disbursed, 2)],
+        ["Total Collected", round(total_collected, 2)],
+        ["Total Outstanding", round(total_outstanding, 2)],
+        ["Interest Earned", round(total_interest, 2)],
+        ["Late Fees", round(total_late_fees, 2)],
+        ["Processing Fees", round(total_processing_fees, 2)],
+        ["Total Revenue", round(total_collected + total_late_fees + total_processing_fees, 2)],
+    ]
+    return "Financial", headers, rows
+
+
+@router.get("/reports/export/xlsx")
+async def export_xlsx(
+    admin_token: str = Query(...),
+    report_type: str = Query(default="financial"),
+):
+    """Export report data as an Excel workbook. Types: financial, clients, collection, payments."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+
+    admin_id = await get_admin_id_from_token(admin_token)
+    sheet_name, headers, rows = await _report_table(admin_id, report_type)
+    wb = Workbook()
+    ws = wb.active
+    ws.title = sheet_name[:31]
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill("solid", fgColor="2962FF")
+    for col, header in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center")
+    for r_idx, row in enumerate(rows, start=2):
+        for c_idx, value in enumerate(row, start=1):
+            ws.cell(row=r_idx, column=c_idx, value=value if not isinstance(value, bool) else ("Yes" if value else "No"))
+    for col in ws.columns:
+        max_len = 0
+        letter = col[0].column_letter
+        for cell in col:
+            max_len = max(max_len, len(str(cell.value or "")))
+        ws.column_dimensions[letter].width = min(max_len + 2, 40)
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    filename = f"paylock_{report_type}_{datetime.utcnow().strftime('%Y-%m-%d')}.xlsx"
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
 @router.get("/reports/export/pdf")
 async def export_pdf(
     admin_token: str = Query(...),

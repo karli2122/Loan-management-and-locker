@@ -197,11 +197,13 @@ class ClientStatusResponse(BaseModel):
     admin_email: Optional[str] = None
     payment_instructions: Optional[str] = None
     late_fees_accumulated: float = 0.0
-    # Tamper-evident lock decision: HMAC over (client_id|is_locked|issued_at)
+    # Tamper-evident lock decision: HMAC over (client_id|is_locked|issued_at|lock_level)
     # using the per-device token as the key. The device verifies this before
     # acting on is_locked, so a MITM cannot flip a locked device to unlocked.
     lock_signature: Optional[str] = None
     lock_issued_at: Optional[int] = None
+    lock_level: str = "none"
+    lock_allowlist: Optional[list] = None
 
 
 class DeviceRegistration(BaseModel):
@@ -240,6 +242,10 @@ class DeviceInfoUpdate(BaseModel):
     storage_total_gb: Optional[float] = None
     android_version: Optional[str] = None
     device_model: Optional[str] = None
+    app_version: Optional[str] = None
+    device_owner_active: Optional[bool] = None
+    admin_mode_active: Optional[bool] = None
+    last_reboot: Optional[datetime] = None
 
 
 # ===================== LOAN MODELS =====================

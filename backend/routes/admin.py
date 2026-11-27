@@ -482,6 +482,10 @@ async def get_admin_settings(admin_token: str = Query(...)):
             "reminder_schedule": [-1, 0, 1, 2, 3],
             "daily_digest_enabled": True,
             "daily_digest_hour": 8,
+            "prelock_reminders_enabled": True,
+            "prelock_reminder_offsets_days": [3, 1],
+            "prelock_final_warning_enabled": True,
+            "default_lock_allowlist": [],
         }
     
     # Ensure all fields are present with defaults
@@ -496,6 +500,10 @@ async def get_admin_settings(admin_token: str = Query(...)):
         "reminder_schedule": [-1, 0, 1, 2, 3],
         "daily_digest_enabled": True,
         "daily_digest_hour": 8,
+        "prelock_reminders_enabled": True,
+        "prelock_reminder_offsets_days": [3, 1],
+        "prelock_final_warning_enabled": True,
+        "default_lock_allowlist": [],
     }
     for k, v in defaults.items():
         if k not in settings:
@@ -520,6 +528,10 @@ async def update_admin_settings(
     reminder_schedule: str = Query(default=None),
     daily_digest_enabled: bool = Query(default=None),
     daily_digest_hour: int = Query(default=None),
+    prelock_reminders_enabled: bool = Query(default=None),
+    prelock_reminder_offsets_days: str = Query(default=None),
+    prelock_final_warning_enabled: bool = Query(default=None),
+    default_lock_allowlist: str = Query(default=None),
 ):
     """Update admin's default settings for late fees, auto-lock, and payment automation."""
     admin_id = await get_admin_id_from_token(admin_token)
@@ -563,6 +575,16 @@ async def update_admin_settings(
         update_data["daily_digest_enabled"] = daily_digest_enabled
     if daily_digest_hour is not None:
         update_data["daily_digest_hour"] = max(0, min(23, daily_digest_hour))
+    if prelock_reminders_enabled is not None:
+        update_data["prelock_reminders_enabled"] = prelock_reminders_enabled
+    if prelock_reminder_offsets_days is not None:
+        from utils.prelock_reminders import normalize_offsets
+        raw = [int(d.strip()) for d in prelock_reminder_offsets_days.split(",") if d.strip().lstrip("-").isdigit()]
+        update_data["prelock_reminder_offsets_days"] = normalize_offsets(raw)
+    if prelock_final_warning_enabled is not None:
+        update_data["prelock_final_warning_enabled"] = prelock_final_warning_enabled
+    if default_lock_allowlist is not None:
+        update_data["default_lock_allowlist"] = [p.strip() for p in default_lock_allowlist.split(",") if p.strip()]
     
     # Upsert settings
     await db.admin_settings.update_one(

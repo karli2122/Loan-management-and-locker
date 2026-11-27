@@ -13,14 +13,26 @@ from utils.timeutils import date_only, utc_now
 logger = logging.getLogger(__name__)
 
 
-async def build_lock_push_payload(db, client: dict, *, is_locked: bool, reason: str = "", message: str = "") -> dict:
+async def build_lock_push_payload(db, client: dict, *, is_locked: bool, reason: str = "", message: str = "", lock_level: str = None, lock_allowlist: list = None) -> dict:
     """Build a signed data payload for an Expo push notification."""
     client_id = client.get("id")
     device_token = client.get("device_token") or ""
+    from utils.lock_levels import normalize_allowlist, normalize_lock_level, is_effectively_locked
     issued_at = int(utc_now().timestamp())
+    level = normalize_lock_level(
+        lock_level if lock_level is not None else client.get("lock_level"),
+        "full" if is_locked else "none",
+    )
+    if is_locked and level in ("none", "warning"):
+        level = "full"
+    if not is_locked and level in ("restricted", "full"):
+        level = "none"
+    allowlist = normalize_allowlist(
+        lock_allowlist if lock_allowlist is not None else client.get("lock_allowlist")
+    )
     signature = ""
     if client_id and device_token:
-        signature = sign_lock_state(client_id, is_locked, device_token, issued_at)
+        signature = sign_lock_state(client_id, is_locked, device_token, issued_at, lock_level=level)
 
     amount_due = money(client.get("outstanding_balance") or 0)
     due = date_only(client.get("next_payment_due") or client.get("loan_due_date"))
@@ -61,6 +73,8 @@ async def build_lock_push_payload(db, client: dict, *, is_locked: bool, reason: 
         "lock_message": message or client.get("lock_message") or "",
         "lock_signature": signature,
         "lock_issued_at": issued_at,
+        "lock_level": level,
+        "lock_allowlist": allowlist,
         "client_id": client_id,
         "outstanding_balance": amount_due,
         "loan_due_date": due,
@@ -78,15 +92,24 @@ async def notify_device_lock_change(
     is_locked: bool,
     reason: str = "",
     message: str = "",
+    lock_level: str = None,
+    lock_allowlist: list = None,
 ) -> bool:
     """Send the signed Expo push. Returns True if a push was attempted."""
     push_token = client.get("expo_push_token")
     if not push_token:
         return False
     payload = await build_lock_push_payload(
-        db, client, is_locked=is_locked, reason=reason, message=message
+        db, client, is_locked=is_locked, reason=reason, message=message,
+        lock_level=lock_level, lock_allowlist=lock_allowlist,
     )
-    title = "Device Locked" if is_locked else "Device Unlocked"
+    level = payload.get("lock_level") or ("full" if is_locked else "none")
+    if level == "restricted":
+        title = "Device Restricted"
+    elif level == "warning":
+        title = "Payment Warning"
+    else:
+        title = "Device Locked" if is_locked else "Device Unlocked"
     body = message or (
         "Your device has been locked." if is_locked else "Your device has been unlocked."
     )

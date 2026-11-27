@@ -277,6 +277,7 @@ async def _process_temporary_unlocks():
                 {"id": client["id"]},
                 {"$set": {
                     "is_locked": False,
+                    "lock_level": "none",
                     "lock_reason": None,
                     "lock_message": None,
                     "auto_unlock_at": None,
@@ -418,6 +419,115 @@ def _build_report_html(report_type: str, clients: list, now: datetime) -> str:
 
 
 
+
+async def process_prelock_reminders_once():
+    """Send pre-lock Expo pushes (3d / 1d before due, plus a final warning).
+
+    Deduped per (client_id, due_date, kind) so the same period is not reminded
+    twice. Hooked into the existing hourly auto-reminder loop.
+    """
+    from routes.reminders import send_expo_push_notification
+    from utils.prelock_reminders import (
+        reminder_kinds_for_today,
+        reminder_dedupe_key,
+        reminder_copy,
+        normalize_offsets,
+    )
+
+    now = datetime.now(timezone.utc)
+    admins = await db.admins.find({"is_deleted": {"$ne": True}}, {"_id": 0, "id": 1}).to_list(200)
+    for admin in admins:
+        admin_id = admin["id"]
+        settings = await db.admin_settings.find_one({"admin_id": admin_id}) or {}
+        if settings.get("prelock_reminders_enabled", True) is False:
+            continue
+        offsets = normalize_offsets(settings.get("prelock_reminder_offsets_days"))
+        grace = int(settings.get("default_auto_lock_grace_days") or 3)
+        final_enabled = settings.get("prelock_final_warning_enabled", True)
+        channels = settings.get("payment_reminder_channels") or ["push"]
+        if "push" not in channels:
+            continue
+
+        clients = await db.clients.find(
+            {"admin_id": admin_id, "is_deleted": {"$ne": True}, "outstanding_balance": {"$gt": 0}},
+            {"_id": 0, "id": 1, "name": 1, "next_payment_due": 1, "loan_due_date": 1,
+             "expo_push_token": 1, "monthly_emi": 1, "outstanding_balance": 1, "is_locked": 1,
+             "lock_level": 1},
+        ).to_list(2000)
+
+        for client in clients:
+            push_token = client.get("expo_push_token")
+            if not push_token:
+                continue
+            due_raw = client.get("next_payment_due") or client.get("loan_due_date")
+            if not due_raw:
+                continue
+            try:
+                if isinstance(due_raw, datetime):
+                    due_date = due_raw.date()
+                else:
+                    due_date = datetime.strptime(str(due_raw)[:10], "%Y-%m-%d").date()
+            except (ValueError, TypeError):
+                continue
+            days_until_due = (due_date - now.date()).days
+            already_locked = bool(client.get("is_locked"))
+            kinds = reminder_kinds_for_today(
+                days_until_due,
+                grace_days=grace,
+                offsets=offsets,
+                already_locked=already_locked,
+            )
+            if not final_enabled:
+                kinds = [k for k in kinds if k != "prelock_final"]
+            if not kinds:
+                continue
+            name = client.get("name") or "Client"
+            amount = float(client.get("monthly_emi") or client.get("outstanding_balance") or 0)
+            due_str = due_date.strftime("%Y-%m-%d")
+            for kind in kinds:
+                existing = await db.auto_reminders_sent.find_one(
+                    reminder_dedupe_key(client["id"], due_str, kind)
+                )
+                if existing:
+                    continue
+                copy = reminder_copy(kind, name, amount, days_until_due, grace_days=grace)
+                sent = await send_expo_push_notification(
+                    push_token, copy["title"], copy["body"],
+                    {
+                        "action": "prelock_reminder",
+                        "kind": kind,
+                        "client_id": client["id"],
+                        "days_until_due": days_until_due,
+                        "due_date": due_str,
+                    },
+                )
+                if sent:
+                    record = reminder_dedupe_key(client["id"], due_str, kind)
+                    record.update({
+                        "admin_id": admin_id,
+                        "date": now.strftime("%Y-%m-%d"),
+                        "days_until_due": days_until_due,
+                        "sent_at": now,
+                    })
+                    await db.auto_reminders_sent.insert_one(record)
+                    # Prevent the generic daily reminder from also firing today
+                    # for the same "N days before" notice.
+                    if kind.startswith("due_minus_"):
+                        already_today = await db.auto_reminders_sent.find_one(
+                            {"client_id": client["id"], "date": now.strftime("%Y-%m-%d"), "kind": {"$exists": False}}
+                        )
+                        if not already_today:
+                            await db.auto_reminders_sent.insert_one({
+                                "client_id": client["id"],
+                                "admin_id": admin_id,
+                                "date": now.strftime("%Y-%m-%d"),
+                                "days_until_due": days_until_due,
+                                "sent_at": now,
+                                "suppressed_by": kind,
+                            })
+                    logger.info(f"Pre-lock reminder {kind} sent to {name} (due {due_str})")
+
+
 async def process_auto_reminders():
     """Send automated payment reminders via push notifications.
     
@@ -431,6 +541,10 @@ async def process_auto_reminders():
         try:
             now = datetime.now(timezone.utc)
             today = now.strftime("%Y-%m-%d")
+            try:
+                await process_prelock_reminders_once()
+            except Exception as prelock_exc:
+                logger.error(f"Pre-lock reminder error: {prelock_exc}")
             
             # Get all admins with their reminder settings
             admins = await db.admins.find(

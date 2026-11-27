@@ -986,6 +986,7 @@ async def process_auto_locks(admin_token: str = Query(...)):
                 {"id": client["id"]},
                 {"$set": {
                     "is_locked": True,
+                    "lock_level": "full",
                     "lock_message": f"Device auto-locked: Payment is {days_overdue} days overdue. Please contact your lender to unlock."
                 }}
             )

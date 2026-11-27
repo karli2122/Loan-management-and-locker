@@ -56,6 +56,7 @@ from routes.telegram import router as telegram_router
 from routes.documents import router as documents_router
 from routes.bulk_import import router as import_router
 from routes.exports import router as exports_router
+from routes.dashboard import router as dashboard_router
 from routes.report_schedules import router as report_schedules_router
 from routes.contact import router as contact_router
 from routes.client_payments import router as client_payments_router
@@ -213,6 +214,7 @@ app.include_router(telegram_router)
 app.include_router(documents_router)
 app.include_router(import_router)
 app.include_router(exports_router, prefix="/api")
+app.include_router(dashboard_router, prefix="/api")
 app.include_router(report_schedules_router)
 app.include_router(contact_router)
 app.include_router(client_payments_router, prefix="/api")

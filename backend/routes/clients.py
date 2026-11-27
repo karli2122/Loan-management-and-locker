@@ -545,8 +545,15 @@ async def lock_client(
     reason: str = Query(default="manual", regex="^(manual|overdue_payment|policy_violation|suspicious_activity|auto_lock)$"),
     temporary: bool = Query(default=False),
     unlock_after_hours: int = Query(default=None, ge=1, le=720),
+    lock_level: str = Query(default="full"),
+    lock_allowlist: str = Query(default=None),
 ):
-    """Lock a client's device with granular reason tracking and optional temporary lock."""
+    """Lock a client's device with granular reason tracking and optional temporary lock.
+
+    lock_level: none | warning | restricted | full (default full).
+    lock_allowlist: optional comma-separated package names used in restricted mode.
+    """
+    from utils.lock_levels import is_effectively_locked, normalize_allowlist, normalize_lock_level
     admin_id = await check_permission(admin_token, "clients")
     
     client = await db.clients.find_one({"id": client_id})
@@ -555,16 +562,27 @@ async def lock_client(
     
     await enforce_client_scope(client, admin_id)
     
+    level = normalize_lock_level(lock_level, "full")
+    allowlist = normalize_allowlist(
+        [p.strip() for p in (lock_allowlist or "").split(",") if p.strip()]
+        if lock_allowlist is not None
+        else (client.get("lock_allowlist") or [])
+    )
     now = datetime.utcnow()
+    is_locked = is_effectively_locked(level)
     update = {
-        "is_locked": True,
-        "lock_reason": reason,
-        "locked_at": now.isoformat(),
-        "locked_by": admin_id,
+        "is_locked": is_locked,
+        "lock_level": level,
+        "lock_allowlist": allowlist,
+        "lock_reason": reason if level != "none" else None,
+        "locked_at": now.isoformat() if level != "none" else None,
+        "locked_by": admin_id if level != "none" else None,
     }
     if message:
         update["lock_message"] = message
-    if temporary and unlock_after_hours:
+        if level == "warning":
+            update["warning_message"] = message
+    if temporary and unlock_after_hours and is_locked:
         unlock_at = now + timedelta(hours=unlock_after_hours)
         update["auto_unlock_at"] = unlock_at.isoformat()
         update["is_temporary_lock"] = True
@@ -587,13 +605,17 @@ async def lock_client(
     # Signed push so the device can lock immediately without waiting to poll.
     notif_msg = message or f"Your device has been locked ({reason.replace('_', ' ')})."
     await notify_device_lock_change(
-        db, {**client, **update}, is_locked=True, reason=reason, message=notif_msg
+        db, {**client, **update}, is_locked=is_locked, reason=reason, message=notif_msg,
+        lock_level=level, lock_allowlist=allowlist,
     )
     
     return {
-        "message": "Device locked",
+        "message": f"Device set to {level}",
         "client_id": client_id,
         "reason": reason,
+        "lock_level": level,
+        "lock_allowlist": allowlist,
+        "is_locked": is_locked,
         "temporary": temporary,
         "auto_unlock_at": update.get("auto_unlock_at"),
     }
@@ -613,8 +635,10 @@ async def unlock_client(client_id: str, admin_token: str = Query(...)):
     now = datetime.utcnow()
     await db.clients.update_one({"id": client_id}, {"$set": {
         "is_locked": False,
+        "lock_level": "none",
         "lock_reason": None,
         "lock_message": "",  # Empty string instead of None to match Client model
+        "warning_message": "",
         "locked_at": None,
         "locked_by": None,
         "auto_unlock_at": None,
@@ -634,13 +658,14 @@ async def unlock_client(client_id: str, admin_token: str = Query(...)):
     
     await notify_device_lock_change(
         db,
-        {**client, "is_locked": False, "lock_message": ""},
+        {**client, "is_locked": False, "lock_message": "", "lock_level": "none"},
         is_locked=False,
         reason="manual_unlock",
         message="Your device has been unlocked.",
+        lock_level="none",
     )
     
-    return {"message": "Device unlocked", "client_id": client_id}
+    return {"message": "Device unlocked", "client_id": client_id, "lock_level": "none"}
 
 
 @router.get("/clients/{client_id}/lock-history")

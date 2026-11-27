@@ -152,16 +152,27 @@ async def get_device_status(client_id: str, device_token: str = Query(default=""
             admin_email = admin.get("email")
             payment_instructions = payment_instructions or admin.get("payment_instructions") or ""
     
-    is_locked_val = client.get("is_locked", False)
+    from utils.lock_levels import normalize_allowlist, normalize_lock_level, is_effectively_locked
+    lock_level_val = normalize_lock_level(
+        client.get("lock_level"),
+        "full" if client.get("is_locked") else "none",
+    )
+    is_locked_val = bool(client.get("is_locked")) or is_effectively_locked(lock_level_val)
+    if lock_level_val == "warning":
+        is_locked_val = False
     issued_at = int(utc_now().timestamp())
-    lock_sig = sign_lock_state(client_id, is_locked_val, device_token, issued_at)
+    lock_sig = sign_lock_state(client_id, is_locked_val, device_token, issued_at, lock_level=lock_level_val)
+    lock_allowlist_val = normalize_allowlist(client.get("lock_allowlist"))
+    warning_message = client.get("warning_message", "") or (
+        client.get("lock_message", "") if lock_level_val == "warning" else ""
+    )
 
     return ClientStatusResponse(
         id=client["id"],
         name=client["name"],
         is_locked=is_locked_val,
         lock_message=client.get("lock_message", ""),
-        warning_message=client.get("warning_message", ""),
+        warning_message=warning_message,
         loan_amount=round(amount_due, 2),
         loan_due_date=due_date_str,
         outstanding_balance=round(outstanding_balance, 2),
@@ -177,6 +188,8 @@ async def get_device_status(client_id: str, device_token: str = Query(default=""
         late_fees_accumulated=round(late_fees, 2),
         lock_signature=lock_sig,
         lock_issued_at=issued_at,
+        lock_level=lock_level_val,
+        lock_allowlist=lock_allowlist_val,
     )
 
 
@@ -306,6 +319,14 @@ async def update_device_info(data: DeviceInfoUpdate):
         update_data["android_version"] = data.android_version
     if data.device_model:
         update_data["device_model"] = data.device_model
+    if data.app_version:
+        update_data["app_version"] = data.app_version
+    if data.device_owner_active is not None:
+        update_data["device_owner_active"] = bool(data.device_owner_active)
+    if data.admin_mode_active is not None:
+        update_data["admin_mode_active"] = bool(data.admin_mode_active)
+    if data.last_reboot is not None:
+        update_data["last_reboot"] = data.last_reboot
     
     await db.clients.update_one(
         {"id": data.client_id},

@@ -107,15 +107,20 @@ def extract_token(authorization: str = None, admin_token: str = None) -> str:
     return ""
 
 
-def sign_lock_state(client_id: str, is_locked: bool, device_token: str, issued_at: int) -> str:
+def sign_lock_state(client_id: str, is_locked: bool, device_token: str, issued_at: int, lock_level: str = None) -> str:
     """Produce a tamper-evident signature for a lock decision.
 
     Keyed with the per-device token (a shared secret the device already holds),
     so the device can verify the server really issued this is_locked value and a
     network attacker cannot forge an "unlocked" response. issued_at (unix
-    seconds) lets the device reject stale/replayed payloads.
+    seconds) lets the device reject stale/replayed payloads. lock_level is
+    included so a MITM cannot downgrade a full lock to restricted (or vice versa).
     """
-    msg = f"{client_id}|{1 if is_locked else 0}|{issued_at}".encode()
+    from utils.lock_levels import lock_signature_message, normalize_lock_level
+    if lock_level is None:
+        lock_level = "full" if is_locked else "none"
+    level = normalize_lock_level(lock_level, "full" if is_locked else "none")
+    msg = lock_signature_message(client_id, is_locked, issued_at, level).encode()
     return hmac.new(str(device_token).encode(), msg, hashlib.sha256).hexdigest()
 
 

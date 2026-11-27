@@ -82,6 +82,35 @@ def name_match_score(client_name: str, transaction_name: str) -> float:
     return 0.0
 
 
+
+@router.post("/clients/csv/preview")
+async def preview_clients_csv_endpoint(
+    admin_token: str = Form(...),
+    file: UploadFile = File(...),
+):
+    """Validate a clients CSV and return a row-level preview without writing data."""
+    admin_id = await get_admin_id_from_token(admin_token)
+    await check_plan_access(admin_id, "bulk_import")
+    content = await file.read()
+    try:
+        text = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        try:
+            text = content.decode("latin-1")
+        except Exception:
+            return JSONResponse(status_code=400, content={"error": "Cannot decode file. Use UTF-8 or Latin-1 encoding."})
+
+    from utils.csv_clients import preview_clients_csv
+    existing = await db.clients.find(
+        {"admin_id": admin_id, "is_deleted": {"$ne": True}},
+        {"_id": 0, "name": 1},
+    ).to_list(10000)
+    result = preview_clients_csv(text, existing_names=[c.get("name") or "" for c in existing])
+    if not result.get("ok"):
+        return JSONResponse(status_code=400, content=result)
+    return result
+
+
 @router.post("/clients/csv")
 async def import_clients_csv(
     admin_token: str = Form(...),
