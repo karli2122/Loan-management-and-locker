@@ -94,6 +94,9 @@ export async function verifyTokenSilent(): Promise<boolean> {
 
 /**
  * Remove admin_token from a URL so it is not logged in access/proxy logs.
+ * Do not use this on the request itself: the currently deployed
+ * api.paylock.pro (and many routes in this repo) still require the
+ * legacy ?admin_token= query parameter and will 422 without it.
  */
 export function stripAdminTokenParam(url: string): string {
   const cleaned = url
@@ -105,9 +108,21 @@ export function stripAdminTokenParam(url: string): string {
 }
 
 /**
- * Fetch helper for admin API calls: sends Authorization: Bearer and strips
- * any leftover admin_token query parameter. Falls back to a raw fetch if no
- * token is stored (the backend will then 401).
+ * Ensure the legacy admin_token query parameter is present.
+ * Callers may already append it; do not duplicate or rewrite an existing value.
+ */
+export function withAdminTokenParam(url: string, token: string): string {
+  if (!token) return url;
+  if (/[?&]admin_token=/.test(url)) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}admin_token=${encodeURIComponent(token)}`;
+}
+
+/**
+ * Fetch helper for admin API calls.
+ * Sends Authorization: Bearer (for newer require_admin routes) AND keeps
+ * ?admin_token= (required by the live api.paylock.pro and by list_clients
+ * in this repo, which still uses Query(...)).
  */
 export async function authedFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const token = await getSecureItem('admin_token');
@@ -115,5 +130,6 @@ export async function authedFetch(url: string, options: RequestInit = {}): Promi
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }
-  return fetch(stripAdminTokenParam(url), { ...options, headers });
+  const finalUrl = token ? withAdminTokenParam(url, token) : url;
+  return fetch(finalUrl, { ...options, headers });
 }

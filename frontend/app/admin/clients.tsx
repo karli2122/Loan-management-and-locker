@@ -96,11 +96,19 @@ export default function ClientsList() {
         handleAuthFailure();
         return;
       }
-      
+
       const data = await response.json();
-      
+      if (!response.ok) {
+        console.error('Failed to fetch clients:', response.status, data);
+        return;
+      }
+
       // Handle both old and new API response format
-      const clientList = data.clients || data;
+      const clientList = Array.isArray(data) ? data : data?.clients;
+      if (!Array.isArray(clientList)) {
+        console.error('Unexpected clients response shape');
+        return;
+      }
       setClients(clientList);
       applyFilters(clientList, searchQuery, filter);
       

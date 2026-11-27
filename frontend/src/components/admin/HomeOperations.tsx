@@ -42,12 +42,55 @@ export function HomeOperations({
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  const buildHomeFromClients = (raw: any): HomePayload => {
+    const list = Array.isArray(raw) ? raw : raw?.clients || [];
+    const today = new Date().toISOString().slice(0, 10);
+    const due_today: HomeRow[] = [];
+    const overdue: HomeRow[] = [];
+    const locked_devices: HomeRow[] = [];
+    for (const c of list) {
+      if (!c || !c.id) continue;
+      const row: HomeRow = {
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        outstanding_balance: c.outstanding_balance || 0,
+        next_payment_due: c.next_payment_due || c.loan_due_date || c.emi_due_date,
+        days_overdue: c.days_overdue || 0,
+        is_locked: !!c.is_locked,
+        lock_level: c.lock_level,
+      };
+      if (row.is_locked) locked_devices.push(row);
+      if ((row.days_overdue || 0) > 0) overdue.push(row);
+      const due = row.next_payment_due ? String(row.next_payment_due).slice(0, 10) : null;
+      if (due === today) due_today.push(row);
+    }
+    return {
+      today,
+      due_today,
+      overdue,
+      locked_devices,
+      collected_this_month: 0,
+      counts: {
+        due_today: due_today.length,
+        overdue: overdue.length,
+        locked_devices: locked_devices.length,
+      },
+    };
+  };
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await authedFetch(`${API_URL}/api/dashboard/home`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setData(await res.json());
+      if (res.ok) {
+        setData(await res.json());
+        return;
+      }
+      // Deployed api.paylock.pro does not have /api/dashboard/home yet.
+      const clientsRes = await authedFetch(`${API_URL}/api/clients`);
+      if (!clientsRes.ok) throw new Error(`HTTP ${clientsRes.status}`);
+      setData(buildHomeFromClients(await clientsRes.json()));
     } catch (e) {
       console.log('dashboard home error', e);
     } finally {
