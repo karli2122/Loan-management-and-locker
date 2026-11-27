@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { hmacSha256Hex, timingSafeEqualHex } from '../utils/hmac';
+import { deviceAuthHeaders, getDeviceToken } from '../utils/deviceAuth';
 
 interface CachedStatus {
   is_locked: boolean;
@@ -65,19 +66,35 @@ class OfflineSyncManager {
       const issuedAt: number | undefined = status?.lock_issued_at;
       if (!sig || !issuedAt) return false;
 
-      // Reject stale/replayed payloads (>10 min skew).
       const nowSec = Math.floor(Date.now() / 1000);
-      if (Math.abs(nowSec - issuedAt) > 600) {
-        console.warn('[OfflineSync] Lock signature timestamp out of range');
+      const isLock = !!status?.is_locked;
+      // Unlocks must be fresh (10 min) so a captured payload cannot unlock later.
+      // Locks may be slightly older — we still accept them if the HMAC matches
+      // and issued_at is not in the future by more than 10 minutes.
+      if (issuedAt - nowSec > 600) {
+        console.warn('[OfflineSync] Lock signature timestamp is in the future');
+        return false;
+      }
+      if (!isLock && Math.abs(nowSec - issuedAt) > 600) {
+        console.warn('[OfflineSync] Unlock signature timestamp out of range');
+        return false;
+      }
+      const lastIssued = await this.getLastVerifiedIssuedAt(clientId);
+      if (lastIssued && issuedAt < lastIssued) {
+        console.warn('[OfflineSync] Rejecting older lock payload (replay)');
         return false;
       }
 
-      const devTok = (await AsyncStorage.getItem('client_device_token')) || '';
+      const devTok = await getDeviceToken();
       if (!devTok) return false;
 
       const isLockedInt = status?.is_locked ? 1 : 0;
       const expected = await hmacSha256Hex(devTok, `${clientId}|${isLockedInt}|${issuedAt}`);
-      return timingSafeEqualHex(expected, sig);
+      const ok = timingSafeEqualHex(expected, sig);
+      if (ok) {
+        await this.setLastVerifiedIssuedAt(clientId, issuedAt);
+      }
+      return ok;
     } catch (e) {
       console.warn('[OfflineSync] Lock signature verify error:', e);
       return false;
@@ -164,12 +181,12 @@ class OfflineSyncManager {
         const timeoutId = setTimeout(() => controller.abort(), timeout);
         
         try {
-          const devTok = (await AsyncStorage.getItem('client_device_token')) || '';
+          const devTok = await getDeviceToken();
           const response = await fetch(
-            `${apiUrl}/api/device/status/${clientId}?device_token=${encodeURIComponent(devTok)}`,
+            `${apiUrl}/api/device/status/${clientId}`,
             {
               method: 'GET',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', ...deviceAuthHeaders(devTok) },
               signal: controller.signal,
             },
           );
@@ -185,13 +202,27 @@ class OfflineSyncManager {
           // says "unlocked" but the signature is missing/invalid, we keep the
           // device locked — a MITM cannot forge an unlock.
           status._lock_verified = await this.verifyLockSignature(clientId, status);
-          
+
           if (attempt > 0) {
             console.log(`[OfflineSync] API recovered on retry ${attempt}`);
           }
-          
-          // Cache the new status
-          await this.setCachedStatus(clientId, status);
+
+          // Never cache an unverified unlock over a previously locked state.
+          if (status.is_locked === false && status._lock_verified !== true) {
+            const existing = await this.getCachedStatus(clientId);
+            if (existing?.is_locked) {
+              return {
+                ...existing,
+                ...status,
+                is_locked: true,
+                lock_message: existing.lock_message || status.lock_message,
+                _lock_verified: false,
+                offline: false,
+              };
+            }
+          } else {
+            await this.setCachedStatus(clientId, status);
+          }
           
           // Process pending actions
           await this.processPendingActions(clientId, apiUrl);
@@ -240,11 +271,11 @@ class OfflineSyncManager {
       for (const action of cached.pending_actions) {
         try {
           switch (action.type) {
-            case 'location':
-              const devTok = await AsyncStorage.getItem('client_device_token');
+            case 'location': {
+              const devTok = await getDeviceToken();
               await fetch(`${apiUrl}/api/device/location`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...deviceAuthHeaders(devTok) },
                 body: JSON.stringify({
                   client_id: clientId,
                   device_token: devTok || '',
@@ -252,18 +283,25 @@ class OfflineSyncManager {
                 }),
               });
               break;
+            }
 
-            case 'tamper':
+            case 'tamper': {
+              const devTok = await getDeviceToken();
               await fetch(`${apiUrl}/api/clients/${clientId}/report-tamper?tamper_type=${action.data.type}`, {
                 method: 'POST',
+                headers: { ...deviceAuthHeaders(devTok) },
               });
               break;
+            }
 
-            case 'reboot':
+            case 'reboot': {
+              const devTok = await getDeviceToken();
               await fetch(`${apiUrl}/api/clients/${clientId}/report-reboot`, {
                 method: 'POST',
+                headers: { ...deviceAuthHeaders(devTok) },
               });
               break;
+            }
           }
           
           console.log(`[OfflineSync] Synced pending action: ${action.type}`);
@@ -362,6 +400,62 @@ class OfflineSyncManager {
 
   isDeviceOnline(): boolean {
     return this.isOnline;
+  }
+
+  private lastIssuedKey(clientId: string) {
+    return `${CACHE_KEY_PREFIX}${clientId}_last_issued_at`;
+  }
+
+  async getLastVerifiedIssuedAt(clientId: string): Promise<number | null> {
+    try {
+      const raw = await AsyncStorage.getItem(this.lastIssuedKey(clientId));
+      if (!raw) return null;
+      const n = parseInt(raw, 10);
+      return Number.isFinite(n) ? n : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async setLastVerifiedIssuedAt(clientId: string, issuedAt: number): Promise<void> {
+    try {
+      await AsyncStorage.setItem(this.lastIssuedKey(clientId), String(issuedAt));
+    } catch (error) {
+      console.log('[OfflineSync] Failed to persist issued_at', error);
+    }
+  }
+
+  /**
+   * Apply a signed lock/unlock decision from a push notification immediately,
+   * without waiting for the next poll. Returns the merged status when the
+   * signature verifies, or null if the payload must be ignored.
+   */
+  async applySignedPushPayload(clientId: string, data: any): Promise<any | null> {
+    if (!data || (data.action !== 'lock' && data.action !== 'unlock')) {
+      return null;
+    }
+    const candidate = {
+      ...data,
+      is_locked: data.action === 'lock' || data.is_locked === true || data.is_locked === 'true',
+      lock_signature: data.lock_signature,
+      lock_issued_at: typeof data.lock_issued_at === 'string'
+        ? parseInt(data.lock_issued_at, 10)
+        : data.lock_issued_at,
+    };
+    const verified = await this.verifyLockSignature(clientId, candidate);
+    if (!verified) {
+      console.warn('[OfflineSync] Ignoring unsigned or invalid lock push');
+      return null;
+    }
+    const cached = (await this.getCachedStatus(clientId)) || {};
+    const merged = {
+      ...cached,
+      ...candidate,
+      _lock_verified: true,
+      offline: false,
+    };
+    await this.setCachedStatus(clientId, merged);
+    return merged;
   }
 }
 

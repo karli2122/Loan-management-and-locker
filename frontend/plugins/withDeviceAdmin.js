@@ -2,9 +2,11 @@ const { withAndroidManifest, withDangerousMod, withMainApplication } = require('
 const fs = require('fs');
 const path = require('path');
 
+// Official Device Owner component used by the Expo module:
+//   com.paylock.client/expo.modules.emideviceadmin.EMIDeviceAdminReceiver
 function withDeviceAdmin(config) {
   // Get the package name from config
-  const packageName = config.android?.package || 'com.emi.client';
+  const packageName = config.android?.package || 'com.paylock.client';
   
   // Add Device Admin Receiver to AndroidManifest.xml
   config = withAndroidManifest(config, (config) => {
@@ -87,7 +89,7 @@ function withDeviceAdmin(config) {
     'android',
     (config) => {
       const projectRoot = config.modRequest.projectRoot;
-      const pkgName = config.android?.package || 'com.emi.client';
+      const pkgName = config.android?.package || 'com.paylock.client';
       const pkgPath = pkgName.replace(/\./g, '/');
       
       // Create res/xml directory and device_admin.xml
@@ -293,7 +295,7 @@ public class EMIDeviceAdminPackage implements ReactPackage {
   // Register the package in MainApplication
   config = withMainApplication(config, (config) => {
     const mainApplication = config.modResults;
-    const pkgName = config.android?.package || 'com.emi.client';
+    const pkgName = config.android?.package || 'com.paylock.client';
     const isKotlin = mainApplication.language === 'kt' || mainApplication.contents.includes('fun ');
     
     console.log('withDeviceAdmin: MainApplication language:', isKotlin ? 'Kotlin' : 'Java');

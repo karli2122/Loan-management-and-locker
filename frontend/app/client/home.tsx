@@ -33,6 +33,7 @@ import { useVersionCheck } from '../../src/hooks/useVersionCheck';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
 import { getAutoStartInstructions, getOverlayInstructions, getAccessibilityInstructions } from '../../src/utils/deviceInstructions';
 import OfflineSyncManager from '../../src/services/OfflineSyncManager';
+import { deviceAuthHeaders, getDeviceToken } from '../../src/utils/deviceAuth';
 import { startBackgroundLocationTracking, isBackgroundLocationActive } from '../../src/services/BackgroundLocationService';
 import { initializeNotifications } from '../../src/services/BackgroundNotificationService';
 import { sendDeviceInfoUpdateThrottled } from '../../src/services/DeviceInfoService';
@@ -55,6 +56,13 @@ interface ClientStatus {
   is_deleted?: boolean;
   lock_mode?: string;
   admin_firstname?: string;
+  admin_phone?: string;
+  admin_email?: string;
+  payment_instructions?: string;
+  late_fees_accumulated?: number;
+  lock_signature?: string;
+  lock_issued_at?: number;
+  _lock_verified?: boolean;
 }
 
 export default function ClientHome() {
@@ -144,7 +152,7 @@ export default function ClientHome() {
       if (!token) return;
       
       await AsyncStorage.setItem('push_token', token);
-      const devTok = await AsyncStorage.getItem('client_device_token');
+      const devTok = await getDeviceToken();
       const response = await fetch(`${API_URL}/api/device/push-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -576,7 +584,7 @@ export default function ClientHome() {
 
       // Check if online
       if (OfflineSyncManager.isDeviceOnline()) {
-        const devTok = await AsyncStorage.getItem('client_device_token');
+        const devTok = await getDeviceToken();
         await fetch(`${API_URL}/api/device/location`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -620,6 +628,7 @@ export default function ClientHome() {
             // Report tamper attempt (Clear Data detected)
             try {
               await fetch(`${API_URL}/api/clients/${id}/report-tamper?tamper_type=clear_data`, {
+                headers: deviceAuthHeaders(await getDeviceToken()),
                 method: 'POST',
               });
             } catch (e) {
@@ -998,8 +1007,12 @@ export default function ClientHome() {
   useEffect(() => {
     if (!clientId) return;
 
-    // Dynamic polling: 3s when offline (aggressive reconnect), 5s when online
-    const getInterval = () => isOffline ? 3000 : 5000;
+    // Poll faster when locked (2s) so an unlock lands quickly if push is missed.
+    // Offline: 3s to reconnect. Otherwise 5s.
+    const getInterval = () => {
+      if (wasLocked.current) return 2000;
+      return isOffline ? 3000 : 5000;
+    };
     
     const startPolling = () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -1013,19 +1026,39 @@ export default function ClientHome() {
     startPolling();
 
     // Listen for push notifications — immediately refresh status on lock/unlock/warning
-    const notifReceivedSub = Notifications.addNotificationReceivedListener((notification) => {
-      const data = notification.request.content.data;
-      if (data?.action === 'lock' || data?.action === 'unlock' || data?.action === 'warning') {
-        console.log(`[Push] Received ${data.action} notification — refreshing status immediately`);
+    const applyPush = async (data: any, source: string) => {
+      if (!data) return;
+      if (data.action === 'lock' || data.action === 'unlock') {
+        console.log(`[Push] Received ${data.action} from ${source} — applying signed payload`);
+        try {
+          const applied = await OfflineSyncManager.applySignedPushPayload(clientId, data);
+          if (applied) {
+            let statusToSet = { ...applied };
+            if (applied.is_locked === false && applied._lock_verified !== true) {
+              return;
+            }
+            setStatus(prev => ({ ...(prev || {}), ...statusToSet }));
+            if (statusToSet.is_locked !== wasLocked.current) {
+              updateLockState(!!statusToSet.is_locked, statusToSet.lock_message);
+            }
+            return;
+          }
+        } catch (e) {
+          console.log('[Push] signed payload apply failed', e);
+        }
+        // Fallback: poll the signed status endpoint
+        fetchStatus(clientId).catch(() => {});
+        return;
+      }
+      if (data.action === 'warning') {
         fetchStatus(clientId).catch(() => {});
       }
+    };
+    const notifReceivedSub = Notifications.addNotificationReceivedListener((notification) => {
+      applyPush(notification.request.content.data, 'foreground');
     });
     const notifResponseSub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data;
-      if (data?.action === 'lock' || data?.action === 'unlock' || data?.action === 'warning') {
-        console.log(`[Push] User tapped ${data.action} notification — refreshing status`);
-        fetchStatus(clientId).catch(() => {});
-      }
+      applyPush(response.notification.request.content.data, 'tap');
     });
 
     // Handle app state changes
@@ -1283,9 +1316,10 @@ export default function ClientHome() {
   const reportAdminStatus = async (id: string, adminActive: boolean) => {
     if (!id) return;
     try {
-      const devTok = await AsyncStorage.getItem('client_device_token');
-      await fetch(`${API_URL}/api/device/report-admin-status?client_id=${id}&admin_active=${adminActive}&device_token=${encodeURIComponent(devTok || '')}`, {
+      const devTok = await getDeviceToken();
+      await fetch(`${API_URL}/api/device/report-admin-status?client_id=${id}&admin_active=${adminActive}`, {
         method: 'POST',
+        headers: { ...deviceAuthHeaders(devTok || '') },
       });
       console.log(`Admin mode status reported: ${adminActive}`);
     } catch (error) {
@@ -1296,6 +1330,7 @@ export default function ClientHome() {
   const reportReboot = async (id: string) => {
     try {
       const response = await fetch(`${API_URL}/api/clients/${id}/report-reboot`, {
+        headers: deviceAuthHeaders(await getDeviceToken()),
         method: 'POST',
       });
       
@@ -1318,6 +1353,7 @@ export default function ClientHome() {
     
     try {
       const response = await fetch(`${API_URL}/api/clients/${clientId}/report-tamper?tamper_type=${tamperType}`, {
+        headers: deviceAuthHeaders(await getDeviceToken()),
         method: 'POST',
       });
       
@@ -1382,9 +1418,10 @@ export default function ClientHome() {
   const handleClearWarning = async () => {
     if (!clientId) return;
     try {
-      const devTok = await AsyncStorage.getItem('client_device_token');
-      await fetch(`${API_URL}/api/device/clear-warning/${clientId}?device_token=${encodeURIComponent(devTok || '')}`, {
+      const devTok = await getDeviceToken();
+      await fetch(`${API_URL}/api/device/clear-warning/${clientId}`, {
         method: 'POST',
+        headers: { ...deviceAuthHeaders(devTok || '') },
       });
       await fetchStatus(clientId);
     } catch (error) {
@@ -1527,7 +1564,7 @@ export default function ClientHome() {
     if (!clientId) return;
     setLoadingMessages(true);
     try {
-      const token = await AsyncStorage.getItem('client_device_token');
+      const token = await getDeviceToken();
       const resp = await fetch(`${API_URL}/api/messages?client_id=${clientId}&client_token=${token}`);
       if (resp.ok) {
         const data = await resp.json();
@@ -1542,7 +1579,7 @@ export default function ClientHome() {
   const sendChatMessage = async () => {
     if (!chatMessage.trim() || !clientId) return;
     try {
-      const token = await AsyncStorage.getItem('client_device_token');
+      const token = await getDeviceToken();
       const resp = await fetch(`${API_URL}/api/messages?client_id=${clientId}&text=${encodeURIComponent(chatMessage)}&client_token=${token}`, { method: 'POST' });
       if (resp.ok) {
         setChatMessage('');
@@ -1612,6 +1649,39 @@ export default function ClientHome() {
               </View>
             )}
           </View>
+
+          {(status.late_fees_accumulated ?? 0) > 0 && (
+            <View style={styles.lockLoanItem}>
+              <Text style={styles.lockLoanLabel}>{t('lateFees') || 'Late fees'}</Text>
+              <Text style={styles.lockLoanValue}>{formatAmount(status.late_fees_accumulated)}</Text>
+            </View>
+          )}
+
+          {(status.payment_instructions || status.admin_phone || status.admin_email) ? (
+            <View style={styles.lockLoanInfo}>
+              <Text style={[styles.lockLoanLabel, { marginBottom: 6 }]}>
+                {t('howToPay') || 'How to pay / contact your lender'}
+              </Text>
+              {!!status.payment_instructions && (
+                <Text style={styles.lockMessage}>{status.payment_instructions}</Text>
+              )}
+              {!!status.admin_firstname && (
+                <Text style={styles.lockLoanValue}>{status.admin_firstname}</Text>
+              )}
+              {!!status.admin_phone && (
+                <Text style={styles.lockLoanValue}>{status.admin_phone}</Text>
+              )}
+              {!!status.admin_email && (
+                <Text style={styles.lockLoanValue}>{status.admin_email}</Text>
+              )}
+            </View>
+          ) : null}
+
+          {isOffline && (
+            <Text style={[styles.lockMessage, { opacity: 0.8 }]}>
+              {t('offlineLocked') || 'You are offline. This device stays locked until a signed unlock is received.'}
+            </Text>
+          )}
           
           {/* Protection Status */}
           <View style={styles.protectionStatus}>

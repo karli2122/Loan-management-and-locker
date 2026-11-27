@@ -44,7 +44,7 @@ This should be done at your shop/office before handing the device to the custome
 4. **Connect to Computer and Run ADB Command**
    ```bash
    # For Client App
-   adb shell dpm set-device-owner com.emi.client/.DeviceAdminReceiver
+   adb shell dpm set-device-owner com.paylock.client/expo.modules.emideviceadmin.EMIDeviceAdminReceiver
    ```
 
 5. **Verify Device Owner**
@@ -70,7 +70,7 @@ For bulk device setup, you can use QR code provisioning:
 #### QR Code Content (JSON):
 ```json
 {
-  "android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME": "com.emi.client/.DeviceAdminReceiver",
+  "android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME": "com.paylock.client/expo.modules.emideviceadmin.EMIDeviceAdminReceiver",
   "android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION": "https://your-server.com/emi-client.apk",
   "android.app.extra.PROVISIONING_SKIP_ENCRYPTION": true
 }
@@ -127,7 +127,7 @@ console.log('Device Info:', info);
 **Warning**: Only do this for testing. In production, Device Owner should remain active.
 
 ```bash
-adb shell dpm remove-active-admin com.emi.client/.DeviceAdminReceiver
+adb shell dpm remove-active-admin com.paylock.client/expo.modules.emideviceadmin.EMIDeviceAdminReceiver
 ```
 
 ---
