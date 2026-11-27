@@ -5,21 +5,40 @@ import logging
 
 from database import db
 from models.schemas import (
-    Client, ClientStatusResponse,
+    ClientStatusResponse,
     DeviceRegistration, LocationUpdate, PushTokenUpdate, DeviceInfoUpdate
 )
 from utils.exceptions import ValidationException
 from utils.auth import verify_device, enforce_client_scope, sign_lock_state
 from utils.dependencies import require_admin
+from utils.calculations import amount_due_from_loan, money
+from utils.timeutils import date_only, utc_now
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Device"])
 
 
+def lock_mode_from_registration_code(code: str, stored: str = None) -> str:
+    """Resolve lock mode from a registration code.
+
+    New codes: 16 hex chars = device_admin, 17 = device_owner.
+    Legacy codes: 8 = device_admin, 9 = device_owner.
+    If the client already has an explicit lock_mode, that wins.
+    """
+    if stored in ("device_admin", "device_owner"):
+        return stored
+    n = len((code or "").strip())
+    if n >= 17 or n == 9:
+        return "device_owner"
+    return "device_admin"
+
+
 @router.post("/device/register")
 async def register_device(registration: DeviceRegistration):
     """Register a device with a registration code.
-    8-digit code = Device Admin mode, 9-digit code = Device Owner mode.
+
+    16-char code = Device Admin mode, 17-char code = Device Owner mode.
+    Legacy 8/9-character codes are still accepted.
     """
     import uuid
     client = await db.clients.find_one({"registration_code": registration.registration_code})
@@ -29,9 +48,8 @@ async def register_device(registration: DeviceRegistration):
     if client.get("is_registered"):
         raise ValidationException("This device is already registered")
     
-    # Determine lock mode from code length: 8 = device_admin, 9 = device_owner
     code = registration.registration_code.strip()
-    lock_mode = "device_owner" if len(code) == 9 else "device_admin"
+    lock_mode = lock_mode_from_registration_code(code, client.get("lock_mode"))
     
     # Generate a device_token for client-side auth (messaging, etc.)
     device_token = str(uuid.uuid4())
@@ -96,52 +114,46 @@ async def get_device_status(client_id: str, device_token: str = Query(default=""
          "outstanding_balance": 1, "total_paid": 1, "due_date": 1, "monthly_emi": 1}
     )
     
+    late_fees = float(client.get("late_fees_accumulated") or 0)
     if active_loan:
-        loan_amount = active_loan.get("loan_amount", 0)
-        interest_rate = active_loan.get("interest_rate", 0)
-        total_amount_due = active_loan.get("total_amount_due", 0)
-        outstanding_balance = active_loan.get("outstanding_balance", 0)
-        total_paid = active_loan.get("total_paid", 0) or 0
-        monthly_emi = active_loan.get("monthly_emi", 0) or 0
-        
-        # Calculate amount due
-        if outstanding_balance and outstanding_balance > 0:
-            amount_due = outstanding_balance
-        elif total_amount_due and total_amount_due > loan_amount:
-            amount_due = total_amount_due - total_paid
-        elif loan_amount > 0 and interest_rate > 0:
-            amount_due = loan_amount + (loan_amount * interest_rate / 100) - total_paid
-        else:
-            amount_due = max(0, loan_amount - total_paid)
-        
-        # Parse due date from active loan
-        raw_due = active_loan.get("due_date")
-        if raw_due:
-            if isinstance(raw_due, datetime):
-                due_date_str = raw_due.strftime("%Y-%m-%d")
-            else:
-                due_date_str = str(raw_due)[:10]
-        else:
-            due_date_str = None
+        amount_due = amount_due_from_loan(active_loan)
+        outstanding_balance = money(active_loan.get("outstanding_balance") if active_loan.get("outstanding_balance") is not None else amount_due)
+        monthly_emi = money(
+            active_loan.get("installment_amount")
+            or active_loan.get("monthly_emi")
+            or active_loan.get("next_payment_amount")
+            or 0
+        )
+        late_fees = money(active_loan.get("late_fees_accumulated") or late_fees)
+        due_date_str = date_only(active_loan.get("due_date") or active_loan.get("next_payment_date"))
     else:
-        # No active loan — show zero
-        amount_due = 0
-        due_date_str = None
-        monthly_emi = 0
-        outstanding_balance = 0
+        # Fall back to the client ledger when no loan row exists.
+        amount_due = amount_due_from_loan(client)
+        due_date_str = date_only(client.get("next_payment_due") or client.get("loan_due_date"))
+        monthly_emi = money(client.get("installment_amount") or client.get("monthly_emi") or 0)
+        outstanding_balance = money(client.get("outstanding_balance") if client.get("outstanding_balance") is not None else amount_due)
     
     # Get admin's plan and name for client-side feature gating
     admin_plan = None
     admin_firstname = None
+    admin_phone = None
+    admin_email = None
+    payment_instructions = client.get("payment_instructions") or ""
     admin_id = client.get("admin_id")
     if admin_id:
-        admin = await db.admins.find_one({"id": admin_id}, {"_id": 0, "plan": 1, "first_name": 1})
+        admin = await db.admins.find_one(
+            {"id": admin_id},
+            {"_id": 0, "plan": 1, "first_name": 1, "phone": 1, "email": 1, "payment_instructions": 1},
+        )
         if admin:
             admin_plan = admin.get("plan")
             admin_firstname = admin.get("first_name")
+            admin_phone = admin.get("phone")
+            admin_email = admin.get("email")
+            payment_instructions = payment_instructions or admin.get("payment_instructions") or ""
     
     is_locked_val = client.get("is_locked", False)
-    issued_at = int(datetime.utcnow().timestamp())
+    issued_at = int(utc_now().timestamp())
     lock_sig = sign_lock_state(client_id, is_locked_val, device_token, issued_at)
 
     return ClientStatusResponse(
@@ -159,6 +171,10 @@ async def get_device_status(client_id: str, device_token: str = Query(default=""
         lock_mode=client.get("lock_mode", "device_admin"),
         admin_plan=admin_plan,
         admin_firstname=admin_firstname,
+        admin_phone=admin_phone,
+        admin_email=admin_email,
+        payment_instructions=payment_instructions or None,
+        late_fees_accumulated=round(late_fees, 2),
         lock_signature=lock_sig,
         lock_issued_at=issued_at,
     )

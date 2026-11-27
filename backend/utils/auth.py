@@ -1,5 +1,6 @@
 """Authentication and authorization utilities"""
 import hashlib
+import hmac
 import logging
 from datetime import datetime
 from argon2 import PasswordHasher
@@ -28,7 +29,7 @@ def verify_password(password: str, password_hash: str) -> bool:
     # Check if it's a legacy SHA-256 hash (64 hex characters)
     if len(password_hash) == 64 and all(c in '0123456789abcdef' for c in password_hash):
         legacy_hash = hashlib.sha256(password.encode()).hexdigest()
-        return legacy_hash == password_hash
+        return hmac.compare_digest(legacy_hash, password_hash)
     
     try:
         _argon2_hasher.verify(password_hash, password)
@@ -114,8 +115,6 @@ def sign_lock_state(client_id: str, is_locked: bool, device_token: str, issued_a
     network attacker cannot forge an "unlocked" response. issued_at (unix
     seconds) lets the device reject stale/replayed payloads.
     """
-    import hmac
-    import hashlib
     msg = f"{client_id}|{1 if is_locked else 0}|{issued_at}".encode()
     return hmac.new(str(device_token).encode(), msg, hashlib.sha256).hexdigest()
 
@@ -140,7 +139,6 @@ async def verify_device(client_id: str, device_token: str) -> dict:
 
     stored = client.get("device_token")
     # Constant-time comparison to avoid timing attacks.
-    import hmac
     if not stored or not hmac.compare_digest(str(stored), str(device_token)):
         raise AuthenticationException("Invalid device credentials")
 

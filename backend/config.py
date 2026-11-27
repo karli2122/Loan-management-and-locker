@@ -11,7 +11,8 @@ MONGO_URL = os.getenv('MONGO_URL', 'mongodb://localhost:27017')
 DB_NAME = os.getenv('DB_NAME', 'emi_lock_db')
 
 # Token configuration
-TOKEN_EXPIRY_HOURS = 720
+# Default 24 hours. Set TOKEN_EXPIRY_HOURS in the environment (e.g. 720) for longer sessions.
+TOKEN_EXPIRY_HOURS = int(os.getenv('TOKEN_EXPIRY_HOURS', '24'))
 
 # Logging
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')

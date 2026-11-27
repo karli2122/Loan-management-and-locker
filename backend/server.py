@@ -5,7 +5,9 @@ This is the main FastAPI application file that sets up middleware,
 exception handlers, and includes all route modules.
 """
 from fastapi import FastAPI
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
+from urllib.parse import parse_qsl, urlencode
 from starlette.responses import Response, JSONResponse, FileResponse, HTMLResponse
 import logging
 import uuid
@@ -93,14 +95,21 @@ except ImportError:  # slowapi not installed yet
 # A wildcard origin combined with allow_credentials=True is unsafe and
 # disallowed by browsers. Configure ALLOWED_ORIGINS as a comma-separated list
 # of your admin/portal domains in the environment.
+_app_env = (os.environ.get("ENV") or os.environ.get("ENVIRONMENT") or os.environ.get("APP_ENV") or "").lower()
 _origins_env = os.environ.get("ALLOWED_ORIGINS", "").strip()
-allowed_origins = [o.strip() for o in _origins_env.split(",") if o.strip()] or ["*"]
-allow_credentials = allowed_origins != ["*"]
-if allowed_origins == ["*"]:
+allowed_origins = [o.strip() for o in _origins_env.split(",") if o.strip()]
+if not allowed_origins:
+    if _app_env in ("production", "prod"):
+        raise RuntimeError(
+            "ALLOWED_ORIGINS must be set to an explicit origin list in production. "
+            "Refusing to start with a wildcard CORS policy."
+        )
+    allowed_origins = ["*"]
     logger.warning(
         "ALLOWED_ORIGINS is not set; falling back to '*' with credentials "
-        "disabled. Set ALLOWED_ORIGINS in production."
+        "disabled. Set ALLOWED_ORIGINS (and ENV=production) in production."
     )
+allow_credentials = allowed_origins != ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -108,7 +117,41 @@ app.add_middleware(
     allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+
+class BearerTokenCompatMiddleware(BaseHTTPMiddleware):
+    """Copy Authorization Bearer / X-Device-Token into query params.
+
+    Existing routes still declare ``admin_token`` / ``device_token`` as query
+    parameters. This lets updated clients send tokens in headers (preferred)
+    while older builds can keep using the query-string fallback.
+    """
+
+    async def dispatch(self, request, call_next):
+        q = dict(parse_qsl(request.scope.get("query_string", b"").decode(), keep_blank_values=True))
+        changed = False
+        auth = request.headers.get("authorization") or ""
+        token = ""
+        parts = auth.split(" ", 1)
+        if len(parts) == 2 and parts[0].lower() == "bearer":
+            token = parts[1].strip()
+        elif auth.strip() and " " not in auth.strip():
+            token = auth.strip()
+        if token and "admin_token" not in q:
+            q["admin_token"] = token
+            changed = True
+        dev = request.headers.get("x-device-token")
+        if dev and "device_token" not in q:
+            q["device_token"] = dev.strip()
+            changed = True
+        if changed:
+            request.scope["query_string"] = urlencode(q).encode()
+        return await call_next(request)
+
+
+app.add_middleware(BearerTokenCompatMiddleware)
 
 
 # ===================== EXCEPTION HANDLERS =====================
