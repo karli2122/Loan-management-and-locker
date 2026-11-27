@@ -2,7 +2,7 @@ import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, Alert, Modal,
+  ActivityIndicator, Alert, Modal, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -34,6 +34,12 @@ function BulkImportContent() {
   const [reconcileResult, setReconcileResult] = useState(null);
   const [showResultsModal, setShowResultsModal] = useState(false);
   const [activeTab, setActiveTab] = useState('reconcile');
+  const [preview, setPreview] = useState(null);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [plans, setPlans] = useState([]);
+  const [selectedPlanId, setSelectedPlanId] = useState('');
+  const [assignIds, setAssignIds] = useState('');
+  const [assigning, setAssigning] = useState(false);
 
   const pickAndUploadCSV = async () => {
     try {
@@ -71,6 +77,110 @@ function BulkImportContent() {
       Alert.alert(t('error') || 'Error', e.message);
     } finally {
       setUploading(false);
+    }
+  };
+
+
+  const pickAndPreviewCSV = async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({ type: 'text/csv' });
+      if (res.canceled) return;
+      const file = res.assets[0];
+      setUploading(true);
+      setPreview(null);
+      setImportResult(null);
+      const token = await getSecureItem('admin_token');
+      const formData = new FormData();
+      formData.append('admin_token', token || '');
+      formData.append('file', {
+        uri: file.uri,
+        name: file.name || 'import.csv',
+        type: 'text/csv',
+      });
+      const resp = await authedFetch(`${API_URL}/api/import/clients/csv/preview`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        Alert.alert(t('importFailed') || 'Preview failed', data.error || data.detail || 'Unknown error');
+        return;
+      }
+      setPreview(data);
+      setPendingFile(file);
+    } catch (e) {
+      Alert.alert(t('error') || 'Error', e.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const confirmPendingImport = async () => {
+    if (!pendingFile) return;
+    setUploading(true);
+    try {
+      const token = await getSecureItem('admin_token');
+      const formData = new FormData();
+      formData.append('admin_token', token || '');
+      formData.append('skip_duplicates', 'false');
+      formData.append('file', {
+        uri: pendingFile.uri,
+        name: pendingFile.name || 'import.csv',
+        type: 'text/csv',
+      });
+      const resp = await authedFetch(`${API_URL}/api/import/clients/csv`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        setImportResult(data);
+        setPreview(null);
+        Alert.alert(t('importComplete') || 'Import Complete', `${data.total_imported || data.imported || 0} clients imported`);
+      } else {
+        Alert.alert(t('importFailed') || 'Import Failed', data.error || data.detail || 'Unknown error');
+      }
+    } catch (e) {
+      Alert.alert(t('error') || 'Error', e.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const loadPlans = async () => {
+    try {
+      const resp = await authedFetch(`${API_URL}/api/loan-plans`);
+      if (resp.ok) {
+        const data = await resp.json();
+        setPlans(Array.isArray(data) ? data : (data.plans || []));
+      }
+    } catch (e) {
+      console.log('load plans', e);
+    }
+  };
+
+  React.useEffect(() => { loadPlans(); }, []);
+
+  const assignPlan = async () => {
+    const ids = assignIds.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean);
+    if (!selectedPlanId || ids.length === 0) {
+      Alert.alert('Missing data', 'Choose a plan and enter one or more client IDs.');
+      return;
+    }
+    setAssigning(true);
+    try {
+      const resp = await authedFetch(`${API_URL}/api/clients/bulk-assign-plan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_ids: ids, loan_plan_id: selectedPlanId }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.detail || data.error || 'Assign failed');
+      Alert.alert('Plan assigned', `Updated ${data.updated}, skipped ${data.skipped}`);
+    } catch (e) {
+      Alert.alert(t('error') || 'Error', e.message);
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -256,19 +366,65 @@ function BulkImportContent() {
 
             <TouchableOpacity
               style={[styles.uploadBtn, uploading && styles.uploadBtnDisabled]}
-              onPress={pickAndUploadCSV}
+              onPress={pickAndPreviewCSV}
               disabled={uploading}
-              data-testid="import-upload-btn"
+              data-testid="import-preview-btn"
             >
               {uploading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <Ionicons name="document-attach" size={22} color="#fff" style={{ marginRight: 8 }} />
-                  <Text style={styles.uploadBtnText}>Select CSV File</Text>
+                  <Ionicons name="eye" size={22} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={styles.uploadBtnText}>Preview CSV</Text>
                 </>
               )}
             </TouchableOpacity>
+
+            {preview?.summary && (
+              <View style={[styles.resultCard, { backgroundColor: colors.card }]} data-testid="import-preview">
+                <Text style={[styles.resultTitle, { color: colors.text }]}>Validation preview</Text>
+                <Text style={[styles.resultText, { color: colors.text }]}>
+                  {preview.summary.total} rows · {preview.summary.ok} ok · {preview.summary.duplicates} duplicates · {preview.summary.errors} errors
+                </Text>
+                {(preview.rows || []).slice(0, 12).map((row) => (
+                  <Text key={row.row} style={{ color: row.status === 'error' ? '#EF4444' : colors.textMuted, fontSize: 12, marginTop: 4 }}>
+                    Row {row.row}: {row.status} {row.data?.name || ''} {row.errors?.join(', ')}
+                  </Text>
+                ))}
+                <TouchableOpacity
+                  style={[styles.uploadBtn, { marginTop: 12, backgroundColor: preview.summary.errors ? '#64748B' : '#059669' }]}
+                  onPress={confirmPendingImport}
+                  disabled={uploading || !pendingFile}
+                >
+                  <Text style={styles.uploadBtnText}>Import {preview.summary.total} rows</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <View style={[styles.infoCard, { backgroundColor: colors.card, marginTop: 16 }]}>
+              <Text style={[styles.infoTitle, { color: colors.text }]}>Bulk plan assignment</Text>
+              <Text style={[styles.infoDesc, { color: colors.textMuted }]}>
+                Enter client IDs (comma-separated) and choose a plan.
+              </Text>
+              {plans.map((plan) => (
+                <TouchableOpacity key={plan.id} onPress={() => setSelectedPlanId(plan.id)} style={{ paddingVertical: 8 }}>
+                  <Text style={{ color: selectedPlanId === plan.id ? '#2563EB' : colors.text, fontWeight: selectedPlanId === plan.id ? '700' : '400' }}>
+                    {plan.name} ({plan.interest_rate}%)
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              <TextInput
+                style={{ borderWidth: 1, borderColor: colors.border || '#334155', borderRadius: 8, color: colors.text, padding: 10, marginTop: 8 }}
+                placeholder="client-id-1, client-id-2"
+                placeholderTextColor="#64748B"
+                value={assignIds}
+                onChangeText={setAssignIds}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity style={[styles.uploadBtn, { marginTop: 12 }]} onPress={assignPlan} disabled={assigning}>
+                {assigning ? <ActivityIndicator color="#fff" /> : <Text style={styles.uploadBtnText}>Assign plan</Text>}
+              </TouchableOpacity>
+            </View>
 
             {importResult && (
               <View style={[styles.resultCard, { backgroundColor: colors.card }]} data-testid="import-results">

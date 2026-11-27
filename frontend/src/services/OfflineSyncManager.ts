@@ -57,7 +57,7 @@ class OfflineSyncManager {
 
   /**
    * Verify the server's signed lock decision. Returns true only if the
-   * signature matches HMAC(device_token, "clientId|isLocked|issuedAt") and the
+   * signature matches HMAC(device_token, "clientId|isLocked|issuedAt|lockLevel") and the
    * timestamp is recent. Callers treat an unverified UNLOCK as "stay locked".
    */
   async verifyLockSignature(clientId: string, status: any): Promise<boolean> {
@@ -89,8 +89,14 @@ class OfflineSyncManager {
       if (!devTok) return false;
 
       const isLockedInt = status?.is_locked ? 1 : 0;
-      const expected = await hmacSha256Hex(devTok, `${clientId}|${isLockedInt}|${issuedAt}`);
-      const ok = timingSafeEqualHex(expected, sig);
+      const level = status?.lock_level || (status?.is_locked ? 'full' : 'none');
+      const expected = await hmacSha256Hex(devTok, `${clientId}|${isLockedInt}|${issuedAt}|${level}`);
+      let ok = timingSafeEqualHex(expected, sig);
+      if (!ok) {
+        // Accept payloads signed before lock_level was added to the message.
+        const legacy = await hmacSha256Hex(devTok, `${clientId}|${isLockedInt}|${issuedAt}`);
+        ok = timingSafeEqualHex(legacy, sig);
+      }
       if (ok) {
         await this.setLastVerifiedIssuedAt(clientId, issuedAt);
       }

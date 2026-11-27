@@ -26,6 +26,9 @@ interface HeartbeatData {
   android_version: string | null;
   device_model: string | null;
   imei: string | null;
+  app_version?: string | null;
+  device_owner_active?: boolean | null;
+  admin_mode_active?: boolean | null;
 }
 
 /**
@@ -39,7 +42,24 @@ async function collectDeviceData(): Promise<Omit<HeartbeatData, 'client_id'>> {
     android_version: null,
     device_model: null,
     imei: null,
+    app_version: null,
+    device_owner_active: null,
+    admin_mode_active: null,
   };
+  try {
+    data.app_version = Application.nativeApplicationVersion || Application.nativeBuildVersion || null;
+  } catch (e) {
+    console.log('[Heartbeat] App version error:', e);
+  }
+  try {
+    if (Platform.OS === 'android') {
+      const { devicePolicy } = require('../utils/DevicePolicy');
+      data.admin_mode_active = await devicePolicy.isAdminActive();
+      data.device_owner_active = await devicePolicy.isDeviceOwner();
+    }
+  } catch (e) {
+    console.log('[Heartbeat] Admin/owner status error:', e);
+  }
 
   try {
     // Battery level
@@ -145,6 +165,7 @@ async function sendHeartbeat(): Promise<boolean> {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        ...deviceAuthHeaders(devTok || undefined),
       },
       body: JSON.stringify(payload),
     });

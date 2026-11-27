@@ -161,17 +161,47 @@ interface LockModalProps {
   onChangeMessage: (v: string) => void;
   onConfirm: () => void;
   onClose: () => void;
+  lockLevel?: string;
+  onChangeLevel?: (v: string) => void;
+  lockAllowlist?: string;
+  onChangeAllowlist?: (v: string) => void;
 }
 
 export const LockModal = ({
   visible, t, actionLoading, lockMessage,
   onChangeMessage, onConfirm, onClose,
+  lockLevel = 'full', onChangeLevel,
+  lockAllowlist = '', onChangeAllowlist,
 }: LockModalProps) => (
   <Modal visible={visible} transparent animationType="fade">
     <View style={styles.modalOverlay}>
       <View style={styles.modalContent}>
         <Text style={styles.modalTitle}>{t('lockDevice')}</Text>
         <Text style={styles.modalSubtitle}>{t('customizeLockMessage')}</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 }}>
+          {['warning', 'restricted', 'full'].map((level) => (
+            <TouchableOpacity
+              key={level}
+              onPress={() => onChangeLevel && onChangeLevel(level)}
+              style={{
+                paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, marginRight: 8, marginBottom: 6,
+                backgroundColor: lockLevel === level ? '#2563EB' : '#1E3050',
+              }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '600', textTransform: 'capitalize' }}>{level}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {lockLevel === 'restricted' && (
+          <TextInput
+            style={styles.modalInput}
+            placeholder="Allowlist packages (comma-separated). Phone, SMS, and payment apps are included by default."
+            placeholderTextColor="#64748B"
+            value={lockAllowlist}
+            onChangeText={onChangeAllowlist}
+            autoCapitalize="none"
+          />
+        )}
         <TextInput
           style={styles.modalInput}
           placeholder={t('enterLockMessage')}

@@ -47,6 +47,7 @@ import {
 } from '../../src/components/client-details';
 import type { Client, LoanHistoryItem, LoanPreview } from '../../src/components/client-details';
 import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
+import { DeviceHealthCard } from '../../src/components/admin/DeviceHealthCard';
 
 export default function ClientDetails() {
   const router = useRouter();
@@ -85,6 +86,8 @@ export default function ClientDetails() {
   const [selectedLoan, setSelectedLoan] = useState(null);  // Selected loan details
   const [warningMessage, setWarningMessage] = useState('');
   const [lockMessage, setLockMessage] = useState('');
+  const [lockLevel, setLockLevel] = useState('full');
+  const [lockAllowlist, setLockAllowlist] = useState('');
   const [editDeviceMake, setEditDeviceMake] = useState('');
   const [editDeviceModel, setEditDeviceModel] = useState('');
   const [editDevicePrice, setEditDevicePrice] = useState('');
@@ -293,7 +296,8 @@ export default function ClientDetails() {
     setActionLoading(true);
     try {
       const adminQuery = await buildAdminTokenQuery(true);
-      const response = await authedFetch(`${API_URL}/api/clients/${id}/lock?message=${encodeURIComponent(lockMessage)}${adminQuery}`, { method: 'POST' });
+      const allow = lockAllowlist.trim() ? `&lock_allowlist=${encodeURIComponent(lockAllowlist)}` : '';
+      const response = await authedFetch(`${API_URL}/api/clients/${id}/lock?message=${encodeURIComponent(lockMessage)}&lock_level=${encodeURIComponent(lockLevel)}${allow}${adminQuery}`, { method: 'POST' });
       if (!response.ok) throw new Error('Failed to lock device');
       await fetchClient();
       setLockModal(false);
@@ -684,6 +688,7 @@ export default function ClientDetails() {
 
         {/* Device Info - Professional Feature, hidden when uninstall allowed */}
         {!client.uninstall_allowed && canAccess('device_info') ? (
+          <>
           <DeviceInfo
             client={client}
             colors={colors}
@@ -694,6 +699,8 @@ export default function ClientDetails() {
             onOpenMap={openMap}
             onFetchPrice={handleFetchPrice}
           />
+          {id ? <DeviceHealthCard clientId={String(id)} colors={colors} /> : null}
+          </>
         ) : !client.uninstall_allowed ? (
           <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: '#1E3A5F', borderRadius: 12, padding: 16, alignItems: 'center' }}>
             <View style={{ backgroundColor: 'rgba(100, 116, 139, 0.2)', borderRadius: 50, padding: 12, marginBottom: 8 }}>
@@ -975,6 +982,10 @@ export default function ClientDetails() {
         t={t}
         actionLoading={actionLoading}
         lockMessage={lockMessage}
+        lockLevel={lockLevel}
+        onChangeLevel={setLockLevel}
+        lockAllowlist={lockAllowlist}
+        onChangeAllowlist={setLockAllowlist}
         onChangeMessage={setLockMessage}
         onConfirm={handleLock}
         onClose={() => setLockModal(false)}

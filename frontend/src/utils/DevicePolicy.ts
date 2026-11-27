@@ -707,6 +707,63 @@ class DevicePolicyManager {
     }
   }
 
+  async setPackagesSuspended(packages: string[], suspended: boolean): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.setPackagesSuspended?.(packages, suspended)) || 'not_available';
+    } catch (error) {
+      console.log('setPackagesSuspended error:', error);
+      return 'error';
+    }
+  }
+
+  /** Restricted mode: suspend everything except the allowlist (Device Owner). */
+  async applyRestrictedLock(allowlist: string[]): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.applyRestrictedLock?.(allowlist)) || 'not_available';
+    } catch (error) {
+      console.log('applyRestrictedLock error:', error);
+      return 'error';
+    }
+  }
+
+  async clearRestrictedLock(): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try {
+      return (await nativeModule?.clearRestrictedLock?.()) || 'not_available';
+    } catch (error) {
+      console.log('clearRestrictedLock error:', error);
+      return 'error';
+    }
+  }
+
+  /**
+   * Apply a server-chosen lock level.
+   * - full: existing kiosk / overlay lock
+   * - restricted: package suspension + allowlist, no full kiosk
+   * - warning / none: clear restrictions
+   */
+  async applyLockLevel(level: string, allowlist: string[] = []): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    const normalized = (level || 'none').toLowerCase();
+    try {
+      if (normalized === 'restricted') {
+        await this.stopKioskMode().catch(() => {});
+        return await this.applyRestrictedLock(allowlist);
+      }
+      if (normalized === 'full') {
+        await this.clearRestrictedLock().catch(() => {});
+        return 'full';
+      }
+      await this.clearRestrictedLock().catch(() => {});
+      return 'cleared';
+    } catch (error) {
+      console.log('applyLockLevel error:', error);
+      return 'error';
+    }
+  }
+
   /**
    * Disable immersive mode — restores status bar and navigation bar.
    */

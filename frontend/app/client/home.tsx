@@ -62,6 +62,8 @@ interface ClientStatus {
   late_fees_accumulated?: number;
   lock_signature?: string;
   lock_issued_at?: number;
+  lock_level?: 'none' | 'warning' | 'restricted' | 'full' | string;
+  lock_allowlist?: string[];
   _lock_verified?: boolean;
 }
 
@@ -300,17 +302,19 @@ export default function ClientHome() {
     }
   };
 
-  const updateLockState = async (locked: boolean, message?: string) => {
+  const updateLockState = async (locked: boolean, message?: string, lockLevel?: string, allowlist?: string[]) => {
     try {
+      const level = (lockLevel || (locked ? 'full' : 'none')).toLowerCase();
+      const restricted = level === 'restricted';
+      const fullLock = locked && !restricted;
       // Save lock state for offline enforcement and autostart
-      await devicePolicy.setLockState(locked, message);
-      // Save to native SharedPreferences for BootReceiver + Overlay watchdog
-      await devicePolicy.setNativeLockState(locked);
+      // Restricted mode is "locked" for HMAC but must not start kiosk.
+      await devicePolicy.setLockState(fullLock, message);
+      await devicePolicy.setNativeLockState(fullLock);
       wasLocked.current = locked;
-
-      // Manage immersive mode, kiosk mode, and overlay based on lock state
       if (Platform.OS === 'android') {
-        if (locked) {
+        await devicePolicy.applyLockLevel(level, allowlist || []);
+        if (fullLock) {
           StatusBar.setHidden(true, 'none');
           await devicePolicy.enableImmersiveMode();
           await devicePolicy.collapseStatusBar();
@@ -326,6 +330,12 @@ export default function ClientHome() {
             await devicePolicy.setAsDefaultLauncher();
             await devicePolicy.setLockTaskPackages(['com.paylock.client']);
           }
+        } else if (restricted) {
+          // Keep the phone usable for allowlisted apps; no kiosk overlay.
+          StatusBar.setHidden(false, 'none');
+          await devicePolicy.stopKioskMode().catch(() => {});
+          await devicePolicy.setCameraDisabled(false);
+          await devicePolicy.setBluetoothDisabled(false);
         } else {
           // UNLOCK: Stop kiosk FIRST to unpin the app immediately
           await devicePolicy.stopKioskMode();
@@ -492,19 +502,24 @@ export default function ClientHome() {
       
       // Update lock state if changed - save message for offline use
       if (statusToSet.is_locked !== wasLocked.current) {
-        updateLockState(statusToSet.is_locked, statusToSet.lock_message);
+        updateLockState(statusToSet.is_locked, statusToSet.lock_message, statusToSet.lock_level, statusToSet.lock_allowlist);
       } else if (statusToSet.is_locked && Platform.OS === 'android') {
-        // CRITICAL: Re-apply protections on EVERY poll while locked.
-        // Android may kill kiosk/overlay/immersive services at any time
-        // (Doze mode, battery optimization, OOM killer). Without this,
-        // the lockscreen "disappears" because services die but updateLockState
-        // is never called again (is_locked === wasLocked.current === true).
-        devicePolicy.startKioskMode().catch(() => {});
-        devicePolicy.enableImmersiveMode().catch(() => {});
-        devicePolicy.collapseStatusBar().catch(() => {});
-        devicePolicy.startOverlayBlocker().catch(() => {});
-        devicePolicy.startForegroundMonitor().catch(() => {});
-        StatusBar.setHidden(true, 'none');
+        const level = (statusToSet.lock_level || 'full').toLowerCase();
+        if (level === 'restricted') {
+          devicePolicy.applyRestrictedLock(statusToSet.lock_allowlist || []).catch(() => {});
+        } else {
+          // CRITICAL: Re-apply protections on EVERY poll while locked.
+          // Android may kill kiosk/overlay/immersive services at any time
+          // (Doze mode, battery optimization, OOM killer). Without this,
+          // the lockscreen "disappears" because services die but updateLockState
+          // is never called again (is_locked === wasLocked.current === true).
+          devicePolicy.startKioskMode().catch(() => {});
+          devicePolicy.enableImmersiveMode().catch(() => {});
+          devicePolicy.collapseStatusBar().catch(() => {});
+          devicePolicy.startOverlayBlocker().catch(() => {});
+          devicePolicy.startForegroundMonitor().catch(() => {});
+          StatusBar.setHidden(true, 'none');
+        }
       }
     } catch (error) {
       console.error('Error fetching status:', error);
@@ -1039,7 +1054,7 @@ export default function ClientHome() {
             }
             setStatus(prev => ({ ...(prev || {}), ...statusToSet }));
             if (statusToSet.is_locked !== wasLocked.current) {
-              updateLockState(!!statusToSet.is_locked, statusToSet.lock_message);
+              updateLockState(!!statusToSet.is_locked, statusToSet.lock_message, statusToSet.lock_level, statusToSet.lock_allowlist);
             }
             return;
           }
@@ -1441,7 +1456,7 @@ export default function ClientHome() {
 
   // Engage protection services when device is locked (overlay handles re-fastening)
   useEffect(() => {
-    if (!status?.is_locked || Platform.OS !== 'android') return;
+    if (!status?.is_locked || status.lock_level === 'restricted' || Platform.OS !== 'android') return;
     
     // Start all protection services once
     StatusBar.setHidden(true, 'none');
@@ -1477,7 +1492,7 @@ export default function ClientHome() {
   // Handle incoming calls when locked — mute and reject them
   // Also enable DND to block all notification display
   useEffect(() => {
-    if (!status?.is_locked || Platform.OS !== 'android') return;
+    if (!status?.is_locked || status.lock_level === 'restricted' || Platform.OS !== 'android') return;
     // Mute ringer + enable DND + cancel existing notifications
     devicePolicy.muteRinger().catch(() => {});
     devicePolicy.enableDndMode().catch(() => {});
@@ -1604,7 +1619,7 @@ export default function ClientHome() {
 
   // Lock Screen Overlay - Full screen, no escape
   // Show BEFORE loading spinner so cached lock state is immediately visible on restart
-  if (status?.is_locked) {
+  if (status?.is_locked && (status.lock_level || 'full') !== 'restricted') {
     const isDeviceOwner = status.lock_mode === 'device_owner';
     return (
       <Pressable 
@@ -1730,6 +1745,14 @@ export default function ClientHome() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {status?.lock_level === 'restricted' && (
+        <View style={{ backgroundColor: '#B45309', padding: 12, flexDirection: 'row', alignItems: 'center' }}>
+          <Ionicons name="apps" size={18} color="#fff" />
+          <Text style={{ color: '#fff', marginLeft: 8, flex: 1, fontWeight: '600' }}>
+            {status.lock_message || 'Some apps are restricted until your payment is received. Phone, SMS, and payment apps remain available.'}
+          </Text>
+        </View>
+      )}
       {/* Update Available Modal */}
       {showUpdateModal && versionUpdateInfo && (
         <Modal transparent animationType="fade" visible={showUpdateModal}>

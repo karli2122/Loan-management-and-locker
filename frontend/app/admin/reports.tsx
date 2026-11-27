@@ -21,6 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LineChart, PieChart } from 'react-native-chart-kit';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { useTheme } from '../../src/context/ThemeContext';
@@ -58,6 +59,7 @@ export default function Reports() {
   
   // PDF/Export
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [exportingFmt, setExportingFmt] = useState<string | null>(null);
   const [calculatingFees, setCalculatingFees] = useState(false);
 
   const months = language === 'et' 
@@ -234,6 +236,32 @@ export default function Reports() {
   };
 
   // Generate PDF report content and share
+  const exportServerReport = async (fmt: 'csv' | 'xlsx' | 'pdf') => {
+    setExportingFmt(fmt);
+    try {
+      const res = await authedFetch(`${API_URL}/api/reports/export/${fmt}?report_type=financial`);
+      if (!res.ok) throw new Error(`Export failed (${res.status})`);
+      const ab = await res.arrayBuffer();
+      const bytes = new Uint8Array(ab);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      const b64 = globalThis.btoa ? globalThis.btoa(binary) : Buffer.from(bytes).toString('base64');
+      const ext = fmt === 'xlsx' ? 'xlsx' : fmt;
+      const path = `${FileSystem.cacheDirectory}paylock_financial.${ext}`;
+      await FileSystem.writeAsStringAsync(path, b64, { encoding: FileSystem.EncodingType.Base64 });
+      if (await Sharing.isAvailableAsync()) {
+        const mime = fmt === 'pdf' ? 'application/pdf' : fmt === 'xlsx'
+          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          : 'text/csv';
+        await Sharing.shareAsync(path, { mimeType: mime });
+      }
+    } catch (e: any) {
+      Alert.alert(t('error') || 'Error', e.message || 'Export failed');
+    } finally {
+      setExportingFmt(null);
+    }
+  };
+
   const handleExportPdf = async () => {
     setGeneratingPdf(true);
     try {
@@ -564,7 +592,7 @@ export default function Reports() {
             </TouchableOpacity>
           </View>
           
-          {/* Export PDF Button */}
+          {/* Export PDF Button (on-device profit report) */}
           <TouchableOpacity 
             style={styles.exportButton}
             onPress={handleExportPdf}
@@ -581,6 +609,22 @@ export default function Reports() {
               </>
             )}
           </TouchableOpacity>
+          <View style={{ flexDirection: 'row', marginTop: 10 }}>
+            {(['csv', 'xlsx', 'pdf'] as const).map((fmt) => (
+              <TouchableOpacity
+                key={fmt}
+                style={[styles.exportButton, { flex: 1, marginRight: fmt === 'pdf' ? 0 : 8, backgroundColor: '#1E3A5F' }]}
+                onPress={() => exportServerReport(fmt)}
+                disabled={!!exportingFmt}
+              >
+                {exportingFmt === fmt ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.exportButtonText}>{fmt.toUpperCase()}</Text>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* Profit Summary for Selected Period */}

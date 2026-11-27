@@ -1549,6 +1549,46 @@ class EMIDeviceAdminModule : Module() {
             }
         }
 
+        AsyncFunction("setPackagesSuspended") { packages: List<String>, suspended: Boolean, promise: Promise ->
+            try {
+                val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+                val adminComponent = ComponentName(context, EMIDeviceAdminReceiver::class.java)
+                if (!dpm.isDeviceOwnerApp(context.packageName)) {
+                    promise.resolve("not_device_owner")
+                    return@AsyncFunction
+                }
+                if (packages.isEmpty()) {
+                    promise.resolve("success:0")
+                    return@AsyncFunction
+                }
+                val failed = dpm.setPackagesSuspended(adminComponent, packages.toTypedArray(), suspended)
+                val failedCount = failed?.size ?: 0
+                Log.d(TAG, "setPackagesSuspended suspended=$suspended count=${packages.size} failed=$failedCount")
+                promise.resolve("success:${packages.size - failedCount}")
+            } catch (e: Exception) {
+                Log.e(TAG, "setPackagesSuspended error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        AsyncFunction("applyRestrictedLock") { allowlist: List<String>, promise: Promise ->
+            try {
+                promise.resolve(applyRestrictedLockInternal(allowlist))
+            } catch (e: Exception) {
+                Log.e(TAG, "applyRestrictedLock error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        AsyncFunction("clearRestrictedLock") { promise: Promise ->
+            try {
+                promise.resolve(clearRestrictedLockInternal())
+            } catch (e: Exception) {
+                Log.e(TAG, "clearRestrictedLock error: ${e.message}")
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
         AsyncFunction("wipeData") { promise: Promise ->
             try {
                 val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
@@ -1766,4 +1806,86 @@ class EMIDeviceAdminModule : Module() {
             Log.d(TAG, "System UI visibility listener removed")
         }
     }
+
+    private fun restrictedPrefs(): SharedPreferences {
+        return context.getSharedPreferences("paylock_restricted_lock", Context.MODE_PRIVATE)
+    }
+
+    private fun applyRestrictedLockInternal(allowlist: List<String>): String {
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val adminComponent = ComponentName(context, EMIDeviceAdminReceiver::class.java)
+        if (!dpm.isDeviceOwnerApp(context.packageName)) {
+            return "not_device_owner"
+        }
+        val alwaysAllowed = linkedSetOf<String>()
+        alwaysAllowed.add(context.packageName)
+        for (pkg in allowlist) {
+            if (pkg.isNotBlank()) alwaysAllowed.add(pkg.trim())
+        }
+        // Never suspend core system packages even if the allowlist is short.
+        val systemKeep = listOf(
+            "android",
+            "com.android.systemui",
+            "com.android.phone",
+            "com.android.server.telecom",
+            "com.android.incallui",
+            "com.android.dialer",
+            "com.google.android.dialer",
+            "com.android.settings",
+            "com.android.permissioncontroller",
+            "com.google.android.permissioncontroller",
+            "com.android.providers.telephony",
+            "com.android.providers.contacts",
+            "com.google.android.gms",
+            "com.android.vending"
+        )
+        alwaysAllowed.addAll(systemKeep)
+
+        // Clear a previous restriction first so packages no longer blocked are restored.
+        clearRestrictedLockInternal()
+
+        val installed = context.packageManager.getInstalledPackages(0).map { it.packageName }
+        val toSuspend = installed.filter { pkg ->
+            pkg !in alwaysAllowed &&
+                !pkg.startsWith("com.android.providers.") &&
+                pkg != "com.android.shell"
+        }
+        if (toSuspend.isNotEmpty()) {
+            val failed = dpm.setPackagesSuspended(adminComponent, toSuspend.toTypedArray(), true)?.toSet() ?: emptySet()
+            val suspended = toSuspend.filter { it !in failed }
+            restrictedPrefs().edit().putStringSet("suspended", suspended.toSet()).apply()
+            Log.d(TAG, "applyRestrictedLock: suspended ${suspended.size} packages")
+        } else {
+            restrictedPrefs().edit().remove("suspended").apply()
+        }
+        // Also publish a lock-task allowlist so kiosk cannot be used to escape into blocked apps.
+        try {
+            dpm.setLockTaskPackages(adminComponent, alwaysAllowed.toTypedArray())
+        } catch (e: Exception) {
+            Log.w(TAG, "applyRestrictedLock setLockTaskPackages: ${e.message}")
+        }
+        dpm.setPackagesSuspended(adminComponent, alwaysAllowed.toTypedArray(), false)
+        return "success:${toSuspend.size}"
+    }
+
+    private fun clearRestrictedLockInternal(): String {
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val adminComponent = ComponentName(context, EMIDeviceAdminReceiver::class.java)
+        if (!dpm.isDeviceOwnerApp(context.packageName)) {
+            return "not_device_owner"
+        }
+        val prev = restrictedPrefs().getStringSet("suspended", emptySet()) ?: emptySet()
+        if (prev.isNotEmpty()) {
+            dpm.setPackagesSuspended(adminComponent, prev.toTypedArray(), false)
+        }
+        restrictedPrefs().edit().remove("suspended").apply()
+        try {
+            dpm.setLockTaskPackages(adminComponent, arrayOf())
+        } catch (e: Exception) {
+            Log.w(TAG, "clearRestrictedLock setLockTaskPackages: ${e.message}")
+        }
+        Log.d(TAG, "clearRestrictedLock: unsuspended ${prev.size} packages")
+        return "success:${prev.size}"
+    }
+
 }

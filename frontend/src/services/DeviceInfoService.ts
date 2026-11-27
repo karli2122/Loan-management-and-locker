@@ -6,6 +6,7 @@ import { deviceAuthHeaders, getDeviceToken } from '../utils/deviceAuth';
 import * as Device from 'expo-device';
 import * as Battery from 'expo-battery';
 import * as FileSystem from 'expo-file-system';
+import * as Application from 'expo-application';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '../constants/api';
@@ -16,6 +17,9 @@ export interface DeviceInfo {
   storage_total_gb: number | null;
   android_version: string | null;
   device_model: string | null;
+  app_version: string | null;
+  device_owner_active?: boolean | null;
+  admin_mode_active?: boolean | null;
 }
 
 /**
@@ -28,7 +32,24 @@ export async function collectDeviceInfo(): Promise<DeviceInfo> {
     storage_total_gb: null,
     android_version: null,
     device_model: null,
+    app_version: null,
+    device_owner_active: null,
+    admin_mode_active: null,
   };
+  try {
+    info.app_version = Application.nativeApplicationVersion || Application.nativeBuildVersion || null;
+  } catch (e) {
+    console.log('[DeviceInfo] App version error:', e);
+  }
+  try {
+    if (Platform.OS === 'android') {
+      const { devicePolicy } = require('../utils/DevicePolicy');
+      info.admin_mode_active = await devicePolicy.isAdminActive();
+      info.device_owner_active = await devicePolicy.isDeviceOwner();
+    }
+  } catch (e) {
+    console.log('[DeviceInfo] Admin/owner status error:', e);
+  }
 
   try {
     // Get battery level
@@ -152,12 +173,22 @@ export async function sendDeviceInfoUpdate(clientId: string): Promise<boolean> {
     if (info.device_model) {
       payload.device_model = info.device_model;
     }
+    if (info.app_version) {
+      payload.app_version = info.app_version;
+    }
+    if (info.admin_mode_active != null) {
+      payload.admin_mode_active = info.admin_mode_active;
+    }
+    if (info.device_owner_active != null) {
+      payload.device_owner_active = info.device_owner_active;
+    }
     
-    const response = await fetch(`${API_URL}/device/update-info`, {
+    const response = await fetch(`${API_URL}/api/device/update-info`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        ...deviceAuthHeaders(deviceToken || undefined),
       },
       body: JSON.stringify(payload),
     });
