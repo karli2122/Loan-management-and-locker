@@ -269,14 +269,24 @@ export default function ClientHome() {
         if (wasDisabled) {
           console.log('TAMPER DETECTED: Admin was forcefully disabled!');
           const storedId = await AsyncStorage.getItem('client_id');
+          const reported = await reportTamperAttempt('admin_disabled', storedId || undefined);
           if (storedId) {
-            await reportTamperAttempt('admin_disabled');
             await reportAdminStatus(storedId, false);
           }
+          // Only clear native flags after a successful report so a failed
+          // upload can be retried on the next launch.
+          if (reported !== false) {
+            try {
+              await devicePolicy.clearTamperFlags();
+            } catch (e) {
+              console.log('clearTamperFlags failed:', e);
+            }
+          }
+          // Re-prompt immediately — do not wait for the first-run permission flow.
           try {
-            await devicePolicy.clearTamperFlags();
+            await devicePolicy.requestAdmin();
           } catch (e) {
-            console.log('clearTamperFlags failed:', e);
+            console.log('Re-enable Device Admin prompt failed:', e);
           }
         }
 
@@ -304,7 +314,15 @@ export default function ClientHome() {
 
   const updateLockState = async (locked: boolean, message?: string, lockLevel?: string, allowlist?: string[]) => {
     try {
-      const level = (lockLevel || (locked ? 'full' : 'none')).toLowerCase();
+      let level = (lockLevel || (locked ? 'full' : 'none')).toLowerCase();
+      let applied = 'cleared';
+      if (Platform.OS === 'android') {
+        applied = await devicePolicy.applyLockLevel(level, allowlist || []);
+      }
+      // Device Admin cannot suspend packages — treat restricted as a full overlay lock.
+      if (level === 'restricted' && applied === 'downgraded_to_full') {
+        level = 'full';
+      }
       const restricted = level === 'restricted';
       const fullLock = locked && !restricted;
       // Save lock state for offline enforcement and autostart
@@ -313,7 +331,6 @@ export default function ClientHome() {
       await devicePolicy.setNativeLockState(fullLock);
       wasLocked.current = locked;
       if (Platform.OS === 'android') {
-        await devicePolicy.applyLockLevel(level, allowlist || []);
         if (fullLock) {
           StatusBar.setHidden(true, 'none');
           await devicePolicy.enableImmersiveMode();
@@ -506,7 +523,11 @@ export default function ClientHome() {
       } else if (statusToSet.is_locked && Platform.OS === 'android') {
         const level = (statusToSet.lock_level || 'full').toLowerCase();
         if (level === 'restricted') {
-          devicePolicy.applyRestrictedLock(statusToSet.lock_allowlist || []).catch(() => {});
+          devicePolicy.applyLockLevel('restricted', statusToSet.lock_allowlist || []).then((applied) => {
+            if (applied === 'downgraded_to_full') {
+              updateLockState(true, statusToSet.lock_message, 'full', statusToSet.lock_allowlist);
+            }
+          }).catch(() => {});
         } else {
           // CRITICAL: Re-apply protections on EVERY poll while locked.
           // Android may kill kiosk/overlay/immersive services at any time
@@ -1363,11 +1384,15 @@ export default function ClientHome() {
     }
   };
 
-  const reportTamperAttempt = async (tamperType: string) => {
-    if (!clientId) return;
+  const reportTamperAttempt = async (tamperType: string, overrideClientId?: string) => {
+    const id = overrideClientId || clientId || (await AsyncStorage.getItem('client_id'));
+    if (!id) {
+      await AsyncStorage.setItem('pending_tamper_report', JSON.stringify({ type: tamperType, at: Date.now() }));
+      return false;
+    }
     
     try {
-      const response = await fetch(`${API_URL}/api/clients/${clientId}/report-tamper?tamper_type=${tamperType}`, {
+      const response = await fetch(`${API_URL}/api/clients/${id}/report-tamper?tamper_type=${encodeURIComponent(tamperType)}`, {
         headers: deviceAuthHeaders(await getDeviceToken()),
         method: 'POST',
       });
@@ -1375,11 +1400,11 @@ export default function ClientHome() {
       if (response.ok) {
         const data = await response.json();
         console.log('Tamper attempt logged:', data);
+        await AsyncStorage.removeItem('pending_tamper_report');
         
-        // Force immediate lock on tamper attempt
-        if (status) {
-          await updateLockState(true);
-          Alert.alert(
+        // Force immediate lock on tamper attempt (full overlay — works on Device Admin)
+        await updateLockState(true, data?.lock_message || undefined, 'full');
+        Alert.alert(
             t('securityAlert'),
             t('tamperingDetectedDeviceHasBeenLocked'),
             [{ text: t('ok') }]
@@ -1397,14 +1422,37 @@ export default function ClientHome() {
           } catch (notifErr) {
             console.log('Tamper lock notification error:', notifErr);
           }
-        }
+        return true;
       }
+      await AsyncStorage.setItem('pending_tamper_report', JSON.stringify({ type: tamperType, at: Date.now() }));
+      return false;
     } catch (error) {
       console.log('Tamper report failed:', error);
+      await AsyncStorage.setItem('pending_tamper_report', JSON.stringify({ type: tamperType, at: Date.now() }));
+      return false;
     }
   };
 
   const isRefreshingRef = useRef(false);
+
+  // Retry a tamper report that failed because the app launched before client_id was ready.
+  useEffect(() => {
+    if (!clientId) return;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem('pending_tamper_report');
+        if (!raw) return;
+        const pending = JSON.parse(raw);
+        if (pending?.type) {
+          await reportTamperAttempt(pending.type, clientId);
+        }
+      } catch (e) {
+        console.log('Pending tamper report flush failed:', e);
+      }
+    })();
+  }, [clientId]);
+
+
   const onRefresh = useCallback(async () => {
     if (!clientId || isRefreshingRef.current) return;
     isRefreshingRef.current = true;

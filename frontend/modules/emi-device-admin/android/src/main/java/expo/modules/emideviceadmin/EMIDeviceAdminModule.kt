@@ -247,7 +247,8 @@ class EMIDeviceAdminModule : Module() {
         // Check if uninstall is allowed
         AsyncFunction("isUninstallAllowed") {
             try {
-                val allowed = prefs.getBoolean(KEY_UNINSTALL_ALLOWED, true)
+                // Default false: if the flag was never written, treat uninstall as blocked.
+                val allowed = prefs.getBoolean(KEY_UNINSTALL_ALLOWED, false)
                 Log.d(TAG, "isUninstallAllowed: $allowed")
                 allowed
             } catch (e: Exception) {

@@ -165,6 +165,7 @@ interface LockModalProps {
   onChangeLevel?: (v: string) => void;
   lockAllowlist?: string;
   onChangeAllowlist?: (v: string) => void;
+  restrictedSupported?: boolean;
 }
 
 export const LockModal = ({
@@ -172,6 +173,7 @@ export const LockModal = ({
   onChangeMessage, onConfirm, onClose,
   lockLevel = 'full', onChangeLevel,
   lockAllowlist = '', onChangeAllowlist,
+  restrictedSupported = true,
 }: LockModalProps) => (
   <Modal visible={visible} transparent animationType="fade">
     <View style={styles.modalOverlay}>
@@ -179,19 +181,31 @@ export const LockModal = ({
         <Text style={styles.modalTitle}>{t('lockDevice')}</Text>
         <Text style={styles.modalSubtitle}>{t('customizeLockMessage')}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 }}>
-          {['warning', 'restricted', 'full'].map((level) => (
+          {['warning', 'restricted', 'full'].map((level) => {
+            const disabled = level === 'restricted' && !restrictedSupported;
+            return (
             <TouchableOpacity
               key={level}
-              onPress={() => onChangeLevel && onChangeLevel(level)}
+              onPress={() => {
+                if (disabled) return;
+                onChangeLevel && onChangeLevel(level);
+              }}
               style={{
                 paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, marginRight: 8, marginBottom: 6,
                 backgroundColor: lockLevel === level ? '#2563EB' : '#1E3050',
+                opacity: disabled ? 0.45 : 1,
               }}
             >
               <Text style={{ color: '#fff', fontWeight: '600', textTransform: 'capitalize' }}>{level}</Text>
             </TouchableOpacity>
-          ))}
+            );
+          })}
         </View>
+        {!restrictedSupported && (
+          <Text style={{ color: '#F59E0B', fontSize: 12, marginBottom: 10 }}>
+            This device is enrolled as Device Admin only. Restricted mode needs Device Owner (package suspension). A restricted request will fall back to a full overlay lock.
+          </Text>
+        )}
         {lockLevel === 'restricted' && (
           <TextInput
             style={styles.modalInput}

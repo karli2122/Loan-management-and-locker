@@ -101,8 +101,9 @@ class EMIDeviceAdminReceiver : DeviceAdminReceiver() {
             "Device admin will be deactivated."
         } else {
             "WARNING: Removing device admin is not allowed.\n\n" +
-            "If you continue, device admin will wipe all data on this device.\n\n" +
-            "Contact your administrator."
+            "If you continue, this will be reported as tampering, " +
+            "the screen will be locked, and you will be asked to re-enable Device Admin.\n\n" +
+            "A factory reset cannot be started after admin is removed. Contact your lender."
         }
     }
 }

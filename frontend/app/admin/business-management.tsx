@@ -37,7 +37,7 @@ export default function BusinessManagement() {
             </View>
             <Text style={s.modeTitle}>Device Admin</Text>
             <Text style={s.modeDesc}>
-              {language === 'et' ? '8-kohaline kood\nStandardne lukustus' : '8-digit code\nStandard lock'}
+              {language === 'et' ? '16-kohaline kood\nÜlekatte lukustus (Device Admin)' : '16-character code\nOverlay lock (Device Admin)'}
             </Text>
           </View>
           <View style={s.modeCard}>
@@ -46,7 +46,7 @@ export default function BusinessManagement() {
             </View>
             <Text style={[s.modeTitle, { color: '#F97316' }]}>Device Owner</Text>
             <Text style={s.modeDesc}>
-              {language === 'et' ? '9-kohaline kood\nTäielik kiosk-režiim' : '9-digit code\nFull kiosk mode'}
+              {language === 'et' ? '17-kohaline kood\nKiosk ja rakenduste peatamine (Device Owner)' : '17-character code\nKiosk and app suspension (Device Owner)'}
             </Text>
           </View>
         </View>
@@ -81,8 +81,8 @@ export default function BusinessManagement() {
               </TouchableOpacity>
             </View>
             <Text style={s.step}>{language === 'et'
-              ? '5. "Success" = Device Owner aktiveeritud\n6. Installige PayLock Client ja registreerige 9-kohalise koodiga'
-              : '5. "Success" = Device Owner activated\n6. Install PayLock Client and register with 9-digit code'}</Text>
+              ? '5. "Success" = Device Owner aktiveeritud\n6. Installige PayLock Client ja registreerige 17-kohalise koodiga'
+              : '5. "Success" = Device Owner activated\n6. Install PayLock Client and register with the 17-character Device Owner code'}</Text>
             <View style={s.warn}><Ionicons name="warning" size={18} color="#F59E0B" /><Text style={s.warnText}>{language === 'et' ? 'Seadmel ei tohi olla kontosid!' : 'Device must have no accounts!'}</Text></View>
           </View>
         )}

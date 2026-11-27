@@ -29,6 +29,7 @@ interface HeartbeatData {
   app_version?: string | null;
   device_owner_active?: boolean | null;
   admin_mode_active?: boolean | null;
+  lock_mode?: string | null;
 }
 
 /**
@@ -45,7 +46,13 @@ async function collectDeviceData(): Promise<Omit<HeartbeatData, 'client_id'>> {
     app_version: null,
     device_owner_active: null,
     admin_mode_active: null,
+    lock_mode: null,
   };
+  try {
+    data.lock_mode = await AsyncStorage.getItem('lock_mode');
+  } catch (e) {
+    console.log('[Heartbeat] lock_mode error:', e);
+  }
   try {
     data.app_version = Application.nativeApplicationVersion || Application.nativeBuildVersion || null;
   } catch (e) {

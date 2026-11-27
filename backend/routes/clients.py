@@ -553,7 +553,12 @@ async def lock_client(
     lock_level: none | warning | restricted | full (default full).
     lock_allowlist: optional comma-separated package names used in restricted mode.
     """
-    from utils.lock_levels import is_effectively_locked, normalize_allowlist, normalize_lock_level
+    from utils.lock_levels import (
+        is_effectively_locked,
+        normalize_allowlist,
+        normalize_lock_level,
+        resolve_applied_lock_level,
+    )
     admin_id = await check_permission(admin_token, "clients")
     
     client = await db.clients.find_one({"id": client_id})
@@ -562,7 +567,11 @@ async def lock_client(
     
     await enforce_client_scope(client, admin_id)
     
-    level = normalize_lock_level(lock_level, "full")
+    requested_level = normalize_lock_level(lock_level, "full")
+    level, fallback_reason = resolve_applied_lock_level(
+        requested_level,
+        device_owner_active=client.get("device_owner_active"),
+    )
     allowlist = normalize_allowlist(
         [p.strip() for p in (lock_allowlist or "").split(",") if p.strip()]
         if lock_allowlist is not None
@@ -614,6 +623,8 @@ async def lock_client(
         "client_id": client_id,
         "reason": reason,
         "lock_level": level,
+        "lock_level_requested": requested_level,
+        "lock_fallback_reason": fallback_reason,
         "lock_allowlist": allowlist,
         "is_locked": is_locked,
         "temporary": temporary,
@@ -814,16 +825,32 @@ async def report_tamper(
     """Report a tamper attempt from client device. Requires the device token."""
     client = await verify_device(client_id, x_device_token or device_token)
     
+    from utils.lock_levels import tamper_lock_updates
+    tamper_sets = {
+        "last_tamper_attempt": datetime.utcnow(),
+        "last_tamper_type": tamper_type,
+    }
+    tamper_sets.update(tamper_lock_updates(tamper_type, bool(client.get("uninstall_allowed"))))
     await db.clients.update_one(
         {"id": client_id},
         {
             "$inc": {"tamper_attempts": 1},
-            "$set": {
-                "last_tamper_attempt": datetime.utcnow(),
-                "last_tamper_type": tamper_type,
-            }
+            "$set": tamper_sets,
         }
     )
+    if tamper_sets.get("is_locked"):
+        try:
+            from utils.lock_notify import notify_device_lock_change
+            await notify_device_lock_change(
+                db,
+                {**client, **tamper_sets},
+                is_locked=True,
+                reason="tamper",
+                message=tamper_sets.get("lock_message") or "",
+                lock_level="full",
+            )
+        except Exception as exc:
+            logger.warning("Tamper lock notify failed: %s", exc)
     
     # Create notification for admin
     if client.get("admin_id"):
@@ -853,7 +880,14 @@ async def report_tamper(
                     {"action": "tamper", "client_id": client_id}
                 )
     
-    return {"message": "Tamper reported", "client_id": client_id, "tamper_type": tamper_type}
+    return {
+        "message": "Tamper reported",
+        "client_id": client_id,
+        "tamper_type": tamper_type,
+        "admin_mode_active": tamper_sets.get("admin_mode_active", client.get("admin_mode_active")),
+        "is_locked": bool(tamper_sets.get("is_locked") or client.get("is_locked")),
+        "lock_level": tamper_sets.get("lock_level") or client.get("lock_level") or "none",
+    }
 
 
 @router.post("/clients/{client_id}/report-reboot")

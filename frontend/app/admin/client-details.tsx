@@ -234,8 +234,8 @@ export default function ClientDetails() {
       Alert.alert(
         t('generateNewKey'),
         language === 'et'
-          ? 'Valige lukurežiim:\n\nDevice Admin (8-kohaline) — Standardne lukustus\nDevice Owner (9-kohaline) — Täielik kioski režiim'
-          : 'Select lock mode:\n\nDevice Admin (8-digit) — Standard lock\nDevice Owner (9-digit) — Full kiosk mode',
+          ? 'Valige lukurežiim:\n\nDevice Admin (16-kohaline kood) — Standardne lukustus, ülekate\nDevice Owner (17-kohaline kood) — Täielik kiosk ja rakenduste peatamine'
+          : 'Select lock mode:\n\nDevice Admin (16-character code) — Standard overlay lock\nDevice Owner (17-character code) — Silent kiosk and app restrictions',
         [
           { text: t('cancel'), style: 'cancel' },
           {
@@ -277,7 +277,7 @@ export default function ClientDetails() {
               if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error || errorData.detail || 'Failed to generate code'); }
               const data = await response.json();
               if (client) setClient({ ...client, registration_code: data.registration_code, lock_mode: data.lock_mode });
-              const modeLabel = lockMode === 'device_owner' ? 'Device Owner (9-digit)' : 'Device Admin (8-digit)';
+              const modeLabel = lockMode === 'device_owner' ? 'Device Owner (17-character code)' : 'Device Admin (16-character code)';
               Alert.alert(
                 t('success'),
                 language === 'et'
@@ -299,9 +299,17 @@ export default function ClientDetails() {
       const allow = lockAllowlist.trim() ? `&lock_allowlist=${encodeURIComponent(lockAllowlist)}` : '';
       const response = await authedFetch(`${API_URL}/api/clients/${id}/lock?message=${encodeURIComponent(lockMessage)}&lock_level=${encodeURIComponent(lockLevel)}${allow}${adminQuery}`, { method: 'POST' });
       if (!response.ok) throw new Error('Failed to lock device');
+      const lockResult = await response.json().catch(() => ({}));
       await fetchClient();
       setLockModal(false);
-      Alert.alert(t('success'), t('deviceLockedSuccess'));
+      if (lockResult.lock_fallback_reason === 'device_admin_no_package_suspend') {
+        Alert.alert(
+          t('success') || 'Locked',
+          'Restricted mode is not available on Device Admin. The device was fully locked with the overlay lock screen instead.',
+        );
+      } else {
+        Alert.alert(t('success'), t('deviceLockedSuccess'));
+      }
     } catch (error: any) { Alert.alert(t('error'), error.message); }
     finally { setActionLoading(false); }
   };
@@ -986,6 +994,7 @@ export default function ClientDetails() {
         onChangeLevel={setLockLevel}
         lockAllowlist={lockAllowlist}
         onChangeAllowlist={setLockAllowlist}
+        restrictedSupported={!!client?.device_owner_active}
         onChangeMessage={setLockMessage}
         onConfirm={handleLock}
         onClose={() => setLockModal(false)}

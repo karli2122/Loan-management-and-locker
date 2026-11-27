@@ -57,6 +57,7 @@ export interface Client {
   last_tamper_type?: string | null;
   last_reboot: string | null;
   admin_mode_active?: boolean;
+  device_owner_active?: boolean;
   uninstall_allowed?: boolean;
   loan_amount?: number;
   total_amount_due?: number;

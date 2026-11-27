@@ -245,6 +245,7 @@ class DeviceInfoUpdate(BaseModel):
     app_version: Optional[str] = None
     device_owner_active: Optional[bool] = None
     admin_mode_active: Optional[bool] = None
+    lock_mode: Optional[str] = None
     last_reboot: Optional[datetime] = None
 
 

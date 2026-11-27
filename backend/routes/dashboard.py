@@ -14,6 +14,7 @@ from utils.dependencies import require_admin
 from utils.lock_levels import (
     DEFAULT_RESTRICTED_ALLOWLIST,
     DEFAULT_RESTRICTED_BLOCKLIST,
+    device_capabilities,
     normalize_allowlist,
     normalize_lock_level,
 )
@@ -101,6 +102,11 @@ async def device_health(client_id: str, admin_id: str = Depends(require_admin)):
         "lock_level": normalize_lock_level(
             client.get("lock_level"),
             "full" if client.get("is_locked") else "none",
+        ),
+        "capabilities": device_capabilities(
+            lock_mode=client.get("lock_mode") or "device_admin",
+            device_owner_active=client.get("device_owner_active"),
+            device_admin_active=client.get("admin_mode_active"),
         ),
         "app_version": client.get("app_version"),
         "android_version": client.get("android_version"),

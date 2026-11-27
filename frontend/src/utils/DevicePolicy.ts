@@ -749,8 +749,21 @@ class DevicePolicyManager {
     const normalized = (level || 'none').toLowerCase();
     try {
       if (normalized === 'restricted') {
+        const isOwner = await this.isDeviceOwner();
+        if (!isOwner) {
+          // Device Admin cannot setPackagesSuspended or silently pin apps.
+          // Fall back to the full overlay lock so the device is still restricted.
+          console.log('applyLockLevel: Device Admin only — downgrading restricted to full');
+          await this.clearRestrictedLock().catch(() => {});
+          return 'downgraded_to_full';
+        }
         await this.stopKioskMode().catch(() => {});
-        return await this.applyRestrictedLock(allowlist);
+        const result = await this.applyRestrictedLock(allowlist);
+        if (result === 'not_device_owner' || (typeof result === 'string' && result.startsWith('error'))) {
+          await this.clearRestrictedLock().catch(() => {});
+          return 'downgraded_to_full';
+        }
+        return result;
       }
       if (normalized === 'full') {
         await this.clearRestrictedLock().catch(() => {});

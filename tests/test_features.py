@@ -4,10 +4,13 @@ from datetime import date, datetime, timezone, timedelta
 from utils.csv_clients import preview_clients_csv, validate_mapped_row
 from utils.dashboard_home import classify_heartbeat, summarize_home, STALE_AFTER_SECONDS
 from utils.lock_levels import (
+    device_capabilities,
     is_effectively_locked,
     lock_signature_message,
     normalize_allowlist,
     normalize_lock_level,
+    resolve_applied_lock_level,
+    tamper_lock_updates,
 )
 from utils.prelock_reminders import (
     DEFAULT_PRELOCK_OFFSETS_DAYS,
@@ -210,3 +213,67 @@ def test_sign_lock_state_covers_level():
     assert sig == expected
     legacy_shape = hmac.new(b"tok", b"c1|1|111", hashlib.sha256).hexdigest()
     assert sig != legacy_shape
+
+
+def test_device_admin_cannot_use_restricted_mode():
+    caps = device_capabilities(
+        lock_mode="device_admin",
+        device_owner_active=False,
+        device_admin_active=True,
+    )
+    assert caps["can_lock_now"] is True
+    assert caps["can_wipe_while_admin_active"] is True
+    assert caps["can_suspend_packages"] is False
+    assert caps["can_lock_task_unattended"] is False
+    assert caps["restricted_fallback"] == "full"
+    assert "restricted" not in caps["supported_lock_levels"]
+    assert "full" in caps["supported_lock_levels"]
+    assert caps["gaps"]
+
+
+def test_device_owner_supports_restricted():
+    caps = device_capabilities(
+        lock_mode="device_owner",
+        device_owner_active=True,
+        device_admin_active=True,
+    )
+    assert caps["can_suspend_packages"] is True
+    assert caps["can_lock_task_unattended"] is True
+    assert "restricted" in caps["supported_lock_levels"]
+    assert caps["restricted_fallback"] is None
+    assert caps["gaps"] == []
+
+
+def test_intended_owner_enrollment_without_report_is_admin():
+    # A 17-char code is not proof the phone is Device Owner yet.
+    caps = device_capabilities(
+        lock_mode="device_owner",
+        device_owner_active=False,
+        device_admin_active=True,
+    )
+    assert caps["can_suspend_packages"] is False
+    assert any("not reported owner" in g or "not reported" in g for g in caps["gaps"])
+
+
+def test_resolve_restricted_falls_back_on_device_admin():
+    applied, reason = resolve_applied_lock_level("restricted", device_owner_active=False)
+    assert applied == "full"
+    assert reason == "device_admin_no_package_suspend"
+    applied, reason = resolve_applied_lock_level("restricted", device_owner_active=True)
+    assert applied == "restricted"
+    assert reason is None
+    applied, reason = resolve_applied_lock_level("warning", device_owner_active=False)
+    assert applied == "warning"
+    assert reason is None
+
+
+def test_tamper_admin_disable_locks_unless_uninstall_allowed():
+    locked = tamper_lock_updates("admin_disabled", uninstall_allowed=False)
+    assert locked["admin_mode_active"] is False
+    assert locked["device_owner_active"] is False
+    assert locked["is_locked"] is True
+    assert locked["lock_level"] == "full"
+    allowed = tamper_lock_updates("admin_disabled", uninstall_allowed=True)
+    assert allowed == {"admin_mode_active": False, "device_owner_active": False}
+    other = tamper_lock_updates("unknown", uninstall_allowed=False)
+    assert other == {}

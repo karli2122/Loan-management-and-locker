@@ -69,6 +69,13 @@ export function DeviceHealthCard({ clientId, colors }: { clientId: string; color
     },
     { icon: 'refresh', label: 'Last reboot', value: fmt(health.last_reboot) },
     {
+      icon: 'shield',
+      label: 'Enrollment',
+      value: (health.lock_mode || health.capabilities?.enrollment || 'device_admin') === 'device_owner'
+        ? 'Device Owner (17-char code)'
+        : 'Device Admin (16-char code)',
+    },
+    {
       icon: 'shield-checkmark',
       label: 'Device Admin',
       value: health.device_admin_active ? 'Active' : 'Inactive',
@@ -77,6 +84,11 @@ export function DeviceHealthCard({ clientId, colors }: { clientId: string; color
       icon: 'hardware-chip',
       label: 'Device Owner',
       value: health.device_owner_active ? 'Active' : 'Inactive',
+    },
+    {
+      icon: 'lock-closed',
+      label: 'Lock levels',
+      value: (health.capabilities?.supported_lock_levels || ['none', 'warning', 'full']).join(', '),
     },
     { icon: 'information-circle', label: 'App version', value: health.app_version || '—' },
     { icon: 'phone-portrait', label: 'Android', value: health.android_version || health.device_model || '—' },
@@ -100,6 +112,14 @@ export function DeviceHealthCard({ clientId, colors }: { clientId: string; color
           <Text style={{ color: colors.text, flex: 1, fontSize: 13 }}>{row.value}</Text>
         </View>
       ))}
+      {(health.capabilities?.gaps || []).length > 0 && (
+        <View style={{ marginTop: 8, backgroundColor: 'rgba(245, 158, 11, 0.12)', borderRadius: 8, padding: 10 }}>
+          <Text style={{ color: '#F59E0B', fontWeight: '700', fontSize: 12, marginBottom: 4 }}>Capability gaps</Text>
+          {health.capabilities.gaps.map((gap: string) => (
+            <Text key={gap} style={{ color: colors.text, fontSize: 12, marginTop: 2 }}>• {gap}</Text>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
