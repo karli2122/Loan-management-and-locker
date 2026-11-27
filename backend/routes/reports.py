@@ -1,11 +1,12 @@
 """Reports routes - analytics, collection reports, financial reports."""
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Depends
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import logging
 
 from database import db
 from utils.auth import get_admin_id_from_token
+from utils.dependencies import require_admin
 from utils.plan_gating import check_plan_access
 
 logger = logging.getLogger(__name__)
@@ -786,15 +787,15 @@ async def get_financial_report(
 
 
 @router.get("/stats")
-async def get_stats(admin_id: str = Query(default=None), admin_token: str = Query(default=None)):
-    """Get general statistics with device breakdown."""
-    if admin_token:
-        token_admin_id = await get_admin_id_from_token(admin_token)
-        base_query = await _get_enterprise_client_query(token_admin_id)
-    elif admin_id:
-        base_query = {"admin_id": admin_id, "is_deleted": {"$ne": True}}
-    else:
-        base_query = {"is_deleted": {"$ne": True}}
+async def get_stats(admin_id: str = Depends(require_admin)):
+    """Get general statistics with device breakdown.
+
+    Requires a validated admin token (Authorization Bearer preferred,
+    query-string admin_token accepted as a deprecated fallback). Super-admins
+    see their enterprise scope via _get_enterprise_client_query.
+    """
+    token_admin_id = admin_id
+    base_query = await _get_enterprise_client_query(token_admin_id)
     
     total_clients = await db.clients.count_documents(base_query)
     registered_clients = await db.clients.count_documents({**base_query, "is_registered": True})

@@ -1,24 +1,58 @@
 """Support routes - chat messages, payment history."""
-from fastapi import APIRouter, Query, HTTPException
-from datetime import datetime
+from fastapi import APIRouter, Query, HTTPException, Header
+from typing import Optional
 import logging
 
 from database import db
 from models.schemas import SupportMessage, SupportMessageCreate, Notification
-from utils.auth import get_admin_id_from_token
+from utils.auth import get_admin_id_from_token, verify_device, enforce_client_scope
+from utils.exceptions import AuthenticationException
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Support"])
 
 
+async def _authorize_client_or_admin(
+    client_id: str,
+    admin_token: Optional[str] = None,
+    device_token: Optional[str] = None,
+) -> tuple[dict, str]:
+    """Return (client, sender) where sender is 'admin' or 'client'.
+
+    Admin calls must present a valid admin token and own the client.
+    Device/client calls must present the per-device token issued at registration.
+    """
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    if admin_token:
+        admin_id = await get_admin_id_from_token(admin_token)
+        await enforce_client_scope(client, admin_id)
+        return client, "admin"
+
+    if device_token:
+        await verify_device(client_id, device_token)
+        return client, "client"
+
+    raise AuthenticationException("Authentication required")
+
+
 @router.get("/support/messages/{client_id}")
-async def get_support_messages(client_id: str):
-    """Get support chat messages for a client."""
+async def get_support_messages(
+    client_id: str,
+    admin_token: str = Query(default=None),
+    device_token: str = Query(default=None),
+    x_device_token: Optional[str] = Header(default=None, alias="X-Device-Token"),
+):
+    """Get support chat messages for a client. Requires admin or device auth."""
+    await _authorize_client_or_admin(client_id, admin_token, x_device_token or device_token)
+
     messages = await db.support_messages.find(
         {"client_id": client_id},
         {"_id": 0}
     ).sort("created_at", 1).to_list(500)
-    
+
     return messages
 
 
@@ -26,22 +60,23 @@ async def get_support_messages(client_id: str):
 async def send_support_message(
     client_id: str,
     message_data: SupportMessageCreate,
-    sender: str = Query(...)
+    admin_token: str = Query(default=None),
+    device_token: str = Query(default=None),
+    x_device_token: Optional[str] = Header(default=None, alias="X-Device-Token"),
 ):
-    """Send a support message."""
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    
+    """Send a support message. Sender is derived from the authenticated principal."""
+    client, sender = await _authorize_client_or_admin(
+        client_id, admin_token, x_device_token or device_token
+    )
+
     message = SupportMessage(
         client_id=client_id,
         sender=sender,
         message=message_data.message
     )
-    
+
     await db.support_messages.insert_one(message.dict())
-    
-    # Create notification for admin if message is from client
+
     if sender == "client" and client.get("admin_id"):
         notification = Notification(
             admin_id=client["admin_id"],
@@ -52,35 +87,48 @@ async def send_support_message(
             client_name=client["name"]
         )
         await db.notifications.insert_one(notification.dict())
-    
-    return {"message": "Message sent", "id": message.id}
+
+    return {"message": "Message sent", "id": message.id, "sender": sender}
 
 
 @router.post("/support/messages/{client_id}/mark-read")
-async def mark_messages_read(client_id: str, admin_token: str = Query(...)):
-    """Mark all support messages from a client as read."""
-    await get_admin_id_from_token(admin_token)
-    
+async def mark_messages_read(
+    client_id: str,
+    admin_token: str = Query(default=None),
+    device_token: str = Query(default=None),
+    x_device_token: Optional[str] = Header(default=None, alias="X-Device-Token"),
+):
+    """Mark support messages as read. Admins mark client messages; devices mark admin messages."""
+    client, sender = await _authorize_client_or_admin(
+        client_id, admin_token, x_device_token or device_token
+    )
+    counterpart = "client" if sender == "admin" else "admin"
+
     await db.support_messages.update_many(
-        {"client_id": client_id, "sender": "client", "is_read": False},
+        {"client_id": client_id, "sender": counterpart, "is_read": False},
         {"$set": {"is_read": True}}
     )
-    
+
     return {"message": "Messages marked as read"}
 
 
 @router.get("/payments/history/{client_id}")
-async def get_payment_history(client_id: str):
-    """Get payment history for a client."""
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    
+async def get_payment_history(
+    client_id: str,
+    admin_token: str = Query(default=None),
+    device_token: str = Query(default=None),
+    x_device_token: Optional[str] = Header(default=None, alias="X-Device-Token"),
+):
+    """Get payment history for a client. Requires admin or device auth."""
+    client, _ = await _authorize_client_or_admin(
+        client_id, admin_token, x_device_token or device_token
+    )
+
     payments = await db.payments.find(
         {"client_id": client_id},
         {"_id": 0}
     ).sort("payment_date", -1).to_list(100)
-    
+
     return {
         "payments": payments,
         "loan_info": {
@@ -91,7 +139,6 @@ async def get_payment_history(client_id: str):
             "next_payment_due": client.get("next_payment_due")
         }
     }
-
 
 
 @router.get("/feature-suggestions")

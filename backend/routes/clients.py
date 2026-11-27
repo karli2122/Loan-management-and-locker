@@ -1,5 +1,5 @@
 """Client routes - CRUD, bulk operations, locations."""
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Header
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 import secrets
@@ -10,7 +10,8 @@ import io
 
 from database import db
 from models.schemas import Client, ClientCreate, ClientUpdate, BulkOperationRequest
-from utils.auth import get_admin_id_from_token, enforce_client_scope
+from utils.auth import get_admin_id_from_token, enforce_client_scope, verify_device
+from utils.lock_notify import notify_device_lock_change
 from utils.exceptions import ValidationException, AuthenticationException, AuthorizationException
 from utils.audit import log_audit, AuditAction
 from utils.permissions import check_permission
@@ -366,7 +367,8 @@ async def generate_registration_code(
     lock_mode: str = Query("device_admin", regex="^(device_admin|device_owner)$"),
 ):
     """Generate new registration code for a client (uses 1 credit for non-superadmins).
-    8-char code = device_admin, 9-char code = device_owner.
+    16-char code = device_admin, 17-char code = device_owner
+    (legacy 8/9-char codes still work).
     """
     admin_id = await get_admin_id_from_token(admin_token)
     
@@ -386,15 +388,15 @@ async def generate_registration_code(
     if not is_super_admin and credits < 1:
         raise ValidationException("Insufficient credits. Please contact super admin to get more credits.")
     
-    # NOTE: code LENGTH encodes lock mode (8 = device_admin, 9 = device_owner)
-    # and the device register endpoint depends on this. Do not change the
-    # lengths without updating routes/device.py. Brute-force is mitigated by
-    # (a) login requiring BOTH phone and code and (b) rate limiting on
-    # /client/login. token_hex(4) = 8 hex chars = ~4.3e9 combinations.
+    # Code LENGTH encodes lock mode and must stay in sync with
+    # routes/device.py::lock_mode_from_registration_code:
+    #   16 hex chars = device_admin, 17 = device_owner
+    #   legacy 8 / 9 char codes issued before this change still work.
+    # token_hex(8) = 16 hex chars = 64 bits of entropy.
     if lock_mode == "device_owner":
-        new_code = (secrets.token_hex(4) + secrets.token_hex(1)[0]).upper()[:9]
+        new_code = (secrets.token_hex(8) + secrets.token_hex(1)[0]).upper()[:17]
     else:
-        new_code = secrets.token_hex(4).upper()
+        new_code = secrets.token_hex(8).upper()
     
     await db.clients.update_one(
         {"id": client_id},
@@ -582,16 +584,11 @@ async def lock_client(
     })
     await log_audit(admin_id, AuditAction.CLIENT_LOCK, "client", client_id, client.get("name", ""), f"Locked: {reason}")
     
-    # Send push notification for instant lock enforcement
-    push_token = client.get("expo_push_token")
-    if push_token:
-        notif_msg = message or f"Your device has been locked ({reason.replace('_', ' ')})."
-        await send_expo_push_notification(
-            push_token,
-            "Device Locked",
-            notif_msg,
-            {"action": "lock", "is_locked": True, "reason": reason}
-        )
+    # Signed push so the device can lock immediately without waiting to poll.
+    notif_msg = message or f"Your device has been locked ({reason.replace('_', ' ')})."
+    await notify_device_lock_change(
+        db, {**client, **update}, is_locked=True, reason=reason, message=notif_msg
+    )
     
     return {
         "message": "Device locked",
@@ -635,15 +632,13 @@ async def unlock_client(client_id: str, admin_token: str = Query(...)):
     })
     await log_audit(admin_id, AuditAction.CLIENT_UNLOCK, "client", client_id, client.get("name", ""), "Manual unlock")
     
-    # Send push notification for instant unlock
-    push_token = client.get("expo_push_token")
-    if push_token:
-        await send_expo_push_notification(
-            push_token,
-            "Device Unlocked",
-            "Your device has been unlocked.",
-            {"action": "unlock", "is_locked": False}
-        )
+    await notify_device_lock_change(
+        db,
+        {**client, "is_locked": False, "lock_message": ""},
+        is_locked=False,
+        reason="manual_unlock",
+        message="Your device has been unlocked.",
+    )
     
     return {"message": "Device unlocked", "client_id": client_id}
 
@@ -785,11 +780,14 @@ async def fetch_device_price(client_id: str, admin_token: str = Query(...), forc
 
 
 @router.post("/clients/{client_id}/report-tamper")
-async def report_tamper(client_id: str, tamper_type: str = Query(default="unknown")):
-    """Report a tamper attempt from client device."""
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+async def report_tamper(
+    client_id: str,
+    tamper_type: str = Query(default="unknown"),
+    device_token: str = Query(default=""),
+    x_device_token: Optional[str] = Header(default=None, alias="X-Device-Token"),
+):
+    """Report a tamper attempt from client device. Requires the device token."""
+    client = await verify_device(client_id, x_device_token or device_token)
     
     await db.clients.update_one(
         {"id": client_id},
@@ -834,11 +832,13 @@ async def report_tamper(client_id: str, tamper_type: str = Query(default="unknow
 
 
 @router.post("/clients/{client_id}/report-reboot")
-async def report_reboot(client_id: str):
-    """Report device reboot from client."""
-    client = await db.clients.find_one({"id": client_id})
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+async def report_reboot(
+    client_id: str,
+    device_token: str = Query(default=""),
+    x_device_token: Optional[str] = Header(default=None, alias="X-Device-Token"),
+):
+    """Report device reboot from client. Requires the device token."""
+    client = await verify_device(client_id, x_device_token or device_token)
     
     await db.clients.update_one(
         {"id": client_id},
