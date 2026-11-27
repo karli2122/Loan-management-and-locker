@@ -1,5 +1,4 @@
 """Permission enforcement middleware for role-based access control."""
-from functools import wraps
 from database import db
 from utils.auth import get_admin_id_from_token
 from utils.exceptions import AuthorizationException
