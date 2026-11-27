@@ -52,6 +52,9 @@ object EmergencyCallSession {
 
     // AOSP emergency dialer action (not an SDK constant); only used if it resolves to a dialer package.
     private const val EMERGENCY_DIALER_ACTION = "com.android.phone.EmergencyDialer.DIAL"
+    // Official TelecomManager action; use the string because some compile classpaths
+    // do not expose SHOW_EMERGENCY_DIALER as a visible field.
+    private const val SHOW_EMERGENCY_DIALER = "android.telecom.action.SHOW_EMERGENCY_DIALER"
 
     private val FALLBACK_EMERGENCY_NUMBERS =
         setOf("112", "911", "999", "000", "08", "110", "118", "119", "100", "101", "102", "108")
@@ -342,14 +345,14 @@ object EmergencyCallSession {
         val pm = context.packageManager
         val candidates = mutableListOf<Intent>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            candidates.add(Intent(TelecomManager.ACTION_SHOW_EMERGENCY_DIALER))
+            candidates.add(Intent(SHOW_EMERGENCY_DIALER))
         }
         candidates.add(Intent(EMERGENCY_DIALER_ACTION))
         candidates.add(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number")))
         for (intent in candidates) {
             val target = intent.resolveActivity(pm)?.packageName ?: continue
             // Official emergency-dialer actions may resolve to a package not in the static list.
-            val officialEmergency = intent.action == TelecomManager.ACTION_SHOW_EMERGENCY_DIALER ||
+            val officialEmergency = intent.action == SHOW_EMERGENCY_DIALER ||
                 intent.action == EMERGENCY_DIALER_ACTION
             if (!officialEmergency && !isDialerPackage(target, context)) continue
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -379,7 +382,7 @@ object EmergencyCallSession {
             Intent(EMERGENCY_DIALER_ACTION),
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            probes.add(Intent(TelecomManager.ACTION_SHOW_EMERGENCY_DIALER))
+            probes.add(Intent(SHOW_EMERGENCY_DIALER))
         }
         for (intent in probes) {
             try {
