@@ -1,3 +1,4 @@
+import { authedFetch } from '../../utils/adminAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,7 +34,7 @@ export const MultiLoanOverview = ({
       const token = await getSecureItem('admin_token');
       if (!token) return;
       
-      const resp = await fetch(
+      const resp = await authedFetch(
         `${API_URL}/api/loans/client/${clientId}?admin_token=${token}&status=all`
       );
       if (resp.ok) {
@@ -94,7 +95,7 @@ export const MultiLoanOverview = ({
             setActionLoading(loanId + '_pay');
             try {
               const token = await getSecureItem('admin_token');
-              const resp = await fetch(
+              const resp = await authedFetch(
                 `${API_URL}/api/connect/send-payment-link?admin_token=${token}&client_id=${clientId}&loan_id=${loanId}&amount=${dueTodayAmount}`,
                 { method: 'POST' }
               );
@@ -132,7 +133,7 @@ export const MultiLoanOverview = ({
             setActionLoading(loanId);
             try {
               const token = await getSecureItem('admin_token');
-              const resp = await fetch(
+              const resp = await authedFetch(
                 `${API_URL}/api/loans/${loanId}?admin_token=${token}`,
                 { method: 'DELETE' }
               );

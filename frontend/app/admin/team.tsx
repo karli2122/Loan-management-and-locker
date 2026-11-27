@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
@@ -51,7 +52,7 @@ function TeamContent() {
   const fetchTeam = async () => {
     try {
       const token = await getSecureItem('admin_token');
-      const res = await fetch(`${API_URL}/api/team/members?admin_token=${token}`);
+      const res = await authedFetch(`${API_URL}/api/team/members?admin_token=${token}`);
       const data = await res.json();
       if (Array.isArray(data)) setMembers(data);
       else if (data.members) setMembers(data.members);
@@ -73,7 +74,7 @@ function TeamContent() {
     setAdding(true);
     try {
       const token = await getSecureItem('admin_token');
-      const res = await fetch(`${API_URL}/api/team/members?admin_token=${token}`, {
+      const res = await authedFetch(`${API_URL}/api/team/members?admin_token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -100,7 +101,7 @@ function TeamContent() {
       {
         text: 'Remove', style: 'destructive', onPress: async () => {
           const token = await getSecureItem('admin_token');
-          await fetch(`${API_URL}/api/team/members/${memberId}?admin_token=${token}`, { method: 'DELETE' });
+          await authedFetch(`${API_URL}/api/team/members/${memberId}?admin_token=${token}`, { method: 'DELETE' });
           fetchTeam();
         },
       },

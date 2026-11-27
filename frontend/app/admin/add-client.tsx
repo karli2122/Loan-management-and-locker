@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
-import { getAuthInfo, handleAuthFailure } from '../../src/utils/adminAuth';
+import { authedFetch, getAuthInfo, handleAuthFailure } from '../../src/utils/adminAuth';
 import { DatePicker } from '../../src/components/DatePicker';
 
 
@@ -95,7 +95,7 @@ export default function AddClient() {
       };
       
       console.log('Creating client:', clientData);
-      const clientResponse = await fetch(`${API_URL}/api/clients?admin_token=${auth.token}`, {
+      const clientResponse = await authedFetch(`${API_URL}/api/clients?admin_token=${auth.token}`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -140,7 +140,7 @@ export default function AddClient() {
         };
 
         console.log('Setting up loan:', loanData);
-        const loanResponse = await fetch(`${API_URL}/api/loans/${client.id}/setup?admin_token=${auth.token}`, {
+        const loanResponse = await authedFetch(`${API_URL}/api/loans/${client.id}/setup?admin_token=${auth.token}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(loanData),

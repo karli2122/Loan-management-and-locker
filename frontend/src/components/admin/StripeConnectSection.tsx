@@ -1,3 +1,4 @@
+import { authedFetch } from '../../utils/adminAuth';
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Linking, Alert, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,7 +27,7 @@ export const StripeConnectSection = ({ adminToken, colors, t, formatAmount, isSu
   const fetchStatus = async () => {
     if (!adminToken) return;
     try {
-      const resp = await fetch(`${API_URL}/api/connect/status?admin_token=${adminToken}`);
+      const resp = await authedFetch(`${API_URL}/api/connect/status?admin_token=${adminToken}`);
       if (resp.ok) setStatus(await resp.json());
     } catch (e) {
       console.error('Connect status error:', e);
@@ -39,7 +40,7 @@ export const StripeConnectSection = ({ adminToken, colors, t, formatAmount, isSu
     if (!adminToken) return;
     setOnboarding(true);
     try {
-      const resp = await fetch(`${API_URL}/api/connect/onboard?admin_token=${adminToken}`, { method: 'POST' });
+      const resp = await authedFetch(`${API_URL}/api/connect/onboard?admin_token=${adminToken}`, { method: 'POST' });
       const data = await resp.json();
       if (data.status === 'already_connected') {
         Alert.alert('Already Connected', 'Your Stripe account is already connected and active.');
@@ -59,7 +60,7 @@ export const StripeConnectSection = ({ adminToken, colors, t, formatAmount, isSu
   const fetchPlatformFee = async () => {
     if (!adminToken || !isSuperAdmin) return;
     try {
-      const resp = await fetch(`${API_URL}/api/connect/platform-fee?admin_token=${adminToken}`);
+      const resp = await authedFetch(`${API_URL}/api/connect/platform-fee?admin_token=${adminToken}`);
       if (resp.ok) {
         const data = await resp.json();
         setFeeValue(String(data.platform_fee_percent));
@@ -78,7 +79,7 @@ export const StripeConnectSection = ({ adminToken, colors, t, formatAmount, isSu
     }
     setFeeSaving(true);
     try {
-      const resp = await fetch(
+      const resp = await authedFetch(
         `${API_URL}/api/connect/platform-fee?admin_token=${adminToken}&fee_percent=${val}`,
         { method: 'PUT' }
       );

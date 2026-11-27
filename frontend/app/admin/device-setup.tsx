@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -21,7 +22,7 @@ import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/
 // Android Enterprise provisioning QR code data
 const generateProvisioningData = (clientRegCode: string) => {
   const data = {
-    "android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME": "com.emi.client/.DeviceAdminReceiver",
+    "android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME": "com.paylock.client/expo.modules.emideviceadmin.EMIDeviceAdminReceiver",
     "android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION": `${API_URL}/downloads/loan-client.apk`,
     "android.app.extra.PROVISIONING_SKIP_ENCRYPTION": true,
     "android.app.extra.PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED": true,
@@ -57,7 +58,7 @@ export default function DeviceSetup() {
     try {
       const adminId = await getSecureItem('admin_id');
       const query = adminId ? `?admin_id=${adminId}` : '';
-      const response = await fetch(`${API_URL}/api/clients${query}`);
+      const response = await authedFetch(`${API_URL}/api/clients${query}`);
       const data = await response.json();
       // Only show unregistered clients
       let clientList: any[] = [];

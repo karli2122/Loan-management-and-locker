@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -49,7 +50,7 @@ export default function Dashboard() {
     try {
       const adminToken = await getSecureItem('admin_token');
       if (!adminToken) return;
-      const response = await fetch(`${API_URL}/api/reports/collection?admin_token=${adminToken}`);
+      const response = await authedFetch(`${API_URL}/api/reports/collection?admin_token=${adminToken}`);
       if (!response.ok) return;
       const data = await response.json();
       setLoanStats({
@@ -70,8 +71,8 @@ export default function Dashboard() {
       const adminToken = await getSecureItem('admin_token');
       if (!adminToken) return;
       const [healthResp, trendsResp] = await Promise.all([
-        fetch(`${API_URL}/api/analytics/portfolio-health?admin_token=${adminToken}`).catch(() => null),
-        fetch(`${API_URL}/api/analytics/collection-trends?admin_token=${adminToken}&period=monthly&months=6`).catch(() => null),
+        authedFetch(`${API_URL}/api/analytics/portfolio-health?admin_token=${adminToken}`).catch(() => null),
+        authedFetch(`${API_URL}/api/analytics/collection-trends?admin_token=${adminToken}&period=monthly&months=6`).catch(() => null),
       ]);
       if (healthResp?.ok) setPortfolioHealth(await healthResp.json());
       if (trendsResp?.ok) {

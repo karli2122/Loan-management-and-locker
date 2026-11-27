@@ -1,3 +1,4 @@
+import { authedFetch } from '../../utils/adminAuth';
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,7 +23,7 @@ export default function SessionManagementModal({ adminToken, colors, visible, on
   const fetchSessions = async () => {
     setLoading(true);
     try {
-      const resp = await fetch(`${API_URL}/api/sessions?admin_token=${adminToken}`);
+      const resp = await authedFetch(`${API_URL}/api/sessions?admin_token=${adminToken}`);
       if (resp.ok) {
         const data = await resp.json();
         setSessions(data.sessions || []);
@@ -38,7 +39,7 @@ export default function SessionManagementModal({ adminToken, colors, visible, on
         text: 'Revoke', style: 'destructive', onPress: async () => {
           setRevoking(sessionId);
           try {
-            await fetch(`${API_URL}/api/sessions/${sessionId}?admin_token=${adminToken}`, { method: 'DELETE' });
+            await authedFetch(`${API_URL}/api/sessions/${sessionId}?admin_token=${adminToken}`, { method: 'DELETE' });
             fetchSessions();
           } catch (e) { console.log(e); }
           setRevoking(null);
@@ -54,7 +55,7 @@ export default function SessionManagementModal({ adminToken, colors, visible, on
         text: 'Revoke All', style: 'destructive', onPress: async () => {
           setLoading(true);
           try {
-            await fetch(`${API_URL}/api/sessions?admin_token=${adminToken}`, { method: 'DELETE' });
+            await authedFetch(`${API_URL}/api/sessions?admin_token=${adminToken}`, { method: 'DELETE' });
             fetchSessions();
           } catch (e) { console.log(e); }
           setLoading(false);

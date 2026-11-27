@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
@@ -142,7 +143,7 @@ export default function ClientDetails() {
         return;
       }
       setAdminToken(token);
-      const response = await fetch(`${API_URL}/api/clients/${id}?admin_token=${token}`);
+      const response = await authedFetch(`${API_URL}/api/clients/${id}?admin_token=${token}`);
       if (response.status === 401) { handleAuthFailure(); return; }
       if (!response.ok) throw new Error('Client not found');
       const data = await response.json();
@@ -161,7 +162,7 @@ export default function ClientDetails() {
       setLoanHistoryLoading(true);
       const token = await getAdminToken();
       if (!token) return;
-      const response = await fetch(`${API_URL}/api/clients/${id}/loan-history?admin_token=${token}`);
+      const response = await authedFetch(`${API_URL}/api/clients/${id}/loan-history?admin_token=${token}`);
       if (response.ok) {
         const data = await response.json();
         setLoanHistory(data.loan_history || []);
@@ -178,7 +179,7 @@ export default function ClientDetails() {
       setPaymentHistoryLoading(true);
       const token = await getAdminToken();
       if (!token) return;
-      const response = await fetch(`${API_URL}/api/loans/${id}/payments?admin_token=${token}`);
+      const response = await authedFetch(`${API_URL}/api/loans/${id}/payments?admin_token=${token}`);
       if (response.ok) {
         const data = await response.json();
         setPaymentHistory(data || []);
@@ -269,7 +270,7 @@ export default function ClientDetails() {
             try {
               const token = await getSecureItem('admin_token');
               if (!token) { Alert.alert(t('error'), 'Not authenticated'); return; }
-              const response = await fetch(`${API_URL}/api/clients/${id}/generate-code?admin_token=${token}&lock_mode=${lockMode}`, { method: 'POST' });
+              const response = await authedFetch(`${API_URL}/api/clients/${id}/generate-code?admin_token=${token}&lock_mode=${lockMode}`, { method: 'POST' });
               if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error || errorData.detail || 'Failed to generate code'); }
               const data = await response.json();
               if (client) setClient({ ...client, registration_code: data.registration_code, lock_mode: data.lock_mode });
@@ -292,7 +293,7 @@ export default function ClientDetails() {
     setActionLoading(true);
     try {
       const adminQuery = await buildAdminTokenQuery(true);
-      const response = await fetch(`${API_URL}/api/clients/${id}/lock?message=${encodeURIComponent(lockMessage)}${adminQuery}`, { method: 'POST' });
+      const response = await authedFetch(`${API_URL}/api/clients/${id}/lock?message=${encodeURIComponent(lockMessage)}${adminQuery}`, { method: 'POST' });
       if (!response.ok) throw new Error('Failed to lock device');
       await fetchClient();
       setLockModal(false);
@@ -310,7 +311,7 @@ export default function ClientDetails() {
           setActionLoading(true);
           try {
             const adminQuery = await buildAdminTokenQuery();
-            const response = await fetch(`${API_URL}/api/clients/${id}/unlock${adminQuery}`, { method: 'POST' });
+            const response = await authedFetch(`${API_URL}/api/clients/${id}/unlock${adminQuery}`, { method: 'POST' });
             if (!response.ok) throw new Error('Failed to unlock device');
             await fetchClient();
             Alert.alert(t('success'), t('deviceUnlockedSuccess'));
@@ -326,7 +327,7 @@ export default function ClientDetails() {
     setActionLoading(true);
     try {
       const adminQuery = await buildAdminTokenQuery(true);
-      const response = await fetch(`${API_URL}/api/clients/${id}/warning?message=${encodeURIComponent(warningMessage)}${adminQuery}`, { method: 'POST' });
+      const response = await authedFetch(`${API_URL}/api/clients/${id}/warning?message=${encodeURIComponent(warningMessage)}${adminQuery}`, { method: 'POST' });
       if (!response.ok) throw new Error('Failed to send warning');
       await fetchClient();
       setWarningModal(false);
@@ -345,7 +346,7 @@ export default function ClientDetails() {
           setActionLoading(true);
           try {
             const adminQuery = await buildAdminTokenQuery();
-            const response = await fetch(`${API_URL}/api/clients/${id}/allow-uninstall${adminQuery}`, { method: 'POST' });
+            const response = await authedFetch(`${API_URL}/api/clients/${id}/allow-uninstall${adminQuery}`, { method: 'POST' });
             if (!response.ok) throw new Error('Failed to allow uninstall');
             const data = await response.json();
             Alert.alert(t('success'), data.message + '\n\nYou can now delete this client.');
@@ -369,7 +370,7 @@ export default function ClientDetails() {
             setActionLoading(true);
             try {
               const adminQuery = await buildAdminTokenQuery();
-              const deleteRes = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`, { method: 'DELETE' });
+              const deleteRes = await authedFetch(`${API_URL}/api/clients/${id}${adminQuery}`, { method: 'DELETE' });
               if (!deleteRes.ok) { const err = await deleteRes.json(); throw new Error(err.detail || 'Failed to delete client'); }
               Alert.alert(t('success'), t('clientDeletedSuccess'));
               router.back();
@@ -385,7 +386,7 @@ export default function ClientDetails() {
     setFetchingPrice(true);
     try {
       const adminQuery = await buildAdminTokenQuery();
-      const response = await fetch(`${API_URL}/api/clients/${id}/fetch-price${adminQuery}`);
+      const response = await authedFetch(`${API_URL}/api/clients/${id}/fetch-price${adminQuery}`);
       if (!response.ok) { const error = await response.json(); throw new Error(error.detail || 'Failed to fetch price'); }
       const data = await response.json();
       await fetchClient();
@@ -418,7 +419,7 @@ export default function ClientDetails() {
         if (!isNaN(priceNum) && priceNum >= 0) updateData.used_price_eur = priceNum;
       }
       const adminQuery = await buildAdminTokenQuery();
-      const response = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`, {
+      const response = await authedFetch(`${API_URL}/api/clients/${id}${adminQuery}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updateData),
       });
       if (!response.ok) throw new Error('Failed to update device info');
@@ -452,7 +453,7 @@ export default function ClientDetails() {
       if (editClientEmail.trim()) updateData.email = editClientEmail.trim();
       if (editClientAddress.trim()) updateData.address = editClientAddress.trim();
       const adminQuery = await buildAdminTokenQuery();
-      const response = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`, {
+      const response = await authedFetch(`${API_URL}/api/clients/${id}${adminQuery}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updateData),
       });
       if (!response.ok) { const errorData = await response.json().catch(() => ({})); throw new Error(errorData.detail || 'Failed to update client info'); }
@@ -477,7 +478,7 @@ export default function ClientDetails() {
         ? `${API_URL}/api/loans/${selectedLoanId}/payment?admin_token=${token}&amount=${parseFloat(paymentAmount)}&notes=${encodeURIComponent(paymentNotes || '')}`
         : `${API_URL}/api/loans/${id}/payments?admin_token=${token}`;
       
-      const response = await fetch(endpoint, {
+      const response = await authedFetch(endpoint, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' },
         body: selectedLoanId ? undefined : JSON.stringify({ amount: parseFloat(paymentAmount), payment_method: paymentMethod, notes: paymentNotes }),
@@ -532,7 +533,7 @@ export default function ClientDetails() {
         loan_amount: editLoanAmount, interest_rate: editInterestRate,
         loan_start_date: editLoanStartDate, due_date: editLoanDueDate, admin_token: token || '',
       });
-      const response = await fetch(`${API_URL}/api/loans/${id}/preview?${params.toString()}`);
+      const response = await authedFetch(`${API_URL}/api/loans/${id}/preview?${params.toString()}`);
       if (!response.ok) { const errorData = await response.json().catch(() => ({})); throw new Error(errorData.detail || 'Failed to calculate preview'); }
       const data = await response.json();
       setLoanPreview(data.preview);
@@ -555,8 +556,8 @@ export default function ClientDetails() {
         : `${API_URL}/api/loans/${id}/edit?admin_token=${token}`;
       
       const response = selectedLoanId
-        ? await fetch(endpoint, { method: 'PUT' })
-        : await fetch(endpoint, {
+        ? await authedFetch(endpoint, { method: 'PUT' })
+        : await authedFetch(endpoint, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               loan_amount: parseFloat(editLoanAmount), interest_rate: parseFloat(editInterestRate),
@@ -823,11 +824,11 @@ export default function ClientDetails() {
           setChatLoading(true);
           try {
             const token = await getAdminToken();
-            const resp = await fetch(`${API_URL}/api/messages?client_id=${id}&admin_token=${token}`);
+            const resp = await authedFetch(`${API_URL}/api/messages?client_id=${id}&admin_token=${token}`);
             if (resp.ok) {
               const data = await resp.json();
               setChatMessages(data.messages || []);
-              fetch(`${API_URL}/api/messages/mark-read?client_id=${id}&admin_token=${token}`, { method: 'POST' }).catch(() => {});
+              authedFetch(`${API_URL}/api/messages/mark-read?client_id=${id}&admin_token=${token}`, { method: 'POST' }).catch(() => {});
             }
           } catch (e) { console.log('Chat fetch error', e); }
           setChatLoading(false);
@@ -904,10 +905,10 @@ export default function ClientDetails() {
                       if (!chatText.trim()) return;
                       try {
                         const token = await getAdminToken();
-                        const resp = await fetch(`${API_URL}/api/messages?client_id=${id}&text=${encodeURIComponent(chatText)}&admin_token=${token}`, { method: 'POST' });
+                        const resp = await authedFetch(`${API_URL}/api/messages?client_id=${id}&text=${encodeURIComponent(chatText)}&admin_token=${token}`, { method: 'POST' });
                         if (resp.ok) {
                           setChatText('');
-                          const refreshResp = await fetch(`${API_URL}/api/messages?client_id=${id}&admin_token=${token}`);
+                          const refreshResp = await authedFetch(`${API_URL}/api/messages?client_id=${id}&admin_token=${token}`);
                           if (refreshResp.ok) {
                             const data = await refreshResp.json();
                             setChatMessages(data.messages || []);
@@ -921,10 +922,10 @@ export default function ClientDetails() {
                       if (!chatText.trim()) return;
                       try {
                         const token = await getAdminToken();
-                        const resp = await fetch(`${API_URL}/api/messages?client_id=${id}&text=${encodeURIComponent(chatText)}&admin_token=${token}`, { method: 'POST' });
+                        const resp = await authedFetch(`${API_URL}/api/messages?client_id=${id}&text=${encodeURIComponent(chatText)}&admin_token=${token}`, { method: 'POST' });
                         if (resp.ok) {
                           setChatText('');
-                          const refreshResp = await fetch(`${API_URL}/api/messages?client_id=${id}&admin_token=${token}`);
+                          const refreshResp = await authedFetch(`${API_URL}/api/messages?client_id=${id}&admin_token=${token}`);
                           if (refreshResp.ok) {
                             const data = await refreshResp.json();
                             setChatMessages(data.messages || []);

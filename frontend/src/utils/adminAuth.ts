@@ -90,3 +90,30 @@ export async function verifyTokenSilent(): Promise<boolean> {
     return true;
   }
 }
+
+
+/**
+ * Remove admin_token from a URL so it is not logged in access/proxy logs.
+ */
+export function stripAdminTokenParam(url: string): string {
+  const cleaned = url
+    .replace(/([?&])admin_token=[^&]*/g, '$1')
+    .replace(/\?&/, '?')
+    .replace(/&&+/g, '&')
+    .replace(/[?&]$/, '');
+  return cleaned;
+}
+
+/**
+ * Fetch helper for admin API calls: sends Authorization: Bearer and strips
+ * any leftover admin_token query parameter. Falls back to a raw fetch if no
+ * token is stored (the backend will then 401).
+ */
+export async function authedFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = await getSecureItem('admin_token');
+  const headers = new Headers(options.headers || {});
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  return fetch(stripAdminTokenParam(url), { ...options, headers });
+}

@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
+import { deviceAuthHeaders, getDeviceToken } from '../../src/utils/deviceAuth';
 
 interface Payment {
   id: string;
@@ -50,7 +51,8 @@ export default function PaymentHistoryScreen() {
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/payments/history/${clientId}`);
+      const devTok = await getDeviceToken();
+      const response = await fetch(`${API_URL}/api/payments/history/${clientId}`, { headers: { ...deviceAuthHeaders(devTok) } });
       if (response.ok) {
         const result = await response.json();
         setData(result);

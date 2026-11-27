@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '../../src/constants/api';
 import { getErrorMessage } from '../../src/utils/errorHandler';
-import { getAuthInfo, handleAuthFailure } from '../../src/utils/adminAuth';
+import { authedFetch, getAuthInfo, handleAuthFailure } from '../../src/utils/adminAuth';
 
 
 interface LoanPlan {
@@ -70,7 +70,7 @@ export default function LoanPlans() {
         await handleAuthFailure(router);
         return;
       }
-      const response = await fetch(`${API_URL}/api/loan-plans?admin_token=${auth.token}`);
+      const response = await authedFetch(`${API_URL}/api/loan-plans?admin_token=${auth.token}`);
       if (!(await checkAuth(response))) return;
       const data = await response.json();
       setPlans(data);
@@ -131,7 +131,7 @@ export default function LoanPlans() {
         ? `${API_URL}/api/loan-plans/${editingPlan.id}?admin_token=${auth.token}`
         : `${API_URL}/api/loan-plans?admin_token=${auth.token}`;
 
-      const response = await fetch(url, {
+      const response = await authedFetch(url, {
         method: editingPlan ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(planData),
@@ -157,7 +157,7 @@ export default function LoanPlans() {
 
       const newActiveState = !plan.is_active;
       
-      const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${auth.token}`, {
+      const response = await authedFetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${auth.token}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -199,7 +199,7 @@ export default function LoanPlans() {
               const auth = await getAuthInfo();
               if (!auth) { await handleAuthFailure(router); return; }
               console.log('Attempting to delete plan:', plan.id, plan.name);
-              const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${auth.token}`, {
+              const response = await authedFetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${auth.token}`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
               });
@@ -275,7 +275,7 @@ export default function LoanPlans() {
     try {
       const auth = await getAuthInfo();
       if (!auth) { await handleAuthFailure(router); return; }
-      const response = await fetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${auth.token}&force=true`, {
+      const response = await authedFetch(`${API_URL}/api/loan-plans/${plan.id}?admin_token=${auth.token}&force=true`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
       });

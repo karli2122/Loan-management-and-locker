@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -112,7 +113,7 @@ export default function LoanManagement() {
       const scope = await getAdminId();
       const adminQuery = scope ? `?admin_id=${scope}` : '';
       // Fetch client details
-      const clientRes = await fetch(`${API_URL}/api/clients/${id}${adminQuery}`);
+      const clientRes = await authedFetch(`${API_URL}/api/clients/${id}${adminQuery}`);
       const clientData = await clientRes.json();
       setClient(clientData);
       
@@ -138,12 +139,12 @@ export default function LoanManagement() {
       
       // Fetch payment history
       if (clientData.loan_start_date) {
-        const paymentsRes = await fetch(`${API_URL}/api/loans/${id}/payments${adminQuery}`);
+        const paymentsRes = await authedFetch(`${API_URL}/api/loans/${id}/payments${adminQuery}`);
         const paymentsData = await paymentsRes.json();
         setPayments(paymentsData.payments || []);
         
         // Fetch payment schedule
-        const scheduleRes = await fetch(`${API_URL}/api/loans/${id}/schedule${adminQuery}`);
+        const scheduleRes = await authedFetch(`${API_URL}/api/loans/${id}/schedule${adminQuery}`);
         const scheduleData = await scheduleRes.json();
         setSchedule(scheduleData.schedule || []);
       }
@@ -163,7 +164,7 @@ export default function LoanManagement() {
 
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/loans/${id}/setup`, {
+      const response = await authedFetch(`${API_URL}/api/loans/${id}/setup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -203,7 +204,7 @@ export default function LoanManagement() {
 
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/loans/${id}/update`, {
+      const response = await authedFetch(`${API_URL}/api/loans/${id}/update`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -235,7 +236,7 @@ export default function LoanManagement() {
     setActionLoading(true);
     try {
       const token = await getSecureItem('admin_token');
-      const response = await fetch(`${API_URL}/api/loans/${id}/payments?admin_token=${token}`, {
+      const response = await authedFetch(`${API_URL}/api/loans/${id}/payments?admin_token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -268,7 +269,7 @@ export default function LoanManagement() {
     try {
       const scope = await getAdminId();
       const adminQuery = scope ? `?admin_id=${scope}` : '';
-      const response = await fetch(`${API_URL}/api/loans/${id}/settings${adminQuery}`, {
+      const response = await authedFetch(`${API_URL}/api/loans/${id}/settings${adminQuery}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -295,7 +296,7 @@ export default function LoanManagement() {
       const scope = await getAdminId();
       const adminQuery = scope ? `?admin_id=${scope}` : '';
       const endpoint = shouldLock ? 'lock' : 'unlock';
-      const response = await fetch(`${API_URL}/api/clients/${id}/${endpoint}${adminQuery}`, {
+      const response = await authedFetch(`${API_URL}/api/clients/${id}/${endpoint}${adminQuery}`, {
         method: 'POST',
       });
 

@@ -1,3 +1,4 @@
+import { authedFetch } from '../../../src/utils/adminAuth';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
@@ -97,7 +98,7 @@ export default function LoansTab() {
         setClients([]);
         return;
       }
-      const response = await fetch(`${API_URL}/api/clients?limit=500&admin_token=${adminToken}`);
+      const response = await authedFetch(`${API_URL}/api/clients?limit=500&admin_token=${adminToken}`);
       if (!response.ok) {
         console.error('API error:', response.status);
         setClients([]);
@@ -120,7 +121,7 @@ export default function LoansTab() {
         setPaidLoans([]);
         return;
       }
-      const response = await fetch(`${API_URL}/api/paid-loans?admin_token=${adminToken}`);
+      const response = await authedFetch(`${API_URL}/api/paid-loans?admin_token=${adminToken}`);
       if (!response.ok) {
         console.error('Failed to fetch paid loans:', response.status);
         setPaidLoans([]);

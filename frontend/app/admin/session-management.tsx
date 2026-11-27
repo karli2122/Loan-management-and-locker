@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, TextInput, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,7 +23,7 @@ export default function SessionManagementScreen() {
     try {
       const token = await getSecureItem('admin_token');
       if (!token) return;
-      const resp = await fetch(`${API_URL}/api/sessions?admin_token=${token}`);
+      const resp = await authedFetch(`${API_URL}/api/sessions?admin_token=${token}`);
       if (resp.ok) {
         const data = await resp.json();
         setSessions(data.sessions || []);
@@ -45,7 +46,7 @@ export default function SessionManagementScreen() {
           setRevoking(sessionId);
           try {
             const token = await getSecureItem('admin_token');
-            await fetch(`${API_URL}/api/sessions/${sessionId}?admin_token=${token}`, { method: 'DELETE' });
+            await authedFetch(`${API_URL}/api/sessions/${sessionId}?admin_token=${token}`, { method: 'DELETE' });
             fetchSessions();
           } catch (e) { console.log(e); }
           setRevoking(null);
@@ -62,7 +63,7 @@ export default function SessionManagementScreen() {
           setLoading(true);
           try {
             const token = await getSecureItem('admin_token');
-            await fetch(`${API_URL}/api/sessions?admin_token=${token}`, { method: 'DELETE' });
+            await authedFetch(`${API_URL}/api/sessions?admin_token=${token}`, { method: 'DELETE' });
             fetchSessions();
           } catch (e) { console.log(e); }
         }

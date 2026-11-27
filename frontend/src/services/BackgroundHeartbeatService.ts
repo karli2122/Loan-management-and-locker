@@ -1,3 +1,4 @@
+import { deviceAuthHeaders, getDeviceToken } from '../utils/deviceAuth';
 /**
  * Background Heartbeat Service
  * Sends heartbeat to server every 5 minutes even when app is in background or killed
@@ -124,7 +125,7 @@ async function sendHeartbeat(): Promise<boolean> {
     }
 
     const deviceData = await collectDeviceData();
-    const devTok = await AsyncStorage.getItem('client_device_token');
+    const devTok = await getDeviceToken();
 
     const payload: HeartbeatData = {
       client_id: clientId,

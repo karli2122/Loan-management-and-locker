@@ -1,3 +1,4 @@
+import { authedFetch } from '../../../src/utils/adminAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -51,7 +52,7 @@ export default function TransactionsTab() {
         setTransactions([]);
         return;
       }
-      const response = await fetch(`${API_URL}/api/clients?limit=500&admin_token=${adminToken}`);
+      const response = await authedFetch(`${API_URL}/api/clients?limit=500&admin_token=${adminToken}`);
       if (!response.ok) {
         setTransactions([]);
         return;
@@ -81,7 +82,7 @@ export default function TransactionsTab() {
 
         // Fetch actual payments from the payments API
         try {
-          const paymentsRes = await fetch(`${API_URL}/api/loans/${client.id}/payments?admin_token=${adminToken}`);
+          const paymentsRes = await authedFetch(`${API_URL}/api/loans/${client.id}/payments?admin_token=${adminToken}`);
           if (paymentsRes.ok) {
             const payments = await paymentsRes.json();
             if (Array.isArray(payments)) {

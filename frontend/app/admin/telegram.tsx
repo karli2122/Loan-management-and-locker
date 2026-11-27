@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
@@ -47,8 +48,8 @@ function TelegramContent() {
     try {
       const token = await getSecureItem('admin_token');
       const [botRes, clientsRes] = await Promise.all([
-        fetch(`${API_URL}/api/telegram/bot-info?admin_token=${token}`),
-        fetch(`${API_URL}/api/clients?admin_token=${token}`),
+        authedFetch(`${API_URL}/api/telegram/bot-info?admin_token=${token}`),
+        authedFetch(`${API_URL}/api/clients?admin_token=${token}`),
       ]);
       const bot = await botRes.json();
       const cl = await clientsRes.json();
@@ -72,7 +73,7 @@ function TelegramContent() {
     }
     try {
       const token = await getSecureItem('admin_token');
-      const res = await fetch(`${API_URL}/api/telegram/link-client?admin_token=${token}`, {
+      const res = await authedFetch(`${API_URL}/api/telegram/link-client?admin_token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ client_id: linkClientId, chat_id: linkChatId }),
@@ -93,7 +94,7 @@ function TelegramContent() {
 
   const sendTestMessage = async (chatId: string) => {
     const token = await getSecureItem('admin_token');
-    const res = await fetch(`${API_URL}/api/telegram/send-test?admin_token=${token}`, {
+    const res = await authedFetch(`${API_URL}/api/telegram/send-test?admin_token=${token}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId }),

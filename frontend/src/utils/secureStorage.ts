@@ -18,7 +18,7 @@ try {
   SecureStore = null;
 }
 
-const SECURE_KEYS = ['admin_token', 'admin_id'];
+const SECURE_KEYS = ['admin_token', 'admin_id', 'client_device_token'];
 
 // SecureStore keys must be alphanumeric, '.', '-', or '_'. Our keys already are.
 function secureAvailable(): boolean {

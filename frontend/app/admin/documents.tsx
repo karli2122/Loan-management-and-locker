@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
@@ -46,7 +47,7 @@ function DocumentsContent() {
     try {
       const token = await getSecureItem('admin_token');
       // Fetch all documents from vault (all clients)
-      const res = await fetch(`${API_URL}/api/documents/vault/all?admin_token=${token}`);
+      const res = await authedFetch(`${API_URL}/api/documents/vault/all?admin_token=${token}`);
       const data = await res.json();
       if (Array.isArray(data)) setDocs(data);
       else if (data.documents) setDocs(data.documents);
@@ -64,7 +65,7 @@ function DocumentsContent() {
     setDownloading(doc.id);
     try {
       const token = await getSecureItem('admin_token');
-      const resp = await fetch(`${API_URL}/api/documents/vault/${doc.client_id}/${doc.id}/download?admin_token=${token}`);
+      const resp = await authedFetch(`${API_URL}/api/documents/vault/${doc.client_id}/${doc.id}/download?admin_token=${token}`);
       if (!resp.ok) {
         const errorData = await resp.json().catch(() => ({}));
         throw new Error(errorData.detail || 'Download failed');
@@ -120,7 +121,7 @@ function DocumentsContent() {
       {
         text: 'Delete', style: 'destructive', onPress: async () => {
           const token = await getSecureItem('admin_token');
-          await fetch(`${API_URL}/api/documents/vault/${doc.client_id}/${doc.id}?admin_token=${token}`, { method: 'DELETE' });
+          await authedFetch(`${API_URL}/api/documents/vault/${doc.client_id}/${doc.id}?admin_token=${token}`, { method: 'DELETE' });
           fetchDocs();
         },
       },

@@ -1,3 +1,4 @@
+import { deviceAuthHeaders, getDeviceToken } from '../utils/deviceAuth';
 /**
  * Device Info Service - Collects and sends device information to backend
  * Sends battery, storage, and device info during registration and periodically
@@ -133,7 +134,7 @@ export async function sendDeviceInfoUpdate(clientId: string): Promise<boolean> {
       return false;
     }
     
-    const deviceToken = await AsyncStorage.getItem('client_device_token');
+    const deviceToken = await getDeviceToken();
     const payload: any = { client_id: clientId, device_token: deviceToken || '' };
     
     if (info.battery_level !== null) {

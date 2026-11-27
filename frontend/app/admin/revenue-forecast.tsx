@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,7 +25,7 @@ export default function RevenueForecastScreen() {
     try {
       const token = await getSecureItem('admin_token');
       if (!token) return;
-      const resp = await fetch(`${API_URL}/api/forecasting/revenue?admin_token=${token}&days=${days}`);
+      const resp = await authedFetch(`${API_URL}/api/forecasting/revenue?admin_token=${token}&days=${days}`);
       if (resp.ok) {
         const data = await resp.json();
         setForecast(data);

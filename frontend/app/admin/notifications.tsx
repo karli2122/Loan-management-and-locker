@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -43,7 +44,7 @@ export default function NotificationsScreen() {
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/notifications?admin_token=${token}&limit=100`);
+      const response = await authedFetch(`${API_URL}/api/notifications?admin_token=${token}&limit=100`);
       if (response.ok) {
         const data = await response.json();
         setNotifications(data.notifications || []);
@@ -69,7 +70,7 @@ export default function NotificationsScreen() {
   const markAllRead = async () => {
     try {
       const token = await getSecureItem('admin_token');
-      await fetch(`${API_URL}/api/notifications/mark-all-read?admin_token=${token}`, {
+      await authedFetch(`${API_URL}/api/notifications/mark-all-read?admin_token=${token}`, {
         method: 'POST',
       });
       setNotifications(notifications.map(n => ({ ...n, is_read: true })));

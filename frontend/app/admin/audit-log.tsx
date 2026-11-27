@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -60,7 +61,7 @@ export default function AuditLogPage() {
         url += `&action_type=${filter}`;
       }
 
-      const response = await fetch(url);
+      const response = await authedFetch(url);
       if (response.ok) {
         const data = await response.json();
         setLogs(data.logs || []);
@@ -75,7 +76,7 @@ export default function AuditLogPage() {
       const adminToken = await getSecureItem('admin_token');
       if (!adminToken) return;
 
-      const response = await fetch(`${API_URL}/api/audit-logs/summary?admin_token=${adminToken}&days=7`);
+      const response = await authedFetch(`${API_URL}/api/audit-logs/summary?admin_token=${adminToken}&days=7`);
       if (response.ok) {
         const data = await response.json();
         setSummary(data);
@@ -90,7 +91,7 @@ export default function AuditLogPage() {
       const adminToken = await getSecureItem('admin_token');
       if (!adminToken) return;
 
-      const response = await fetch(`${API_URL}/api/audit-logs/action-types?admin_token=${adminToken}`);
+      const response = await authedFetch(`${API_URL}/api/audit-logs/action-types?admin_token=${adminToken}`);
       if (response.ok) {
         const data = await response.json();
         setActionTypes(data.action_types || []);

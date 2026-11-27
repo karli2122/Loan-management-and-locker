@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -145,7 +146,7 @@ export default function AdminSettings() {
       
       // Always check if user is superadmin
       try {
-        const creditsResponse = await fetch(`${API_URL}/api/admin/credits?admin_token=${token}`);
+        const creditsResponse = await authedFetch(`${API_URL}/api/admin/credits?admin_token=${token}`);
         if (creditsResponse.ok) {
           const creditsData = await creditsResponse.json();
           setIsSuperAdmin(creditsData.is_super_admin === true);
@@ -176,12 +177,12 @@ export default function AdminSettings() {
 
   const fetchAdminList = async (token: string) => {
     try {
-      const creditsResponse = await fetch(`${API_URL}/api/admin/credits?admin_token=${token}`);
+      const creditsResponse = await authedFetch(`${API_URL}/api/admin/credits?admin_token=${token}`);
       if (creditsResponse.ok) {
         const creditsData = await creditsResponse.json();
         setIsSuperAdmin(creditsData.is_super_admin);
       }
-      const response = await fetch(`${API_URL}/api/admin/list?admin_token=${token}`);
+      const response = await authedFetch(`${API_URL}/api/admin/list?admin_token=${token}`);
       if (response.ok) {
         const data = await response.json();
         setAdmins(data);
@@ -193,7 +194,7 @@ export default function AdminSettings() {
 
   const fetchAdmins = async (token: string) => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/list?admin_token=${token}`);
+      const response = await authedFetch(`${API_URL}/api/admin/list?admin_token=${token}`);
       if (response.ok) {
         const data = await response.json();
         setAdmins(data);
@@ -205,7 +206,7 @@ export default function AdminSettings() {
 
   const fetchAdminSettings = async (token: string) => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/settings?admin_token=${token}`);
+      const response = await authedFetch(`${API_URL}/api/admin/settings?admin_token=${token}`);
       if (response.ok) {
         const data = await response.json();
         setLateFeePercent(String(data.default_late_fee_percent || 2.0));
@@ -219,7 +220,7 @@ export default function AdminSettings() {
 
   const fetchCurrentPlan = async (token: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/payments/current-plan?admin_token=${token}`);
+      const res = await authedFetch(`${API_URL}/api/payments/current-plan?admin_token=${token}`);
       if (res.ok) {
         const data = await res.json();
         setCurrentSubscription(data.plan_id || 'starter');
@@ -239,7 +240,7 @@ export default function AdminSettings() {
         const planId = params.get('plan');
         if (sessionId) {
           // Poll status
-          const statusRes = await fetch(`${API_URL}/api/payments/status/${sessionId}`);
+          const statusRes = await authedFetch(`${API_URL}/api/payments/status/${sessionId}`);
           if (statusRes.ok) {
             const statusData = await statusRes.json();
             if (statusData.payment_status === 'paid') {
@@ -262,7 +263,7 @@ export default function AdminSettings() {
     setSubscribingPlan(planId);
     try {
       const origin = Platform.OS === 'web' ? window.location.origin : API_URL;
-      const res = await fetch(`${API_URL}/api/payments/subscribe`, {
+      const res = await authedFetch(`${API_URL}/api/payments/subscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan_id: planId, origin_url: origin, admin_token: adminToken }),
@@ -311,7 +312,7 @@ export default function AdminSettings() {
     
     setSettingsSaving(true);
     try {
-      const response = await fetch(
+      const response = await authedFetch(
         `${API_URL}/api/admin/settings?admin_token=${adminToken}&default_late_fee_percent=${feePercent}&default_auto_lock_grace_days=${graceDays}&default_auto_lock_enabled=${autoLockEnabled}`,
         { method: 'PUT' }
       );
@@ -348,7 +349,7 @@ export default function AdminSettings() {
           onPress: async () => {
             setSettingsSaving(true);
             try {
-              const response = await fetch(
+              const response = await authedFetch(
                 `${API_URL}/api/admin/settings/apply-to-all?admin_token=${adminToken}`,
                 { method: 'POST' }
               );
@@ -510,7 +511,7 @@ export default function AdminSettings() {
     setActionLoading(true);
     try {
       // Send admin_token as query parameter, not in the body
-      const response = await fetch(`${API_URL}/api/admin/register?admin_token=${adminToken}`, {
+      const response = await authedFetch(`${API_URL}/api/admin/register?admin_token=${adminToken}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -584,7 +585,7 @@ export default function AdminSettings() {
 
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/admin/change-password?admin_token=${adminToken}`, {
+      const response = await authedFetch(`${API_URL}/api/admin/change-password?admin_token=${adminToken}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -639,7 +640,7 @@ export default function AdminSettings() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const response = await fetch(
+              const response = await authedFetch(
                 `${API_URL}/api/admin/${admin.id}?admin_token=${adminToken}`,
                 { method: 'DELETE' }
               );
@@ -673,7 +674,7 @@ export default function AdminSettings() {
 
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/admin/update-profile?admin_token=${adminToken}`, {
+      const response = await authedFetch(`${API_URL}/api/admin/update-profile?admin_token=${adminToken}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -858,9 +859,9 @@ export default function AdminSettings() {
                     return;
                   }
                   // Register token first
-                  await fetch(`${API_URL}/api/push/register-token?token=${encodeURIComponent(pushToken)}&admin_token=${adminToken}`, { method: 'POST' });
+                  await authedFetch(`${API_URL}/api/push/register-token?token=${encodeURIComponent(pushToken)}&admin_token=${adminToken}`, { method: 'POST' });
                   // Send test via backend
-                  const res = await fetch(`${API_URL}/api/push/send?admin_token=${adminToken}&title=${encodeURIComponent('Test Notification')}&body=${encodeURIComponent('Push notifications are working!')}&token=${encodeURIComponent(pushToken)}`, { method: 'POST' });
+                  const res = await authedFetch(`${API_URL}/api/push/send?admin_token=${adminToken}&title=${encodeURIComponent('Test Notification')}&body=${encodeURIComponent('Push notifications are working!')}&token=${encodeURIComponent(pushToken)}`, { method: 'POST' });
                   if (res.ok) {
                     Alert.alert('Success', `Test notification sent!\nYour push token: ${pushToken.slice(0, 30)}...`);
                   } else {
@@ -1251,7 +1252,7 @@ export default function AdminSettings() {
                             text: r === 'admin' ? (t('admin2') || 'Admin') : (t('user2') || 'User'),
                             onPress: async () => {
                               try {
-                                const res = await fetch(
+                                const res = await authedFetch(
                                   `${API_URL}/api/team/${admin.id}/role?admin_token=${adminToken}&role=${r}`,
                                   { method: 'PUT' }
                                 );
@@ -1288,7 +1289,7 @@ export default function AdminSettings() {
                             text: p.charAt(0).toUpperCase() + p.slice(1),
                             onPress: async () => {
                               try {
-                                const res = await fetch(
+                                const res = await authedFetch(
                                   `${API_URL}/api/admin/${admin.id}/plan?admin_token=${adminToken}&plan=${p}`,
                                   { method: 'PUT' }
                                 );

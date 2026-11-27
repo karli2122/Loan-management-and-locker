@@ -1,3 +1,4 @@
+import { authedFetch } from '../../utils/adminAuth';
 import React from 'react';
 import { View, Text, TouchableOpacity, Linking, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,7 +33,7 @@ export const ActionButtons = ({
     try {
       const token = await getSecureItem('admin_token');
       if (!token) return;
-      const resp = await fetch(`${API_URL}/api/reminders/send-email/${client.id}?admin_token=${token}`, { method: 'POST' });
+      const resp = await authedFetch(`${API_URL}/api/reminders/send-email/${client.id}?admin_token=${token}`, { method: 'POST' });
       const data = await resp.json();
       Alert.alert(data.success ? (language === 'et' ? 'Saadetud' : 'Sent') : (language === 'et' ? 'Viga' : 'Error'), data.message);
     } catch (e: any) { Alert.alert('Error', e.message); }
@@ -42,7 +43,7 @@ export const ActionButtons = ({
     try {
       const token = await getSecureItem('admin_token');
       if (!token) return;
-      const resp = await fetch(`${API_URL}/api/reminders/whatsapp-link/${client.id}?admin_token=${token}`);
+      const resp = await authedFetch(`${API_URL}/api/reminders/whatsapp-link/${client.id}?admin_token=${token}`);
       const data = await resp.json();
       if (data.deep_link) {
         Linking.openURL(data.deep_link);

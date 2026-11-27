@@ -1,3 +1,4 @@
+import { authedFetch } from '../../utils/adminAuth';
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Modal, TextInput, ScrollView, Alert, ActivityIndicator, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,7 +29,7 @@ export default function LoanRestructureModal({ clientId, clientName, adminToken,
   const fetchHistory = async () => {
     setHistoryLoading(true);
     try {
-      const resp = await fetch(`${API_URL}/api/loans/${clientId}/restructure-history?admin_token=${adminToken}`);
+      const resp = await authedFetch(`${API_URL}/api/loans/${clientId}/restructure-history?admin_token=${adminToken}`);
       if (resp.ok) {
         const data = await resp.json();
         setHistory(data.history || []);
@@ -53,7 +54,7 @@ export default function LoanRestructureModal({ clientId, clientName, adminToken,
       if (newTenure) body.new_tenure_months = parseInt(newTenure);
       if (newRate) body.new_interest_rate = parseFloat(newRate);
 
-      const resp = await fetch(`${API_URL}/api/loans/${clientId}/restructure?admin_token=${adminToken}`, {
+      const resp = await authedFetch(`${API_URL}/api/loans/${clientId}/restructure?admin_token=${adminToken}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
       const data = await resp.json();

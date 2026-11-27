@@ -1,3 +1,4 @@
+import { authedFetch } from '../../utils/adminAuth';
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView, Alert, ActivityIndicator, Platform, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,7 +37,7 @@ export default function DocumentVaultModal({ clientId, clientName, adminToken, c
   const fetchDocuments = async () => {
     setLoading(true);
     try {
-      const resp = await fetch(`${API_URL}/api/documents/vault/${clientId}?admin_token=${adminToken}`);
+      const resp = await authedFetch(`${API_URL}/api/documents/vault/${clientId}?admin_token=${adminToken}`);
       if (resp.ok) {
         const data = await resp.json();
         setDocuments(data.documents || []);
@@ -56,7 +57,7 @@ export default function DocumentVaultModal({ clientId, clientName, adminToken, c
       const formData = new FormData();
       formData.append('file', { uri: file.uri, name: file.name, type: file.mimeType || 'application/octet-stream' } as any);
 
-      const resp = await fetch(
+      const resp = await authedFetch(
         `${API_URL}/api/documents/vault/${clientId}/upload?admin_token=${adminToken}&doc_type=${selectedType}`,
         { method: 'POST', body: formData, headers: { 'Content-Type': 'multipart/form-data' } }
       );
@@ -76,7 +77,7 @@ export default function DocumentVaultModal({ clientId, clientName, adminToken, c
   const handleDownload = async (docId: string, filename: string) => {
     setDownloading(docId);
     try {
-      const resp = await fetch(`${API_URL}/api/documents/vault/${clientId}/${docId}/download?admin_token=${adminToken}`);
+      const resp = await authedFetch(`${API_URL}/api/documents/vault/${clientId}/${docId}/download?admin_token=${adminToken}`);
       if (!resp.ok) {
         const errorData = await resp.json().catch(() => ({}));
         throw new Error(errorData.detail || 'Download failed');
@@ -133,7 +134,7 @@ export default function DocumentVaultModal({ clientId, clientName, adminToken, c
       {
         text: 'Delete', style: 'destructive', onPress: async () => {
           try {
-            const resp = await fetch(`${API_URL}/api/documents/vault/${clientId}/${docId}?admin_token=${adminToken}`, { method: 'DELETE' });
+            const resp = await authedFetch(`${API_URL}/api/documents/vault/${clientId}/${docId}?admin_token=${adminToken}`, { method: 'DELETE' });
             if (resp.ok) fetchDocuments();
           } catch (e) { console.log(e); }
         }

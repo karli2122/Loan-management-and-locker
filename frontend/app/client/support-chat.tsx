@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
+import { deviceAuthHeaders, getDeviceToken } from '../../src/utils/deviceAuth';
 
 interface Message {
   id: string;
@@ -36,10 +37,13 @@ export default function SupportChatScreen() {
 
   const fetchMessages = async (id: string) => {
     try {
-      const response = await fetch(`${API_URL}/api/support/messages/${id}`);
+      const devTok = await getDeviceToken();
+      const response = await fetch(`${API_URL}/api/support/messages/${id}`, {
+        headers: { ...deviceAuthHeaders(devTok) },
+      });
       if (response.ok) {
         const data = await response.json();
-        setMessages(data.messages || []);
+        setMessages(Array.isArray(data) ? data : (data.messages || []));
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -73,9 +77,10 @@ export default function SupportChatScreen() {
 
     setSending(true);
     try {
-      const response = await fetch(`${API_URL}/api/support/messages/${clientId}?sender=client`, {
+      const devTok = await getDeviceToken();
+      const response = await fetch(`${API_URL}/api/support/messages/${clientId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...deviceAuthHeaders(devTok) },
         body: JSON.stringify({ message: newMessage.trim() }),
       });
 

@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -83,7 +84,7 @@ export default function ClientsList() {
       }
       const query = `?limit=500&admin_token=${adminToken}`;
       // Fetch with pagination - get first 500 records (increased limit for admin panel)
-      const response = await fetch(`${API_URL}/api/clients${query}`);
+      const response = await authedFetch(`${API_URL}/api/clients${query}`);
       
       if (response.status === 401) {
         handleAuthFailure();
@@ -116,7 +117,7 @@ export default function ClientsList() {
       if (!adminToken) return;
       
       // Silent clients: haven't sent heartbeat in 60 minutes
-      const response = await fetch(`${API_URL}/api/clients/silent?admin_token=${adminToken}&minutes=1440`);
+      const response = await authedFetch(`${API_URL}/api/clients/silent?admin_token=${adminToken}&minutes=1440`);
       if (response.ok) {
         const data = await response.json();
         setSilentClients(data.silent_clients || []);

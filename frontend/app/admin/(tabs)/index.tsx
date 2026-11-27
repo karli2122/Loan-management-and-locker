@@ -1,3 +1,4 @@
+import { authedFetch } from '../../../src/utils/adminAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -131,7 +132,7 @@ export default function Dashboard() {
       const adminToken = await getSecureItem('admin_token');
       if (!adminToken) return;
       
-      const response = await fetch(`${API_URL}/api/admin/list?admin_token=${adminToken}`);
+      const response = await authedFetch(`${API_URL}/api/admin/list?admin_token=${adminToken}`);
       if (response.ok) {
         const data = await response.json();
         setAdminList(data);
@@ -155,7 +156,7 @@ export default function Dashboard() {
         url += `&filter_admin_id=${filterAdminId}`;
       }
       
-      const response = await fetch(url);
+      const response = await authedFetch(url);
       if (!response.ok) {
         console.error('API error:', response.status);
         return;
@@ -188,7 +189,7 @@ export default function Dashboard() {
         url += `&filter_admin_id=${filterAdminId}`;
       }
       
-      const response = await fetch(url);
+      const response = await authedFetch(url);
       if (response.ok) {
         const data = await response.json();
         setHeartbeat({
@@ -213,7 +214,7 @@ export default function Dashboard() {
         url += `&filter_admin_id=${filterAdminId}`;
       }
       
-      const response = await fetch(url);
+      const response = await authedFetch(url);
       if (response.ok) {
         const data = await response.json();
         const revenue = data.monthly_revenue || {};
@@ -249,7 +250,7 @@ export default function Dashboard() {
     try {
       const adminToken = await getSecureItem('admin_token');
       if (!adminToken) return;
-      const response = await fetch(`${API_URL}/api/paid-loans/summary?admin_token=${adminToken}`);
+      const response = await authedFetch(`${API_URL}/api/paid-loans/summary?admin_token=${adminToken}`);
       if (response.ok) {
         const data = await response.json();
         setInterestSummary({
@@ -279,7 +280,7 @@ export default function Dashboard() {
     try {
       const adminToken = await getSecureItem('admin_token');
       if (!adminToken) return;
-      const response = await fetch(`${API_URL}/api/admin/feature-access?admin_token=${adminToken}`);
+      const response = await authedFetch(`${API_URL}/api/admin/feature-access?admin_token=${adminToken}`);
       if (response.ok) {
         const data = await response.json();
         setPlanFeatures({
@@ -304,7 +305,7 @@ export default function Dashboard() {
     // Fetch super admin status
     if (token) {
       try {
-        const response = await fetch(`${API_URL}/api/admin/credits?admin_token=${token}`);
+        const response = await authedFetch(`${API_URL}/api/admin/credits?admin_token=${token}`);
         if (response.ok) {
           const data = await response.json();
           setIsSuperAdmin(data.is_super_admin);
@@ -365,7 +366,7 @@ export default function Dashboard() {
           const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
           const adminToken = await getSecureItem('admin_token');
           if (adminToken && tokenData?.data) {
-            fetch(`${API_URL}/api/push/register-token?token=${encodeURIComponent(tokenData.data)}&admin_token=${adminToken}`, { method: 'POST' }).catch(() => {});
+            authedFetch(`${API_URL}/api/push/register-token?token=${encodeURIComponent(tokenData.data)}&admin_token=${adminToken}`, { method: 'POST' }).catch(() => {});
           }
         }
       } catch (e) {
@@ -379,7 +380,7 @@ export default function Dashboard() {
       try {
         const adminToken = await getSecureItem('admin_token');
         if (!adminToken) return;
-        const resp = await fetch(`${API_URL}/api/push/due-today?admin_token=${adminToken}`);
+        const resp = await authedFetch(`${API_URL}/api/push/due-today?admin_token=${adminToken}`);
         if (resp.ok) {
           const data = await resp.json();
           setDueTodayCount(data.count || 0);
@@ -427,7 +428,7 @@ export default function Dashboard() {
     let remaining: any[] = [];
     for (const action of offlineQueue) {
       try {
-        await fetch(`${API_URL}${action.url}${action.url.includes('?') ? '&' : '?'}admin_token=${adminToken}`, {
+        await authedFetch(`${API_URL}${action.url}${action.url.includes('?') ? '&' : '?'}admin_token=${adminToken}`, {
           method: action.method || 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: action.body ? JSON.stringify(action.body) : undefined,

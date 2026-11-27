@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -46,7 +47,7 @@ export default function ClientMapScreen() {
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/clients/locations?admin_token=${token}`);
+      const response = await authedFetch(`${API_URL}/api/clients/locations?admin_token=${token}`);
       if (response.ok) {
         const data = await response.json();
         setLocations(data.locations || []);

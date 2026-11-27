@@ -1,3 +1,4 @@
+import { authedFetch } from '../utils/adminAuth';
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '../constants/api';
@@ -33,7 +34,7 @@ export function useEnterpriseAccess(): PlanAccess {
         const token = await getSecureItem('admin_token');
         if (!token) { setLoading(false); return; }
 
-        const res = await fetch(`${API_URL}/api/admin/feature-access?admin_token=${token}`);
+        const res = await authedFetch(`${API_URL}/api/admin/feature-access?admin_token=${token}`);
         if (res.ok) {
           const data = await res.json();
           setPlan(data.plan || 'starter');
@@ -42,8 +43,8 @@ export function useEnterpriseAccess(): PlanAccess {
         } else {
           // Fallback to old endpoints
           const [planRes, creditsRes] = await Promise.all([
-            fetch(`${API_URL}/api/payments/current-plan?admin_token=${token}`),
-            fetch(`${API_URL}/api/admin/credits?admin_token=${token}`),
+            authedFetch(`${API_URL}/api/payments/current-plan?admin_token=${token}`),
+            authedFetch(`${API_URL}/api/admin/credits?admin_token=${token}`),
           ]);
           if (planRes.ok) {
             const data = await planRes.json();

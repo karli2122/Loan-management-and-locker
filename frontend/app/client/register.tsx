@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { LanguagePicker } from '../../src/components/LanguagePicker';
 import API_URL, { API_BASE_URL, buildApiUrl } from '../../src/constants/api';
+import { lockModeFromRegistrationCode, setDeviceToken } from '../../src/utils/deviceAuth';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
 import { getRegistrationDeviceInfo } from '../../src/services/DeviceInfoService';
 
@@ -138,11 +139,10 @@ export default function ClientRegister() {
       
       // Store device_token for messaging auth
       if (data?.device_token) {
-        await AsyncStorage.setItem('client_device_token', data.device_token);
+        await setDeviceToken(data.device_token);
       }
       
-      // Determine lock mode from code length: 8 = device_admin, 9 = device_owner
-      const lockMode = code.length === 9 ? 'device_owner' : 'device_admin';
+      const lockMode = lockModeFromRegistrationCode(code, data?.lock_mode);
       await AsyncStorage.setItem('lock_mode', lockMode);
       
       // Mark as fresh registration so home.tsx can delay admin prompt

@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -106,7 +107,7 @@ export default function AddLoan() {
         return;
       }
       console.log('Fetching last loan for renewal, clientId:', clientId);
-      const response = await fetch(
+      const response = await authedFetch(
         `${API_URL}/api/paid-loans/${clientId}/latest?admin_token=${adminToken}`
       );
       if (response.ok) {
@@ -164,7 +165,7 @@ export default function AddLoan() {
     try {
       const adminToken = await getSecureItem('admin_token');
       const query = adminToken ? `?limit=500&admin_token=${adminToken}` : '?limit=500';
-      const response = await fetch(`${API_URL}/api/clients${query}`);
+      const response = await authedFetch(`${API_URL}/api/clients${query}`);
       if (response.ok) {
         const data = await response.json();
         const clientList = data?.clients || (Array.isArray(data) ? data : []);
@@ -186,7 +187,7 @@ export default function AddLoan() {
       }
       
       console.log('Fetching loan plans from:', `${API_URL}/api/loan-plans?admin_token=${adminToken}`);
-      const response = await fetch(`${API_URL}/api/loan-plans?admin_token=${adminToken}`);
+      const response = await authedFetch(`${API_URL}/api/loan-plans?admin_token=${adminToken}`);
       console.log('Loan plans response status:', response.status);
       if (response.ok) {
         const data = await response.json();
@@ -297,7 +298,7 @@ export default function AddLoan() {
         };
         
         console.log('Creating new client for loan:', newClientData);
-        const clientResponse = await fetch(`${API_URL}/api/clients?admin_token=${adminToken || ''}`, {
+        const clientResponse = await authedFetch(`${API_URL}/api/clients?admin_token=${adminToken || ''}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(newClientData),
@@ -346,7 +347,7 @@ export default function AddLoan() {
       };
       
       console.log('Setting up loan for client:', clientId, loanData);
-      const loanResponse = await fetch(`${API_URL}/api/loans/${clientId}/setup?admin_token=${adminToken || ''}`, {
+      const loanResponse = await authedFetch(`${API_URL}/api/loans/${clientId}/setup?admin_token=${adminToken || ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loanData),

@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Clipboard, Alert, Linking,
@@ -74,8 +75,8 @@ export default function BusinessManagement() {
               ? '1. Tehaseseadistage seade\n2. Ärge lisage Google kontot\n3. Lubage USB silumine\n4. Käivitage terminal:'
               : '1. Factory reset the device\n2. Do NOT add a Google account\n3. Enable USB Debugging\n4. Run in terminal:'}</Text>
             <View style={s.code}>
-              <Text style={s.codeText} selectable>adb shell dpm set-device-owner{'\n'}com.paylock.client/.DeviceAdminReceiver</Text>
-              <TouchableOpacity style={s.copyBtn} onPress={() => { try { Clipboard.setString('adb shell dpm set-device-owner com.paylock.client/.DeviceAdminReceiver'); } catch(e){} }}>
+              <Text style={s.codeText} selectable>adb shell dpm set-device-owner{'\n'}com.paylock.client/expo.modules.emideviceadmin.EMIDeviceAdminReceiver</Text>
+              <TouchableOpacity style={s.copyBtn} onPress={() => { try { Clipboard.setString('adb shell dpm set-device-owner com.paylock.client/expo.modules.emideviceadmin.EMIDeviceAdminReceiver'); } catch(e){} }}>
                 <Ionicons name="copy" size={16} color="#2563EB" />
               </TouchableOpacity>
             </View>
@@ -97,7 +98,7 @@ export default function BusinessManagement() {
               try {
                 const token = await getSecureItem('admin_token');
                 if (!token) return;
-                const resp = await fetch(`${API_URL}/api/provisioning/qr-code?admin_token=${token}`);
+                const resp = await authedFetch(`${API_URL}/api/provisioning/qr-code?admin_token=${token}`);
                 if (!resp.ok) throw new Error('Failed');
                 Alert.alert('QR Code Generated', language === 'et' ? 'QR-kood genereeritud!' : 'QR code generated! Use during device setup.');
               } catch (e: any) { Alert.alert('Error', e.message); }
@@ -119,7 +120,7 @@ export default function BusinessManagement() {
               try {
                 const token = await getSecureItem('admin_token');
                 if (!token) return;
-                const resp = await fetch(`${API_URL}/api/provisioning/qr-code?admin_token=${token}`);
+                const resp = await authedFetch(`${API_URL}/api/provisioning/qr-code?admin_token=${token}`);
                 if (!resp.ok) throw new Error('Failed');
                 Alert.alert('NFC Payload', language === 'et' ? 'NFC andmed genereeritud!' : 'NFC payload generated! Write to NFC tag using NFC Tools app.');
               } catch (e: any) { Alert.alert('Error', e.message); }

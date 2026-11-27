@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -80,9 +81,9 @@ export default function Reports() {
       }
       
       const [collection, clients, financial] = await Promise.all([
-        fetch(`${API_URL}/api/reports/collection?admin_token=${adminToken}`).then(r => r.json()),
-        fetch(`${API_URL}/api/reports/clients?admin_token=${adminToken}`).then(r => r.json()),
-        fetch(`${API_URL}/api/reports/financial?admin_token=${adminToken}`).then(r => r.json()),
+        authedFetch(`${API_URL}/api/reports/collection?admin_token=${adminToken}`).then(r => r.json()),
+        authedFetch(`${API_URL}/api/reports/clients?admin_token=${adminToken}`).then(r => r.json()),
+        authedFetch(`${API_URL}/api/reports/financial?admin_token=${adminToken}`).then(r => r.json()),
       ]);
       
       setCollectionReport(collection);
@@ -112,7 +113,7 @@ export default function Reports() {
     setCalculatingFees(true);
     try {
       const token = await getSecureItem('admin_token');
-      const response = await fetch(`${API_URL}/api/late-fees/calculate-all?admin_token=${token}`, {
+      const response = await authedFetch(`${API_URL}/api/late-fees/calculate-all?admin_token=${token}`, {
         method: 'POST',
       });
       if (!response.ok) {

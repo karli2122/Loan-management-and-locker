@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -60,7 +61,7 @@ export default function PaymentReminders() {
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/reminders/pending?admin_token=${token}`);
+      const response = await authedFetch(`${API_URL}/api/reminders/pending?admin_token=${token}`);
       const data = await response.json();
 
       if (response.ok) {
@@ -99,7 +100,7 @@ export default function PaymentReminders() {
             setSending(true);
             try {
               const token = await getSecureItem('admin_token');
-              const response = await fetch(`${API_URL}/api/reminders/send-push?admin_token=${token}`, {
+              const response = await authedFetch(`${API_URL}/api/reminders/send-push?admin_token=${token}`, {
                 method: 'POST',
               });
               const data = await response.json();
@@ -130,7 +131,7 @@ export default function PaymentReminders() {
     setSendingClient(clientId);
     try {
       const token = await getSecureItem('admin_token');
-      const response = await fetch(`${API_URL}/api/reminders/send-single/${clientId}?admin_token=${token}`, {
+      const response = await authedFetch(`${API_URL}/api/reminders/send-single/${clientId}?admin_token=${token}`, {
         method: 'POST',
       });
       const data = await response.json();

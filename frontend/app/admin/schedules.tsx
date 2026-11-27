@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
@@ -44,7 +45,7 @@ function SchedulesContent() {
   const fetchSchedules = async () => {
     try {
       const token = await getSecureItem('admin_token');
-      const res = await fetch(`${API_URL}/api/schedules?admin_token=${token}`);
+      const res = await authedFetch(`${API_URL}/api/schedules?admin_token=${token}`);
       const data = await res.json();
       if (Array.isArray(data)) setSchedules(data);
       else if (data.schedules) setSchedules(data.schedules);
@@ -60,7 +61,7 @@ function SchedulesContent() {
 
   const toggleSchedule = async (id: string, active: boolean) => {
     const token = await getSecureItem('admin_token');
-    await fetch(`${API_URL}/api/schedules/${id}/toggle?admin_token=${token}`, {
+    await authedFetch(`${API_URL}/api/schedules/${id}/toggle?admin_token=${token}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_active: !active }),
@@ -74,7 +75,7 @@ function SchedulesContent() {
       {
         text: 'Delete', style: 'destructive', onPress: async () => {
           const token = await getSecureItem('admin_token');
-          await fetch(`${API_URL}/api/schedules/${id}?admin_token=${token}`, { method: 'DELETE' });
+          await authedFetch(`${API_URL}/api/schedules/${id}?admin_token=${token}`, { method: 'DELETE' });
           fetchSchedules();
         },
       },

@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useRef } from 'react';
 import {
   View,
@@ -150,7 +151,7 @@ function BankAnalyzerContent() {
       } else {
         formData.append('file', { uri, name, type: mimeType } as any);
       }
-      const response = await fetch(
+      const response = await authedFetch(
         `${API_URL}/api/bank-statements/analyze?admin_token=${adminToken}${forceOcr ? '&force_ocr=true' : ''}`,
         { method: 'POST', body: formData }
       );
@@ -183,7 +184,7 @@ function BankAnalyzerContent() {
       }
       const formData = new FormData();
       formData.append('file', file);
-      const response = await fetch(
+      const response = await authedFetch(
         `${API_URL}/api/bank-statements/analyze?admin_token=${adminToken}${forceOcr ? '&force_ocr=true' : ''}`,
         { method: 'POST', body: formData }
       );

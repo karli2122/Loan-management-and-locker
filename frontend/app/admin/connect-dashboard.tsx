@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, RefreshControl, ActivityIndicator, StyleSheet,
@@ -22,7 +23,7 @@ export default function ConnectDashboard() {
     try {
       const token = await getSecureItem('admin_token');
       if (!token) return;
-      const resp = await fetch(`${API_URL}/api/connect/dashboard?admin_token=${token}`);
+      const resp = await authedFetch(`${API_URL}/api/connect/dashboard?admin_token=${token}`);
       if (resp.ok) setData(await resp.json());
     } catch (e) {
       console.error('Dashboard error:', e);

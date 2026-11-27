@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
@@ -35,7 +36,7 @@ function ProvisioningContent() {
       let url = `${API_URL}/api/provisioning/qr-code?admin_token=${token}`;
       if (wifiSsid) url += `&wifi_ssid=${encodeURIComponent(wifiSsid)}`;
       if (wifiPassword) url += `&wifi_password=${encodeURIComponent(wifiPassword)}`;
-      const res = await fetch(url);
+      const res = await authedFetch(url);
       const data = await res.json();
       if (data.qr_code_base64) {
         setQrData(`data:image/png;base64,${data.qr_code_base64}`);

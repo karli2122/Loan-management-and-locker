@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -41,10 +42,8 @@ export default function DeviceManagement() {
   const fetchStats = async () => {
     try {
       const adminToken = await getSecureItem('admin_token');
-      const url = adminToken
-        ? `${API_URL}/api/stats?admin_token=${adminToken}`
-        : `${API_URL}/api/stats`;
-      const response = await fetch(url);
+      if (!adminToken) return;
+      const response = await authedFetch(`${API_URL}/api/stats`);
       const data = await response.json();
       setStats(data);
       
@@ -52,7 +51,7 @@ export default function DeviceManagement() {
       const token = await getSecureItem('admin_token');
       if (token) {
         try {
-          const planResp = await fetch(`${API_URL}/api/plans/limits?admin_token=${token}`);
+          const planResp = await authedFetch(`${API_URL}/api/plans/limits?admin_token=${token}`);
           if (planResp.ok) {
             const planData = await planResp.json();
             setPlanAllowsBusinessMgmt(planData.limits?.business_management || planData.is_super_admin || false);

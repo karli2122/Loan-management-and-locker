@@ -1,3 +1,4 @@
+import { deviceAuthHeaders, getDeviceToken } from '../utils/deviceAuth';
 /**
  * Background Location Tracking Service
  * 
@@ -32,7 +33,7 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
       try {
         const clientId = await AsyncStorage.getItem('client_id');
         const apiUrl = await AsyncStorage.getItem('api_url');
-        const deviceToken = await AsyncStorage.getItem('client_device_token');
+        const deviceToken = await getDeviceToken();
 
         if (!clientId || !apiUrl) {
           console.log('[BackgroundLocation] No client ID or API URL stored');
@@ -41,7 +42,7 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
 
         const response = await fetch(`${apiUrl}/api/device/location`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...deviceAuthHeaders((await getDeviceToken()) || '') },
           body: JSON.stringify({
             client_id: clientId,
             device_token: deviceToken || '',

@@ -1,3 +1,4 @@
+import { authedFetch } from '../../src/utils/adminAuth';
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
@@ -55,7 +56,7 @@ function BulkImportContent() {
       };
       formData.append('file', fileData);
 
-      const resp = await fetch(`${API_URL}/api/import/clients/csv`, {
+      const resp = await authedFetch(`${API_URL}/api/import/clients/csv`, {
         method: 'POST',
         body: formData,
       });
@@ -113,7 +114,7 @@ function BulkImportContent() {
       };
       formData.append('file', fileData);
 
-      const resp = await fetch(`${API_URL}/api/import/bank-statement/reconcile`, {
+      const resp = await authedFetch(`${API_URL}/api/import/bank-statement/reconcile`, {
         method: 'POST',
         body: formData,
       });
