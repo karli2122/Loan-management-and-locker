@@ -113,12 +113,16 @@ class EMIDeviceAdminReceiver : DeviceAdminReceiver() {
         val prefs = getPrefs(context)
         if (!prefs.getBoolean("is_locked", false)) return
         if (EmergencyCallSession.isActive(context)) return
+        // Debounce: never get into a relaunch loop with the app's own lock-task calls.
+        val now = System.currentTimeMillis()
+        if (now - prefs.getLong("last_lock_task_relaunch", 0L) < 5_000L) return
+        prefs.edit().putLong("last_lock_task_relaunch", now).apply()
         Log.w(TAG, "Lock-task exited while still locked — relaunching")
         try {
             val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return
             launchIntent.addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
                     Intent.FLAG_ACTIVITY_SINGLE_TOP
             )
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

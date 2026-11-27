@@ -236,6 +236,47 @@ class DevicePolicyManager {
     }
   }
 
+  /** Store the device token natively so the background lock sync can authenticate. */
+  async setDeviceAuthToken(token: string): Promise<string> {
+    try {
+      if (Platform.OS === 'android' && nativeModule?.setDeviceAuthToken) {
+        return await nativeModule.setDeviceAuthToken(token || '');
+      }
+      return 'not_available';
+    } catch (error) {
+      console.log('Failed to set device auth token:', error);
+      return 'error';
+    }
+  }
+
+  /**
+   * Start the persistent native lock-state sync. It polls the server while the
+   * app is closed so an admin lock applies without the borrower opening the app.
+   */
+  async startLockSync(): Promise<string> {
+    try {
+      if (Platform.OS === 'android' && nativeModule?.startLockSync) {
+        return await nativeModule.startLockSync();
+      }
+      return 'not_available';
+    } catch (error) {
+      console.log('Failed to start lock sync:', error);
+      return 'error';
+    }
+  }
+
+  async stopLockSync(): Promise<string> {
+    try {
+      if (Platform.OS === 'android' && nativeModule?.stopLockSync) {
+        return await nativeModule.stopLockSync();
+      }
+      return 'not_available';
+    } catch (error) {
+      console.log('Failed to stop lock sync:', error);
+      return 'error';
+    }
+  }
+
   /**
    * Check if device is registered (for autostart)
    */

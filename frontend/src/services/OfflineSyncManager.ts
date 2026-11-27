@@ -1,3 +1,4 @@
+import { normalizeLockStatus, isLegacyUnsignedStatus } from '../utils/lockCompat';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { hmacSha256Hex, timingSafeEqualHex } from '../utils/hmac';
@@ -202,12 +203,25 @@ class OfflineSyncManager {
             throw new Error(`HTTP ${response.status}`);
           }
 
-          const status = await response.json();
+          const status: any = normalizeLockStatus(await response.json());
 
           // Verify the signed lock decision before trusting it. If the server
           // says "unlocked" but the signature is missing/invalid, we keep the
           // device locked — a MITM cannot forge an unlock.
           status._lock_verified = await this.verifyLockSignature(clientId, status);
+
+          // Legacy API (live api.paylock.pro): it never signs lock decisions, so
+          // without this an admin UNLOCK was ignored forever and the phone stayed
+          // locked. Trust the unsigned (HTTPS) answer only while this device has
+          // never seen a signed status; once the newer backend is deployed and a
+          // signed status arrives, unsigned answers are rejected again.
+          if (!status._lock_verified && isLegacyUnsignedStatus(status)) {
+            const everSigned = await this.getLastVerifiedIssuedAt(clientId);
+            if (!everSigned) {
+              status._lock_verified = true;
+              status._legacy_unsigned = true;
+            }
+          }
 
           if (attempt > 0) {
             console.log(`[OfflineSync] API recovered on retry ${attempt}`);

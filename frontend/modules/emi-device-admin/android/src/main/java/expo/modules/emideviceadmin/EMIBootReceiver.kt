@@ -51,6 +51,13 @@ class EMIBootReceiver : BroadcastReceiver() {
         val isLocked = prefs.getBoolean(KEY_LOCKED, false)
         val setupComplete = prefs.getBoolean(KEY_SETUP_COMPLETE, false)
         Log.d(TAG, "State ($reason): registered=$isRegistered, locked=$isLocked, setupComplete=$setupComplete")
+        // Keep the native server-lock sync running whenever the device is registered,
+        // so a lock issued while the app is closed still applies.
+        try {
+            Log.d(TAG, "Lock sync: ${EMILockSyncService.start(context)}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start lock sync: ${e.message}")
+        }
         if (!isLocked) return
 
         // Device Owner: re-apply lock-task allowlist (this app only) before launching.

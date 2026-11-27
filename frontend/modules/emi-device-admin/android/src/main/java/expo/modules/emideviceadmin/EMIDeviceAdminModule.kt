@@ -365,6 +365,17 @@ class EMIDeviceAdminModule : Module() {
                     }
                 }
 
+                // Without Device Owner, startLockTask() only triggers *screen pinning*,
+                // which shows a System UI confirmation/toast every time. Re-requesting it on
+                // each poll made the lock screen flash (System UI window -> accessibility
+                // BACK/HOME -> relaunch -> pin again). It is also user-escapable, so on
+                // Device Admin we rely on the overlay + foreground monitor instead.
+                if (!dpm.isDeviceOwnerApp(context.packageName)) {
+                    Log.d(TAG, "startKioskMode: not Device Owner — skipping screen pinning")
+                    promise.resolve("skipped_not_owner")
+                    return@AsyncFunction
+                }
+
                 currentActivity.startLockTask()
                 Log.d(TAG, "startKioskMode: Lock task started")
                 promise.resolve("started")
@@ -458,6 +469,38 @@ class EMIDeviceAdminModule : Module() {
                 Log.e(TAG, "setClientInfo error: ${e.message}")
                 promise.resolve("error: ${e.message}")
             }
+        }
+
+        // Device auth token for the native lock-sync poll (X-Device-Token header).
+        AsyncFunction("setDeviceAuthToken") { token: String, promise: Promise ->
+            try {
+                prefs.edit().putString(LockSync.KEY_DEVICE_TOKEN, token).apply()
+                promise.resolve("success")
+            } catch (e: Exception) {
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // Start / stop the persistent native lock-state sync (applies locks while the app is closed).
+        AsyncFunction("startLockSync") { promise: Promise ->
+            try {
+                promise.resolve(EMILockSyncService.start(context))
+            } catch (e: Exception) {
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        AsyncFunction("stopLockSync") { promise: Promise ->
+            try {
+                EMILockSyncService.stop(context)
+                promise.resolve("stopped")
+            } catch (e: Exception) {
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        AsyncFunction("isLockSyncRunning") {
+            EMILockSyncService.isRunning
         }
 
         // Start tamper detection (monitors admin disable attempts)
@@ -1827,6 +1870,7 @@ class EMIDeviceAdminModule : Module() {
 
         // Clear a previous restriction first so packages no longer blocked are restored.
         clearRestrictedLockInternal()
+        restrictedPrefs().edit().putBoolean("active", true).apply()
 
         val installed = context.packageManager.getInstalledPackages(0).map { it.packageName }
         val toSuspend = installed.filter { pkg ->
@@ -1859,12 +1903,23 @@ class EMIDeviceAdminModule : Module() {
             return "not_device_owner"
         }
         val prev = restrictedPrefs().getStringSet("suspended", emptySet()) ?: emptySet()
+        val wasRestricted = restrictedPrefs().getBoolean("active", false) || prev.isNotEmpty()
+        if (!wasRestricted) {
+            // Nothing to undo. Do NOT touch the lock-task allowlist here: clearing it
+            // while the full lock is pinned ejects the app from lock-task mode, which
+            // relaunched the activity and made the lock screen flash.
+            return "success:0"
+        }
         if (prev.isNotEmpty()) {
             dpm.setPackagesSuspended(adminComponent, prev.toTypedArray(), false)
         }
-        restrictedPrefs().edit().remove("suspended").apply()
+        restrictedPrefs().edit().remove("suspended").remove("active").apply()
+        val stillFullLocked = prefs.getBoolean("is_locked", false)
         try {
-            dpm.setLockTaskPackages(adminComponent, arrayOf())
+            dpm.setLockTaskPackages(
+                adminComponent,
+                if (stillFullLocked) arrayOf(context.packageName) else arrayOf()
+            )
         } catch (e: Exception) {
             Log.w(TAG, "clearRestrictedLock setLockTaskPackages: ${e.message}")
         }

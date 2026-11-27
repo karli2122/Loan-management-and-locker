@@ -43,6 +43,7 @@ class EMIAccessibilityService : AccessibilityService() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val checkHandler = Handler(Looper.getMainLooper())
     private var lockCheckRunnable: Runnable? = null
+    @Volatile private var lastShadeCloseAt = 0L
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -203,22 +204,21 @@ class EMIAccessibilityService : AccessibilityService() {
         if (isLocked) {
             // If systemui opens (notification shade / quick settings), immediately close it
             if (packageName == "com.android.systemui") {
-                Log.d(TAG, "LOCKED: SystemUI became active (notification shade?) — aggressive close")
-                // Nuclear approach: rapid-fire GLOBAL_ACTION_BACK to force close shade
-                performGlobalAction(GLOBAL_ACTION_BACK)
-                // Use GLOBAL_ACTION_HOME as backup — forces shade closed
-                performGlobalAction(GLOBAL_ACTION_HOME)
-                // Staggered rapid-fire to catch hold gestures
-                for (delay in listOf(50L, 100L, 150L, 200L, 300L, 500L, 750L, 1000L)) {
-                    mainHandler.postDelayed({
-                        performGlobalAction(GLOBAL_ACTION_BACK)
-                        // Re-apply immersive mode flags
-                        try {
-                            sendBroadcast(Intent("expo.modules.emideviceadmin.REAPPLY_IMMERSIVE"))
-                        } catch (_: Exception) {}
-                    }, delay)
+                // System UI windows include the shade, heads-up notifications, toasts,
+                // the volume panel and permission/pinning prompts. The old handler fired
+                // GLOBAL_ACTION_HOME plus 8 BACK presses and relaunched the app on EVERY
+                // such event, which pushed our own lock screen to the background and back
+                // again — the lock screen visibly flashed and the app could be killed.
+                // Now: close the shade once (throttled), never press HOME, and only bring
+                // the app back if it actually lost the foreground.
+                if (EmergencyCallSession.isActive(this)) return
+                val now = System.currentTimeMillis()
+                if (now - lastShadeCloseAt < 1_500L) return
+                lastShadeCloseAt = now
+                Log.d(TAG, "LOCKED: SystemUI window — collapsing shade")
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    performGlobalAction(GLOBAL_ACTION_DISMISS_NOTIFICATION_SHADE)
                 }
-                // Also collapse panels via StatusBarManager reflection
                 mainHandler.post {
                     try {
                         @Suppress("WrongConstant")
@@ -228,9 +228,11 @@ class EMIAccessibilityService : AccessibilityService() {
                             collapse.invoke(sbService)
                         }
                     } catch (_: Exception) {}
+                    try {
+                        sendBroadcast(Intent("expo.modules.emideviceadmin.REAPPLY_IMMERSIVE").setPackage(applicationContext.packageName))
+                    } catch (_: Exception) {}
                 }
-                // Relaunch our app to bring it to foreground over everything
-                mainHandler.postDelayed({ launchApp() }, 200)
+                mainHandler.postDelayed({ LockSync.launchApp(applicationContext) }, 400)
                 return
             }
 
@@ -238,6 +240,14 @@ class EMIAccessibilityService : AccessibilityService() {
                 "android",
             )
             if (packageName in lockedAllowed) return
+
+            // During a live emergency-call session let the dialer and the runtime
+            // permission prompt (READ_PHONE_STATE) through.
+            val emergencySession = EmergencyCallSession.isActive(this)
+            if (emergencySession && (packageName.contains("permissioncontroller") ||
+                    EmergencyCallSession.isDialerPackage(packageName, this))) {
+                return
+            }
 
             // Phone/Dialer apps: reject calls unless emergency call is active
             val isPhoneApp = packageName.contains("dialer") ||
@@ -248,8 +258,7 @@ class EMIAccessibilityService : AccessibilityService() {
                              packageName == "com.google.android.dialer" ||
                              packageName == "com.samsung.android.dialer"
             if (isPhoneApp) {
-                val emergencyActive = prefs.getBoolean("emergency_call_active", false)
-                if (emergencyActive) {
+                if (emergencySession) {
                     Log.d(TAG, "LOCKED: Emergency call active — allowing: $packageName")
                     return
                 }

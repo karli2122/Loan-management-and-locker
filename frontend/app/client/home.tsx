@@ -42,6 +42,7 @@ import { registerHeartbeatTask, sendHeartbeat, getHeartbeatStatus } from '../../
 import API_URL from '../../src/constants/api';
 import * as ScreenCapture from 'expo-screen-capture';
 import { LoanCountdown } from '../../src/components/LoanCountdown';
+import { deriveLoanFigures } from '../../src/utils/lockCompat';
 
 
 interface ClientStatus {
@@ -105,6 +106,8 @@ export default function ClientHome() {
   const appState = useRef(AppState.currentState);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wasLocked = useRef(false);
+  const lastLockLevelRef = useRef<string>('none');
+  const lastReapplyRef = useRef<number>(0);
   const isRequestingAdmin = useRef(false);
   const hasInitialized = useRef(false);
   const initComplete = useRef(false);
@@ -329,11 +332,15 @@ export default function ClientHome() {
         applied = await devicePolicy.applyLockLevel(level, allowlist || []);
       }
       // Device Admin cannot suspend packages — treat restricted as a full overlay lock.
-      if (level === 'restricted' && applied === 'downgraded_to_full') {
+      const downgraded = level === 'restricted' && applied === 'downgraded_to_full';
+      if (downgraded) {
         level = 'full';
       }
       const restricted = level === 'restricted';
-      const fullLock = locked && !restricted;
+      // "warning" keeps the phone usable (message only); only "full" pins the lock screen.
+      const fullLock = locked && !restricted && level !== 'warning';
+      lastLockLevelRef.current = locked ? (downgraded ? 'full_fallback' : level) : 'none';
+      lastReapplyRef.current = Date.now();
       // Save lock state for offline enforcement and autostart
       // Restricted mode is "locked" for HMAC but must not start kiosk.
       await devicePolicy.setLockState(fullLock, message);
@@ -356,7 +363,7 @@ export default function ClientHome() {
             await devicePolicy.setAsDefaultLauncher();
             await devicePolicy.setLockTaskPackages(['com.paylock.client']);
           }
-        } else if (restricted) {
+        } else if (restricted || (locked && level === 'warning')) {
           // Keep the phone usable for allowlisted apps; no kiosk overlay.
           StatusBar.setHidden(false, 'none');
           await devicePolicy.stopKioskMode().catch(() => {});
@@ -489,6 +496,14 @@ export default function ClientHome() {
         }
       }
       
+      // Restricted needs Device Owner (package suspension). On Device Admin show and
+      // enforce the full lock screen instead of only a banner.
+      if (Platform.OS === 'android' && statusToSet.is_locked &&
+          String(statusToSet.lock_level || '').toLowerCase() === 'restricted') {
+        const owner = await devicePolicy.isDeviceOwner().catch(() => false);
+        if (!owner) statusToSet = { ...statusToSet, lock_level: 'full' };
+      }
+
       setStatus(statusToSet);
       
       // Store admin plan for feature gating
@@ -527,28 +542,33 @@ export default function ClientHome() {
       }
       
       // Update lock state if changed - save message for offline use
-      if (statusToSet.is_locked !== wasLocked.current) {
+      const incomingLevel = statusToSet.is_locked
+        ? String(statusToSet.lock_level || 'full').toLowerCase()
+        : 'none';
+      if (
+        statusToSet.is_locked !== wasLocked.current ||
+        (statusToSet.is_locked && incomingLevel !== lastLockLevelRef.current &&
+          !(incomingLevel === 'restricted' && lastLockLevelRef.current === 'full_fallback'))
+      ) {
         updateLockState(statusToSet.is_locked, statusToSet.lock_message, statusToSet.lock_level, statusToSet.lock_allowlist);
-      } else if (statusToSet.is_locked && Platform.OS === 'android') {
-        const level = (statusToSet.lock_level || 'full').toLowerCase();
-        if (level === 'restricted') {
-          devicePolicy.applyLockLevel('restricted', statusToSet.lock_allowlist || []).then((applied) => {
-            if (applied === 'downgraded_to_full') {
-              updateLockState(true, statusToSet.lock_message, 'full', statusToSet.lock_allowlist);
-            }
-          }).catch(() => {});
-        } else {
-          // CRITICAL: Re-apply protections on EVERY poll while locked.
-          // Android may kill kiosk/overlay/immersive services at any time
-          // (Doze mode, battery optimization, OOM killer). Without this,
-          // the lockscreen "disappears" because services die but updateLockState
-          // is never called again (is_locked === wasLocked.current === true).
-          devicePolicy.startKioskMode().catch(() => {});
-          devicePolicy.enableImmersiveMode().catch(() => {});
-          devicePolicy.collapseStatusBar().catch(() => {});
-          devicePolicy.startOverlayBlocker().catch(() => {});
-          devicePolicy.startForegroundMonitor().catch(() => {});
-          StatusBar.setHidden(true, 'none');
+      } else if (statusToSet.is_locked && Platform.OS === 'android' && incomingLevel === 'full') {
+        // Android may kill the overlay / monitor (Doze, OOM). Re-check at most every
+        // 10s and only restart what is actually down. Re-applying kiosk, immersive mode
+        // and status-bar collapse on every 2s poll made the lock screen flash.
+        const now = Date.now();
+        if (now - lastReapplyRef.current >= 10000) {
+          lastReapplyRef.current = now;
+          (async () => {
+            try {
+              if (!(await devicePolicy.isOverlayBlockerRunning())) {
+                await devicePolicy.startOverlayBlocker();
+              }
+              await devicePolicy.startForegroundMonitor();
+              if (!(await devicePolicy.isInKioskMode())) {
+                await devicePolicy.startKioskMode();
+              }
+            } catch (_) {}
+          })();
         }
       }
     } catch (error) {
@@ -590,6 +610,7 @@ export default function ClientHome() {
           await devicePolicy.disableImmersiveMode();
           await devicePolicy.setProtectionComplete(false);
           await devicePolicy.setNativeLockState(false);
+          await devicePolicy.stopLockSync();
         } catch (e) {
           console.log('Protection cleanup error:', e);
         }
@@ -720,6 +741,16 @@ export default function ClientHome() {
         await devicePolicy.setClientInfo(id, API_URL);
       } catch (e) {
         console.log('setClientInfo error (non-fatal):', e);
+      }
+
+      // Native background lock sync: applies an admin lock even while this app is
+      // closed (previously the lock only landed once the borrower opened the app).
+      try {
+        await devicePolicy.setDeviceAuthToken(await getDeviceToken());
+        const syncResult = await devicePolicy.startLockSync();
+        console.log('[LockSync] start:', syncResult);
+      } catch (e) {
+        console.log('startLockSync error (non-fatal):', e);
       }
       
       // Wait for state to update before making API calls
@@ -1517,7 +1548,7 @@ export default function ClientHome() {
 
   // Engage protection services when device is locked (overlay handles re-fastening)
   useEffect(() => {
-    if (!status?.is_locked || status.lock_level === 'restricted' || Platform.OS !== 'android') return;
+    if (!status?.is_locked || status.lock_level === 'restricted' || status.lock_level === 'warning' || Platform.OS !== 'android') return;
     
     // Start all protection services once
     StatusBar.setHidden(true, 'none');
@@ -1528,13 +1559,16 @@ export default function ClientHome() {
     devicePolicy.startForegroundMonitor().catch(() => {});
     devicePolicy.setCameraDisabled(true).catch(() => {});
     
-    // Auto-collapse status bar every 50ms (max aggressive) + re-engage immersive mode
+    // The native immersive guards (installed by enableImmersiveMode) already collapse
+    // the shade every 150ms and re-hide the bars the moment they appear. The old JS
+    // loop here re-ran StatusBar.setHidden + enableImmersiveMode + collapse 20x per
+    // second over the bridge, which re-laid out the lock screen continuously (visible
+    // flashing) and starved the JS thread until the app crashed. Keep a gentle
+    // backstop only.
     const collapseInterval = setInterval(() => {
-      StatusBar.setHidden(true, 'none');
       devicePolicy.collapseStatusBar().catch(() => {});
-      devicePolicy.enableImmersiveMode().catch(() => {});
       devicePolicy.cancelAllNotifications().catch(() => {});
-    }, 50);
+    }, 2000);
     
     return () => {
       clearInterval(collapseInterval);
@@ -1553,7 +1587,7 @@ export default function ClientHome() {
   // Handle incoming calls when locked — mute and reject them
   // Also enable DND to block all notification display
   useEffect(() => {
-    if (!status?.is_locked || status.lock_level === 'restricted' || Platform.OS !== 'android') return;
+    if (!status?.is_locked || status.lock_level === 'restricted' || status.lock_level === 'warning' || Platform.OS !== 'android') return;
     // Mute ringer + enable DND + cancel existing notifications
     devicePolicy.muteRinger().catch(() => {});
     devicePolicy.enableDndMode().catch(() => {});
@@ -1708,7 +1742,7 @@ export default function ClientHome() {
 
   // Lock Screen Overlay - Full screen, no escape
   // Show BEFORE loading spinner so cached lock state is immediately visible on restart
-  if (status?.is_locked && (status.lock_level || 'full') !== 'restricted') {
+  if (status?.is_locked && !['restricted', 'warning'].includes(String(status.lock_level || 'full').toLowerCase())) {
     const isDeviceOwner = status.lock_mode === 'device_owner';
     return (
       <Pressable 
@@ -1834,11 +1868,13 @@ export default function ClientHome() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {status?.lock_level === 'restricted' && (
+      {status?.is_locked && (status?.lock_level === 'restricted' || status?.lock_level === 'warning') && (
         <View style={{ backgroundColor: '#B45309', padding: 12, flexDirection: 'row', alignItems: 'center' }}>
           <Ionicons name="apps" size={18} color="#fff" />
           <Text style={{ color: '#fff', marginLeft: 8, flex: 1, fontWeight: '600' }}>
-            {status.lock_message || 'Some apps are restricted until your payment is received. Phone, SMS, and payment apps remain available.'}
+            {status.lock_message || (status.lock_level === 'warning'
+              ? 'Payment overdue. Please pay to avoid your phone being locked.'
+              : 'Some apps are restricted until your payment is received. Phone, SMS, and payment apps remain available.')}
           </Text>
         </View>
       )}
@@ -1906,21 +1942,29 @@ export default function ClientHome() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10B981" />
         }
       >
-        <LoanCountdown
-          percentPaid={status?.percent_paid}
-          daysUntilDue={status?.days_until_due}
-          nextPaymentAmount={status?.next_payment_amount ?? status?.monthly_emi ?? status?.loan_amount}
-          outstandingBalance={status?.outstanding_balance ?? status?.loan_amount}
-          formatAmount={formatAmount}
-          t={t}
-          statusInput={{
-            is_locked: status?.is_locked,
-            lock_level: status?.lock_level,
-            outstanding_balance: status?.outstanding_balance ?? status?.loan_amount,
-            days_until_due: status?.days_until_due,
-            loan_due_date: status?.loan_due_date,
-          }}
-        />
+        {(() => {
+          // The live API's status has no percent_paid / days_until_due / next_payment_amount;
+          // derive them from loan_amount, outstanding_balance, monthly_emi and the due date.
+          const loan = deriveLoanFigures(status);
+          return (
+            <LoanCountdown
+              percentPaid={loan.percentPaid}
+              daysUntilDue={loan.daysUntilDue}
+              nextPaymentAmount={loan.nextPaymentAmount}
+              outstandingBalance={loan.outstanding}
+              formatAmount={formatAmount}
+              t={t}
+              statusInput={{
+                is_locked: status?.is_locked,
+                lock_level: status?.lock_level,
+                outstanding_balance: loan.outstanding,
+                days_until_due: loan.daysUntilDue,
+                loan_due_date: loan.dueDate,
+                loan_amount: loan.total,
+              }}
+            />
+          );
+        })()}
         {/* Device Protection Setup — 2 column grid like screenshot */}
         {showProtectionSetup && Platform.OS === 'android' && (() => {
           const uninstallBlocked = status?.uninstall_allowed === false || status?.uninstall_allowed === undefined;

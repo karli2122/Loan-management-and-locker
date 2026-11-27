@@ -48,6 +48,7 @@ import {
 import type { Client, LoanHistoryItem, LoanPreview } from '../../src/components/client-details';
 import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 import { DeviceHealthCard } from '../../src/components/admin/DeviceHealthCard';
+import { stripLockMarker, withRestrictedMarker } from '../../src/utils/lockCompat';
 
 export default function ClientDetails() {
   const router = useRouter();
@@ -151,7 +152,7 @@ export default function ClientDetails() {
       if (!response.ok) throw new Error('Client not found');
       const data = await response.json();
       setClient(data);
-      setLockMessage(data.lock_message);
+      setLockMessage(stripLockMarker(data.lock_message));
     } catch (error) {
       Alert.alert(t('error'), 'Failed to load client details');
       router.back();
@@ -296,8 +297,31 @@ export default function ClientDetails() {
     setActionLoading(true);
     try {
       const adminQuery = await buildAdminTokenQuery(true);
-      const allow = lockAllowlist.trim() ? `&lock_allowlist=${encodeURIComponent(lockAllowlist)}` : '';
-      const response = await authedFetch(`${API_URL}/api/clients/${id}/lock?message=${encodeURIComponent(lockMessage)}&lock_level=${encodeURIComponent(lockLevel)}${allow}${adminQuery}`, { method: 'POST' });
+      const level = (lockLevel || 'full').toLowerCase();
+
+      if (level === 'warning') {
+        // Warning keeps the phone usable and shows the message. The live API has no
+        // lock levels, so use the existing /warning endpoint (works on old and new API).
+        if (client?.is_locked) {
+          const unlockQuery = await buildAdminTokenQuery();
+          await authedFetch(`${API_URL}/api/clients/${id}/unlock${unlockQuery}`, { method: 'POST' });
+        }
+        const msg = lockMessage.trim() || (language === 'et'
+          ? 'Teie makse on hilinenud. Palun tasuge, et vältida telefoni lukustamist.'
+          : 'Your payment is overdue. Please pay to avoid your phone being locked.');
+        const response = await authedFetch(`${API_URL}/api/clients/${id}/warning?message=${encodeURIComponent(msg)}${adminQuery}`, { method: 'POST' });
+        if (!response.ok) throw new Error('Failed to send warning');
+        await fetchClient();
+        setLockModal(false);
+        Alert.alert(t('success'), t('warningSentSuccess') || 'Warning sent');
+        return;
+      }
+
+      // Restricted: the live API ignores lock_level, so the request also travels as an
+      // invisible marker in the lock message, which the client app understands.
+      const message = level === 'restricted' ? withRestrictedMarker(lockMessage) : stripLockMarker(lockMessage);
+      const allow = level === 'restricted' && lockAllowlist.trim() ? `&lock_allowlist=${encodeURIComponent(lockAllowlist)}` : '';
+      const response = await authedFetch(`${API_URL}/api/clients/${id}/lock?message=${encodeURIComponent(message)}&lock_level=${encodeURIComponent(level)}${allow}${adminQuery}`, { method: 'POST' });
       if (!response.ok) throw new Error('Failed to lock device');
       const lockResult = await response.json().catch(() => ({}));
       await fetchClient();
@@ -994,7 +1018,7 @@ export default function ClientDetails() {
         onChangeLevel={setLockLevel}
         lockAllowlist={lockAllowlist}
         onChangeAllowlist={setLockAllowlist}
-        restrictedSupported={!!client?.device_owner_active}
+        restrictedSupported={client?.device_owner_active != null ? !!client.device_owner_active : client?.lock_mode === 'device_owner'}
         onChangeMessage={setLockMessage}
         onConfirm={handleLock}
         onClose={() => setLockModal(false)}

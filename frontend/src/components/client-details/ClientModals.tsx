@@ -201,7 +201,14 @@ export const LockModal = ({
             );
           })}
         </View>
-        {!restrictedSupported && (
+        <Text style={{ color: '#94A3B8', fontSize: 12, marginBottom: 10 }}>
+          {lockLevel === 'warning'
+            ? 'Warning: the phone stays usable and shows your message as a warning.'
+            : lockLevel === 'restricted'
+              ? 'Restricted: only phone, SMS, payment and allowlisted apps can be used (Device Owner phones).'
+              : 'Full: the phone shows the lock screen until you unlock it.'}
+        </Text>
+        {!restrictedSupported && lockLevel === 'restricted' && (
           <Text style={{ color: '#F59E0B', fontSize: 12, marginBottom: 10 }}>
             This device is enrolled as Device Admin only. Restricted mode needs Device Owner (package suspension). A restricted request will fall back to a full overlay lock.
           </Text>

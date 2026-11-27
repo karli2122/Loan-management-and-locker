@@ -27,7 +27,6 @@ import { LineChart } from 'react-native-chart-kit';
 import * as Notifications from 'expo-notifications';
 import NetInfo from '@react-native-community/netinfo';
 import { getSecureItem, setSecureItem, deleteSecureItem } from '../../../src/utils/secureStorage';
-import { HomeOperations } from '../../../src/components/admin/HomeOperations';
 
 
 interface LoanStats {
@@ -550,8 +549,6 @@ export default function Dashboard() {
             </TouchableOpacity>
           </View>
         )}
-
-        <HomeOperations colors={colors} formatAmount={formatAmount} t={t} />
 
         {/* Payments Due Today Alert */}
         {dueTodayCount > 0 && (

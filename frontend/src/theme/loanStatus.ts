@@ -15,6 +15,18 @@ export const LOAN_STATUS = {
     background: 'rgba(16, 185, 129, 0.15)',
     label: 'Paid up',
   },
+  current: {
+    key: 'current' as const,
+    color: '#10B981',
+    background: 'rgba(16, 185, 129, 0.15)',
+    label: 'On track',
+  },
+  noLoan: {
+    key: 'noLoan' as const,
+    color: '#64748B',
+    background: 'rgba(100, 116, 139, 0.15)',
+    label: 'No loan',
+  },
   dueSoon: {
     key: 'dueSoon' as const,
     color: '#EAB308',
@@ -46,6 +58,9 @@ export type LoanStatusInput = {
   days_until_due?: number | null;
   loan_due_date?: string | null;
   next_payment_due?: string | null;
+  loan_amount?: number | null;
+  total_amount_due?: number | null;
+  total_paid?: number | null;
 };
 
 function daysUntilDue(input: LoanStatusInput): number | null {
@@ -72,7 +87,11 @@ export function resolveLoanStatus(input: LoanStatusInput): LoanStatusStyle {
   }
   const outstanding = Number(input.outstanding_balance || 0);
   if (outstanding <= 0) {
-    return LOAN_STATUS.paid;
+    // "Paid up" only when there actually was a loan; a client with no loan data yet
+    // (or an API that does not send loan totals) must not show as paid.
+    const hadLoan = Number(input.loan_amount || 0) > 0 || Number(input.total_amount_due || 0) > 0 ||
+      Number(input.total_paid || 0) > 0;
+    return hadLoan ? LOAN_STATUS.paid : LOAN_STATUS.noLoan;
   }
   if (level === 'warning') {
     return LOAN_STATUS.overdue;
@@ -84,6 +103,6 @@ export function resolveLoanStatus(input: LoanStatusInput): LoanStatusStyle {
   if (typeof days === 'number' && days <= DUE_SOON_DAYS) {
     return LOAN_STATUS.dueSoon;
   }
-  // Outstanding but not due soon and not overdue: current / paid-up standing.
-  return LOAN_STATUS.paid;
+  // Outstanding but not due soon and not overdue: on track (NOT "paid up").
+  return LOAN_STATUS.current;
 }
