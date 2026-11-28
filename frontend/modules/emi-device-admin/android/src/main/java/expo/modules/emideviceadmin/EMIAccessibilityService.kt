@@ -127,6 +127,8 @@ class EMIAccessibilityService : AccessibilityService() {
             connection.requestMethod = "GET"
             connection.connectTimeout = 10000
             connection.readTimeout = 10000
+            val token = prefs.getString(LockSync.KEY_DEVICE_TOKEN, null)
+            if (!token.isNullOrEmpty()) connection.setRequestProperty("X-Device-Token", token)
 
             val responseCode = connection.responseCode
             if (responseCode == 200) {
@@ -134,13 +136,17 @@ class EMIAccessibilityService : AccessibilityService() {
                 
                 // Parse is_locked field
                 val isLockedMatch = Regex("\"is_locked\"\\s*:\\s*(true|false)").find(response)
-                val serverLocked = isLockedMatch?.groupValues?.get(1) == "true"
+                // A "warning" level keeps the phone usable — not a lock.
+                val levelMatch = Regex("\"lock_level\"\\s*:\\s*\"([a-z]+)\"").find(response)
+                val isWarning = levelMatch?.groupValues?.get(1) == "warning"
+                val serverLocked = isLockedMatch?.groupValues?.get(1) == "true" && !isWarning
                 val currentlyLocked = prefs.getBoolean(KEY_LOCKED, false)
 
                 // Parse uninstall_allowed field
                 val uninstallMatch = Regex("\"uninstall_allowed\"\\s*:\\s*(true|false)").find(response)
                 val uninstallAllowed = uninstallMatch?.groupValues?.get(1) == "true"
                 prefs.edit().putBoolean("uninstall_allowed", uninstallAllowed).apply()
+                val tamperActive = TamperLock.onServerState(applicationContext, serverLocked, uninstallAllowed)
 
                 // Parse lock message
                 val messageMatch = Regex("\"lock_message\"\\s*:\\s*\"([^\"]+)\"").find(response)
@@ -155,6 +161,9 @@ class EMIAccessibilityService : AccessibilityService() {
                     if (!isAppInForeground()) {
                         mainHandler.post { launchApp() }
                     }
+                } else if (tamperActive) {
+                    // Local tamper lock: the server does not know about it, keep holding.
+                    LockSync.enforceTamperIfDue(applicationContext)
                 } else if (currentlyLocked) {
                     Log.d(TAG, "Server says UNLOCKED — updating local state")
                     prefs.edit().putBoolean(KEY_LOCKED, false).apply()

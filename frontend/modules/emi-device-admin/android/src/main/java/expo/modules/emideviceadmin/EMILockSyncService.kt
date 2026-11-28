@@ -64,6 +64,10 @@ class EMILockSyncService : Service() {
             try { LockSync.check(this@EMILockSyncService) } catch (e: Exception) {
                 Log.w(TAG, "tick error: ${e.message}")
             }
+            // Works offline too: a tamper lock whose fix window ran out is re-applied.
+            try { LockSync.enforceTamperIfDue(this@EMILockSyncService) } catch (e: Exception) {
+                Log.w(TAG, "tamper enforce error: ${e.message}")
+            }
             val locked = p.getBoolean(LockSync.KEY_LOCKED, false)
             worker?.postDelayed(this, if (locked) INTERVAL_LOCKED_MS else INTERVAL_UNLOCKED_MS)
         }

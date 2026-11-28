@@ -37,6 +37,9 @@ export default {
       package: IS_ADMIN_APP ? "com.paylock.admin" : "com.paylock.client",
       versionCode: VERSION_CODE,
       softwareKeyboardLayoutMode: "resize",
+      // Auto Backup would restore client_id (AsyncStorage) onto another / reset phone
+      // without the Keystore-bound device token -> a cloned, token-less identity.
+      allowBackup: false,
       navigationBarColor: "#152035",
       navigationBarStyle: "dark",
       googleServicesFile: "./google-services.json",
@@ -59,7 +62,8 @@ export default {
             "INTERNET",
             "ACCESS_NETWORK_STATE",
             // Device Admin and security permissions (required for EMI protection)
-            "BIND_DEVICE_ADMIN",          // Device Admin management
+            "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS", // Battery-optimization exemption dialog
+            "POST_NOTIFICATIONS",         // Android 13+ notifications (lock alerts, warnings)
             "RECEIVE_BOOT_COMPLETED",     // Auto-start on device boot
             "SYSTEM_ALERT_WINDOW",        // Lock screen overlay
             "WAKE_LOCK",                  // Prevent device sleep during lock

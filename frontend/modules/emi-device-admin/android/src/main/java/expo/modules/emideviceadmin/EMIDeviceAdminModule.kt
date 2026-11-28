@@ -33,6 +33,10 @@ class EMIDeviceAdminModule : Module() {
         private const val KEY_REGISTERED = "device_registered"
         private const val KEY_UNINSTALL_ALLOWED = "uninstall_allowed"
         private const val ACTION_REAPPLY_IMMERSIVE = "expo.modules.emideviceadmin.REAPPLY_IMMERSIVE"
+        private const val ADMIN_EXPLANATION =
+            "PayLock needs Device Admin to:\n" +
+            "- Lock this phone if a loan payment is overdue\n" +
+            "- Prevent the app from being removed while the loan is active"
     }
 
     private val context: Context
@@ -112,11 +116,7 @@ class EMIDeviceAdminModule : Module() {
                 Log.d(TAG, "requestDeviceAdmin: Starting admin request")
                 val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
                     putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
-                    putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                        "EMI Lock requires Device Admin permissions to:\n" +
-                        "- Lock your device when payment is overdue\n" +
-                        "- Prevent unauthorized app removal\n" +
-                        "- Protect your device investment")
+                    putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, ADMIN_EXPLANATION)
                 }
                 currentActivity.startActivityForResult(intent, REQUEST_CODE_ENABLE_ADMIN)
                 promise.resolve("requested")
@@ -140,8 +140,7 @@ class EMIDeviceAdminModule : Module() {
                 }
                 val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
                     putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
-                    putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                        "EMI Lock requires Device Admin permissions.")
+                    putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, ADMIN_EXPLANATION)
                 }
                 currentActivity.startActivityForResult(intent, REQUEST_CODE_ENABLE_ADMIN)
                 promise.resolve("requested")
@@ -497,6 +496,56 @@ class EMIDeviceAdminModule : Module() {
             } catch (e: Exception) {
                 promise.resolve("error: ${e.message}")
             }
+        }
+
+        // Clear the registration identity used by the native services (device deleted
+        // on the server / re-registration). Stops the lock sync and any tamper lock.
+        AsyncFunction("clearClientInfo") { promise: Promise ->
+            try {
+                prefs.edit()
+                    .remove("client_id")
+                    .remove("backend_url")
+                    .remove(LockSync.KEY_DEVICE_TOKEN)
+                    .putBoolean(KEY_REGISTERED, false)
+                    .putBoolean("is_locked", false)
+                    .putString("lock_level", "none")
+                    .commit()
+                TamperLock.set(context, false, "client_cleared")
+                EMILockSyncService.stop(context)
+                LockSync.cancelLockAlert(context)
+                promise.resolve("success")
+            } catch (e: Exception) {
+                promise.resolve("error: ${e.message}")
+            }
+        }
+
+        // Boot identity for real reboot detection (BOOT_COUNT + boot wall-clock time).
+        AsyncFunction("getBootInfo") {
+            val bootCount = try {
+                Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
+            } catch (_: Exception) { -1 }
+            val bootTime = System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()
+            mapOf("bootCount" to bootCount, "bootTimeMs" to bootTime.toDouble())
+        }
+
+        // ---- Tamper lock (replaces the old factory wipe) ----
+        AsyncFunction("setTamperLock") { active: Boolean, reason: String ->
+            TamperLock.set(context, active, reason)
+            if (!active) LockSync.cancelLockAlert(context)
+            "success"
+        }
+
+        AsyncFunction("setTamperFixWindow") { untilMs: Double ->
+            TamperLock.setFixWindow(context, untilMs.toLong())
+            "success"
+        }
+
+        AsyncFunction("getTamperState") {
+            TamperLock.state(context)
+        }
+
+        AsyncFunction("tamperServerState") { serverLocked: Boolean, released: Boolean ->
+            TamperLock.onServerState(context, serverLocked, released)
         }
 
         AsyncFunction("isLockSyncRunning") {
@@ -1373,28 +1422,38 @@ class EMIDeviceAdminModule : Module() {
                 }
 
                 // OEM-specific auto-start pages (Xiaomi, Oppo, Vivo, Huawei)
-                val oemIntents = listOf(
-                    // Xiaomi
-                    Intent().setComponent(ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")),
-                    // Oppo
-                    Intent().setComponent(ComponentName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity")),
-                    // Vivo
-                    Intent().setComponent(ComponentName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")),
-                    // Huawei
-                    Intent().setComponent(ComponentName("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity")),
+                val oemComponents = listOf(
+                    // Xiaomi / Redmi / POCO
+                    "com.miui.securitycenter" to "com.miui.permcenter.autostart.AutoStartManagementActivity",
+                    // Oppo / Realme / OnePlus (ColorOS)
+                    "com.coloros.safecenter" to "com.coloros.safecenter.permission.startup.StartupAppListActivity",
+                    "com.coloros.safecenter" to "com.coloros.safecenter.startupapp.StartupAppListActivity",
+                    "com.oppo.safe" to "com.oppo.safe.permission.startup.StartupAppListActivity",
+                    // Vivo / iQOO
+                    "com.vivo.permissionmanager" to "com.vivo.permissionmanager.activity.BgStartUpManagerActivity",
+                    "com.iqoo.secure" to "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity",
+                    // Huawei / Honor
+                    "com.huawei.systemmanager" to "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity",
+                    "com.huawei.systemmanager" to "com.huawei.systemmanager.optimize.process.ProtectActivity",
+                    "com.hihonor.systemmanager" to "com.hihonor.systemmanager.startupmgr.ui.StartupNormalAppListActivity",
+                    // Asus
+                    "com.asus.mobilemanager" to "com.asus.mobilemanager.autostart.AutoStartActivity",
+                    // Letv
+                    "com.letv.android.letvsafe" to "com.letv.android.letvsafe.AutobootManageActivity",
                 )
-                
-                for (intent in oemIntents) {
+
+                // Try each page directly: resolveActivity() returns null on Android 11+ for
+                // packages we cannot see, so just start it and catch the failure.
+                for ((pkg, cls) in oemComponents) {
+                    val intent = Intent().setComponent(ComponentName(pkg, cls))
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     try {
-                        if (intent.resolveActivity(context.packageManager) != null) {
-                            context.startActivity(intent)
-                            Log.d(TAG, "openAutoStartSettings: Opened OEM page ${intent.component?.className}")
-                            promise.resolve("opened")
-                            return@AsyncFunction
-                        }
+                        context.startActivity(intent)
+                        Log.d(TAG, "openAutoStartSettings: Opened OEM page $cls")
+                        promise.resolve("opened")
+                        return@AsyncFunction
                     } catch (e: Exception) {
-                        Log.d(TAG, "openAutoStartSettings: OEM intent failed: ${e.message}")
+                        Log.d(TAG, "openAutoStartSettings: OEM page $cls not available: ${e.message}")
                     }
                 }
 
@@ -1616,23 +1675,17 @@ class EMIDeviceAdminModule : Module() {
             }
         }
 
+        // Factory wipe is intentionally DISABLED: tampering now results in a local
+        // tamper lock (see TamperLock.kt). Kept as a stub so old JS callers resolve.
         AsyncFunction("wipeData") { promise: Promise ->
+            Log.w(TAG, "wipeData called but factory wipe is disabled — applying tamper lock instead")
             try {
-                val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-                val adminComponent = ComponentName(context, EMIDeviceAdminReceiver::class.java)
-                
-                if (!dpm.isAdminActive(adminComponent)) {
-                    promise.resolve("not_admin")
-                    return@AsyncFunction
-                }
-                
-                Log.w(TAG, "WIPE DATA: Initiating factory reset due to tamper detection")
-                dpm.wipeData(0)
-                promise.resolve("success")
+                TamperLock.set(context, true, "wipe_requested")
+                LockSync.enforceTamperIfDue(context)
             } catch (e: Exception) {
-                Log.e(TAG, "wipeData error: ${e.message}")
-                promise.resolve("error: ${e.message}")
+                Log.e(TAG, "tamper lock from wipeData failed: ${e.message}")
             }
+            promise.resolve("disabled")
         }
     }
 

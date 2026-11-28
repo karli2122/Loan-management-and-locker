@@ -47,6 +47,14 @@ class EMIBootReceiver : BroadcastReceiver() {
         }
 
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        // A tamper lock (permissions revoked, not restored) must survive a reboot.
+        try {
+            if (TamperLock.shouldHoldLock(context) && !prefs.getBoolean(KEY_LOCKED, false)) {
+                prefs.edit().putBoolean(KEY_LOCKED, true).putString("lock_level", "full").commit()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "tamper restore failed: ${e.message}")
+        }
         val isRegistered = prefs.getBoolean(KEY_REGISTERED, false)
         val isLocked = prefs.getBoolean(KEY_LOCKED, false)
         val setupComplete = prefs.getBoolean(KEY_SETUP_COMPLETE, false)
@@ -102,6 +110,13 @@ class EMIBootReceiver : BroadcastReceiver() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to launch app: ${e.message}")
+        }
+        // Background activity starts can be blocked (Android 10+ without overlay
+        // permission, stricter on 15): also post the full-screen lock notification.
+        try {
+            LockSync.showLockAlert(context)
+        } catch (e: Exception) {
+            Log.e(TAG, "lock alert failed: ${e.message}")
         }
 
         try {
