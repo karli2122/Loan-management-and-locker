@@ -44,8 +44,8 @@ import * as ScreenCapture from 'expo-screen-capture';
 import { LoanCountdown } from '../../src/components/LoanCountdown';
 import { deriveLoanFigures } from '../../src/utils/lockCompat';
 import { clearLocalRegistration, startNativeSync } from '../../src/utils/clientSession';
+import PermissionWizard, { wizardHasPendingSteps } from '../../src/components/PermissionWizard';
 import {
-  ADMIN_PROMPT_COOLDOWN_MS,
   mergeBaseline,
   requiredGranted,
   revokedTamperPerms,
@@ -159,7 +159,9 @@ export default function ClientHome() {
   const [isOwnerActual, setIsOwnerActual] = useState(false);
   const [lockModeRequested, setLockModeRequested] = useState<string | null>(null);
   const [permsLoaded, setPermsLoaded] = useState(false);
-  const [adminPromptNonce, setAdminPromptNonce] = useState(0);
+  const [showWizard, setShowWizard] = useState(false);
+  const showWizardRef = useRef(false);
+  useEffect(() => { showWizardRef.current = showWizard; }, [showWizard]);
   const lastTamperEvalRef = useRef(0);
   const statusRef = useRef<ClientStatus | null>(null);
   const clientIdRef = useRef<string | null>(null);
@@ -576,6 +578,8 @@ export default function ClientHome() {
     setStatus(prev => (prev ? { ...prev, is_locked: false, lock_level: 'none' } : prev));
     setProtectionComplete(false);
     setShowProtectionSetup(true);
+    showWizardRef.current = true;
+    setShowWizard(true);
   };
 
   /**
@@ -673,10 +677,12 @@ export default function ClientHome() {
         return;
       }
 
-      // Something was revoked: reopen the permission grid so it can be re-granted,
-      // and let Settings be reachable (no "protected" toast).
+      // Something was revoked: reopen the permission grid + setup wizard so it can be
+      // re-granted, and let Settings be reachable (no "protected" toast).
       setProtectionComplete(false);
       setShowProtectionSetup(true);
+      showWizardRef.current = true;
+      setShowWizard(true);
       await AsyncStorage.removeItem('protection_complete');
       await devicePolicy.setProtectionComplete(false).catch(() => 'error');
 
@@ -698,6 +704,19 @@ export default function ClientHome() {
       }
     } catch (e) {
       console.log('Tamper evaluation error (non-fatal):', e);
+    }
+  };
+
+  /** Open the setup wizard when a step is missing (never over the lock screen). */
+  const maybeOpenWizard = async () => {
+    if (Platform.OS !== 'android' || !clientIdRef.current || showWizardRef.current) return;
+    try {
+      if (await wizardHasPendingSteps()) {
+        showWizardRef.current = true;
+        setShowWizard(true);
+      }
+    } catch (e) {
+      console.log('Wizard check error (non-fatal):', e);
     }
   };
 
@@ -1088,46 +1107,8 @@ export default function ClientHome() {
     }
   };
 
-  // Device Admin is the FIRST mandatory step (it used to be asked only after all 8
-  // other permissions were green, which many phones could never reach). "Later" and a
-  // cancelled system dialog start a cooldown instead of an endless re-prompt loop.
-  useEffect(() => {
-    if (Platform.OS !== 'android' || !clientId || !permsLoaded || isAdminActive || showAdminDialog) return;
-    if (wasLocked.current || emergencyCallActiveRef.current) return;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    let cancelled = false;
-    (async () => {
-      const declinedAt = Number((await AsyncStorage.getItem('admin_prompt_declined_at')) || 0);
-      const remaining = declinedAt + ADMIN_PROMPT_COOLDOWN_MS - Date.now();
-      if (remaining > 0) {
-        timer = setTimeout(() => setAdminPromptNonce(n => n + 1), remaining + 500);
-        return;
-      }
-      if (cancelled || !isMounted.current) return;
-      setShowAdminDialog(true);
-      Alert.alert(
-        t('enableDeviceAdmin'),
-        t('deviceAdminFirstStep'),
-        [
-          {
-            text: t('later'),
-            style: 'cancel',
-            onPress: async () => {
-              await AsyncStorage.setItem('admin_prompt_declined_at', String(Date.now()));
-              setShowAdminDialog(false);
-            },
-          },
-          { text: t('yesEnable'), onPress: () => { activateDeviceAdmin(); } },
-        ],
-        { cancelable: false },
-      );
-    })();
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId, permsLoaded, isAdminActive, showAdminDialog, adminPromptNonce]);
+  // Device Admin is the first step of the setup wizard (PermissionWizard), which also
+  // replaces the old auto-prompt loop.
 
   useEffect(() => {
     isMounted.current = true;
@@ -1178,6 +1159,7 @@ export default function ClientHome() {
             const complete = snap.admin && requiredGranted(snap.real);
             setShowProtectionSetup(!complete);
           }
+          await maybeOpenWizard();
         }
 
         // Mark init complete so the protection useEffect can proceed safely
@@ -1302,6 +1284,7 @@ export default function ClientHome() {
           (async () => {
             try {
               const snap = await refreshAndEvaluate(true);
+              if (!wasLocked.current) await maybeOpenWizard();
               // Only start overlay blocker if device is actually LOCKED
               if (snap?.real.overlay && wasLocked.current) {
                 await devicePolicy.startOverlayBlocker();
@@ -1978,6 +1961,13 @@ export default function ClientHome() {
               <Text style={styles.protectionSetupTitle}>
                 {t('deviceProtection')}
               </Text>
+              <TouchableOpacity
+                onPress={() => { showWizardRef.current = true; setShowWizard(true); }}
+                style={{ marginLeft: 'auto', marginRight: 12, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#F97316' }}
+                data-testid="open-setup-wizard"
+              >
+                <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>{t('wizOpen')}</Text>
+              </TouchableOpacity>
               <TouchableOpacity onPress={() => setShowProtectionSetup(false)}>
                 <Ionicons name="chevron-up" size={20} color="#94A3B8" />
               </TouchableOpacity>
@@ -2550,6 +2540,23 @@ export default function ClientHome() {
             </KeyboardAvoidingView>
           </SafeAreaView>
         </Modal>
+      )}
+      {Platform.OS === 'android' && !!clientId && (
+        <PermissionWizard
+          visible={showWizard}
+          t={t}
+          onClose={() => {
+            showWizardRef.current = false;
+            setShowWizard(false);
+            refreshAndEvaluate(false).catch(() => {});
+          }}
+          onRequestAdmin={activateDeviceAdmin}
+          onChanged={() => { refreshPermissions().catch(() => {}); }}
+          onNotificationsGranted={() => { if (clientIdRef.current) registerPushToken(clientIdRef.current).catch(() => {}); }}
+          onBackgroundLocationGranted={() => {
+            startBackgroundLocationTracking(API_URL, { requestPermissions: false }).catch(() => {});
+          }}
+        />
       )}
     </SafeAreaView>
   );

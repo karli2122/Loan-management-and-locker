@@ -278,6 +278,42 @@ class DevicePolicyManager {
     return null;
   }
 
+  // ---------- Permission wizard helpers ----------
+  /** Android 14+: whether full-screen intents (lock alert over other apps) are allowed. */
+  async canUseFullScreenIntent(): Promise<boolean> {
+    try {
+      if (Platform.OS === 'android' && nativeModule?.canUseFullScreenIntent) {
+        return !!(await nativeModule.canUseFullScreenIntent());
+      }
+    } catch (error) {
+      console.log('canUseFullScreenIntent error:', error);
+    }
+    return true;
+  }
+
+  async openFullScreenIntentSettings(): Promise<string> {
+    try {
+      if (Platform.OS === 'android' && nativeModule?.openFullScreenIntentSettings) {
+        return await nativeModule.openFullScreenIntentSettings();
+      }
+    } catch (error) {
+      console.log('openFullScreenIntentSettings error:', error);
+    }
+    return 'not_available';
+  }
+
+  /** Xiaomi/Redmi/POCO "Other permissions" page; falls back to App info. */
+  async openOemPermissionEditor(): Promise<string> {
+    try {
+      if (Platform.OS === 'android' && nativeModule?.openOemPermissionEditor) {
+        return await nativeModule.openOemPermissionEditor();
+      }
+    } catch (error) {
+      console.log('openOemPermissionEditor error:', error);
+    }
+    return 'not_available';
+  }
+
   // ---------- Tamper lock (replaces the old factory wipe) ----------
   async setTamperLock(active: boolean, reason: string = ''): Promise<string> {
     try {

@@ -548,6 +548,68 @@ class EMIDeviceAdminModule : Module() {
             TamperLock.onServerState(context, serverLocked, released)
         }
 
+        // ---- Permission wizard helpers ----
+        AsyncFunction("canUseFullScreenIntent") {
+            try {
+                if (Build.VERSION.SDK_INT >= 34) {
+                    val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                    nm.canUseFullScreenIntent()
+                } else true
+            } catch (e: Exception) {
+                Log.w(TAG, "canUseFullScreenIntent: ${e.message}")
+                true
+            }
+        }
+
+        AsyncFunction("openFullScreenIntentSettings") {
+            val attempts = mutableListOf<Intent>()
+            if (Build.VERSION.SDK_INT >= 34) {
+                attempts.add(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                })
+            }
+            attempts.add(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            })
+            attempts.add(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:${context.packageName}")
+            })
+            for (i in attempts) {
+                try {
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(i)
+                    return@AsyncFunction "opened"
+                } catch (_: Exception) {}
+            }
+            "error"
+        }
+
+        // Xiaomi / Redmi / POCO "Other permissions" page (background pop-ups, lock screen).
+        AsyncFunction("openOemPermissionEditor") {
+            val pkg = context.packageName
+            val attempts = listOf(
+                Intent("miui.intent.action.APP_PERM_EDITOR").apply {
+                    setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity")
+                    putExtra("extra_pkgname", pkg)
+                },
+                Intent("miui.intent.action.APP_PERM_EDITOR").apply {
+                    setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.AppPermissionsEditorActivity")
+                    putExtra("extra_pkgname", pkg)
+                },
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.parse("package:$pkg")
+                },
+            )
+            for (i in attempts) {
+                try {
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(i)
+                    return@AsyncFunction "opened"
+                } catch (_: Exception) {}
+            }
+            "error"
+        }
+
         AsyncFunction("isLockSyncRunning") {
             EMILockSyncService.isRunning
         }
@@ -686,6 +748,15 @@ class EMIDeviceAdminModule : Module() {
 
                 // Try opening the specific accessibility service detail page for our app
                 val serviceIntents = listOf(
+                    // Per-service details page (public on newer Android; guarded on some
+                    // older builds — a SecurityException just falls through to the next one).
+                    Intent("android.settings.ACCESSIBILITY_DETAILS_SETTINGS").apply {
+                        putExtra(
+                            Intent.EXTRA_COMPONENT_NAME,
+                            ComponentName(myPackage, "expo.modules.emideviceadmin.EMIAccessibilityService")
+                        )
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    },
                     // Direct: Open our accessibility service's settings page (works on many devices)
                     Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
                         val serviceId = "$myPackage/expo.modules.emideviceadmin.EMIAccessibilityService"
@@ -829,6 +900,17 @@ class EMIDeviceAdminModule : Module() {
 
         AsyncFunction("requestUsageStatsPermission") { promise: Promise ->
             try {
+                // Android 10+: deep link straight to this app's usage-access toggle.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    try {
+                        val direct = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+                        direct.data = Uri.parse("package:${context.packageName}")
+                        direct.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(direct)
+                        promise.resolve("opened")
+                        return@AsyncFunction
+                    } catch (_: Exception) {}
+                }
                 val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
@@ -858,6 +940,20 @@ class EMIDeviceAdminModule : Module() {
 
         AsyncFunction("requestNotificationListenerPermission") { promise: Promise ->
             try {
+                // Android 11+: deep link to this listener's own toggle.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    try {
+                        val direct = Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+                        direct.putExtra(
+                            Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
+                            ComponentName(context, EMINotificationListenerService::class.java).flattenToString()
+                        )
+                        direct.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(direct)
+                        promise.resolve("opened")
+                        return@AsyncFunction
+                    } catch (_: Exception) {}
+                }
                 val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
