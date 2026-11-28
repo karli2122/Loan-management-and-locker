@@ -3,16 +3,19 @@ package expo.modules.emideviceadmin
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.app.ActivityManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.net.ConnectivityManager
 import android.os.Build
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.widget.Toast
-import java.net.HttpURLConnection
-import java.net.URL
+import java.lang.ref.WeakReference
 
 /**
  * Accessibility service that monitors the foreground app and periodically
@@ -36,18 +39,25 @@ class EMIAccessibilityService : AccessibilityService() {
         private const val KEY_LOCKED = "is_locked"
         private const val KEY_CLIENT_ID = "client_id"
         private const val KEY_BACKEND_URL = "backend_url"
-        private const val CHECK_INTERVAL_MS = 10000L // Check server every 10 seconds
-        var isRunning = false
+        private const val INTERVAL_LOCKED_MS = 10_000L
+        private const val INTERVAL_UNLOCKED_MS = 15_000L
+        @Volatile var isRunning = false
+        /** Used by [ShadeGuard] to close the notification shade (GLOBAL_ACTION_DISMISS_NOTIFICATION_SHADE). */
+        @Volatile var instance: WeakReference<EMIAccessibilityService>? = null
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val checkHandler = Handler(Looper.getMainLooper())
-    private var lockCheckRunnable: Runnable? = null
-    @Volatile private var lastShadeCloseAt = 0L
+    private var syncThread: HandlerThread? = null
+    private var syncHandler: Handler? = null
+    private var triggersRegistered = false
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    @Volatile private var lastTriggerAt = 0L
+    @Volatile private var lastRelaunchAt = 0L
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         isRunning = true
+        instance = WeakReference(this)
         Log.d(TAG, "Accessibility service connected")
 
         val info = AccessibilityServiceInfo().apply {
@@ -60,128 +70,97 @@ class EMIAccessibilityService : AccessibilityService() {
         }
         serviceInfo = info
 
-        // Start periodic lock state checking
-        startPeriodicLockCheck()
+        // Host the lock-state sync here. The system keeps an enabled accessibility service
+        // bound (process alive) without a foreground-service notification, so the persistent
+        // lock-sync notification is not needed while this service runs.
+        startLockSyncHost()
     }
 
-    /**
-     * Periodically checks the backend for lock state changes.
-     * This runs even when the main app is closed/swiped away.
-     */
-    private fun startPeriodicLockCheck() {
-        lockCheckRunnable = object : Runnable {
-            override fun run() {
-                Thread {
-                    checkServerLockState()
-                }.start()
-                checkHandler.postDelayed(this, CHECK_INTERVAL_MS)
+    private val syncTick = object : Runnable {
+        override fun run() {
+            val app = applicationContext
+            val p = LockSync.prefs(app)
+            if (p.getBoolean(KEY_UNINSTALL_ALLOWED, false) || p.getString(KEY_CLIENT_ID, null).isNullOrEmpty()) {
+                syncHandler?.postDelayed(this, INTERVAL_UNLOCKED_MS)
+                return
             }
-        }
-        checkHandler.postDelayed(lockCheckRunnable!!, CHECK_INTERVAL_MS)
-        Log.d(TAG, "Started periodic lock state checking (every ${CHECK_INTERVAL_MS/1000}s)")
-    }
-
-    private fun isAppInForeground(): Boolean {
-        return try {
-            val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            val tasks = am.getRunningTasks(1)
-            if (tasks.isNotEmpty()) {
-                val topActivity = tasks[0].topActivity
-                topActivity?.packageName == applicationContext.packageName
-            } else {
-                false
-            }
-        } catch (e: Exception) {
-            false
+            try { LockSync.check(app) } catch (e: Exception) { Log.d(TAG, "lock check failed: ${e.message}") }
+            try { LockSync.enforceTamperIfDue(app) } catch (e: Exception) { Log.w(TAG, "tamper enforce: ${e.message}") }
+            LockSyncBackup.scheduleAlarm(app)
+            LockSyncBackup.scheduleJob(app)
+            val locked = p.getBoolean(KEY_LOCKED, false)
+            syncHandler?.postDelayed(this, if (locked) INTERVAL_LOCKED_MS else INTERVAL_UNLOCKED_MS)
         }
     }
 
-    private fun ensureOverlayRunning(lockMessage: String) {
-        if (EMIOverlayService.isRunning) return
+    private fun startLockSyncHost() {
+        if (syncThread == null) {
+            syncThread = HandlerThread("emi-a11y-lock-sync").also { it.start() }
+            syncHandler = Handler(syncThread!!.looper)
+        }
+        syncHandler?.removeCallbacks(syncTick)
+        syncHandler?.post(syncTick)
+        registerTriggers()
+        // The foreground lock-sync service (and its notification) is redundant now.
+        EMILockSyncService.stopServiceOnly(applicationContext)
+        Log.d(TAG, "Lock sync hosted by accessibility service")
+    }
+
+    private fun stopLockSyncHost() {
+        unregisterTriggers()
+        syncHandler?.removeCallbacksAndMessages(null)
+        syncThread?.quitSafely()
+        syncHandler = null
+        syncThread = null
+    }
+
+    /** Screen on / unlock / network back: check right away. */
+    private fun checkNow(reason: String) {
+        val now = System.currentTimeMillis()
+        if (now - lastTriggerAt < 3_000L) return
+        lastTriggerAt = now
+        Log.d(TAG, "Immediate lock check ($reason)")
+        syncHandler?.removeCallbacks(syncTick)
+        syncHandler?.post(syncTick)
+    }
+
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) { checkNow(intent?.action ?: "screen") }
+    }
+
+    private fun registerTriggers() {
+        if (triggersRegistered) return
         try {
-            val overlayIntent = Intent(applicationContext, EMIOverlayService::class.java)
-            overlayIntent.putExtra("lock_message", lockMessage)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                applicationContext.startForegroundService(overlayIntent)
-            } else {
-                applicationContext.startService(overlayIntent)
+            val f = IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_USER_PRESENT)
             }
-            Log.d(TAG, "Overlay service started from accessibility")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(screenReceiver, f, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(screenReceiver, f)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                val cb = object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: android.net.Network) { checkNow("network_available") }
+                }
+                cm?.registerDefaultNetworkCallback(cb)
+                networkCallback = cb
+            }
+            triggersRegistered = true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start overlay from accessibility: ${e.message}")
+            Log.w(TAG, "trigger registration failed: ${e.message}")
         }
     }
 
-    private fun checkServerLockState() = synchronized(LockSync.checkLock) { checkServerLockStateLocked() }
-
-    private fun checkServerLockStateLocked() {
+    private fun unregisterTriggers() {
+        try { unregisterReceiver(screenReceiver) } catch (_: Exception) {}
         try {
-            val prefs = applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val clientId = prefs.getString(KEY_CLIENT_ID, null)
-            val backendUrl = prefs.getString(KEY_BACKEND_URL, null)
-
-            if (clientId.isNullOrEmpty() || backendUrl.isNullOrEmpty()) {
-                return // Not registered yet or no backend URL
-            }
-
-            val url = URL("$backendUrl/api/device/status/$clientId")
-            val connection = url.openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 10000
-            connection.readTimeout = 10000
-            val token = prefs.getString(LockSync.KEY_DEVICE_TOKEN, null)
-            if (!token.isNullOrEmpty()) connection.setRequestProperty("X-Device-Token", token)
-
-            val responseCode = connection.responseCode
-            if (responseCode == 200) {
-                val response = connection.inputStream.bufferedReader().readText()
-                
-                // Parse is_locked field
-                val isLockedMatch = Regex("\"is_locked\"\\s*:\\s*(true|false)").find(response)
-                // A "warning" level keeps the phone usable — not a lock.
-                val levelMatch = Regex("\"lock_level\"\\s*:\\s*\"([a-z]+)\"").find(response)
-                val isWarning = levelMatch?.groupValues?.get(1) == "warning"
-                val serverLocked = isLockedMatch?.groupValues?.get(1) == "true" && !isWarning
-                val currentlyLocked = prefs.getBoolean(KEY_LOCKED, false)
-
-                // Parse uninstall_allowed field
-                val uninstallMatch = Regex("\"uninstall_allowed\"\\s*:\\s*(true|false)").find(response)
-                val uninstallAllowed = uninstallMatch?.groupValues?.get(1) == "true"
-                prefs.edit().putBoolean("uninstall_allowed", uninstallAllowed).apply()
-                val tamperActive = TamperLock.onServerState(applicationContext, serverLocked, uninstallAllowed)
-
-                // Parse lock message
-                val messageMatch = Regex("\"lock_message\"\\s*:\\s*\"([^\"]+)\"").find(response)
-                val lockMessage = messageMatch?.groupValues?.get(1) ?: ""
-
-                if (serverLocked) {
-                    if (!currentlyLocked) {
-                        Log.d(TAG, "Server says LOCKED — updating local state and launching app")
-                    }
-                    prefs.edit().putBoolean(KEY_LOCKED, true).apply()
-                    ensureOverlayRunning(lockMessage)
-                    if (!isAppInForeground()) {
-                        mainHandler.post { launchApp() }
-                    }
-                } else if (tamperActive) {
-                    // Local tamper lock: the server does not know about it, keep holding.
-                    LockSync.enforceTamperIfDue(applicationContext)
-                } else if (currentlyLocked) {
-                    Log.d(TAG, "Server says UNLOCKED — updating local state")
-                    LockSync.clearLock(applicationContext, "accessibility_check")
-                    // Launch app so it can update its UI
-                    mainHandler.post { launchApp() }
-                }
-
-                // If uninstall allowed, stop blocking and launch app so it can clear protection
-                if (uninstallAllowed) {
-                    Log.d(TAG, "Uninstall allowed — will not block settings access")
-                }
-            }
-            connection.disconnect()
-        } catch (e: Exception) {
-            Log.d(TAG, "Lock state check failed (will retry): ${e.message}")
-        }
+            networkCallback?.let { (getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager)?.unregisterNetworkCallback(it) }
+        } catch (_: Exception) {}
+        networkCallback = null
+        triggersRegistered = false
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -215,26 +194,16 @@ class EMIAccessibilityService : AccessibilityService() {
                 // Now: close the shade once (throttled), never press HOME, and only bring
                 // the app back if it actually lost the foreground.
                 if (EmergencyCallSession.isActive(this)) return
+                // Close the shade on EVERY SystemUI window event (a throttle let a quick
+                // second swipe keep the shade open), a few times during its open animation.
+                ShadeGuard.dismissBurst(applicationContext, "systemui_window")
+                try {
+                    sendBroadcast(Intent("expo.modules.emideviceadmin.REAPPLY_IMMERSIVE").setPackage(applicationContext.packageName))
+                } catch (_: Exception) {}
+                // Only the relaunch is throttled.
                 val now = System.currentTimeMillis()
-                if (now - lastShadeCloseAt < 1_500L) return
-                lastShadeCloseAt = now
-                Log.d(TAG, "LOCKED: SystemUI window — collapsing shade")
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    performGlobalAction(GLOBAL_ACTION_DISMISS_NOTIFICATION_SHADE)
-                }
-                mainHandler.post {
-                    try {
-                        @Suppress("WrongConstant")
-                        val sbService = applicationContext.getSystemService("statusbar")
-                        if (sbService != null) {
-                            val collapse = sbService.javaClass.getMethod("collapsePanels")
-                            collapse.invoke(sbService)
-                        }
-                    } catch (_: Exception) {}
-                    try {
-                        sendBroadcast(Intent("expo.modules.emideviceadmin.REAPPLY_IMMERSIVE").setPackage(applicationContext.packageName))
-                    } catch (_: Exception) {}
-                }
+                if (now - lastRelaunchAt < 1_500L) return
+                lastRelaunchAt = now
                 mainHandler.postDelayed({ LockSync.launchApp(applicationContext) }, 400)
                 return
             }
@@ -327,6 +296,7 @@ class EMIAccessibilityService : AccessibilityService() {
     }
 
     private fun launchApp() {
+        if (EmergencyCallSession.isActive(this)) return
         try {
             val myPackage = applicationContext.packageName
             val launchIntent = applicationContext.packageManager
@@ -351,7 +321,10 @@ class EMIAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         super.onDestroy()
         isRunning = false
-        lockCheckRunnable?.let { checkHandler.removeCallbacks(it) }
+        instance = null
+        stopLockSyncHost()
+        // Hand the lock sync back to the foreground service (backups retry if refused).
+        try { EMILockSyncService.start(applicationContext) } catch (_: Exception) {}
         Log.d(TAG, "Accessibility service destroyed")
     }
 }

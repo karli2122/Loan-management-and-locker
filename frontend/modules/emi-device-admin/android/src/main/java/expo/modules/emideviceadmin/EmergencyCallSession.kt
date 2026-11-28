@@ -3,6 +3,8 @@ package expo.modules.emideviceadmin
 import android.Manifest
 import android.app.Activity
 import android.app.ActivityManager
+import android.app.Application
+import android.os.Bundle
 import android.app.admin.DevicePolicyManager
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
@@ -30,7 +32,11 @@ import java.lang.ref.WeakReference
  * Emergency-dialer session that keeps the device contained.
  * - Device owner: lock task stays on; dialer packages are temporarily allowlisted.
  * - Overlay mode: overlay is dropped for the session and restored afterwards.
- * Never places a call itself (ACTION_DIAL only). Never relocks over a live call.
+ * Opens 112 prefilled: ACTION_CALL tel:112 when CALL_PHONE is granted, otherwise ACTION_DIAL tel:112
+ * (number shown). The system emergency dialer is only a last fallback (it opens empty).
+ * Enforcement (overlay, accessibility relaunch, kiosk, lock-sync relaunch) is paused while the
+ * session is active: up to NO_CALL_WINDOW_MS when no call is placed, or until the call ends.
+ * Never relocks over a live call.
  */
 object EmergencyCallSession {
     private const val TAG = "EmergencyCallSession"
@@ -46,6 +52,9 @@ object EmergencyCallSession {
     const val KEY_STARTED_RT = "emergency_call_started_rt"
 
     private const val GRACE_MS = 4_000L
+    /** Dialer stays reachable this long when no call is placed (about 2 minutes). */
+    private const val NO_CALL_WINDOW_MS = 120_000L
+    /** Hard cap for a live call session (a live call always wins until it ends). */
     private const val MAX_SESSION_MS = 30 * 60_000L
     private const val POLL_MS = 1_500L
     private const val DEFAULT_NUMBER = "112"
@@ -65,6 +74,11 @@ object EmergencyCallSession {
         "com.android.phone",
         "com.android.server.telecom",
         "com.android.incallui",
+        "com.google.android.apps.dialer",
+        "com.miui.voip",
+        "com.huawei.contacts",
+        "com.hihonor.contacts",
+        "com.coloros.phonemanager",
         "com.android.emergency",
         "com.samsung.android.dialer",
         "com.samsung.android.incallui",
@@ -81,6 +95,28 @@ object EmergencyCallSession {
     @Volatile private var appContext: Context? = null
     @Volatile private var activityRef: WeakReference<Activity>? = null
     @Volatile private var lastCallState = TelephonyManager.CALL_STATE_IDLE
+    @Volatile private var resumedActivities = 0
+    @Volatile private var lifecycleRegistered = false
+
+    /** Tracks whether one of OUR activities is actually on screen (process importance is not
+     *  reliable: a bound accessibility service / foreground service also reports FOREGROUND). */
+    private fun registerLifecycle(app: Context) {
+        if (lifecycleRegistered) return
+        val application = app as? Application ?: return
+        application.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+            override fun onActivityResumed(a: Activity) { resumedActivities++ }
+            override fun onActivityPaused(a: Activity) { if (resumedActivities > 0) resumedActivities-- }
+            override fun onActivityCreated(a: Activity, b: Bundle?) {}
+            override fun onActivityStarted(a: Activity) {}
+            override fun onActivityStopped(a: Activity) {}
+            override fun onActivitySaveInstanceState(a: Activity, b: Bundle) {}
+            override fun onActivityDestroyed(a: Activity) {}
+        })
+        lifecycleRegistered = true
+    }
+
+    /** Packages that may briefly take the foreground during a session without being an escape. */
+    private val NEUTRAL_PACKAGES = setOf("android", "com.android.systemui")
     @Volatile private var telephonyRegistered = false
     private var telephonyCallback: Any? = null          // TelephonyCallback on S+
     private var phoneStateListener: PhoneStateListener? = null
@@ -120,6 +156,12 @@ object EmergencyCallSession {
         val nowRt = SystemClock.elapsedRealtime()
         if (startedRt < 0L || nowRt < startedRt) return false
         if (nowRt - startedRt > MAX_SESSION_MS) return false
+        // No call was placed and the ~2 minute window is over (plus slack for the watchdog):
+        // stop pausing enforcement even if nobody called finish() yet.
+        if (!p.getBoolean(KEY_SAW_OFFHOOK, false) &&
+            nowRt - startedRt > NO_CALL_WINDOW_MS + 15_000L &&
+            !isInCall(context)
+        ) return false
         return true
     }
 
@@ -144,6 +186,7 @@ object EmergencyCallSession {
     fun start(context: Context, activity: Activity?, number: String): String {
         val app = context.applicationContext
         appContext = app
+        registerLifecycle(app)
         val dialNumber = sanitizeNumber(app, number)
         val p = prefs(app)
         val now = System.currentTimeMillis()
@@ -197,15 +240,17 @@ object EmergencyCallSession {
             }
             return false
         }
-        if (elapsed > MAX_SESSION_MS) return true
-
         // A call happened and is no longer active -> call ended.
         if (p.getBoolean(KEY_SAW_OFFHOOK, false)) return true
 
-        // Never dialed: composing in the dialer must not relock.
+        // No call placed: the dialer stays reachable for about 2 minutes.
+        if (elapsed > NO_CALL_WINDOW_MS) return true
+
+        // User came back to the lock screen (one of our activities is on screen).
         if (isOwnAppVisible(app)) return true
-        val fg = foregroundPackage(app, started) ?: return false // unknown -> rely on MAX window
-        if (fg == app.packageName) return true
+        val fg = foregroundPackage(app, started) ?: return false // unknown -> rely on the window
+        if (fg == app.packageName) return false // our process, but no activity resumed (overlay/service)
+        if (fg in NEUTRAL_PACKAGES || fg.contains("permissioncontroller")) return false
         return !isDialerPackage(fg, app)
     }
 
@@ -333,7 +378,7 @@ object EmergencyCallSession {
                     p.edit().putBoolean(KEY_CALL_ENDED, true).apply()
                     main.postDelayed({
                         if (shouldRelock(context)) finish(context, activityRef?.get())
-                    }, 800)
+                    }, 1_500)
                 }
             }
         }
@@ -344,17 +389,25 @@ object EmergencyCallSession {
     fun launchEmergencyDialer(context: Context, activity: Activity?, number: String): Boolean {
         val pm = context.packageManager
         val candidates = mutableListOf<Intent>()
+        // 1) ACTION_CALL tel:112 when CALL_PHONE is granted. For emergency numbers Android
+        //    either places the call or opens the dialer with 112 filled in.
+        if (context.checkSelfPermission(Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+            candidates.add(Intent(Intent.ACTION_CALL, Uri.parse("tel:$number")))
+        }
+        // 2) ACTION_DIAL tel:112 — the dialer opens with the number shown.
+        candidates.add(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number")))
+        // 3) Last resort: the system emergency dialer (opens without a number).
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             candidates.add(Intent(SHOW_EMERGENCY_DIALER))
         }
         candidates.add(Intent(EMERGENCY_DIALER_ACTION))
-        candidates.add(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number")))
         for (intent in candidates) {
             val target = intent.resolveActivity(pm)?.packageName ?: continue
-            // Official emergency-dialer actions may resolve to a package not in the static list.
-            val officialEmergency = intent.action == SHOW_EMERGENCY_DIALER ||
-                intent.action == EMERGENCY_DIALER_ACTION
-            if (!officialEmergency && !isDialerPackage(target, context)) continue
+            // Official emergency-dialer / call actions may resolve to a package not in the static list.
+            val official = intent.action == SHOW_EMERGENCY_DIALER ||
+                intent.action == EMERGENCY_DIALER_ACTION ||
+                intent.action == Intent.ACTION_CALL
+            if (!official && !isDialerPackage(target, context)) continue
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             try {
                 if (activity != null && !activity.isFinishing) activity.startActivity(intent)
@@ -379,6 +432,7 @@ object EmergencyCallSession {
         val pm = context.packageManager
         val probes = mutableListOf(
             Intent(Intent.ACTION_DIAL, Uri.parse("tel:$DEFAULT_NUMBER")),
+            Intent(Intent.ACTION_CALL, Uri.parse("tel:$DEFAULT_NUMBER")),
             Intent(EMERGENCY_DIALER_ACTION),
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -539,6 +593,7 @@ object EmergencyCallSession {
     }
 
     private fun isOwnAppVisible(context: Context): Boolean {
+        if (lifecycleRegistered) return resumedActivities > 0
         val am = context.getSystemService(ActivityManager::class.java) ?: return false
         val pid = Process.myPid()
         return am.runningAppProcesses?.any {

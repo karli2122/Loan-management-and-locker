@@ -108,6 +108,9 @@ interface ClientStatus {
 export default function ClientHome() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
+  useEffect(() => {
+    if (Platform.OS === 'android') devicePolicy.setAppLanguage(language).catch(() => {});
+  }, [language]);
   const { formatAmount } = useCurrency();
   const [status, setStatus] = useState<ClientStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -190,10 +193,6 @@ export default function ClientHome() {
   }, [versionUpdateInfo]);
   
   // In-app messaging state
-  const [showChat, setShowChat] = useState(false);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [chatMessage, setChatMessage] = useState('');
-  const [loadingMessages, setLoadingMessages] = useState(false);
   const resolveProjectId = useCallback(
     () => Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId,
     []
@@ -202,8 +201,12 @@ export default function ClientHome() {
   const getPushToken = useCallback(async () => {
     if (!Device.isDevice) return null;
     
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    if (existingStatus !== 'granted') return null;
+    // Android: the Expo/FCM token can be fetched (and registered with the server) before the
+    // notification permission is granted, so pushes start working as soon as it is granted.
+    if (Platform.OS !== 'android') {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      if (existingStatus !== 'granted') return null;
+    }
     
     const projectId = resolveProjectId();
     if (!projectId) {
@@ -956,7 +959,10 @@ export default function ClientHome() {
           const title = adminName
             ? `${t('warningFrom') || 'Warning from'} ${adminName}`
             : t('warningFromAdministrator');
-          await Notifications.scheduleNotificationAsync({
+          if (Platform.OS === 'android') {
+            // Native notifier: same dedupe as the background lock sync (no double alerts).
+            await devicePolicy.notifyWarning(statusToSet.warning_message, adminName);
+          } else await Notifications.scheduleNotificationAsync({
             content: {
               title,
               body: statusToSet.warning_message,
@@ -991,7 +997,7 @@ export default function ClientHome() {
       } else if (!statusToSet.is_locked && !data.offline) {
         // Fresh "unlocked" answer: make sure no stale cache / overlay / kiosk outlives it.
         reconcileUnlocked(!!opts.force).catch((e) => console.warn('[Unlock] reconcile failed:', e));
-      } else if (statusToSet.is_locked && Platform.OS === 'android' && incomingLevel === 'full') {
+      } else if (statusToSet.is_locked && Platform.OS === 'android' && incomingLevel === 'full' && !emergencyCallActiveRef.current) {
         // Android may kill the overlay / monitor (Doze, OOM). Re-check at most every
         // 10s and only restart what is actually down. Re-applying kiosk, immersive mode
         // and status-bar collapse on every 2s poll made the lock screen flash.
@@ -1808,35 +1814,6 @@ export default function ClientHome() {
     };
   }, []);
 
-  // In-app messaging functions
-  const fetchMessages = async () => {
-    if (!clientId) return;
-    setLoadingMessages(true);
-    try {
-      const token = await getDeviceToken();
-      const resp = await fetch(`${API_URL}/api/messages?client_id=${clientId}&client_token=${token}`);
-      if (resp.ok) {
-        const data = await resp.json();
-        setMessages(data.messages || []);
-        // Mark messages as read
-        fetch(`${API_URL}/api/messages/mark-read?client_id=${clientId}&client_token=${token}`, { method: 'POST' }).catch(() => {});
-      }
-    } catch (e) { console.log('Failed to fetch messages:', e); }
-    setLoadingMessages(false);
-  };
-
-  const sendChatMessage = async () => {
-    if (!chatMessage.trim() || !clientId) return;
-    try {
-      const token = await getDeviceToken();
-      const resp = await fetch(`${API_URL}/api/messages?client_id=${clientId}&text=${encodeURIComponent(chatMessage)}&client_token=${token}`, { method: 'POST' });
-      if (resp.ok) {
-        setChatMessage('');
-        fetchMessages();
-      }
-    } catch (e) { Alert.alert('Error', 'Failed to send message'); }
-  };
-
   // Multi-language lock screen message
   const getLockMessage = () => {
     const msg = status?.lock_message || '';
@@ -2646,79 +2623,6 @@ export default function ClientHome() {
         )}
       </ScrollView>
 
-      {/* Chat Floating Button - Only for enterprise/custom admin plans */}
-      {(adminPlan === 'enterprise' || adminPlan === 'custom') && (
-      <TouchableOpacity
-        style={{ position: 'absolute', bottom: 90, right: 24, backgroundColor: '#10B981', width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, zIndex: 100 }}
-        onPress={() => { setShowChat(true); fetchMessages(); }}
-        data-testid="chat-fab"
-      >
-        <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
-      </TouchableOpacity>
-      )}
-
-      {/* Chat Modal */}
-      {showChat && (
-        <Modal visible={showChat} animationType="slide" transparent={false} onRequestClose={() => setShowChat(false)}>
-          <SafeAreaView style={{ flex: 1, backgroundColor: '#0B1527' }}>
-            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1E3050' }}>
-                <Text style={{ color: '#F8FAFC', fontSize: 18, fontWeight: '700' }}>Message Admin</Text>
-                <TouchableOpacity onPress={() => setShowChat(false)}>
-                  <Ionicons name="close" size={24} color="#94A3B8" />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 12 }} contentContainerStyle={{ padding: 10 }}>
-                {loadingMessages ? (
-                  <ActivityIndicator size="small" color="#10B981" style={{ marginTop: 20 }} />
-                ) : messages.length === 0 ? (
-                  <Text style={{ color: '#64748B', textAlign: 'center', marginTop: 40 }}>No messages yet. Send a message to your admin.</Text>
-                ) : (
-                  messages.map((msg, i) => {
-                    // Date grouping: show date separator when date changes
-                    const msgDate = msg.created_at ? new Date(msg.created_at).toLocaleDateString() : '';
-                    const prevMsgDate = i > 0 && messages[i - 1].created_at 
-                      ? new Date(messages[i - 1].created_at).toLocaleDateString() 
-                      : '';
-                    const showDateSep = msgDate && msgDate !== prevMsgDate;
-                    
-                    return (
-                      <View key={msg.id || i}>
-                        {showDateSep && (
-                          <View style={{ alignItems: 'center', marginVertical: 12 }}>
-                            <View style={{ backgroundColor: '#152035', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10 }}>
-                              <Text style={{ color: '#64748B', fontSize: 11, fontWeight: '600' }}>{msgDate}</Text>
-                            </View>
-                          </View>
-                        )}
-                        <View style={{ alignSelf: msg.sender_type === 'client' ? 'flex-end' : 'flex-start', backgroundColor: msg.sender_type === 'client' ? '#10B981' : '#1E3050', padding: 10, borderRadius: 12, marginBottom: 8, maxWidth: '80%' }}>
-                          <Text style={{ color: '#F8FAFC', fontSize: 14 }}>{msg.text}</Text>
-                          <Text style={{ color: msg.sender_type === 'client' ? '#A7F3D0' : '#64748B', fontSize: 10, marginTop: 4 }}>{msg.created_at ? new Date(msg.created_at).toLocaleTimeString() : ''}</Text>
-                        </View>
-                      </View>
-                    );
-                  })
-                )}
-              </ScrollView>
-
-              <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#1E3050' }}>
-                <TextInput
-                  style={{ flex: 1, backgroundColor: '#152035', color: '#F8FAFC', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: '#1E3050' }}
-                  placeholder="Type a message..."
-                  placeholderTextColor="#64748B"
-                  value={chatMessage}
-                  onChangeText={setChatMessage}
-                  onSubmitEditing={sendChatMessage}
-                />
-                <TouchableOpacity onPress={sendChatMessage} style={{ backgroundColor: '#10B981', width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' }}>
-                  <Ionicons name="send" size={20} color="#fff" />
-                </TouchableOpacity>
-              </View>
-            </KeyboardAvoidingView>
-          </SafeAreaView>
-        </Modal>
-      )}
       {Platform.OS === 'android' && !!clientId && (
         <PermissionWizard
           visible={showWizard}

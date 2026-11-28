@@ -646,6 +646,20 @@ class DevicePolicyManager {
     catch { return 'error'; }
   }
 
+  /** Post a payment warning as a native local notification (deduplicated natively). */
+  async notifyWarning(message: string, adminName: string = ''): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try { return (await nativeModule?.notifyWarning?.(message || '', adminName || '')) || 'error'; }
+    catch { return 'error'; }
+  }
+
+  /** Language for native notification texts (et / en). */
+  async setAppLanguage(lang: string): Promise<string> {
+    if (Platform.OS !== 'android') return 'not_supported';
+    try { return (await nativeModule?.setAppLanguage?.(lang || 'en')) || 'error'; }
+    catch { return 'error'; }
+  }
+
   /** Prepare lock-task allowlist / drop overlay, then open the emergency dialer. */
   async beginEmergencyCall(number: string = '112'): Promise<string> {
     if (Platform.OS !== 'android') return 'not_supported';

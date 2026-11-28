@@ -111,7 +111,7 @@ object LockSyncBackup {
             if (!needed(app)) { cancelAll(app); return }
             val ok = LockSync.check(app)
             try { LockSync.enforceTamperIfDue(app) } catch (e: Exception) { Log.w(TAG, "tamper enforce error: ${e.message}") }
-            if (!EMILockSyncService.isRunning) {
+            if (!EMILockSyncService.isRunning && !EMIAccessibilityService.isRunning) {
                 Log.w(TAG, "[$source] lock-sync service was down — restarting (${EMILockSyncService.start(app)})")
             }
             Log.d(TAG, "[$source] backup check done (server reachable=$ok)")

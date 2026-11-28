@@ -17,16 +17,21 @@ import android.os.IBinder
 import android.util.Log
 
 /**
- * Persistent, low-priority foreground service that keeps the device in sync with
- * the server lock state while the app is closed. Without it a lock issued from
- * the admin app only applied once the borrower opened the client app.
+ * Fallback host for the lock-state sync while the app is closed.
+ *
+ * Primary host is [EMIAccessibilityService]: an enabled accessibility service keeps the
+ * process alive without any notification. Only when that service is NOT running does this
+ * foreground service run, and Android requires a notification for it. That notification uses
+ * a silent IMPORTANCE_MIN channel (no sound, vibration, badge, status-bar icon or lock-screen
+ * content); it still appears collapsed in the shade's "silent" section on most phones.
  *
  * Runs while the device is registered and uninstall has not been allowed.
  */
 class EMILockSyncService : Service() {
     companion object {
         private const val TAG = "EMILockSyncService"
-        private const val CHANNEL_ID = "emi_lock_sync_channel"
+        private const val CHANNEL_ID = "emi_lock_sync_silent"
+        private const val OLD_CHANNEL_ID = "emi_lock_sync_channel"
         private const val NOTIFICATION_ID = 1003
         private const val INTERVAL_UNLOCKED_MS = 15_000L
         private const val INTERVAL_LOCKED_MS = 10_000L
@@ -37,6 +42,13 @@ class EMILockSyncService : Service() {
             val p = LockSync.prefs(app)
             if (p.getString(LockSync.KEY_CLIENT_ID, null).isNullOrEmpty()) return "not_registered"
             if (p.getBoolean("uninstall_allowed", false)) return "uninstall_allowed"
+            if (EMIAccessibilityService.isRunning) {
+                // The accessibility service hosts the sync: no foreground notification needed.
+                stopServiceOnly(app)
+                LockSyncBackup.scheduleAlarm(app)
+                LockSyncBackup.scheduleJob(app)
+                return "accessibility_host"
+            }
             return try {
                 val intent = Intent(app, EMILockSyncService::class.java)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) app.startForegroundService(intent)
@@ -46,6 +58,11 @@ class EMILockSyncService : Service() {
                 Log.w(TAG, "start refused: ${e.message}")
                 "error: ${e.message}"
             }
+        }
+
+        /** Stop only this service (backups stay armed). */
+        fun stopServiceOnly(context: Context) {
+            try { context.applicationContext.stopService(Intent(context.applicationContext, EMILockSyncService::class.java)) } catch (_: Exception) {}
         }
 
         fun stop(context: Context) {
@@ -120,6 +137,11 @@ class EMILockSyncService : Service() {
                 stopSelf()
                 return
             }
+            if (EMIAccessibilityService.isRunning) {
+                Log.d(TAG, "Accessibility service hosts the sync now — stopping (removes the notification)")
+                stopSelf()
+                return
+            }
             try { LockSync.check(this@EMILockSyncService) } catch (e: Exception) {
                 Log.w(TAG, "tick error: ${e.message}")
             }
@@ -178,13 +200,17 @@ class EMILockSyncService : Service() {
 
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val ch = NotificationChannel(CHANNEL_ID, "Payment protection", NotificationManager.IMPORTANCE_MIN).apply {
+            val nm = getSystemService(NotificationManager::class.java)
+            try { nm?.deleteNotificationChannel(OLD_CHANNEL_ID) } catch (_: Exception) {}
+            val ch = NotificationChannel(CHANNEL_ID, "Background sync", NotificationManager.IMPORTANCE_MIN).apply {
+                description = "Silent. Required by Android while PayLock syncs in the background."
                 setShowBadge(false)
                 enableLights(false)
                 enableVibration(false)
                 setSound(null, null)
+                lockscreenVisibility = Notification.VISIBILITY_SECRET
             }
-            getSystemService(NotificationManager::class.java)?.createNotificationChannel(ch)
+            nm?.createNotificationChannel(ch)
         }
     }
 
@@ -199,8 +225,12 @@ class EMILockSyncService : Service() {
             )
         }
         return b.setSmallIcon(android.R.drawable.ic_lock_lock)
-            .setContentTitle("PayLock protection active")
+            .setContentTitle("PayLock")
             .setOngoing(true)
+            .setShowWhen(false)
+            .setLocalOnly(true)
+            .setCategory(Notification.CATEGORY_SERVICE)
+            .setVisibility(Notification.VISIBILITY_SECRET)
             .setPriority(Notification.PRIORITY_MIN)
             .apply { if (pi != null) setContentIntent(pi) }
             .build()

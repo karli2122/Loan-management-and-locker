@@ -88,6 +88,14 @@ object LockSync {
 
     private fun apply(app: Context, json: JSONObject) {
         val p = prefs(app)
+        // Payment warnings reach the phone even when the app is closed (old server has no
+        // reliable push path we can verify; see LockNotifier).
+        try { LockNotifier.ensureChannels(app) } catch (_: Exception) {}
+        try {
+            val warning = if (json.isNull("warning_message")) "" else json.optString("warning_message", "")
+            val adminName = if (json.isNull("admin_firstname")) "" else json.optString("admin_firstname", "")
+            LockNotifier.onWarning(app, warning, adminName)
+        } catch (e: Exception) { Log.w(TAG, "warning notify failed: ${e.message}") }
         val uninstallAllowed = json.optBoolean("uninstall_allowed", false)
         val deleted = json.optBoolean("is_deleted", false)
         p.edit().putBoolean("uninstall_allowed", uninstallAllowed).apply()
@@ -143,6 +151,7 @@ object LockSync {
             if (wasLocked || prevLevel != "none") {
                 Log.w(TAG, "Server says UNLOCKED — clearing native lock")
                 clearLock(app, "server_unlocked")
+                if (wasLocked) LockNotifier.onUnlocked(app)
             }
         }
     }
@@ -166,6 +175,13 @@ object LockSync {
     fun enforceLock(context: Context, launch: Boolean) {
         val app = context.applicationContext
         if (EmergencyCallSession.isActive(app)) return
+        if (isDeviceOwner(app)) {
+            // Device Owner: block the status bar / notification shade even before the app runs.
+            try {
+                val dpm = app.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+                dpm.setStatusBarDisabled(android.content.ComponentName(app, EMIDeviceAdminReceiver::class.java), true)
+            } catch (e: Exception) { Log.w(TAG, "status bar disable failed: ${e.message}") }
+        }
         if (isAppInForeground(app)) cancelLockAlert(app)
         // Launch the activity first: once it is visible the app is "foreground"
         // and starting the overlay / monitor foreground services is allowed.
@@ -237,6 +253,8 @@ object LockSync {
 
     fun launchApp(context: Context, force: Boolean = false) {
         val app = context.applicationContext
+        // Never pull the lock screen over the dialer during an emergency-call session.
+        if (EmergencyCallSession.isActive(app)) return
         val now = System.currentTimeMillis()
         // Debounce relaunches so we never fight with the app in a loop.
         if (!force && now - lastLaunchAt < 5_000) return

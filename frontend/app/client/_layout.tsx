@@ -14,7 +14,6 @@ export default function ClientLayout() {
       <Stack.Screen name="register" options={{ animation: 'none' }} />
       <Stack.Screen name="home" options={{ animation: 'none' }} />
       <Stack.Screen name="payment-history" />
-      <Stack.Screen name="support-chat" />
     </Stack>
   );
 }

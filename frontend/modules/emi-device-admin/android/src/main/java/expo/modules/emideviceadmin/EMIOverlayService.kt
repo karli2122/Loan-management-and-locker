@@ -148,7 +148,10 @@ class EMIOverlayService : Service() {
             override fun run() {
                 try {
                     val locked = prefs.getBoolean(KEY_LOCKED, false)
-                    if (locked) {
+                    if (locked && EmergencyCallSession.isActive(this@EMIOverlayService)) {
+                        // Emergency call in progress: nothing may cover the dialer / in-call screen.
+                        if (fullScreenView != null || statusBarBlocker != null || navBarBlocker != null) removeAll()
+                    } else if (locked) {
                         renewWakeLock()
                         if (fullScreenView == null || !fullScreenView!!.isAttachedToWindow) {
                             removeAll()
@@ -192,8 +195,15 @@ class EMIOverlayService : Service() {
                     WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
                     WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
                 PixelFormat.OPAQUE
-            ).apply { gravity = Gravity.TOP or Gravity.START }
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+                coverSystemBars(this)
+            }
 
+            // Shade pulled down -> the overlay loses window focus -> close the shade at once.
+            root.viewTreeObserver.addOnWindowFocusChangeListener { hasFocus ->
+                if (!hasFocus) ShadeGuard.dismissBurst(this, "overlay_focus_lost")
+            }
             wm?.addView(root, lp)
             fullScreenView = root
             Log.d(TAG, "Full-screen lock UI created")
@@ -330,14 +340,18 @@ class EMIOverlayService : Service() {
         if (!Settings.canDrawOverlays(this)) return
         try {
             val blocker = View(this).apply { setBackgroundColor(Color.TRANSPARENT) }
-            val h = if (top) dp(50) else dp(80)
+            val h = if (top) statusBarHeight() + dp(16) else dp(80)
             val lp = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT, h, overlayType(),
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
                 PixelFormat.TRANSPARENT
-            ).apply { gravity = (if (top) Gravity.TOP else Gravity.BOTTOM) or Gravity.START }
+            ).apply {
+                gravity = (if (top) Gravity.TOP else Gravity.BOTTOM) or Gravity.START
+                coverSystemBars(this)
+            }
             wm?.addView(blocker, lp)
             if (top) statusBarBlocker = blocker else navBarBlocker = blocker
         } catch (e: Exception) { Log.e(TAG, "createBarBlocker($top): ${e.message}") }
@@ -362,6 +376,24 @@ class EMIOverlayService : Service() {
         LinearLayout.LayoutParams.MATCH_PARENT,
         LinearLayout.LayoutParams.WRAP_CONTENT
     )
+
+    /** Lay the window over the status-bar / cutout area instead of below it. */
+    private fun coverSystemBars(lp: WindowManager.LayoutParams) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                lp.fitInsetsTypes = 0
+                lp.isFitInsetsIgnoringVisibility = true
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun statusBarHeight(): Int {
+        val id = resources.getIdentifier("status_bar_height", "dimen", "android")
+        return if (id > 0) resources.getDimensionPixelSize(id) else dp(32)
+    }
 
     private fun overlayType() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY

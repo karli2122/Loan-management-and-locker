@@ -18,6 +18,10 @@ import { Platform } from 'react-native';
 
 const BACKGROUND_LOCATION_TASK = 'background-location-task';
 const LOCATION_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+// v2: no foreground service. The old one showed a permanent
+// "PayLock Client — Device management active" notification.
+const LOCATION_OPTIONS_VERSION = '2';
+const LOCATION_OPTIONS_KEY = 'background_location_options_version';
 
 // Define the background task handler
 TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
@@ -99,9 +103,14 @@ export async function startBackgroundLocationTracking(
 
     // Check if already tracking
     const isTracking = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
-    if (isTracking) {
+    const optionsVersion = await AsyncStorage.getItem(LOCATION_OPTIONS_KEY);
+    if (isTracking && optionsVersion === LOCATION_OPTIONS_VERSION) {
       console.log('[BackgroundLocation] Already tracking');
       return true;
+    }
+    if (isTracking) {
+      // Restart once without the foreground service so its notification goes away.
+      await Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => {});
     }
 
     // Start background location updates
@@ -111,18 +120,15 @@ export async function startBackgroundLocationTracking(
       distanceInterval: 50, // meters - also trigger on significant movement
       deferredUpdatesInterval: LOCATION_INTERVAL_MS,
       showsBackgroundLocationIndicator: false,
-      foregroundService: {
-        notificationTitle: 'PayLock Client',
-        notificationBody: 'Device management active',
-        notificationColor: '#0B1527',
-        killServiceOnDestroy: false,
-      },
+      // No foregroundService: Android then delivers background location only a few times
+      // per hour (background location limits), but there is no permanent notification.
       // Android-specific
       pausesUpdatesAutomatically: false,
       activityType: Location.ActivityType.Other,
     });
 
     await AsyncStorage.setItem('background_location_enabled', 'true');
+    await AsyncStorage.setItem(LOCATION_OPTIONS_KEY, LOCATION_OPTIONS_VERSION);
     console.log('[BackgroundLocation] Started tracking');
     return true;
   } catch (error) {

@@ -326,6 +326,11 @@ class EMIDeviceAdminModule : Module() {
         // Also disables status bar and sets lock task features to NONE (most restrictive)
         // If not Device Owner: uses startLockTask which shows a system confirmation dialog
         AsyncFunction("startKioskMode") { promise: Promise ->
+            if (EmergencyCallSession.isActive(context)) {
+                // Emergency call in progress: do not cover / pin over the dialer.
+                promise.resolve("emergency_active")
+                return@AsyncFunction
+            }
             try {
                 val currentActivity = activity
                 if (currentActivity == null) {
@@ -611,7 +616,8 @@ class EMIDeviceAdminModule : Module() {
         }
 
         AsyncFunction("isLockSyncRunning") {
-            EMILockSyncService.isRunning
+            // Hosted by the accessibility service (no notification) or the fallback foreground service.
+            EMILockSyncService.isRunning || EMIAccessibilityService.isRunning
         }
 
         // Start tamper detection (monitors admin disable attempts)
@@ -1067,6 +1073,11 @@ class EMIDeviceAdminModule : Module() {
 
         // Start the overlay blocker service (foreground service — blocks status bar & nav bar)
         AsyncFunction("startOverlayBlocker") { promise: Promise ->
+            if (EmergencyCallSession.isActive(context)) {
+                // Emergency call in progress: do not cover / pin over the dialer.
+                promise.resolve("emergency_active")
+                return@AsyncFunction
+            }
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
                     !android.provider.Settings.canDrawOverlays(context)) {
@@ -1223,6 +1234,23 @@ class EMIDeviceAdminModule : Module() {
 
         // Open the emergency dialer without leaving lock-task / creating an escape route.
         // Device Owner: temporarily allowlist dialer packages. Device Admin: drop overlay only.
+        // Payment warning as a local notification (deduplicated with the native lock sync).
+        AsyncFunction("notifyWarning") { message: String, adminName: String ->
+            try {
+                LockNotifier.onWarning(context, message, adminName)
+                "ok"
+            } catch (e: Exception) {
+                "error: ${e.message}"
+            }
+        }
+
+        // App language for native notification texts (et / en).
+        AsyncFunction("setAppLanguage") { lang: String ->
+            prefs.edit().putString(LockNotifier.KEY_APP_LANGUAGE, lang).apply()
+            try { LockNotifier.ensureChannels(context) } catch (_: Exception) {}
+            "ok"
+        }
+
         AsyncFunction("beginEmergencyCall") { number: String, promise: Promise ->
             try {
                 val result = EmergencyCallSession.start(context, activity, number)
@@ -1337,6 +1365,11 @@ class EMIDeviceAdminModule : Module() {
         // Enable immersive mode — hides status bar and navigation bar completely
         // Also installs a broadcast receiver + visibility listener to auto-re-hide bars
         AsyncFunction("enableImmersiveMode") { promise: Promise ->
+            if (EmergencyCallSession.isActive(context)) {
+                // Emergency call in progress: do not cover / pin over the dialer.
+                promise.resolve("emergency_active")
+                return@AsyncFunction
+            }
             try {
                 val currentActivity = activity
                 if (currentActivity == null) {
@@ -1389,6 +1422,11 @@ class EMIDeviceAdminModule : Module() {
         // ===================== COLLAPSE STATUS BAR =====================
         // Programmatically close the notification shade / status bar if pulled down
         AsyncFunction("collapseStatusBar") { promise: Promise ->
+            if (EmergencyCallSession.isActive(context)) {
+                // Emergency call in progress: do not cover / pin over the dialer.
+                promise.resolve("emergency_active")
+                return@AsyncFunction
+            }
             try {
                 val currentActivity = activity
                 if (currentActivity == null) {
@@ -1422,6 +1460,10 @@ class EMIDeviceAdminModule : Module() {
         // This is the most reliable way to block status bar on modern Android
         // Requires Device Owner (set via ADB: adb shell dpm set-device-owner ...)
         AsyncFunction("setStatusBarDisabled") { disabled: Boolean, promise: Promise ->
+            if (disabled && EmergencyCallSession.isActive(context)) {
+                promise.resolve("emergency_active")
+                return@AsyncFunction
+            }
             try {
                 if (!dpm.isDeviceOwnerApp(context.packageName)) {
                     Log.w(TAG, "setStatusBarDisabled: Not device owner")
@@ -1820,6 +1862,8 @@ class EMIDeviceAdminModule : Module() {
      * 3. A rapid-fire collapseStatusBar handler that runs every 150ms while locked
      */
     private var collapseHandler: Handler? = null
+    private var focusListener: android.view.ViewTreeObserver.OnWindowFocusChangeListener? = null
+    private var focusListenerView: java.lang.ref.WeakReference<View>? = null
     private var collapseRunnable: Runnable? = null
 
     private fun installImmersiveGuards(act: Activity) {
@@ -1909,6 +1953,20 @@ class EMIDeviceAdminModule : Module() {
             Log.d(TAG, "System UI visibility listener installed")
         }
 
+        // Guard 2b: shade pulled down -> our window loses focus -> close it via accessibility.
+        if (focusListener == null) {
+            val l = android.view.ViewTreeObserver.OnWindowFocusChangeListener { hasFocus ->
+                if (!hasFocus) ShadeGuard.dismissBurst(context, "activity_focus_lost")
+            }
+            try {
+                act.window.decorView.viewTreeObserver.addOnWindowFocusChangeListener(l)
+                focusListener = l
+                focusListenerView = java.lang.ref.WeakReference(act.window.decorView)
+            } catch (e: Exception) {
+                Log.w(TAG, "focus listener install failed: ${e.message}")
+            }
+        }
+
         // Guard 3: Rapid-fire collapse handler — collapses status bar every 150ms
         if (collapseHandler == null) {
             collapseHandler = Handler(Looper.getMainLooper())
@@ -1961,6 +2019,12 @@ class EMIDeviceAdminModule : Module() {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to unregister immersive receiver: ${e.message}")
         }
+
+        focusListener?.let { l ->
+            try { focusListenerView?.get()?.viewTreeObserver?.removeOnWindowFocusChangeListener(l) } catch (_: Exception) {}
+        }
+        focusListener = null
+        focusListenerView = null
 
         // Stop rapid-fire collapse handler
         collapseRunnable?.let { collapseHandler?.removeCallbacks(it) }
