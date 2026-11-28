@@ -18,6 +18,9 @@ from utils.auth import get_admin_id_from_token
 load_dotenv()
 
 logger = logging.getLogger(__name__)
+from utils.statement_scoring_config import INCOME_CATEGORIES, EXPENSE_CATEGORIES, INTERNAL_CATEGORY
+from utils.statement_scoring import build_analysis_from_transactions, score_statement
+
 router = APIRouter(tags=["Bank Statements"])
 
 SUPPORTED_BANKS = [
@@ -370,6 +373,33 @@ async def extract_text_with_ai_vision(pdf_bytes: bytes, max_pages: int = 3) -> s
     return result.strip()
 
 
+# The AI only READS and CATEGORISES the statement. Totals, affordability and the intent flags are
+# calculated by plain code in utils/statement_scoring.py (rules and keyword lists: utils/statement_scoring_config.py).
+CATEGORISE_PROMPT = f"""You are a bookkeeping assistant for Estonian and European bank statements.
+Read the statement and return ONE JSON object, nothing else (no markdown), in exactly this shape:
+{{
+  "bank_name": "detected bank name or null",
+  "period": "DD.MM.YYYY - DD.MM.YYYY or null",
+  "currency": "EUR or detected currency",
+  "account_holder": "the PERSON who owns the account (never the bank's name) or null",
+  "summary": {{"opening_balance": 0.00, "closing_balance": 0.00}},
+  "transactions": [
+    {{"date": "YYYY-MM-DD", "description": "payer/payee and the payment text exactly as printed on the statement", "counterparty": "name of the other party", "amount": -12.50, "category": "one of the categories below"}}
+  ]
+}}
+Rules:
+- List EVERY transaction. "amount" is signed with a dot decimal: money IN is positive, money OUT is negative.
+- Copy names and payment texts exactly as printed (do not translate or shorten) so company names can be matched later.
+- Income categories (positive amounts): {", ".join(INCOME_CATEGORIES)}.
+- Expense categories (negative amounts): {", ".join(EXPENSE_CATEGORIES)}.
+- "{INTERNAL_CATEGORY}": transfers between the customer's own accounts.
+- Benefits/Pension: pensions, state benefits, unemployment insurance, parental benefit. Child support: child allowance and maintenance.
+- Loan received: a loan paid out to the customer by any lender. Loan repayment: instalments to any lender or leasing company.
+- Debt collection: payments to debt collectors, bailiffs or enforcement. Gambling: betting, casino, lottery.
+- Use null for anything that cannot be read. Do NOT give any credit recommendation, risk assessment or opinion."""
+
+
+
 async def analyze_with_ai(statement_text: str) -> dict:
     """Send bank statement text to GPT for income/expense analysis."""
     from emergentintegrations.llm.chat import LlmChat, UserMessage
@@ -381,56 +411,7 @@ async def analyze_with_ai(statement_text: str) -> dict:
     chat = LlmChat(
         api_key=api_key,
         session_id=f"bank-analysis-{uuid.uuid4().hex[:8]}",
-        system_message="""You are a financial analyst specializing in Estonian and European bank statements. 
-Analyze the provided bank statement text and return a JSON response with the following structure:
-{
-  "bank_name": "detected bank name",
-  "period": "statement period (e.g. '01.01.2025 - 31.01.2025')",
-  "currency": "EUR or detected currency",
-  "account_holder": "name if visible",
-  "summary": {
-    "total_income": 0.00,
-    "total_expenses": 0.00,
-    "net_balance": 0.00,
-    "opening_balance": 0.00,
-    "closing_balance": 0.00
-  },
-  "income_categories": [
-    {"category": "Salary", "total": 0.00, "count": 0},
-    {"category": "Transfers In", "total": 0.00, "count": 0}
-  ],
-  "expense_categories": [
-    {"category": "Rent/Housing", "total": 0.00, "count": 0},
-    {"category": "Groceries", "total": 0.00, "count": 0},
-    {"category": "Transport", "total": 0.00, "count": 0},
-    {"category": "Utilities", "total": 0.00, "count": 0},
-    {"category": "Entertainment", "total": 0.00, "count": 0},
-    {"category": "Subscriptions", "total": 0.00, "count": 0},
-    {"category": "Other", "total": 0.00, "count": 0}
-  ],
-  "monthly_breakdown": [
-    {"month": "2025-01", "income": 0.00, "expenses": 0.00}
-  ],
-  "risk_indicators": {
-    "has_regular_income": true,
-    "income_stability": "stable/unstable/unknown",
-    "high_expense_ratio": false,
-    "gambling_detected": false,
-    "loan_payments_detected": false,
-    "notes": "brief risk assessment"
-  },
-  "credit_recommendation": {
-    "monthly_credit_amount": 0.00,
-    "yearly_credit_amount": 0.00,
-    "debt_to_income_ratio": 0.00,
-    "disposable_income": 0.00,
-    "risk_level": "low/medium/high",
-    "reasoning": "Brief explanation of how the credit amount was calculated based on income, expenses, existing obligations, and risk factors. Consider that a safe monthly repayment should not exceed 30-40% of disposable income (income minus essential expenses)."
-  }
-}
-Return ONLY valid JSON, no markdown or explanation. If a field cannot be determined, use null.
-For the credit_recommendation: Calculate the maximum safe monthly loan repayment amount as 30-40% of the client's monthly disposable income (total_income minus essential recurring expenses like rent, utilities, existing loan payments). The yearly amount is monthly * 12. Consider existing debt obligations and risk factors. If income is irregular or unstable, recommend a lower amount.
-Categorize ALL transactions. Supported banks: Swedbank, SEB, LHV, Coop Pank, Revolut, Paysera, Mytu, Bunq, N26, Wise."""
+        system_message=CATEGORISE_PROMPT
     ).with_model("openai", "gpt-4.1")
 
     # Truncate text if too long (GPT context limit)
@@ -445,27 +426,51 @@ Categorize ALL transactions. Supported banks: Swedbank, SEB, LHV, Coop Pank, Rev
 
     response = await chat.send_message(user_message)
 
-    # Parse the JSON response
-    try:
-        # Clean response - remove markdown code blocks if present
-        cleaned = response.strip()
-        if cleaned.startswith("```"):
-            cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3]
-        if cleaned.startswith("json"):
-            cleaned = cleaned[4:]
-        parsed = json.loads(cleaned.strip())
-        if isinstance(parsed, dict) and truncated:
-            # totals below only cover the first part of the statement: tell the admin
-            parsed["statement_truncated"] = True
-        return parsed
-    except json.JSONDecodeError:
+    parsed = parse_ai_json(response)
+    if parsed is None:
         logger.error(f"Failed to parse AI response as JSON: {response[:200]}")
         return {
             "error": "AI analysis returned non-structured response",
             "raw_response": response[:2000]
         }
+    if truncated:
+        # totals below only cover the first part of the statement: tell the admin
+        parsed["statement_truncated"] = True
+    if parsed.get("transactions"):
+        # totals / categories / monthly breakdown are summed in code from the categorised transactions
+        built = build_analysis_from_transactions(parsed)
+        built["_transactions"] = parsed["transactions"]  # used for scoring, never stored or returned
+        return built
+    return parsed
+
+
+def parse_ai_json(response: str):
+    """Parse the model's JSON. If a long answer was cut off, keep the transactions that are complete."""
+    cleaned = (response or "").strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
+    if cleaned.endswith("```"):
+        cleaned = cleaned[:-3]
+    cleaned = cleaned.strip()
+    if cleaned.startswith("json"):
+        cleaned = cleaned[4:].strip()
+    try:
+        data = json.loads(cleaned)
+        return data if isinstance(data, dict) else None
+    except json.JSONDecodeError:
+        pass
+    if '"transactions"' in cleaned:
+        cut = cleaned.rfind("},")
+        while cut > 0:
+            try:
+                data = json.loads(cleaned[: cut + 1] + "]}")
+                if isinstance(data, dict):
+                    data["response_cut_off"] = True
+                    return data
+            except json.JSONDecodeError:
+                pass
+            cut = cleaned.rfind("},", 0, cut)
+    return None
 
 
 @router.post("/bank-statements/analyze")
@@ -630,6 +635,13 @@ async def analyze_bank_statement(
         )
 
     analysis = apply_fallback_analysis(analysis, seb_fallback)
+
+    # Affordability + intent flags: plain code, not the AI (rules: utils/statement_scoring_config.py)
+    transactions = analysis.pop("_transactions", None) or []
+    try:
+        analysis["scoring"] = score_statement(analysis, transactions)
+    except Exception as e:  # the analysis itself is still useful; the app falls back to scoring on the phone
+        logger.error(f"statement scoring failed: {e}")
 
     # Store the analysis result
     record = {

@@ -1,5 +1,5 @@
 import { authedFetch } from '../../src/utils/adminAuth';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,8 @@ import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/
 import { base64ToBytes, statementBytesToText } from '../../src/utils/statementText';
 import { extractIdentity } from '../../src/utils/statementIdentity';
 import { ta } from '../../src/utils/adminI18n';
+import { scoreStatement, Scoring } from '../../src/utils/statementScoring';
+import { StatementScoreCards } from '../../src/components/StatementScoreCards';
 
 interface AnalysisResult {
   id: string;
@@ -59,6 +61,9 @@ interface AnalysisResult {
       risk_level?: string;
       reasoning?: string;
     };
+    scoring?: Scoring;
+    statement_truncated?: boolean;
+    response_cut_off?: boolean;
     error?: string;
     raw_response?: string;
   };
@@ -84,6 +89,10 @@ function BankAnalyzerContent() {
   const [forceOcr, setForceOcr] = useState(false);
   const [pickedFile, setPickedFile] = useState<{ uri?: string; file?: File; name: string } | null>(null);
   const [readingIdentity, setReadingIdentity] = useState(false);
+  const [scoring, setScoring] = useState<Scoring | null>(null);
+  const [scoringBusy, setScoringBusy] = useState(false);
+  const [scanNote, setScanNote] = useState(false);
+  const textCache = useRef<{ key: string; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const isSebText = (text: string) => text.includes('SEB') || text.includes('SEB Pank');
@@ -208,28 +217,70 @@ function BankAnalyzerContent() {
     }
   };
 
-  // Reads the statement again on the phone and pulls out name / address / personal ID. The analysis
+  // Re-reads the statement file on the phone (same file the analysis was made from). Cached per file.
+  const readStatementText = async (): Promise<string> => {
+    const key = `${pickedFile?.name || ''}|${result?.id || ''}`;
+    if (textCache.current && textCache.current.key === key) return textCache.current.text;
+    let text = '';
+    try {
+      let bytes: Uint8Array | null = null;
+      if (pickedFile?.file) bytes = new Uint8Array(await pickedFile.file.arrayBuffer());
+      else if (pickedFile?.uri) {
+        const info: any = await FileSystem.getInfoAsync(pickedFile.uri);
+        if (!info?.size || info.size <= 25 * 1024 * 1024) {
+          const b64 = await FileSystem.readAsStringAsync(pickedFile.uri, { encoding: FileSystem.EncodingType.Base64 });
+          bytes = base64ToBytes(b64);
+        }
+      }
+      if (bytes) text = statementBytesToText(bytes, pickedFile?.name || result?.filename || '');
+    } catch {
+      text = '';
+    }
+    textCache.current = { key, text };
+    return text;
+  };
+
+  // Affordability + intent flags. A newer server sends `analysis.scoring`; the old server does not,
+  // so the phone computes the same thing from the analysis response plus the re-read statement text.
+  useEffect(() => {
+    let cancelled = false;
+    if (!result || !result.analysis || result.analysis.error) {
+      setScoring(null);
+      return;
+    }
+    const serverScoring = result.analysis.scoring;
+    if (serverScoring && serverScoring.version === 1 && serverScoring.affordability && Array.isArray(serverScoring.flags)) {
+      setScoring({ ...serverScoring, source: 'server' });
+      setScanNote(false);
+      return;
+    }
+    setScoringBusy(true);
+    (async () => {
+      await new Promise((r) => setTimeout(r, 50)); // let the spinner paint before the synchronous parsing
+      const text = await readStatementText();
+      if (cancelled) return;
+      try {
+        setScoring(scoreStatement(result.analysis, text));
+      } catch {
+        setScoring(null);
+      }
+      setScanNote(text.replace(/\s+/g, '').length < 200);
+      setScoringBusy(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result]);
+
+  // Opens the new-client form with name / address / personal ID from the statement. The analysis
   // response (old backend: only account_holder) fills the gaps. Missing pieces stay empty.
   const startAddClient = async () => {
     if (readingIdentity) return;
     setReadingIdentity(true);
     try {
-      await new Promise((r) => setTimeout(r, 50)); // let the spinner paint before the synchronous parsing
-      let text = '';
-      try {
-        let bytes: Uint8Array | null = null;
-        if (pickedFile?.file) bytes = new Uint8Array(await pickedFile.file.arrayBuffer());
-        else if (pickedFile?.uri) {
-          const info: any = await FileSystem.getInfoAsync(pickedFile.uri);
-          if (!info?.size || info.size <= 25 * 1024 * 1024) {
-            const b64 = await FileSystem.readAsStringAsync(pickedFile.uri, { encoding: FileSystem.EncodingType.Base64 });
-            bytes = base64ToBytes(b64);
-          }
-        }
-        if (bytes) text = statementBytesToText(bytes, pickedFile?.name || result?.filename || '');
-      } catch {
-        text = '';
-      }
+      await new Promise((r) => setTimeout(r, 50));
+      const text = await readStatementText();
       const id = extractIdentity(text, result?.analysis);
       router.push({
         pathname: '/admin/add-client',
@@ -369,6 +420,8 @@ function BankAnalyzerContent() {
                   setError('');
                   setSelectedFileName('');
                   setPickedFile(null);
+                  setScoring(null);
+                  textCache.current = null;
                 }}
                 data-testid="new-analysis-btn"
               >
@@ -485,127 +538,21 @@ function BankAnalyzerContent() {
               </View>
             )}
 
-            {a.risk_indicators && (
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>{t('riskAnalysis')}</Text>
-                <View style={styles.riskRow}>
-                  <Ionicons
-                    name={a.risk_indicators.has_regular_income ? 'checkmark-circle' : 'close-circle'}
-                    size={18}
-                    color={a.risk_indicators.has_regular_income ? '#10B981' : '#EF4444'}
-                  />
-                  <Text style={styles.riskLabel}>
-                    {t('regularIncome')}
-                  </Text>
-                </View>
-                <View style={styles.riskRow}>
-                  <Ionicons
-                    name={a.risk_indicators.income_stability === 'stable' ? 'checkmark-circle' : 'alert-circle'}
-                    size={18}
-                    color={a.risk_indicators.income_stability === 'stable' ? '#10B981' : '#F59E0B'}
-                  />
-                  <Text style={styles.riskLabel}>
-                    {t('incomeStability')}: {a.risk_indicators.income_stability || '-'}
-                  </Text>
-                </View>
-                {a.risk_indicators.gambling_detected && (
-                  <View style={styles.riskRow}>
-                    <Ionicons name="warning" size={18} color="#EF4444" />
-                    <Text style={[styles.riskLabel, { color: '#EF4444' }]}>
-                      {t('gamblingTransactionsDetected')}
-                    </Text>
-                  </View>
-                )}
-                {a.risk_indicators.loan_payments_detected && (
-                  <View style={styles.riskRow}>
-                    <Ionicons name="information-circle" size={18} color="#F59E0B" />
-                    <Text style={styles.riskLabel}>
-                      {t('loanPaymentsDetected')}
-                    </Text>
-                  </View>
-                )}
-                {a.risk_indicators.notes && (
-                  <Text style={styles.riskNotes}>{a.risk_indicators.notes}</Text>
-                )}
+            {scoringBusy && (
+              <View style={[styles.card, { flexDirection: 'row', alignItems: 'center', gap: 10 }]}>
+                <ActivityIndicator color="#38BDF8" />
+                <Text style={styles.cardLabel}>{ta(language, 'scChecking')}</Text>
               </View>
             )}
-
-            {a.credit_recommendation && (
-              <View style={styles.creditCard} data-testid="credit-recommendation">
-                <View style={styles.creditHeader}>
-                  <Ionicons name="cash" size={22} color="#8B5CF6" />
-                  <Text style={styles.creditTitle}>
-                    {t('creditRecommendation')}
-                  </Text>
-                </View>
-
-                <View style={styles.creditAmountRow}>
-                  <View style={styles.creditAmountCard}>
-                    <Text style={styles.creditAmountLabel}>
-                      {t('monthly')}
-                    </Text>
-                    <Text style={styles.creditAmountValue}>
-                      {fmt(a.credit_recommendation.monthly_credit_amount)}
-                    </Text>
-                  </View>
-                  <View style={styles.creditAmountCard}>
-                    <Text style={styles.creditAmountLabel}>
-                      {t('yearly')}
-                    </Text>
-                    <Text style={styles.creditAmountValue}>
-                      {fmt(a.credit_recommendation.yearly_credit_amount)}
-                    </Text>
-                  </View>
-                </View>
-
-                {a.credit_recommendation.disposable_income != null && (
-                  <View style={styles.cardRow}>
-                    <Text style={styles.cardLabel}>
-                      {t('disposableIncome')}
-                    </Text>
-                    <Text style={styles.cardValue}>{fmt(a.credit_recommendation.disposable_income)}</Text>
-                  </View>
-                )}
-                {a.credit_recommendation.debt_to_income_ratio != null && (
-                  <View style={styles.cardRow}>
-                    <Text style={styles.cardLabel}>
-                      {t('debttoincomeRatio')}
-                    </Text>
-                    <Text style={styles.cardValue}>
-                      {(a.credit_recommendation.debt_to_income_ratio > 1.5 ? a.credit_recommendation.debt_to_income_ratio : a.credit_recommendation.debt_to_income_ratio * 100).toFixed(1)}%
-                    </Text>
-                  </View>
-                )}
-                {a.credit_recommendation.risk_level && (
-                  <View style={styles.cardRow}>
-                    <Text style={styles.cardLabel}>
-                      {t('riskLevel')}
-                    </Text>
-                    <View style={[
-                      styles.riskBadge,
-                      a.credit_recommendation.risk_level === 'low' && styles.riskLow,
-                      a.credit_recommendation.risk_level === 'medium' && styles.riskMedium,
-                      a.credit_recommendation.risk_level === 'high' && styles.riskHigh,
-                    ]}>
-                      <Text style={[
-                        styles.riskBadgeText,
-                        a.credit_recommendation.risk_level === 'low' && { color: '#10B981' },
-                        a.credit_recommendation.risk_level === 'medium' && { color: '#F59E0B' },
-                        a.credit_recommendation.risk_level === 'high' && { color: '#EF4444' },
-                      ]}>
-                        {a.credit_recommendation.risk_level === 'low'
-                          ? (t('low'))
-                          : a.credit_recommendation.risk_level === 'medium'
-                          ? (t('medium'))
-                          : (t('high'))}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-                {a.credit_recommendation.reasoning && (
-                  <Text style={styles.creditReasoning}>{a.credit_recommendation.reasoning}</Text>
-                )}
-              </View>
+            {scoring && (
+              <StatementScoreCards
+                key={result?.id}
+                scoring={scoring}
+                language={language}
+                fmt={fmt}
+                scanNote={scanNote}
+                cutOffNote={!!(a?.statement_truncated || a?.response_cut_off)}
+              />
             )}
           </View>
         )}
