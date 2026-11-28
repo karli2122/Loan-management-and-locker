@@ -2,7 +2,7 @@ import { normalizeLockStatus, isLegacyUnsignedStatus } from '../utils/lockCompat
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { hmacSha256Hex, timingSafeEqualHex } from '../utils/hmac';
-import { deviceAuthHeaders, getDeviceToken } from '../utils/deviceAuth';
+import { deviceAuthHeaders, getDeviceToken, setDeviceToken } from '../utils/deviceAuth';
 
 interface CachedStatus {
   is_locked: boolean;
@@ -200,7 +200,24 @@ class OfflineSyncManager {
           clearTimeout(timeoutId);
 
           if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+            const httpErr: any = new Error(`HTTP ${response.status}`);
+            httpErr.status = response.status;
+            // Auth / not-found answers are definitive: retrying only delays the UI.
+            httpErr.noRetry = [401, 403, 404].includes(response.status);
+            throw httpErr;
+          }
+
+          // Additive support for a backend that issues a device token to devices
+          // registered before tokens existed (see backend/DEVICE_TOKEN_MIGRATION.md).
+          const issuedToken = response.headers?.get?.('X-Device-Token-Issued');
+          if (issuedToken && !devTok) {
+            try {
+              await setDeviceToken(issuedToken);
+              const { devicePolicy } = require('../utils/DevicePolicy');
+              await devicePolicy.setDeviceAuthToken(issuedToken);
+            } catch (tokErr) {
+              console.log('[OfflineSync] storing issued device token failed', tokErr);
+            }
           }
 
           const status: any = normalizeLockStatus(await response.json());
@@ -251,6 +268,7 @@ class OfflineSyncManager {
         } catch (fetchError: any) {
           clearTimeout(timeoutId);
           lastError = fetchError;
+          if (fetchError?.noRetry) break;
           
           if (attempt < maxRetries) {
             // Wait before retry: 2s, 4s, 8s (exponential backoff)
@@ -267,11 +285,13 @@ class OfflineSyncManager {
       console.error('[OfflineSync] Sync error after retries:', error);
       
       // Return cached data if available — include ALL fields for proper UI
+      const httpStatus = (error as any)?.status;
       const cached = await this.getCachedStatus(clientId);
       if (cached) {
         return {
           ...cached,
           offline: true,
+          http_status: httpStatus,
         };
       }
       

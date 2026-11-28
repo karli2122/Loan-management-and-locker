@@ -68,24 +68,32 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
  * Start background location tracking.
  * Requests foreground + background permissions, then starts the background task.
  */
-export async function startBackgroundLocationTracking(apiUrl: string): Promise<boolean> {
+export async function startBackgroundLocationTracking(
+  apiUrl: string,
+  options: { requestPermissions?: boolean } = {},
+): Promise<boolean> {
   if (Platform.OS === 'web') return false;
+  // Default: never pop permission dialogs from here. The Location card in the
+  // protection setup asks for them; app start only starts tracking when granted.
+  const request = options.requestPermissions === true;
 
   try {
     // Store API URL for the background task to use
     await AsyncStorage.setItem('api_url', apiUrl);
 
-    // Request foreground permission first
-    const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
-    if (fgStatus !== 'granted') {
-      console.log('[BackgroundLocation] Foreground permission denied');
+    const fg = request
+      ? await Location.requestForegroundPermissionsAsync()
+      : await Location.getForegroundPermissionsAsync();
+    if (fg.status !== 'granted') {
+      console.log('[BackgroundLocation] Foreground permission not granted');
       return false;
     }
 
-    // Request background permission
-    const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
-    if (bgStatus !== 'granted') {
-      console.log('[BackgroundLocation] Background permission denied');
+    const bg = request
+      ? await Location.requestBackgroundPermissionsAsync()
+      : await Location.getBackgroundPermissionsAsync();
+    if (bg.status !== 'granted') {
+      console.log('[BackgroundLocation] Background permission not granted');
       return false;
     }
 

@@ -3,7 +3,12 @@ import { getSecureItem, setSecureItem, deleteSecureItem } from './secureStorage'
 const DEVICE_TOKEN_KEY = 'client_device_token';
 
 export async function getDeviceToken(): Promise<string> {
-  return (await getSecureItem(DEVICE_TOKEN_KEY)) || '';
+  try {
+    return (await getSecureItem(DEVICE_TOKEN_KEY)) || '';
+  } catch {
+    // Never let storage problems break status polling; the legacy API needs no token.
+    return '';
+  }
 }
 
 export async function setDeviceToken(token: string): Promise<void> {
@@ -27,4 +32,17 @@ export function lockModeFromRegistrationCode(code: string, stored?: string | nul
   const n = (code || '').trim().length;
   if (n === 9 || n === 17 || n >= 17) return 'device_owner';
   return 'device_admin';
+}
+
+/** Accepted registration code lengths: 8 (Device Admin), 9 (Device Owner), legacy 16/17. */
+export const VALID_CODE_LENGTHS = [8, 9, 16, 17];
+export const MAX_CODE_LENGTH = 17;
+
+/** Upper-case and strip whitespace / separators a keyboard or paste may add. */
+export function normalizeRegistrationCode(raw: string): string {
+  return (raw || '').toUpperCase().replace(/[\s\-_.]/g, '');
+}
+
+export function isValidRegistrationCodeLength(code: string): boolean {
+  return VALID_CODE_LENGTHS.includes((code || '').length);
 }

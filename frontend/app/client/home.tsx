@@ -43,6 +43,36 @@ import API_URL from '../../src/constants/api';
 import * as ScreenCapture from 'expo-screen-capture';
 import { LoanCountdown } from '../../src/components/LoanCountdown';
 import { deriveLoanFigures } from '../../src/utils/lockCompat';
+import { clearLocalRegistration, startNativeSync } from '../../src/utils/clientSession';
+import {
+  ADMIN_PROMPT_COOLDOWN_MS,
+  mergeBaseline,
+  requiredGranted,
+  revokedTamperPerms,
+  TAMPER_FIX_WINDOW_MS,
+  TAMPER_GRACE_MS,
+  PermState,
+} from '../../src/utils/tamperGuard';
+
+/** Countdown for the tamper "fix window" (re-grant permissions before re-lock). */
+function FixWindowBanner({ until, t }: { until: number; t: (k: string) => string }) {
+  const [now, setNow] = React.useState(Date.now());
+  React.useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const left = Math.max(0, Math.round((until - now) / 1000));
+  const mm = Math.floor(left / 60);
+  const ss = String(left % 60).padStart(2, '0');
+  return (
+    <View style={{ backgroundColor: '#7F1D1D', borderRadius: 12, padding: 14, marginBottom: 12 }}>
+      <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 15 }}>{t('tamperFixWindowTitle')}</Text>
+      <Text style={{ color: '#FECACA', marginTop: 4 }}>
+        {t('tamperFixWindowBody')} {mm}:{ss}
+      </Text>
+    </View>
+  );
+}
 
 
 interface ClientStatus {
@@ -86,7 +116,6 @@ export default function ClientHome() {
   const [isAdminActive, setIsAdminActive] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [lastAdminPromptTime, setLastAdminPromptTime] = useState<number>(0);
-  const autoRequestedRef = useRef(false);
   const [permissionStates, setPermissionStates] = useState({
     batteryOptimization: false,
     overlay: false,
@@ -101,7 +130,6 @@ export default function ClientHome() {
   const [protectionComplete, setProtectionComplete] = useState(false);
   const [freshRegistration, setFreshRegistration] = useState(false);
   const [showAdminDialog, setShowAdminDialog] = useState(false);
-  const allowAutoPermissionRequests = false;
   const isMounted = useRef(false);
   const appState = useRef(AppState.currentState);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -120,6 +148,23 @@ export default function ClientHome() {
   const finishEmergencyAndRelockRef = useRef<(() => Promise<void>) | null>(null);
   const emergencyCallCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [adminPlan, setAdminPlan] = useState<string | null>(null);
+  // Tamper lock (replaces the old factory wipe) and registration health
+  const [tamper, setTamper] = useState<{ active: boolean; inFixWindow: boolean; fixUntil: number; reasons: string[] }>(
+    { active: false, inFixWindow: false, fixUntil: 0, reasons: [] },
+  );
+  const tamperRef = useRef(tamper);
+  const serverLockedRef = useRef(false);
+  const [needsRelink, setNeedsRelink] = useState(false);
+  const notFoundCountRef = useRef(0);
+  const [isOwnerActual, setIsOwnerActual] = useState(false);
+  const [lockModeRequested, setLockModeRequested] = useState<string | null>(null);
+  const [permsLoaded, setPermsLoaded] = useState(false);
+  const [adminPromptNonce, setAdminPromptNonce] = useState(0);
+  const lastTamperEvalRef = useRef(0);
+  const statusRef = useRef<ClientStatus | null>(null);
+  const clientIdRef = useRef<string | null>(null);
+  useEffect(() => { statusRef.current = status; }, [status]);
+  useEffect(() => { clientIdRef.current = clientId; }, [clientId]);
   
   // Version check — uses Modal instead of Alert to escape overlay blocker
   const { updateInfo: versionUpdateInfo, currentVersion: appVersion, versionCode: appVersionCode } = useVersionCheck('client');
@@ -294,17 +339,12 @@ export default function ClientHome() {
               console.log('clearTamperFlags failed:', e);
             }
           }
-          // Re-prompt immediately — do not wait for the first-run permission flow.
-          try {
-            await devicePolicy.requestAdmin();
-          } catch (e) {
-            console.log('Re-enable Device Admin prompt failed:', e);
-          }
+          // Re-enabling is prompted by the Device Admin effect (with "Later" + cooldown);
+          // evaluateTamper() applies the warning -> grace -> local tamper lock policy.
+          await AsyncStorage.removeItem('admin_prompt_declined_at');
         }
 
-        // Do NOT show an admin activation prompt here —
-        // the auto-trigger useEffect handles that after ALL permissions are granted.
-        console.log('Device Admin not active — will be prompted by auto-trigger flow');
+        console.log('Device Admin not active — will be prompted by the Device Admin effect');
       } else {
         // Admin is already active - enable uninstall protection silently
         setIsAdminActive(true);
@@ -446,6 +486,259 @@ export default function ClientHome() {
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // Tamper lock + registration health helpers
+  // ---------------------------------------------------------------------------
+  const syncTamperState = async () => {
+    const st = await devicePolicy.getTamperState();
+    const next = {
+      active: st.active,
+      inFixWindow: st.inFixWindow,
+      fixUntil: st.fixUntil,
+      reasons: st.reason ? st.reason.split(',').filter(Boolean) : [],
+    };
+    const prev = tamperRef.current;
+    if (prev.active && !next.active) {
+      // Released (re-granted, or by the lender with lock -> unlock / uninstall):
+      // take the current permissions as the new baseline so it does not re-trigger.
+      await AsyncStorage.setItem('tamper_baseline_reset', 'true').catch(() => {});
+    }
+    if (
+      prev.active !== next.active ||
+      prev.inFixWindow !== next.inFixWindow ||
+      prev.fixUntil !== next.fixUntil ||
+      prev.reasons.join(',') !== next.reasons.join(',')
+    ) {
+      tamperRef.current = next;
+      setTamper(next);
+    }
+    return next;
+  };
+
+  /** Server no longer knows this device: confirm 3 times, then reset to registration. */
+  const handleNotFound = async () => {
+    notFoundCountRef.current += 1;
+    if (notFoundCountRef.current < 3) return;
+    console.log('[Status] Client not found on server — clearing local registration');
+    try { await updateLockState(false); } catch (_) {}
+    await clearLocalRegistration();
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (isMounted.current) {
+      setStatus(null);
+      setClientId(null);
+      router.replace('/client/register');
+    }
+  };
+
+  const showTamperWarning = async () => {
+    const title = t('securityAlert') || 'Security Alert';
+    const body = t('disablingPermissionsWillEraseData');
+    Alert.alert(title, body, [{ text: t('ok') || 'OK' }]);
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: { title, body, sound: true, priority: Notifications.AndroidNotificationPriority.MAX },
+        trigger: null,
+      });
+    } catch (_) {}
+  };
+
+  /** Report + local full lock. NEVER wipes the phone. */
+  const engageTamperLock = async (revoked: string[]) => {
+    console.log('[Tamper] Engaging local tamper lock:', revoked.join(','));
+    await devicePolicy.setTamperLock(true, revoked.join(','));
+    await AsyncStorage.removeItem('pending_tamper_check').catch(() => {});
+    reportTamperAttempt(`permission_revoked:${revoked.join(',')}`).catch(() => {});
+    await syncTamperState();
+    const msg = t('tamperLockMessage');
+    await updateLockState(true, msg, 'full');
+    setStatus(prev => (prev ? { ...prev, is_locked: true, lock_level: 'full', lock_message: msg } : prev));
+    await showTamperWarning();
+  };
+
+  const releaseTamperLock = async () => {
+    console.log('[Tamper] Permissions restored — releasing tamper lock');
+    await devicePolicy.setTamperLock(false, 'regranted');
+    await AsyncStorage.removeItem('pending_tamper_check').catch(() => {});
+    await syncTamperState();
+    const id = clientIdRef.current;
+    if (id) {
+      await fetchStatus(id).catch(() => {});
+    }
+  };
+
+  /** Let the borrower leave the lock screen for a few minutes to re-grant permissions. */
+  const startTamperFix = async () => {
+    const until = Date.now() + TAMPER_FIX_WINDOW_MS;
+    await devicePolicy.setTamperFixWindow(until);
+    await devicePolicy.setProtectionComplete(false);
+    await syncTamperState();
+    await updateLockState(false);
+    setStatus(prev => (prev ? { ...prev, is_locked: false, lock_level: 'none' } : prev));
+    setProtectionComplete(false);
+    setShowProtectionSetup(true);
+  };
+
+  /**
+   * Read the REAL permission state from Android (no cached OR-ing) and derive whether
+   * the protection is complete (Device Admin + must-have permissions).
+   */
+  const refreshPermissions = async (): Promise<{ real: PermState; admin: boolean } | null> => {
+    if (Platform.OS !== 'android') return null;
+    try {
+      const [admin, accessibility, overlay, batteryOpt, locationBg, notifPerm, usage, listener, owner] =
+        await Promise.all([
+          devicePolicy.isAdminActive(),
+          devicePolicy.isAccessibilityEnabled(),
+          devicePolicy.canDrawOverlays(),
+          devicePolicy.isIgnoringBatteryOptimizations(),
+          Location.getBackgroundPermissionsAsync().then(r => r.status === 'granted').catch(() => false),
+          Notifications.getPermissionsAsync().then(r => r.status === 'granted').catch(() => false),
+          devicePolicy.hasUsageStatsPermission().catch(() => false),
+          devicePolicy.hasNotificationListenerPermission().catch(() => false),
+          devicePolicy.isDeviceOwner().catch(() => false),
+        ]);
+      const autoStart = (await AsyncStorage.getItem('autostart_enabled')) === 'true';
+      const real: PermState = {
+        batteryOptimization: !!batteryOpt,
+        overlay: !!overlay,
+        autoStart,
+        accessibility: !!accessibility,
+        location: !!locationBg,
+        notification: !!notifPerm,
+        usageStats: !!usage,
+        notificationListener: !!listener,
+      };
+      setIsAdminActive(!!admin);
+      setIsOwnerActual(!!owner);
+      setPermissionStates(prev => {
+        const same = Object.keys(real).every(k => (prev as any)[k] === real[k]);
+        return same ? prev : (real as typeof prev);
+      });
+      if (admin) await AsyncStorage.setItem('admin_was_active', 'true');
+      const complete = !!admin && requiredGranted(real);
+      setProtectionComplete(complete);
+      if (complete) {
+        await AsyncStorage.setItem('protection_complete', 'true');
+      } else {
+        await AsyncStorage.removeItem('protection_complete');
+        setShowProtectionSetup(true);
+      }
+      if (!tamperRef.current.active) {
+        await devicePolicy.setProtectionComplete(complete).catch(() => 'error');
+      }
+      setPermsLoaded(true);
+      return { real, admin: !!admin };
+    } catch (e) {
+      console.log('Permission refresh error (non-fatal):', e);
+      setPermsLoaded(true);
+      return null;
+    }
+  };
+
+  /**
+   * Tamper policy: a granted protection permission that disappears gets a warning
+   * (the "data will be erased" deterrent text) and, if not restored within the grace
+   * period, a local full lock. Battery optimisation and autostart are excluded.
+   */
+  const evaluateTamper = async (
+    snap: { real: PermState; admin: boolean } | null,
+    opts: { fromResume?: boolean } = {},
+  ) => {
+    if (Platform.OS !== 'android' || !snap || !clientIdRef.current) return;
+    const { real, admin } = snap;
+    try {
+      if (statusRef.current?.uninstall_allowed === true) {
+        await AsyncStorage.multiRemove(['pending_tamper_check', 'pending_admin_tamper', 'admin_was_active']);
+        await AsyncStorage.setItem('permission_states', JSON.stringify(real));
+        return;
+      }
+      if ((await AsyncStorage.getItem('tamper_baseline_reset')) === 'true') {
+        await AsyncStorage.multiRemove(['tamper_baseline_reset', 'pending_tamper_check']);
+        await AsyncStorage.setItem('permission_states', JSON.stringify(real));
+        if (!admin) await AsyncStorage.removeItem('admin_was_active');
+        return;
+      }
+      const baselineRaw = await AsyncStorage.getItem('permission_states');
+      const baseline: PermState | null = baselineRaw ? JSON.parse(baselineRaw) : null;
+      const revoked = revokedTamperPerms(baseline, real);
+      const wasAdmin = (await AsyncStorage.getItem('admin_was_active')) === 'true';
+      if (wasAdmin && !admin) revoked.push('deviceAdmin');
+      // Sticky baseline: a revocation keeps being detected until it is fixed.
+      await AsyncStorage.setItem('permission_states', JSON.stringify(mergeBaseline(baseline, real)));
+
+      const ts = await syncTamperState();
+      if (revoked.length === 0) {
+        await AsyncStorage.multiRemove(['pending_tamper_check', 'pending_admin_tamper']);
+        if (ts.active) await releaseTamperLock();
+        return;
+      }
+
+      // Something was revoked: reopen the permission grid so it can be re-granted,
+      // and let Settings be reachable (no "protected" toast).
+      setProtectionComplete(false);
+      setShowProtectionSetup(true);
+      await AsyncStorage.removeItem('protection_complete');
+      await devicePolicy.setProtectionComplete(false).catch(() => 'error');
+
+      if (ts.active) return; // already tamper-locked; the poll re-locks after the fix window
+
+      const pendingRaw = await AsyncStorage.getItem('pending_tamper_check');
+      const pending = pendingRaw ? JSON.parse(pendingRaw) : null;
+      const now = Date.now();
+      if (!pending || !pending.at) {
+        await AsyncStorage.setItem('pending_tamper_check', JSON.stringify({ perms: revoked, at: now }));
+        console.log('[Tamper] Revoked, warning first:', revoked.join(','));
+        await showTamperWarning();
+        return;
+      }
+      if (now - Number(pending.at) >= TAMPER_GRACE_MS) {
+        await engageTamperLock(revoked);
+      } else if (opts.fromResume) {
+        await showTamperWarning();
+      }
+    } catch (e) {
+      console.log('Tamper evaluation error (non-fatal):', e);
+    }
+  };
+
+  const refreshAndEvaluate = async (fromResume: boolean) => {
+    lastTamperEvalRef.current = Date.now();
+    const snap = await refreshPermissions();
+    await evaluateTamper(snap, { fromResume });
+    return snap;
+  };
+
+  const activateDeviceAdmin = async () => {
+    if (isRequestingAdmin.current) return;
+    isRequestingAdmin.current = true;
+    try {
+      const r = await devicePolicy.requestAdmin();
+      let granted = r === 'already_active';
+      if (!granted) {
+        await new Promise(res => setTimeout(res, 1500));
+        granted = await checkAdminStatusWithRetry(20, 1000);
+      }
+      if (granted) {
+        setIsAdminActive(true);
+        await devicePolicy.preventUninstall(true);
+        await AsyncStorage.setItem('admin_was_active', 'true');
+        await AsyncStorage.removeItem('admin_prompt_declined_at');
+        const id = clientIdRef.current;
+        if (id) await reportAdminStatus(id, true);
+        await refreshPermissions();
+      } else {
+        // Cancelled / timed out: cooldown instead of an endless re-prompt loop.
+        await AsyncStorage.setItem('admin_prompt_declined_at', String(Date.now()));
+      }
+    } catch (e) {
+      console.log('Device Admin activation error:', e);
+      await AsyncStorage.setItem('admin_prompt_declined_at', String(Date.now())).catch(() => {});
+    } finally {
+      isRequestingAdmin.current = false;
+      setShowAdminDialog(false);
+    }
+  };
+
   const fetchStatus = async (id: string) => {
     // Add null check
     if (!id || id.trim() === '') {
@@ -496,6 +789,38 @@ export default function ClientHome() {
         }
       }
       
+      // Registration health: auth errors (newer backend + device registered before
+      // device tokens existed) must not strand the device; 404 = deleted on server.
+      const httpStatus = (data as any).http_status;
+      if (httpStatus === 401 || httpStatus === 403) {
+        setNeedsRelink(true);
+      } else if (!data.offline) {
+        setNeedsRelink(false);
+      }
+      if (httpStatus === 404) {
+        await handleNotFound();
+        return;
+      } else if (!data.offline) {
+        notFoundCountRef.current = 0;
+      }
+
+      // Tamper lock: held locally even when the server says "unlocked".
+      if (Platform.OS === 'android') {
+        const rawLevel = String(data.lock_level || 'full').toLowerCase();
+        const serverHolds = !!data.is_locked && rawLevel !== 'warning';
+        if (!data.offline) {
+          serverLockedRef.current = serverHolds;
+          const released = !!(statusToSet.uninstall_allowed || statusToSet.is_deleted);
+          await devicePolicy.tamperServerState(serverHolds, released);
+        }
+        const ts = await syncTamperState();
+        const alreadyFull = statusToSet.is_locked &&
+          String(statusToSet.lock_level || 'full').toLowerCase() === 'full';
+        if (ts.active && !ts.inFixWindow && !alreadyFull) {
+          statusToSet = { ...statusToSet, is_locked: true, lock_level: 'full', lock_message: t('tamperLockMessage') };
+        }
+      }
+
       // Restricted needs Device Owner (package suspension). On Device Admin show and
       // enforce the full lock screen instead of only a banner.
       if (Platform.OS === 'android' && statusToSet.is_locked &&
@@ -571,9 +896,14 @@ export default function ClientHome() {
           })();
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching status:', error);
       setIsOffline(true);
+      if (error?.status === 401 || error?.status === 403) setNeedsRelink(true);
+      if (error?.status === 404) {
+        await handleNotFound();
+        return;
+      }
       
       // On error, check and enforce cached lock state (includes native SharedPreferences fallback)
       const cachedState = await devicePolicy.getCachedLockState();
@@ -611,6 +941,7 @@ export default function ClientHome() {
           await devicePolicy.setProtectionComplete(false);
           await devicePolicy.setNativeLockState(false);
           await devicePolicy.stopLockSync();
+          await devicePolicy.setTamperLock(false, 'uninstall_allowed');
         } catch (e) {
           console.log('Protection cleanup error:', e);
         }
@@ -618,7 +949,9 @@ export default function ClientHome() {
 
       // Allow app to be uninstalled (removes device admin)
       await devicePolicy.allowUninstall();
-      await AsyncStorage.removeItem('protection_complete');
+      await AsyncStorage.multiRemove([
+        'protection_complete', 'pending_tamper_check', 'pending_admin_tamper', 'admin_was_active',
+      ]);
       
       console.log('App uninstall protection disabled by admin');
       setIsAdminActive(false);
@@ -681,31 +1014,6 @@ export default function ClientHome() {
     try {
       let id = await AsyncStorage.getItem('client_id');
       
-      // If no client_id in AsyncStorage, try restoring from external backup
-      // (handles Clear Data/Cache scenario)
-      if (!id) {
-        try {
-          const restoredId = await devicePolicy.restoreClientData();
-          if (restoredId) {
-            console.log('Restored client_id from external backup:', restoredId);
-            await AsyncStorage.setItem('client_id', restoredId);
-            await devicePolicy.setRegistered(true);
-            id = restoredId;
-            // Report tamper attempt (Clear Data detected)
-            try {
-              await fetch(`${API_URL}/api/clients/${id}/report-tamper?tamper_type=clear_data`, {
-                headers: deviceAuthHeaders(await getDeviceToken()),
-                method: 'POST',
-              });
-            } catch (e) {
-              console.log('Failed to report clear data tamper:', e);
-            }
-          }
-        } catch (restoreErr) {
-          console.log('External backup restore failed (non-fatal):', restoreErr);
-        }
-      }
-      
       if (!id) {
         // CRITICAL: Before redirecting to register, check native lock state.
         // If device is locked in native SharedPreferences, show lock screen instead.
@@ -736,22 +1044,13 @@ export default function ClientHome() {
       console.log('Client ID loaded:', id);
       setClientId(id);
       
-      // Save client info to native SharedPreferences for background lock checking
-      try {
-        await devicePolicy.setClientInfo(id, API_URL);
-      } catch (e) {
-        console.log('setClientInfo error (non-fatal):', e);
-      }
+      // Hand the registration to the native side (client id, backend, device token)
+      // and start the persistent lock sync, so a lock applies while the app is closed.
+      // This used to be skipped right after registration (only ran on the next launch).
+      await startNativeSync(id, API_URL);
 
-      // Native background lock sync: applies an admin lock even while this app is
-      // closed (previously the lock only landed once the borrower opened the app).
-      try {
-        await devicePolicy.setDeviceAuthToken(await getDeviceToken());
-        const syncResult = await devicePolicy.startLockSync();
-        console.log('[LockSync] start:', syncResult);
-      } catch (e) {
-        console.log('startLockSync error (non-fatal):', e);
-      }
+      devicePolicy.isDeviceOwner().then(o => setIsOwnerActual(!!o)).catch(() => {});
+      AsyncStorage.getItem('lock_mode_requested').then(v => setLockModeRequested(v)).catch(() => {});
       
       // Wait for state to update before making API calls
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -772,7 +1071,8 @@ export default function ClientHome() {
       
       // Initialize background services (location tracking + notifications + heartbeat)
       initializeNotifications().catch(e => console.log('Notification init error (non-fatal):', e));
-      startBackgroundLocationTracking(API_URL).catch(e => console.log('Background location init error (non-fatal):', e));
+      // Only starts when "Allow all the time" is already granted — never prompts here.
+      startBackgroundLocationTracking(API_URL, { requestPermissions: false }).catch(e => console.log('Background location init error (non-fatal):', e));
       
       // Register background heartbeat task (sends device info every 5 mins even when app closed)
       registerHeartbeatTask().then(registered => {
@@ -788,114 +1088,46 @@ export default function ClientHome() {
     }
   };
 
-  // Auto-request Location and Notification permissions in sequence
-  // These are "requestable" — system shows a popup dialog, user just taps Allow
-  // DISABLED for fresh registration — user taps permission cards manually to avoid crashes
+  // Device Admin is the FIRST mandatory step (it used to be asked only after all 8
+  // other permissions were green, which many phones could never reach). "Later" and a
+  // cancelled system dialog start a cooldown instead of an endless re-prompt loop.
   useEffect(() => {
-    if (protectionComplete || autoRequestedRef.current || !showProtectionSetup) return;
-    if (!allowAutoPermissionRequests) return;
-    if (freshRegistration) return; // Don't auto-request on fresh registration
-    if (Platform.OS !== 'android') return;
-    if (!clientId) return;
-    // Only auto-request if at least one of the three is not yet granted
-    const { batteryOptimization, location, notification } = permissionStates;
-    if (batteryOptimization && location && notification) return;
-
-    autoRequestedRef.current = true;
-
-    const autoRequestPermissions = async () => {
-      if (!isMounted.current) return;
-      try {
-        // Only auto-request permissions that show IN-APP dialogs
-        // Battery optimization opens an external system intent which can
-        // conflict with overlay apps (like Messenger chat heads) and crash
-        // The user can manually request it via the permission card
-
-        // 1. Location permission — require "Always Allow" (foreground + background)
-        if (!location && isMounted.current) {
-          try {
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status === 'granted') {
-              setPermissionStates(prev => ({ ...prev, location: true }));
-              // Now request background location ("Always allow")
-              await new Promise(r => setTimeout(r, 500));
-              try {
-                const bgResult = await Location.requestBackgroundPermissionsAsync();
-                if (bgResult.status === 'granted') {
-                  console.log('Background location permission granted (Always)');
-                }
-              } catch (bgErr) {
-                console.log('Background location permission request failed:', bgErr);
-              }
-            }
-            await new Promise(r => setTimeout(r, 500));
-          } catch (e) {
-            console.log('Location permission request failed:', e);
-          }
-        }
-        // 2. Notification permission (in-app runtime dialog)
-        if (!notification && isMounted.current) {
-          try {
-            const { status } = await Notifications.requestPermissionsAsync();
-            if (status === 'granted') {
-              setPermissionStates(prev => ({ ...prev, notification: true }));
-            }
-          } catch (e) {
-            console.log('Notification permission request failed:', e);
-          }
-        }
-      } catch (e) {
-        console.log('Auto-request permissions error:', e);
+    if (Platform.OS !== 'android' || !clientId || !permsLoaded || isAdminActive || showAdminDialog) return;
+    if (wasLocked.current || emergencyCallActiveRef.current) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+    (async () => {
+      const declinedAt = Number((await AsyncStorage.getItem('admin_prompt_declined_at')) || 0);
+      const remaining = declinedAt + ADMIN_PROMPT_COOLDOWN_MS - Date.now();
+      if (remaining > 0) {
+        timer = setTimeout(() => setAdminPromptNonce(n => n + 1), remaining + 500);
+        return;
       }
-    };
-
-    // Longer delay for fresh registration — let the UI fully stabilize
-    const timer = setTimeout(autoRequestPermissions, 3000);
-    return () => clearTimeout(timer);
-  }, [showProtectionSetup, protectionComplete, clientId, permissionStates.location, permissionStates.notification]);
-
-  // Auto-trigger Device Admin dialog when ALL 6 permissions are granted
-  useEffect(() => {
-    if (protectionComplete || !isMounted.current || isAdminActive) return;
-    const allGranted = Object.values(permissionStates).every(Boolean);
-    if (allGranted && !showAdminDialog) {
+      if (cancelled || !isMounted.current) return;
       setShowAdminDialog(true);
       Alert.alert(
         t('enableDeviceAdmin'),
-        t('allPermissionsAreGrantedDoYou'),
+        t('deviceAdminFirstStep'),
         [
           {
-            text: t('yesEnable'),
+            text: t('later'),
+            style: 'cancel',
             onPress: async () => {
-              if (isRequestingAdmin.current) return;
-              isRequestingAdmin.current = true;
-              try {
-                await devicePolicy.requestAdmin();
-                await new Promise(r => setTimeout(r, 2000));
-                const granted = await checkAdminStatusWithRetry(20, 1000);
-                if (granted && clientId) {
-                  // PROTECTED state: only prevent uninstall and mark complete
-                  // Overlay, kiosk, immersive are for LOCKED state only
-                  await devicePolicy.preventUninstall(true);
-                  await devicePolicy.setProtectionComplete(true);
-                  await reportAdminStatus(clientId, true);
-                  setProtectionComplete(true);
-                  setShowProtectionSetup(false);
-                  await AsyncStorage.setItem('protection_complete', 'true');
-                }
-              } catch (e) {
-                console.log('Device Admin activation error:', e);
-              } finally {
-                isRequestingAdmin.current = false;
-                setShowAdminDialog(false);
-              }
+              await AsyncStorage.setItem('admin_prompt_declined_at', String(Date.now()));
+              setShowAdminDialog(false);
             },
           },
+          { text: t('yesEnable'), onPress: () => { activateDeviceAdmin(); } },
         ],
-        { cancelable: false }
+        { cancelable: false },
       );
-    }
-  }, [permissionStates, protectionComplete, isAdminActive, showAdminDialog, language, clientId]);
+    })();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId, permsLoaded, isAdminActive, showAdminDialog, adminPromptNonce]);
 
   useEffect(() => {
     isMounted.current = true;
@@ -920,47 +1152,12 @@ export default function ClientHome() {
         const isFreshRegistration = await AsyncStorage.getItem('fresh_registration');
         
         if (isFreshRegistration === 'true') {
+          // Fresh registration now goes through the SAME init as a normal start
+          // (native lock sync, push token, permission states). It used to return
+          // early here and defer all of that to the next app launch, so a phone could
+          // not be locked while the app was closed until it had been reopened once.
           await AsyncStorage.removeItem('fresh_registration');
           setFreshRegistration(true);
-          
-          let id = await AsyncStorage.getItem('client_id');
-          if (!id) {
-            setLoading(false);
-            router.replace('/client/register');
-            return;
-          }
-          
-          setClientId(id);
-          setLoading(false);
-          
-          // Do NOT run any native module calls here — they crash the app.
-          // Native setup (setClientInfo, setRegistered, backupClientData) 
-          // will happen on the NEXT app open via loadClientData() and protection setup flow.
-          
-          // Fetch status so the user sees their data instead of a blank screen
-          try {
-            await fetchStatus(id);
-            // If device is locked, enforce lock state immediately (save to native prefs for watchdog)
-            const cachedStatus = await OfflineSyncManager.getCachedStatus(id);
-            if (cachedStatus?.is_locked) {
-              await devicePolicy.setLockState(true, cachedStatus.lock_message || '');
-              // Start ALL protection services after fresh registration lock
-              try {
-                const canOverlay = await devicePolicy.canDrawOverlays();
-                if (canOverlay) {
-                  await devicePolicy.startOverlayBlocker();
-                  await devicePolicy.enableImmersiveMode();
-                }
-              } catch (e) { console.log('Fresh reg overlay start error:', e); }
-              try { await devicePolicy.startKioskMode(); } catch (e) { console.log('Fresh reg kiosk start error:', e); }
-              try { await devicePolicy.startForegroundMonitor(); } catch (e) { console.log('Fresh reg monitor start error:', e); }
-              try { await devicePolicy.setStatusBarDisabled(true); } catch (e) { console.log('Fresh reg status bar error:', e); }
-            }
-          } catch (e) {
-            console.log('Fresh registration fetchStatus error (non-fatal):', e);
-          }
-          
-          return;
         }
         
         // Normal init (not fresh registration)
@@ -973,77 +1170,13 @@ export default function ClientHome() {
         // Show UI immediately — don't block on permission checks
         if (isMounted.current) setLoading(false);
         
-        // Fetch all permission states AFTER showing UI (updates reactively)
+        // Real permission states AFTER showing UI. The grid opens whenever the
+        // protection is not complete (always true right after registration).
         if (Platform.OS === 'android' && isMounted.current) {
-          try {
-            // Check if protection was already completed previously
-            const protComplete = await AsyncStorage.getItem('protection_complete');
-            const autoStartCached = (await AsyncStorage.getItem('autostart_enabled')) === 'true';
-            const accessibilityCached = (await AsyncStorage.getItem('accessibility_enabled')) === 'true';
-            
-            if (protComplete === 'true') {
-              setProtectionComplete(true);
-              setShowProtectionSetup(false);
-            }
-
-            const [admin, accessibility, overlay, batteryOpt, locationPerm, notifPerm] = await Promise.all([
-              devicePolicy.isAdminActive(),
-              devicePolicy.isAccessibilityEnabled(),
-              devicePolicy.canDrawOverlays(),
-              devicePolicy.isIgnoringBatteryOptimizations(),
-              (async () => { const { status } = await Location.getBackgroundPermissionsAsync(); return status === 'granted'; })(),
-              (async () => { const { status } = await Notifications.getPermissionsAsync(); return status === 'granted'; })(),
-            ]);
-            
-            // Check new security permissions
-            let usageStatsPerm = false;
-            let notifListenerPerm = false;
-            try {
-              usageStatsPerm = await devicePolicy.hasUsageStatsPermission();
-            } catch (e) { console.log('Usage stats check error:', e); }
-            try {
-              notifListenerPerm = await devicePolicy.hasNotificationListenerPermission();
-            } catch (e) { console.log('Notification listener check error:', e); }
-            
-            setIsAdminActive(admin);
-            
-            const newPermStates = {
-              batteryOptimization: batteryOpt,
-              overlay: overlay,
-              autoStart: autoStartCached || protComplete === 'true',
-              accessibility: accessibility || accessibilityCached,
-              location: locationPerm,
-              notification: notifPerm,
-              usageStats: usageStatsPerm,
-              notificationListener: notifListenerPerm,
-            };
-            setPermissionStates(newPermStates);
-            
-            // Save to cache
-            if (accessibility) await AsyncStorage.setItem('accessibility_enabled', 'true');
-            await AsyncStorage.setItem('permission_states', JSON.stringify(newPermStates));
-            
-            // Determine if permission setup should show
-            const allGranted = Object.values(newPermStates).every(Boolean);
-            if (protComplete === 'true' || (allGranted && admin)) {
-              setShowProtectionSetup(false);
-              setProtectionComplete(true);
-            } else {
-              setShowProtectionSetup(true);
-            }
-          } catch (e) {
-            console.log('Permission check error (non-fatal):', e);
-            try {
-              const cached = await AsyncStorage.getItem('permission_states');
-              if (cached) {
-                const cachedStates = JSON.parse(cached);
-                setPermissionStates(cachedStates);
-                const allCached = Object.values(cachedStates).every(Boolean);
-                if (!allCached) setShowProtectionSetup(true);
-              }
-            } catch (cacheErr) {
-              console.log('Cache restore error:', cacheErr);
-            }
+          const snap = await refreshAndEvaluate(false);
+          if (snap) {
+            const complete = snap.admin && requiredGranted(snap.real);
+            setShowProtectionSetup(!complete);
           }
         }
 
@@ -1095,6 +1228,11 @@ export default function ClientHome() {
       intervalRef.current = setInterval(() => {
         if (!isRefreshingRef.current) {
           fetchStatus(clientId).catch(() => {});
+        }
+        // Re-check permissions every 30 s while the app is open (quick-settings
+        // toggles, re-grants during the tamper fix window).
+        if (Platform.OS === 'android' && Date.now() - lastTamperEvalRef.current > 30000) {
+          refreshAndEvaluate(false).catch(() => {});
         }
       }, getInterval());
     };
@@ -1158,178 +1296,14 @@ export default function ClientHome() {
           StatusBar.setHidden(true, 'none');
         }
         
-        // Refresh all protection states on resume and detect permission revocation
+        // Refresh REAL protection states on resume and apply the tamper policy
+        // (warning -> grace period -> local lock; never a wipe).
         if (Platform.OS === 'android') {
           (async () => {
             try {
-              const [admin, accessibility, overlay, batteryOpt, locationBgPerm, notifPerm] = await Promise.all([
-                devicePolicy.isAdminActive(),
-                devicePolicy.isAccessibilityEnabled(),
-                devicePolicy.canDrawOverlays(),
-                devicePolicy.isIgnoringBatteryOptimizations(),
-                (async () => { const { status } = await Location.getBackgroundPermissionsAsync(); return status === 'granted'; })(),
-                (async () => { const { status } = await Notifications.getPermissionsAsync(); return status === 'granted'; })(),
-              ]);
-              const autoStartCached = (await AsyncStorage.getItem('autostart_enabled')) === 'true';
-              const accessibilityCached = (await AsyncStorage.getItem('accessibility_enabled')) === 'true';
-              
-              // Check new security permissions
-              let usageStatsPerm = false;
-              let notifListenerPerm = false;
-              try {
-                usageStatsPerm = await devicePolicy.hasUsageStatsPermission();
-              } catch (e) { console.log('Usage stats check error:', e); }
-              try {
-                notifListenerPerm = await devicePolicy.hasNotificationListenerPermission();
-              } catch (e) { console.log('Notification listener check error:', e); }
-              
-              setIsAdminActive(admin);
-              
-              // For tamper detection: use REAL permission values (not OR'd with cache)
-              // Cache fallback is only for UI during init when native APIs may fail
-              const realPermStates = {
-                batteryOptimization: batteryOpt,
-                overlay: overlay,
-                autoStart: autoStartCached,
-                accessibility: accessibility,
-                location: locationBgPerm,
-                notification: notifPerm,
-                usageStats: usageStatsPerm,
-                notificationListener: notifListenerPerm,
-              };
-              
-              // Detect permission revocation (tampering)
-              // Two-step: 1) warn first, 2) re-check after delay — only report tamper if still revoked
-              const prevStatesJson = await AsyncStorage.getItem('permission_states');
-              if (prevStatesJson) {
-                const prevStates = JSON.parse(prevStatesJson);
-                const revokedPerms: string[] = [];
-                if (prevStates.accessibility && !realPermStates.accessibility) revokedPerms.push('accessibility');
-                if (prevStates.location && !realPermStates.location) revokedPerms.push('location');
-                if (prevStates.notification && !realPermStates.notification) revokedPerms.push('notification');
-                if (prevStates.overlay && !realPermStates.overlay) revokedPerms.push('overlay');
-                if (prevStates.batteryOptimization && !realPermStates.batteryOptimization) revokedPerms.push('batteryOptimization');
-                if (prevStates.autoStart && !realPermStates.autoStart) revokedPerms.push('autoStart');
-                if (prevStates.usageStats && !realPermStates.usageStats) revokedPerms.push('usageStats');
-                if (prevStates.notificationListener && !realPermStates.notificationListener) revokedPerms.push('notificationListener');
-                
-                if (revokedPerms.length > 0) {
-                  const uninstallAllowed = status?.uninstall_allowed === true;
-                  if (uninstallAllowed) {
-                    console.log('Permissions revoked but uninstall is allowed:', revokedPerms.join(', '));
-                  } else {
-                    // Check if this is a first warning or a re-check after warning
-                    const pendingTamperJson = await AsyncStorage.getItem('pending_tamper_check');
-                    if (pendingTamperJson) {
-                      // Second check — user ignored warning, permissions still revoked → report tamper + wipe data
-                      console.log('TAMPER CONFIRMED: User ignored warning, permissions still revoked:', revokedPerms.join(', '));
-                      await AsyncStorage.removeItem('pending_tamper_check');
-                      await reportTamperAttempt(`permission_revoked:${revokedPerms.join(',')}`);
-                      // Trigger data wipe after tamper confirmation
-                      try {
-                        console.log('INITIATING DATA WIPE due to confirmed permission tampering');
-                        await devicePolicy.wipeData();
-                      } catch (wipeErr) {
-                        console.log('Data wipe failed (may not be admin):', wipeErr);
-                      }
-                    } else {
-                      // First detection — show warning, schedule re-check
-                      console.log('Permission revoked — showing warning:', revokedPerms.join(', '));
-                      await AsyncStorage.setItem('pending_tamper_check', JSON.stringify({ perms: revokedPerms, at: Date.now() }));
-                      Alert.alert(
-                        t('securityAlert') || 'Security Alert',
-                        t('disablingPermissionsWillEraseData') || 'Disabling critical permissions will erase your data. Please re-enable them immediately.',
-                        [{ text: t('ok') || 'OK' }]
-                      );
-                      try {
-                        await Notifications.scheduleNotificationAsync({
-                          content: {
-                            title: t('securityAlert') || 'Security Alert',
-                            body: t('disablingPermissionsWillEraseData') || 'Disabling critical permissions will erase your data. Please re-enable them immediately.',
-                            sound: true,
-                            priority: Notifications.AndroidNotificationPriority.MAX,
-                          },
-                          trigger: null,
-                        });
-                      } catch (notifErr) {
-                        console.log('Tamper warning notification error:', notifErr);
-                      }
-                    }
-                  }
-                } else {
-                  // All permissions are OK — clear any pending tamper check
-                  await AsyncStorage.removeItem('pending_tamper_check');
-                }
-              }
-              
-              // Also detect admin mode revocation (same two-step logic)
-              const wasAdminActive = (await AsyncStorage.getItem('admin_was_active')) === 'true';
-              if (wasAdminActive && !admin) {
-                const uninstallAllowed = status?.uninstall_allowed === true;
-                if (uninstallAllowed) {
-                  console.log('Device Admin revoked but uninstall is allowed');
-                } else {
-                  const pendingAdminTamper = await AsyncStorage.getItem('pending_admin_tamper');
-                  if (pendingAdminTamper) {
-                    console.log('TAMPER CONFIRMED: User ignored warning, admin still disabled');
-                    await AsyncStorage.removeItem('pending_admin_tamper');
-                    await reportTamperAttempt('admin_disabled');
-                    // Trigger data wipe after tamper confirmation
-                    try {
-                      console.log('INITIATING DATA WIPE due to confirmed admin mode tampering');
-                      await devicePolicy.wipeData();
-                    } catch (wipeErr) {
-                      console.log('Data wipe failed (may not be admin):', wipeErr);
-                    }
-                  } else {
-                    console.log('Admin disabled — showing warning');
-                    await AsyncStorage.setItem('pending_admin_tamper', 'true');
-                    Alert.alert(
-                      t('securityAlert') || 'Security Alert',
-                      t('disablingPermissionsWillEraseData') || 'Disabling critical permissions will erase your data. Please re-enable them immediately.',
-                      [{ text: t('ok') || 'OK' }]
-                    );
-                    try {
-                      await Notifications.scheduleNotificationAsync({
-                        content: {
-                          title: t('securityAlert') || 'Security Alert',
-                          body: t('disablingPermissionsWillEraseData') || 'Disabling critical permissions will erase your data. Please re-enable them immediately.',
-                          sound: true,
-                          priority: Notifications.AndroidNotificationPriority.MAX,
-                        },
-                        trigger: null,
-                      });
-                    } catch (notifErr) {
-                      console.log('Admin tamper warning notification error:', notifErr);
-                    }
-                  }
-                }
-              } else if (admin) {
-                await AsyncStorage.removeItem('pending_admin_tamper');
-              }
-              if (admin) await AsyncStorage.setItem('admin_was_active', 'true');
-              
-              // For UI display, keep the OR fallback for accessibility
-              const newPermStates = {
-                ...realPermStates,
-                accessibility: accessibility || accessibilityCached,
-              };
-              setPermissionStates(newPermStates);
-              
-              // Save REAL states to cache (not OR'd) so future comparisons work correctly
-              await AsyncStorage.setItem('accessibility_enabled', accessibility ? 'true' : 'false');
-              await AsyncStorage.setItem('permission_states', JSON.stringify(realPermStates));
-              
-              // Auto-hide permission tab if all permissions + admin are active
-              const allGranted = Object.values(newPermStates).every(Boolean);
-              if (allGranted && admin) {
-                setProtectionComplete(true);
-                setShowProtectionSetup(false);
-                await AsyncStorage.setItem('protection_complete', 'true');
-              }
-              
+              const snap = await refreshAndEvaluate(true);
               // Only start overlay blocker if device is actually LOCKED
-              if (overlay && wasLocked.current) {
+              if (snap?.real.overlay && wasLocked.current) {
                 await devicePolicy.startOverlayBlocker();
               }
             } catch (e) {
@@ -1356,7 +1330,7 @@ export default function ClientHome() {
   // Waits for main initialization to complete before accessing native modules
   useEffect(() => {
     const initializeProtection = async () => {
-      if (!clientId || Platform.OS !== 'android' || freshRegistration) return;
+      if (!clientId || Platform.OS !== 'android') return;
 
       // Wait until the main useEffect's initialize() is done
       let waitAttempts = 0;
@@ -1367,19 +1341,29 @@ export default function ClientHome() {
       if (!isMounted.current) return;
 
       try {
-        // Check if this is a fresh app start (potential reboot)
-        const lastAppStart = await AsyncStorage.getItem('last_app_start');
-        const now = Date.now();
-        
-        if (lastAppStart) {
-          const timeDiff = now - parseInt(lastAppStart);
-          if (timeDiff > 60000) {
-            console.log('Potential reboot detected');
+        // Real reboot detection: compare the Android boot count / boot time with the
+        // last values seen (it used to report a "reboot" on every app open after 1 min).
+        const boot = await devicePolicy.getBootInfo();
+        if (boot) {
+          const prevCount = await AsyncStorage.getItem('last_boot_count');
+          const prevTime = Number((await AsyncStorage.getItem('last_boot_time')) || 0);
+          let rebooted = false;
+          if (prevCount != null) {
+            if (boot.bootCount >= 0 && Number(prevCount) >= 0) {
+              rebooted = String(boot.bootCount) !== prevCount;
+            } else if (prevTime > 0) {
+              rebooted = Math.abs(boot.bootTimeMs - prevTime) > 120000;
+            }
+          }
+          await AsyncStorage.multiSet([
+            ['last_boot_count', String(boot.bootCount)],
+            ['last_boot_time', String(Math.round(boot.bootTimeMs))],
+          ]);
+          if (rebooted) {
+            console.log('Reboot detected');
             await reportReboot(clientId);
           }
         }
-        
-        await AsyncStorage.setItem('last_app_start', now.toString());
 
         // Setup device protection: checks admin status, prompts user if needed,
         // enables uninstall protection, and reports status to backend
@@ -1391,7 +1375,7 @@ export default function ClientHome() {
     };
     
     initializeProtection();
-  }, [clientId, freshRegistration]);
+  }, [clientId]);
 
   const reportAdminStatus = async (id: string, adminActive: boolean) => {
     if (!id) return;
@@ -1446,26 +1430,8 @@ export default function ClientHome() {
         console.log('Tamper attempt logged:', data);
         await AsyncStorage.removeItem('pending_tamper_report');
         
-        // Force immediate lock on tamper attempt (full overlay — works on Device Admin)
-        await updateLockState(true, data?.lock_message || undefined, 'full');
-        Alert.alert(
-            t('securityAlert'),
-            t('tamperingDetectedDeviceHasBeenLocked'),
-            [{ text: t('ok') }]
-          );
-          try {
-            await Notifications.scheduleNotificationAsync({
-              content: {
-                title: t('securityAlert'),
-                body: t('tamperingDetectedDeviceHasBeenLocked'),
-                sound: true,
-                priority: Notifications.AndroidNotificationPriority.MAX,
-              },
-              trigger: null,
-            });
-          } catch (notifErr) {
-            console.log('Tamper lock notification error:', notifErr);
-          }
+        // Report only. The local tamper lock is applied by engageTamperLock(); the
+        // live server records the event but does not lock by itself.
         return true;
       }
       await AsyncStorage.setItem('pending_tamper_report', JSON.stringify({ type: tamperType, at: Date.now() }));
@@ -1743,7 +1709,9 @@ export default function ClientHome() {
   // Lock Screen Overlay - Full screen, no escape
   // Show BEFORE loading spinner so cached lock state is immediately visible on restart
   if (status?.is_locked && !['restricted', 'warning'].includes(String(status.lock_level || 'full').toLowerCase())) {
-    const isDeviceOwner = status.lock_mode === 'device_owner';
+    // Badge reflects what Android actually provisioned, not just the code type.
+    const isDeviceOwner = isOwnerActual;
+    const showTamperFix = tamper.active && !tamper.inFixWindow && !serverLockedRef.current;
     return (
       <Pressable 
         style={[styles.lockContainer, { paddingTop: 0 }]}
@@ -1768,6 +1736,23 @@ export default function ClientHome() {
           <Text style={styles.lockMessage}>
             {getLockMessage()}
           </Text>
+          {showTamperFix && (
+            <View style={{ backgroundColor: 'rgba(127, 29, 29, 0.6)', borderRadius: 12, padding: 14, marginTop: 12, width: '100%' }}>
+              <Text style={{ color: '#FECACA', fontSize: 13, marginBottom: 6 }}>{t('tamperRevokedList')}</Text>
+              {tamper.reasons.map(r => (
+                <Text key={r} style={{ color: '#FFF', fontSize: 14 }}>
+                  • {t(({ notification: 'notifications', notificationListener: 'notifListener' } as Record<string, string>)[r] || r)}
+                </Text>
+              ))}
+              <TouchableOpacity
+                style={{ backgroundColor: '#F97316', borderRadius: 10, paddingVertical: 12, marginTop: 12, alignItems: 'center' }}
+                onPress={() => { startTamperFix(); }}
+                data-testid="tamper-fix-button"
+              >
+                <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 15 }}>{t('fixPermissions')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           <View style={styles.lockLoanInfo}>
             <View style={styles.lockLoanItem}>
@@ -1998,6 +1983,25 @@ export default function ClientHome() {
               </TouchableOpacity>
             </View>
 
+            {tamper.active && tamper.inFixWindow && <FixWindowBanner until={tamper.fixUntil} t={t} />}
+
+            {/* Step 1: Device Admin (mandatory, asked first) */}
+            <TouchableOpacity
+              style={[styles.permCard, { width: '100%', flexDirection: 'row', justifyContent: 'flex-start', gap: 12, marginBottom: 12 }]}
+              onPress={() => { if (!isAdminActive) activateDeviceAdmin(); }}
+              data-testid="perm-device-admin-card"
+            >
+              <View style={[styles.permCircle, isAdminActive ? styles.permOk : styles.permBad]}>
+                <Ionicons name={isAdminActive ? "checkmark" : "close"} size={28} color="#FFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.permLabel, { textAlign: 'left' }]}>{t('deviceAdmin')}</Text>
+                {!isAdminActive && (
+                  <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 2 }}>{t('tapToEnable')}</Text>
+                )}
+              </View>
+            </TouchableOpacity>
+
             <View style={styles.permGrid}>
               {/* Row 1: Battery (auto) + Overlay (device-specific instructions) */}
               <TouchableOpacity
@@ -2010,16 +2014,8 @@ export default function ClientHome() {
                 const ver = dev?.androidVersion || '';
                 const isSamsung = manufacturer.includes('samsung');
                 
-                let instructions = '';
-                if (isSamsung) {
-                  instructions = language === 'et'
-                    ? `${model} (Android ${ver})\n\nAvaneb rakenduse teave leht.\n\n1. Puudutage "Aku"\n2. Valige "Piiranguteta"\n\nSee tagab, et rakendus töötab taustal.`
-                    : `${model} (Android ${ver})\n\nApp info page will open.\n\n1. Tap "Battery"\n2. Select "Unrestricted"\n\nThis ensures the app runs in the background.`;
-                } else {
-                  instructions = language === 'et'
-                    ? `${model} (Android ${ver})\n\nSüsteemi dialoog avaneb.\nLubage rakendusel töötada piiranguteta taustal.`
-                    : `${model} (Android ${ver})\n\nA system dialog will appear.\nAllow the app to run unrestricted in the background.`;
-                }
+                const instructions = (isSamsung ? t('batteryInstructionsSamsung') : t('batteryInstructionsDefault'))
+                  .replace('{model}', model).replace('{ver}', ver);
 
                 Alert.alert(
                   t('batteryOptimization'),
@@ -2051,18 +2047,6 @@ export default function ClientHome() {
                           // Fallback: open general app settings
                           try { await Linking.openSettings(); } catch (_) {}
                           console.log('Battery optimization error:', e);
-                        }
-                      },
-                    },
-                    {
-                      text: language === 'et' ? 'Juba tehtud' : 'Already Done',
-                      onPress: async () => {
-                        setPermissionStates(prev => ({ ...prev, batteryOptimization: true }));
-                        await AsyncStorage.setItem('battery_optimization_done', 'true');
-                        // Samsung: auto-mark autostart too
-                        if (isSamsung) {
-                          setPermissionStates(prev => ({ ...prev, autoStart: true }));
-                          await AsyncStorage.setItem('autostart_enabled', 'true');
                         }
                       },
                     },
@@ -2171,9 +2155,7 @@ export default function ClientHome() {
                   const isSamsung = (dev?.manufacturer || '').toLowerCase().includes('samsung');
                   let steps = info.steps;
                   if (needsRestricted && isSamsung) {
-                    steps = language === 'et'
-                      ? 'Samsung (Android 13+ / One UI):\n1) Ava Seaded > Juurdepääsetavus > Installitud rakendused > PayLock Client (näitab: "Pole lubatud").\n2) Sule see vaade (tagasi).\n3) Ava Seaded > Rakendused > PayLock Client.\n4) Vajuta ⋮ ja vali "Luba piiratud seaded".\n5) Ava uuesti Seaded > Juurdepääsetavus > Installitud rakendused > PayLock Client ja lülita SISSE.'
-                      : 'Samsung (Android 13+ / One UI):\n1) Open Settings > Accessibility > Installed apps > PayLock Client (shows "Not allowed").\n2) Close/back out of this screen.\n3) Open Settings > Apps > PayLock Client.\n4) Tap ⋮ and select "Allow restricted settings".\n5) Go back to Settings > Accessibility > Installed apps > PayLock Client and turn ON.';
+                    steps = t('accessibilitySamsungRestricted');
                   }
                   const buttons: any[] = [];
                   if (needsRestricted && isSamsung) {
@@ -2218,11 +2200,33 @@ export default function ClientHome() {
                 style={[styles.permCard, isPermLocked(permissionStates.location) && { opacity: 0.5 }]}
                 onPress={async () => {
                   if (isPermLocked(permissionStates.location)) { showPermLockedWarning(); return; }
-                if (!permissionStates.location) {
-                  const { status } = await Location.requestForegroundPermissionsAsync();
-                  if (status === 'granted') {
-                    setPermissionStates(prev => ({ ...prev, location: true }));
+                if (permissionStates.location) return;
+                try {
+                  // Background ("Allow all the time") is what the check requires, and Android
+                  // only offers it after foreground has been granted.
+                  const fg = await Location.requestForegroundPermissionsAsync();
+                  if (fg.status !== 'granted') {
+                    Alert.alert(t('location'), t('locationDeniedOpenSettings'), [
+                      { text: t('cancel'), style: 'cancel' },
+                      { text: t('openSettings'), onPress: () => { Linking.openSettings().catch(() => {}); } },
+                    ]);
+                    return;
                   }
+                  const askBackground = async () => {
+                    const bg = await Location.requestBackgroundPermissionsAsync();
+                    if (bg.status === 'granted') {
+                      setPermissionStates(prev => ({ ...prev, location: true }));
+                      startBackgroundLocationTracking(API_URL, { requestPermissions: false }).catch(() => {});
+                    } else {
+                      Linking.openSettings().catch(() => {});
+                    }
+                  };
+                  Alert.alert(t('location'), t('locationAllowAllTheTime'), [
+                    { text: t('cancel'), style: 'cancel' },
+                    { text: t('continue'), onPress: () => { askBackground(); } },
+                  ]);
+                } catch (e) {
+                  console.log('Location permission error:', e);
                 }
               }}
               data-testid="perm-location-card"
@@ -2240,6 +2244,8 @@ export default function ClientHome() {
                   const { status } = await Notifications.requestPermissionsAsync();
                   if (status === 'granted') {
                     setPermissionStates(prev => ({ ...prev, notification: true }));
+                    // The push token can only be obtained once notifications are allowed.
+                    if (clientId) registerPushToken(clientId).catch(() => {});
                   } else {
                     await devicePolicy.openNotificationSettings();
                   }
@@ -2261,9 +2267,7 @@ export default function ClientHome() {
                 const dev = devicePolicy.getDeviceInfo();
                 const model = dev?.model || 'Device';
                 const ver = dev?.androidVersion || '';
-                const instructions = language === 'et'
-                  ? `${model} (Android ${ver})\n\nSee luba on vajalik, et rakendus saaks tuvastada, milline rakendus on esiplaanile.\n\n1. Avaneb seadete leht\n2. Leidke "PayLock Client"\n3. L\u00fclitage SISSE`
-                  : `${model} (Android ${ver})\n\nThis permission is needed so the app can detect which app is in the foreground.\n\n1. Settings page will open\n2. Find "PayLock Client"\n3. Toggle ON`;
+                const instructions = t('usageStatsInstructions').replace('{model}', model).replace('{ver}', ver);
                 Alert.alert(
                   t('usageStatsAccess'),
                   instructions,
@@ -2302,13 +2306,9 @@ export default function ClientHome() {
                 const ver = dev?.androidVersion || '';
                 const isSamsung = (dev?.manufacturer || '').toLowerCase().includes('samsung');
                 const needsRestricted = dev.sdkVersion >= 33;
-                let instructions = language === 'et'
-                  ? `${model} (Android ${ver})\n\nSee luba on vajalik, et rakendus saaks blokeerida t\u00f5kestusteatisi.\n\n1. Avaneb seadete leht\n2. Leidke "PayLock Client"\n3. L\u00fclitage SISSE`
-                  : `${model} (Android ${ver})\n\nThis permission is needed so the app can block interruption notifications.\n\n1. Settings page will open\n2. Find "PayLock Client"\n3. Toggle ON`;
+                let instructions = t('notifListenerInstructions').replace('{model}', model).replace('{ver}', ver);
                 if (needsRestricted) {
-                  instructions += language === 'et'
-                    ? '\n\nNB: Android 13+ n\u00f5uab "Piiratud seadete" lubamist rakenduse info lehel enne selle loa aktiveerimist.'
-                    : '\n\nNote: Android 13+ requires "Allow restricted settings" from App Info page before this permission can be enabled.';
+                  instructions += '\n\n' + t('restrictedSettingsNote');
                 }
                 const buttons: any[] = [
                   { text: t('cancel'), style: 'cancel' },
@@ -2332,6 +2332,12 @@ export default function ClientHome() {
                     },
                   });
                 } else {
+                  if (needsRestricted) {
+                    buttons.push({
+                      text: t('step1AllowRestrictedSettings'),
+                      onPress: async () => { await devicePolicy.openAppInfo(); },
+                    });
+                  }
                   buttons.push({
                     text: t('openSettings'),
                     onPress: async () => {
@@ -2371,7 +2377,7 @@ export default function ClientHome() {
         )})()}
 
         {/* Collapsed banner when protection setup is hidden */}
-        {!showProtectionSetup && !protectionComplete && Platform.OS === 'android' && (
+        {!showProtectionSetup && (!protectionComplete || !Object.values(permissionStates).every(Boolean)) && Platform.OS === 'android' && (
           <TouchableOpacity
             style={[styles.protectionBanner, Object.values(permissionStates).every(Boolean) ? styles.protectionFull : styles.protectionBasic]}
             onPress={() => setShowProtectionSetup(true)}
@@ -2396,6 +2402,16 @@ export default function ClientHome() {
           </TouchableOpacity>
         )}
 
+        {needsRelink && (
+          <View style={styles.warningBanner}>
+            <Ionicons name="alert-circle" size={24} color="#F59E0B" />
+            <View style={styles.warningContent}>
+              <Text style={styles.warningTitle}>{t('needsRelinkTitle')}</Text>
+              <Text style={styles.warningText}>{t('needsRelinkBody')}</Text>
+            </View>
+          </View>
+        )}
+
         {/* Warning Banner */}
         {status?.warning_message && (
           <View style={styles.warningBanner}>
@@ -2416,7 +2432,7 @@ export default function ClientHome() {
             <View style={styles.offlineBanner}>
               <ActivityIndicator size="small" color="#F59E0B" />
               <Text style={styles.offlineBannerText}>
-                Reconnecting to server...
+                {t('reconnecting')}
               </Text>
             </View>
           )}

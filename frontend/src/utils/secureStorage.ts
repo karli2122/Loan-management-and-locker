@@ -25,30 +25,52 @@ function secureAvailable(): boolean {
   return !!SecureStore && typeof SecureStore.getItemAsync === 'function';
 }
 
+// SecureStore can throw at runtime (Keystore unavailable, or a key that no longer
+// decrypts after a backup restore / device migration). Never let that break the
+// caller: fall back to AsyncStorage so a device is not stranded without its token.
 export async function setSecureItem(key: string, value: string): Promise<void> {
   if (secureAvailable()) {
-    await SecureStore.setItemAsync(key, value);
-    // Ensure no stale plaintext copy remains.
-    await AsyncStorage.removeItem(key).catch(() => {});
-    return;
+    try {
+      await SecureStore.setItemAsync(key, value);
+      // Ensure no stale plaintext copy remains.
+      await AsyncStorage.removeItem(key).catch(() => {});
+      return;
+    } catch (e) {
+      console.log(`[secureStorage] SecureStore write failed for ${key}, using AsyncStorage`, e);
+    }
   }
   await AsyncStorage.setItem(key, value);
 }
 
 export async function getSecureItem(key: string): Promise<string | null> {
   if (secureAvailable()) {
-    const fromSecure = await SecureStore.getItemAsync(key);
+    let fromSecure: string | null = null;
+    let secureBroken = false;
+    try {
+      fromSecure = await SecureStore.getItemAsync(key);
+    } catch (e) {
+      secureBroken = true;
+      console.log(`[secureStorage] SecureStore read failed for ${key}`, e);
+      // Unreadable entry (e.g. restored without its Keystore key): drop it.
+      try { await SecureStore.deleteItemAsync(key); } catch {}
+    }
     if (fromSecure != null) return fromSecure;
-    // Migrate any legacy AsyncStorage value into SecureStore.
-    const legacy = await AsyncStorage.getItem(key);
+    // Legacy / fallback AsyncStorage value.
+    const legacy = await AsyncStorage.getItem(key).catch(() => null);
     if (legacy != null) {
-      await SecureStore.setItemAsync(key, legacy);
-      await AsyncStorage.removeItem(key).catch(() => {});
+      if (!secureBroken) {
+        try {
+          await SecureStore.setItemAsync(key, legacy);
+          await AsyncStorage.removeItem(key).catch(() => {});
+        } catch {
+          // keep the AsyncStorage copy
+        }
+      }
       return legacy;
     }
     return null;
   }
-  return AsyncStorage.getItem(key);
+  return AsyncStorage.getItem(key).catch(() => null);
 }
 
 export async function deleteSecureItem(key: string): Promise<void> {

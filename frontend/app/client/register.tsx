@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,25 +14,52 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { LanguagePicker } from '../../src/components/LanguagePicker';
 import API_URL, { API_BASE_URL, buildApiUrl } from '../../src/constants/api';
-import { lockModeFromRegistrationCode, setDeviceToken } from '../../src/utils/deviceAuth';
+import {
+  deviceAuthHeaders,
+  getDeviceToken,
+  isValidRegistrationCodeLength,
+  lockModeFromRegistrationCode,
+  MAX_CODE_LENGTH,
+  normalizeRegistrationCode,
+  setDeviceToken,
+} from '../../src/utils/deviceAuth';
 import { devicePolicy } from '../../src/utils/DevicePolicy';
 import { getRegistrationDeviceInfo } from '../../src/services/DeviceInfoService';
+import { clearLocalRegistration } from '../../src/utils/clientSession';
+
+/** Turn a FastAPI error body into a readable string (422 detail is an array). */
+function detailToText(data: any): string {
+  const d = data?.detail ?? data?.message ?? data?.raw;
+  if (!d) return '';
+  if (typeof d === 'string') return d;
+  if (Array.isArray(d)) {
+    return d
+      .map((x: any) => (typeof x === 'string' ? x : x?.msg || JSON.stringify(x)))
+      .join('\n');
+  }
+  try {
+    return JSON.stringify(d);
+  } catch {
+    return String(d);
+  }
+}
 
 export default function ClientRegister() {
   const router = useRouter();
-  const { language, setLanguage, t } = useLanguage();
+  const { t } = useLanguage();
   const [registrationCode, setRegistrationCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingRegistration, setCheckingRegistration] = useState(true);
+  const submittingRef = useRef(false);
   const baseUrl = API_URL || API_BASE_URL;
 
   useEffect(() => {
     checkExistingRegistration();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkExistingRegistration = async () => {
@@ -40,18 +67,18 @@ export default function ClientRegister() {
       const clientId = await AsyncStorage.getItem('client_id');
       if (clientId) {
         try {
+          const token = await getDeviceToken();
           const response = await fetch(buildApiUrl(`device/status/${clientId}`), {
-            headers: { Accept: 'application/json' },
+            headers: { Accept: 'application/json', ...deviceAuthHeaders(token) },
           });
-          if (response.ok) {
-            router.replace('/client/home');
-            return;
-          }
           if (response.status === 404) {
-            // Device was deleted from server — clear local state
-            await AsyncStorage.removeItem('client_id');
+            // Device was deleted from the server — clear ALL local registration
+            // state (JS + native lock sync) so nothing stale leaks into a new one.
+            await clearLocalRegistration();
           } else {
-            // Server error / rate limit / other — keep client_id and go to home
+            // OK, auth error (e.g. a newer backend and a device registered before
+            // device tokens existed), rate limit or server error: never strand the
+            // device — keep the registration and let Home handle it.
             router.replace('/client/home');
             return;
           }
@@ -68,18 +95,13 @@ export default function ClientRegister() {
     }
   };
 
-  const handleRegister = async () => {
-    const code = registrationCode.trim().toUpperCase();
-    if (!code) {
-      Alert.alert(t('error'), t('fillAllFields'));
-      return;
-    }
-
+  const submitRegistration = async (code: string, ownerNotProvisioned: boolean) => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
-      // Get device info including battery, storage, android version
       const deviceInfo = await getRegistrationDeviceInfo();
-      
+
       const parseJson = async (resp: Response) => {
         const text = await resp.text();
         try {
@@ -89,83 +111,134 @@ export default function ClientRegister() {
         }
       };
 
-      // Try primary /api path, then fallback to base without /api to avoid 404s from double/missing prefix
       const attemptRegister = async (url: string) =>
         fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({
-            registration_code: code,
-            ...deviceInfo,
-          }),
+          body: JSON.stringify({ registration_code: code, ...deviceInfo }),
         });
 
-      let response = await attemptRegister(buildApiUrl('device/register'));
-      if (response.status === 404) {
-        response = await attemptRegister(`${baseUrl}/device/register`);
-      }
-
-      const data = await parseJson(response);
-
-      // Check for incorrect code based on HTTP status codes only
-      // 404 = code not found (invalid registration code)
-      // 400 = bad request (invalid format or already registered)
-      if (response.status === 404 || response.status === 400) {
-        Alert.alert(
-          t('error'),
-          t('incorrectCode')
-        );
+      let response: Response;
+      try {
+        response = await attemptRegister(buildApiUrl('device/register'));
+        if (response.status === 404 && baseUrl) {
+          // Fallback for a backend mounted without the /api prefix.
+          const retry = await attemptRegister(`${baseUrl}/device/register`);
+          if (retry.status !== 404) response = retry;
+        }
+      } catch (netErr) {
+        console.log('Registration network error:', netErr);
+        Alert.alert(t('error'), t('networkErrorTryAgain'));
         return;
       }
 
+      const data = await parseJson(response);
+      const detail = detailToText(data);
+
       if (!response.ok) {
-        const message = data?.detail || data?.raw || 'Registration failed';
-        throw new Error(message);
+        let message: string;
+        if (response.status === 404) {
+          message = t('incorrectCode');
+        } else if (response.status === 400 || response.status === 409) {
+          message = /already\s+registered/i.test(detail) ? t('codeAlreadyUsed') : t('incorrectCode');
+        } else if (response.status === 422) {
+          message = `${t('invalidCodeFormat')}${detail ? `\n\n${detail}` : ''}`;
+        } else if (response.status === 429) {
+          message = t('serverBusyTryAgain');
+        } else if (response.status >= 500) {
+          message = t('serverErrorTryAgain');
+        } else {
+          message = detail || t('registrationFailed');
+        }
+        Alert.alert(t('error'), message);
+        return;
       }
 
       // Backend returns 'id', not 'client_id'
       const clientId = data?.id || data?.client_id;
       if (!clientId) {
-        Alert.alert(
-          t('error'),
-          t('incorrectCode')
-        );
+        Alert.alert(t('error'), t('registrationFailed'));
         return;
       }
 
-      // Registration successful - save client data
-      await AsyncStorage.setItem('client_id', clientId);
-      await AsyncStorage.setItem('registration_code', code);
-      
-      // Store device_token for messaging auth
+      // The server has now consumed the code. From here on nothing may abort the
+      // registration: every write is isolated so a storage error cannot burn the code.
+      await clearLocalRegistration().catch(() => {});
+
+      // Token first: setDeviceToken falls back to AsyncStorage if SecureStore fails.
       if (data?.device_token) {
-        await setDeviceToken(data.device_token);
+        try {
+          await setDeviceToken(data.device_token);
+        } catch (tokErr) {
+          console.log('Storing device token failed:', tokErr);
+        }
       }
-      
-      const lockMode = lockModeFromRegistrationCode(code, data?.lock_mode);
-      await AsyncStorage.setItem('lock_mode', lockMode);
-      
-      // Mark as fresh registration so home.tsx can delay admin prompt
-      await AsyncStorage.setItem('fresh_registration', 'true');
-      
-      // Store client data
-      const clientData = data?.client;
-      if (clientData) {
-        await AsyncStorage.setItem('client_data', JSON.stringify(clientData));
+
+      const requested = lockModeFromRegistrationCode(code, data?.lock_mode);
+      // A Device Owner code on a phone that is not provisioned as Device Owner runs in
+      // Device Admin mode; remember what the lender asked for so it can be shown.
+      const effective = requested === 'device_owner' && ownerNotProvisioned ? 'device_admin' : requested;
+
+      const writes: [string, string][] = [
+        ['client_id', String(clientId)],
+        ['lock_mode', effective],
+        ['lock_mode_requested', requested],
+        ['fresh_registration', 'true'],
+      ];
+      for (const [k, v] of writes) {
+        try {
+          await AsyncStorage.setItem(k, v);
+        } catch (wErr) {
+          console.log(`Storing ${k} failed:`, wErr);
+        }
       }
-      
-      // NOTE: Do NOT call any native module methods here (backupClientData, setRegistered, setClientInfo).
-      // These trigger background native processes (AccessibilityService polling, BootReceiver)
-      // that crash the app. Native setup is deferred to home.tsx on the first normal startup.
 
       router.replace('/client/home');
-      return;
     } catch (error: any) {
       console.error('Registration error:', error);
-      Alert.alert(t('error'), error.message || 'Registration failed');
+      Alert.alert(t('error'), error?.message || t('registrationFailed'));
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
+  };
+
+  const handleRegister = async () => {
+    const code = normalizeRegistrationCode(registrationCode);
+    if (!code) {
+      Alert.alert(t('error'), t('fillAllFields'));
+      return;
+    }
+    if (!isValidRegistrationCodeLength(code)) {
+      Alert.alert(t('error'), t('codeLengthInvalid'));
+      return;
+    }
+
+    // 9 (or legacy 17) characters = Device Owner code. Device Owner can only be set up
+    // on a factory-reset phone (QR provisioning or adb dpm set-device-owner) BEFORE
+    // registration; check it now instead of silently running in a weaker mode.
+    const wantsOwner = lockModeFromRegistrationCode(code) === 'device_owner';
+    if (wantsOwner && Platform.OS === 'android') {
+      let isOwner = false;
+      try {
+        isOwner = await devicePolicy.isDeviceOwner();
+      } catch {
+        isOwner = false;
+      }
+      if (!isOwner) {
+        Alert.alert(
+          t('deviceOwnerNotSetUpTitle'),
+          t('deviceOwnerNotSetUpBody'),
+          [
+            { text: t('cancel'), style: 'cancel' },
+            { text: t('registerAsDeviceAdmin'), onPress: () => submitRegistration(code, true) },
+          ],
+        );
+        return;
+      }
+    }
+
+    await submitRegistration(code, false);
   };
 
   if (checkingRegistration) {
@@ -211,9 +284,16 @@ export default function ClientRegister() {
                 placeholder={t('enterCode')}
                 placeholderTextColor="#64748B"
                 value={registrationCode}
-                onChangeText={(text) => setRegistrationCode(text.toUpperCase())}
+                onChangeText={(text) => setRegistrationCode(normalizeRegistrationCode(text))}
                 autoCapitalize="characters"
-                maxLength={9}
+                autoCorrect={false}
+                autoComplete="off"
+                spellCheck={false}
+                keyboardType={Platform.OS === 'android' ? 'visible-password' : 'default'}
+                returnKeyType="done"
+                onSubmitEditing={handleRegister}
+                editable={!loading}
+                maxLength={MAX_CODE_LENGTH}
               />
             </View>
 

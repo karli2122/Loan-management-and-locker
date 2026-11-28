@@ -253,6 +253,83 @@ class DevicePolicyManager {
    * Start the persistent native lock-state sync. It polls the server while the
    * app is closed so an admin lock applies without the borrower opening the app.
    */
+  /** Clear the native registration identity (client deleted / re-registration). */
+  async clearClientInfo(): Promise<string> {
+    try {
+      if (Platform.OS === 'android' && nativeModule?.clearClientInfo) {
+        return await nativeModule.clearClientInfo();
+      }
+      return 'not_available';
+    } catch (error) {
+      console.log('Failed to clear client info:', error);
+      return 'error';
+    }
+  }
+
+  /** Boot identity used for real reboot detection. */
+  async getBootInfo(): Promise<{ bootCount: number; bootTimeMs: number } | null> {
+    try {
+      if (Platform.OS === 'android' && nativeModule?.getBootInfo) {
+        return await nativeModule.getBootInfo();
+      }
+    } catch (error) {
+      console.log('getBootInfo error:', error);
+    }
+    return null;
+  }
+
+  // ---------- Tamper lock (replaces the old factory wipe) ----------
+  async setTamperLock(active: boolean, reason: string = ''): Promise<string> {
+    try {
+      if (Platform.OS === 'android' && nativeModule?.setTamperLock) {
+        return await nativeModule.setTamperLock(active, reason || '');
+      }
+    } catch (error) {
+      console.log('setTamperLock error:', error);
+    }
+    return 'not_available';
+  }
+
+  async setTamperFixWindow(untilMs: number): Promise<string> {
+    try {
+      if (Platform.OS === 'android' && nativeModule?.setTamperFixWindow) {
+        return await nativeModule.setTamperFixWindow(untilMs);
+      }
+    } catch (error) {
+      console.log('setTamperFixWindow error:', error);
+    }
+    return 'not_available';
+  }
+
+  async getTamperState(): Promise<{ active: boolean; inFixWindow: boolean; fixUntil: number; reason: string }> {
+    try {
+      if (Platform.OS === 'android' && nativeModule?.getTamperState) {
+        const st = await nativeModule.getTamperState();
+        return {
+          active: !!st?.active,
+          inFixWindow: !!st?.inFixWindow,
+          fixUntil: Number(st?.fixUntil || 0),
+          reason: String(st?.reason || ''),
+        };
+      }
+    } catch (error) {
+      console.log('getTamperState error:', error);
+    }
+    return { active: false, inFixWindow: false, fixUntil: 0, reason: '' };
+  }
+
+  /** Feed the server lock state; returns whether the tamper lock is still active. */
+  async tamperServerState(serverLocked: boolean, released: boolean): Promise<boolean> {
+    try {
+      if (Platform.OS === 'android' && nativeModule?.tamperServerState) {
+        return !!(await nativeModule.tamperServerState(serverLocked, released));
+      }
+    } catch (error) {
+      console.log('tamperServerState error:', error);
+    }
+    return false;
+  }
+
   async startLockSync(): Promise<string> {
     try {
       if (Platform.OS === 'android' && nativeModule?.startLockSync) {

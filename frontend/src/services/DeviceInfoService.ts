@@ -115,7 +115,15 @@ export async function getRegistrationDeviceInfo(): Promise<{
   storage_free_gb?: number;
   storage_total_gb?: number;
 }> {
-  const deviceId = Device.osBuildId || Device.osInternalBuildId || 'unknown';
+  // Android ID is unique per device + app signing key. osBuildId is the firmware build
+  // string and is identical on every phone of the same model/firmware.
+  let androidId: string | null = null;
+  try {
+    androidId = Platform.OS === 'android' ? Application.getAndroidId() : null;
+  } catch {
+    androidId = null;
+  }
+  const deviceId = androidId || Device.osBuildId || Device.osInternalBuildId || 'unknown';
   const deviceModel = `${Device.brand || ''} ${Device.modelName || 'Unknown Device'}`.trim();
   
   const info = await collectDeviceInfo();
