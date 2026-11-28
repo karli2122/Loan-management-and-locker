@@ -19,6 +19,19 @@ interface PendingAction {
 }
 
 const CACHE_KEY_PREFIX = 'offline_cache_';
+// An unsigned (legacy-API) UNLOCK is normally trusted only on a device that never saw a
+// signed status. A device that once did (e.g. the newer backend was reachable for a while)
+// would otherwise stay locked forever after the lender unlocks it on the old server. So an
+// unsigned unlock that is repeated by consecutive fresh server answers is accepted too.
+const UNSIGNED_UNLOCK_STREAK_KEY = 'unsigned_unlock_streak_';
+const UNSIGNED_UNLOCK_CONFIRMATIONS = 3;
+const UNSIGNED_UNLOCK_CONFIRMATIONS_FORCED = 2;
+const UNSIGNED_UNLOCK_STREAK_WINDOW_MS = 120_000;
+
+export interface SyncOptions {
+  /** User pressed "Check again": fewer confirmations are needed for a legacy unsigned unlock. */
+  force?: boolean;
+}
 const SYNC_INTERVAL = 30000; // 30 seconds
 
 class OfflineSyncManager {
@@ -148,7 +161,31 @@ class OfflineSyncManager {
     }
   }
 
-  async syncStatus(clientId: string, apiUrl: string): Promise<any> {
+  private async bumpUnsignedUnlockStreak(clientId: string): Promise<number> {
+    try {
+      const key = `${UNSIGNED_UNLOCK_STREAK_KEY}${clientId}`;
+      const now = Date.now();
+      let n = 0;
+      const raw = await AsyncStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && now - Number(parsed.last || 0) <= UNSIGNED_UNLOCK_STREAK_WINDOW_MS) n = Number(parsed.n || 0);
+      }
+      n += 1;
+      await AsyncStorage.setItem(key, JSON.stringify({ n, last: now }));
+      return n;
+    } catch {
+      return 1;
+    }
+  }
+
+  private async resetUnsignedUnlockStreak(clientId: string) {
+    try {
+      await AsyncStorage.removeItem(`${UNSIGNED_UNLOCK_STREAK_KEY}${clientId}`);
+    } catch {}
+  }
+
+  async syncStatus(clientId: string, apiUrl: string, opts: SyncOptions = {}): Promise<any> {
     try {
       // Check if online with timeout to prevent hanging
       let isOnline = false;
@@ -237,7 +274,20 @@ class OfflineSyncManager {
             if (!everSigned) {
               status._lock_verified = true;
               status._legacy_unsigned = true;
+            } else if (status.is_locked === false) {
+              const need = opts.force ? UNSIGNED_UNLOCK_CONFIRMATIONS_FORCED : UNSIGNED_UNLOCK_CONFIRMATIONS;
+              const streak = await this.bumpUnsignedUnlockStreak(clientId);
+              if (streak >= need) {
+                console.warn(`[OfflineSync] Unsigned unlock confirmed ${streak}x by the server — accepting`);
+                status._lock_verified = true;
+                status._legacy_unsigned = true;
+              } else {
+                console.log(`[OfflineSync] Unsigned unlock seen (${streak}/${need}) — waiting for confirmation`);
+              }
             }
+          }
+          if (status.is_locked !== false || status._lock_verified === true) {
+            await this.resetUnsignedUnlockStreak(clientId);
           }
 
           if (attempt > 0) {
@@ -254,6 +304,7 @@ class OfflineSyncManager {
                 is_locked: true,
                 lock_message: existing.lock_message || status.lock_message,
                 _lock_verified: false,
+                _unverified_unlock: true,
                 offline: false,
               };
             }

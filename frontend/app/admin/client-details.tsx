@@ -50,7 +50,8 @@ import type { Client, LoanHistoryItem, LoanPreview } from '../../src/components/
 import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 import { DeviceHealthCard } from '../../src/components/admin/DeviceHealthCard';
 import { stripLockMarker, withRestrictedMarker } from '../../src/utils/lockCompat';
-import { LockStatusBanner } from '../../src/components/admin/LockStatusBanner';
+import { LockStatusBanner, AutoLockNotice } from '../../src/components/admin/LockStatusBanner';
+import { getAutoLockInfo } from '../../src/utils/autoLockInfo';
 import { ConfirmDeleteModal } from '../../src/components/admin/ConfirmDeleteModal';
 import { parseAmount, round2 } from '../../src/utils/money';
 import { recordLockRequest } from '../../src/utils/lockRequests';
@@ -372,26 +373,64 @@ export default function ClientDetails() {
     finally { setActionLoading(false); }
   };
 
+  // Unlock, then re-check the server a few seconds later. Never report a silent success:
+  // a rejected login (401/403), a failed call, or a phone the server still shows as locked
+  // gets a clear warning with a Retry button.
+  const performUnlock = async () => {
+    const warn = (message: string) => {
+      Alert.alert(ta(language, 'unlockWarnTitle'), message, [
+        { text: t('cancel'), style: 'cancel' },
+        { text: ta(language, 'unlockRetry'), onPress: () => { performUnlock(); } },
+      ]);
+    };
+    setActionLoading(true);
+    try {
+      const adminQuery = await buildAdminTokenQuery();
+      let response: Response;
+      try {
+        response = await authedFetch(`${API_URL}/api/clients/${id}/unlock${adminQuery}`, { method: 'POST' });
+      } catch (netErr: any) {
+        warn(ta(language, 'unlockFailed', { error: netErr?.message || 'network' }));
+        return;
+      }
+      if (response.status === 401 || response.status === 403) {
+        warn(ta(language, 'unlockAuthFailed'));
+        return;
+      }
+      if (!response.ok) {
+        warn(ta(language, 'unlockFailed', { error: await responseError(response, 'Failed to unlock device') }));
+        return;
+      }
+      await recordLockRequest(String(id), 'unlock', client?.last_heartbeat);
+      // Give the server a moment, then ask it what it really holds now.
+      await new Promise((r) => setTimeout(r, 4000));
+      const fresh = await fetchClient();
+      setLockSyncKey((k) => k + 1);
+      invalidateClients();
+      if (!fresh) {
+        Alert.alert(ta(language, 'unlockWarnTitle'), ta(language, 'unlockUnconfirmed'));
+        return;
+      }
+      if (fresh.is_locked) {
+        warn(ta(language, 'unlockStillLocked'));
+        return;
+      }
+      const risk = getAutoLockInfo(fresh);
+      const body = [
+        t('deviceUnlockedSuccess'),
+        ta(language, 'unlockVerified'),
+        risk.atRisk ? ta(language, 'autoLockRiskNote', { days: risk.days, grace: risk.grace }) : '',
+      ].filter(Boolean).join('\n\n');
+      Alert.alert(t('success'), body);
+    } catch (error: any) {
+      warn(ta(language, 'unlockFailed', { error: error?.message || String(error) }));
+    } finally { setActionLoading(false); }
+  };
+
   const handleUnlock = async () => {
     Alert.alert(t('unlockDevice'), t('unlockConfirm'), [
       { text: t('cancel'), style: 'cancel' },
-      {
-        text: t('unlockDevice'),
-        onPress: async () => {
-          setActionLoading(true);
-          try {
-            const adminQuery = await buildAdminTokenQuery();
-            const response = await authedFetch(`${API_URL}/api/clients/${id}/unlock${adminQuery}`, { method: 'POST' });
-            if (!response.ok) throw new Error(await responseError(response, 'Failed to unlock device'));
-            await recordLockRequest(String(id), 'unlock', client?.last_heartbeat);
-            await fetchClient();
-            setLockSyncKey((k) => k + 1);
-            invalidateClients();
-            Alert.alert(t('success'), t('deviceUnlockedSuccess'));
-          } catch (error: any) { Alert.alert(t('error'), error.message); }
-          finally { setActionLoading(false); }
-        },
-      },
+      { text: t('unlockDevice'), onPress: () => { performUnlock(); } },
     ]);
   };
 
@@ -856,6 +895,7 @@ export default function ClientDetails() {
         />
 
         <LockStatusBanner client={client} language={language} refreshKey={lockSyncKey} />
+        <AutoLockNotice client={client} language={language} />
 
         <ContactInfo
           client={client}

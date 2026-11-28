@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { computeLockSync, getLockRequest, LockRequest } from '../../utils/lockRequests';
 import { formatAgo } from '../../utils/heartbeat';
 import { ta } from '../../utils/adminI18n';
+import { getAutoLockInfo } from '../../utils/autoLockInfo';
 
 /**
  * Shows whether the phone has actually picked up the lock: pending vs applied,
@@ -75,6 +76,41 @@ export function LockStatusBanner({ client, language, refreshKey }: { client: any
           {ta(language, 'lastSeen')}: {sync.lastSeen ? formatAgo(sync.lastSeen, language) : ta(language, 'neverSeen')}
         </Text>
       </View>
+    </View>
+  );
+}
+
+/**
+ * Explains a server-side auto-lock in plain words: either the phone was locked by the server's
+ * overdue check, or it is unlocked now but would be locked again at the next hourly run.
+ */
+export function AutoLockNotice({ client, language }: { client: any; language: string }) {
+  if (!client) return null;
+  const info = getAutoLockInfo(client);
+  if (!info.autoLocked && !info.atRisk) return null;
+  const vars = { days: info.days, grace: info.grace };
+  const text = info.relocked
+    ? ta(language, 'autoRelockedBanner', vars)
+    : info.autoLocked
+      ? ta(language, 'autoLockedBanner', vars)
+      : ta(language, 'autoLockRiskBanner', vars);
+  const color = info.atRisk && !info.autoLocked ? '#F59E0B' : '#EF4444';
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        backgroundColor: color + '1F',
+        borderColor: color + '77',
+        borderWidth: 1,
+        borderRadius: 10,
+        padding: 10,
+        marginHorizontal: 16,
+        marginTop: 8,
+      }}
+    >
+      <Ionicons name="alarm" size={20} color={color} />
+      <Text style={{ color, fontWeight: '600', fontSize: 13, marginLeft: 10, flex: 1 }}>{text}</Text>
     </View>
   );
 }

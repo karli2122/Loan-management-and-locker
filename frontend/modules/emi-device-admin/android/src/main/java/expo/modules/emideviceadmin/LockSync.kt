@@ -44,8 +44,13 @@ object LockSync {
 
     fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
+    /** Serialises server checks (service tick, alarm, job, accessibility) so answers apply in order. */
+    val checkLock = Any()
+
     /** Blocking network call: run off the main thread. */
-    fun check(context: Context): Boolean {
+    fun check(context: Context): Boolean = synchronized(checkLock) { checkLocked(context) }
+
+    private fun checkLocked(context: Context): Boolean {
         val app = context.applicationContext
         val p = prefs(app)
         val clientId = p.getString(KEY_CLIENT_ID, null)
@@ -89,7 +94,7 @@ object LockSync {
         if (uninstallAllowed || deleted) {
             // Admin released the device: never hold a lock (tamper lock included).
             TamperLock.onServerState(app, serverLocked = false, released = true)
-            if (p.getBoolean(KEY_LOCKED, false)) clearLock(app)
+            if (p.getBoolean(KEY_LOCKED, false)) clearLock(app, "released")
             return
         }
 
@@ -137,7 +142,7 @@ object LockSync {
         } else {
             if (wasLocked || prevLevel != "none") {
                 Log.w(TAG, "Server says UNLOCKED — clearing native lock")
-                clearLock(app)
+                clearLock(app, "server_unlocked")
             }
         }
     }
@@ -176,18 +181,47 @@ object LockSync {
         }, if (launch) 1_200L else 0L)
     }
 
-    private fun clearLock(app: Context) {
-        prefs(app).edit()
-            .putBoolean(KEY_LOCKED, false)
-            .putString(KEY_LEVEL, "none")
-            .commit()
+    /**
+     * Fully release the native lock: flag, overlay, foreground monitor, lock alert and the
+     * Device Owner restrictions (status bar, camera). Every step is attempted and any failure is
+     * logged, so one failing step can never leave the others (and the lock screen) behind.
+     * Kiosk / lock task needs the activity, so the JS app finishes that part when it runs.
+     */
+    fun clearLock(context: Context, reason: String = "server_unlocked") {
+        val app = context.applicationContext
+        step("clear flag") {
+            prefs(app).edit()
+                .putBoolean(KEY_LOCKED, false)
+                .putString(KEY_LEVEL, "none")
+                .commit()
+        }
         stopServices(app)
-        cancelLockAlert(app)
+        step("cancel lock alert") { cancelLockAlert(app) }
+        releaseRestrictions(app)
+        Log.w(TAG, "Native lock cleared ($reason); overlay running=${EMIOverlayService.isRunning} monitor running=${EMIForegroundMonitorService.isRunning}")
+    }
+
+    private inline fun step(name: String, block: () -> Unit) {
+        try { block() } catch (e: Exception) { Log.e(TAG, "unlock step '$name' failed: ${e.message}") }
     }
 
     private fun stopServices(app: Context) {
-        try { app.stopService(Intent(app, EMIOverlayService::class.java)) } catch (_: Exception) {}
-        try { app.stopService(Intent(app, EMIForegroundMonitorService::class.java)) } catch (_: Exception) {}
+        step("stop overlay") { app.stopService(Intent(app, EMIOverlayService::class.java)) }
+        step("stop monitor") { app.stopService(Intent(app, EMIForegroundMonitorService::class.java)) }
+    }
+
+    private fun releaseRestrictions(app: Context) {
+        try {
+            val dpm = app.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val admin = android.content.ComponentName(app, EMIDeviceAdminReceiver::class.java)
+            if (!dpm.isAdminActive(admin)) return
+            step("camera enable") { dpm.setCameraDisabled(admin, false) }
+            if (dpm.isDeviceOwnerApp(app.packageName)) {
+                step("status bar enable") { dpm.setStatusBarDisabled(admin, false) }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "unlock step 'release restrictions' failed: ${e.message}")
+        }
     }
 
     private fun startFgs(app: Context, intent: Intent, label: String) {

@@ -112,7 +112,9 @@ class EMIAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun checkServerLockState() {
+    private fun checkServerLockState() = synchronized(LockSync.checkLock) { checkServerLockStateLocked() }
+
+    private fun checkServerLockStateLocked() {
         try {
             val prefs = applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val clientId = prefs.getString(KEY_CLIENT_ID, null)
@@ -166,15 +168,7 @@ class EMIAccessibilityService : AccessibilityService() {
                     LockSync.enforceTamperIfDue(applicationContext)
                 } else if (currentlyLocked) {
                     Log.d(TAG, "Server says UNLOCKED — updating local state")
-                    prefs.edit().putBoolean(KEY_LOCKED, false).apply()
-                    if (EMIOverlayService.isRunning) {
-                        try {
-                            val stopIntent = Intent(applicationContext, EMIOverlayService::class.java)
-                            applicationContext.stopService(stopIntent)
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Failed to stop overlay service: ${e.message}")
-                        }
-                    }
+                    LockSync.clearLock(applicationContext, "accessibility_check")
                     // Launch app so it can update its UI
                     mainHandler.post { launchApp() }
                 }

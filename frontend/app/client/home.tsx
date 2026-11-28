@@ -27,6 +27,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { LanguagePicker } from '../../src/components/LanguagePicker';
@@ -135,6 +136,16 @@ export default function ClientHome() {
   const wasLocked = useRef(false);
   const lastLockLevelRef = useRef<string>('none');
   const lastReapplyRef = useRef<number>(0);
+  // Status-fetch ordering: a slow older answer must never overwrite a newer one
+  // (e.g. a late "locked" reply landing after the "unlocked" one).
+  const fetchSeqRef = useRef(0);
+  const appliedSeqRef = useRef(0);
+  const inFlightCountRef = useRef(0);
+  const inFlightSinceRef = useRef(0);
+  const isOfflineRef = useRef(false);
+  const lastTeardownCheckRef = useRef(0);
+  const [checkingAgain, setCheckingAgain] = useState(false);
+  const [checkAgainNote, setCheckAgainNote] = useState('');
   const isRequestingAdmin = useRef(false);
   const hasInitialized = useRef(false);
   const initComplete = useRef(false);
@@ -370,7 +381,11 @@ export default function ClientHome() {
       let level = (lockLevel || (locked ? 'full' : 'none')).toLowerCase();
       let applied = 'cleared';
       if (Platform.OS === 'android') {
-        applied = await devicePolicy.applyLockLevel(level, allowlist || []);
+        try {
+          applied = await devicePolicy.applyLockLevel(level, allowlist || []);
+        } catch (e) {
+          console.warn('[LockState] applyLockLevel failed (continuing):', e);
+        }
       }
       // Device Admin cannot suspend packages — treat restricted as a full overlay lock.
       const downgraded = level === 'restricted' && applied === 'downgraded_to_full';
@@ -384,8 +399,13 @@ export default function ClientHome() {
       lastReapplyRef.current = Date.now();
       // Save lock state for offline enforcement and autostart
       // Restricted mode is "locked" for HMAC but must not start kiosk.
-      await devicePolicy.setLockState(fullLock, message);
-      await devicePolicy.setNativeLockState(fullLock);
+      // The cached lock flags are cleared first and never skipped: a stale "locked" cache
+      // must not outlive a fresh server "unlocked".
+      const cacheRes = await devicePolicy.setLockState(fullLock, message);
+      const nativeRes = await devicePolicy.setNativeLockState(fullLock);
+      if (String(cacheRes).startsWith('error') || String(nativeRes).startsWith('error')) {
+        console.error(`[LockState] saving lock flags failed (cache=${cacheRes}, native=${nativeRes})`);
+      }
       wasLocked.current = locked;
       if (Platform.OS === 'android') {
         if (fullLock) {
@@ -411,26 +431,58 @@ export default function ClientHome() {
           await devicePolicy.setCameraDisabled(false);
           await devicePolicy.setBluetoothDisabled(false);
         } else {
-          // UNLOCK: Stop kiosk FIRST to unpin the app immediately
-          await devicePolicy.stopKioskMode();
-          
+          // UNLOCK: tear everything down. Each step is isolated and logged, so one failing
+          // step can never leave the overlay / kiosk / monitor (= the lock screen) behind.
+          const failures: string[] = [];
+          const unlockStep = async (name: string, fn: () => Promise<any>) => {
+            try {
+              const r = await fn();
+              if (typeof r === 'string' && r.startsWith('error')) {
+                failures.push(name);
+                console.warn(`[Unlock] step '${name}' failed: ${r}`);
+              }
+            } catch (e) {
+              failures.push(name);
+              console.warn(`[Unlock] step '${name}' threw:`, e);
+            }
+          };
+
+          // Stop kiosk FIRST to unpin the app immediately
+          await unlockStep('stopKioskMode', () => devicePolicy.stopKioskMode());
+
           // Device Owner mode: Clear lock task packages so unpin actually works
-          const lockMode = await AsyncStorage.getItem('lock_mode');
+          const lockMode = await AsyncStorage.getItem('lock_mode').catch(() => null);
           if (lockMode === 'device_owner') {
-            await devicePolicy.setLockTaskPackages([]);
-            await devicePolicy.clearDefaultLauncher();
+            await unlockStep('setLockTaskPackages', () => devicePolicy.setLockTaskPackages([]));
+            await unlockStep('clearDefaultLauncher', () => devicePolicy.clearDefaultLauncher());
           }
-          
-          // Re-enable camera and bluetooth
-          await devicePolicy.setCameraDisabled(false);
-          await devicePolicy.setBluetoothDisabled(false);
-          // Stop foreground monitor
-          await devicePolicy.stopForegroundMonitor();
-          // Re-enable status bar before restoring UI
-          await devicePolicy.setStatusBarDisabled(false);
+
+          await unlockStep('cameraEnable', () => devicePolicy.setCameraDisabled(false));
+          await unlockStep('bluetoothEnable', () => devicePolicy.setBluetoothDisabled(false));
+          await unlockStep('stopForegroundMonitor', () => devicePolicy.stopForegroundMonitor());
+          await unlockStep('statusBarEnable', () => devicePolicy.setStatusBarDisabled(false));
           StatusBar.setHidden(false, 'fade');
-          await devicePolicy.disableImmersiveMode();
-          await devicePolicy.stopOverlayBlocker();
+          await unlockStep('disableImmersive', () => devicePolicy.disableImmersiveMode());
+          await unlockStep('stopOverlayBlocker', () => devicePolicy.stopOverlayBlocker());
+
+          // Verify, and retry what is still up.
+          try {
+            if (await devicePolicy.isOverlayBlockerRunning()) {
+              console.warn('[Unlock] overlay still running after teardown — stopping again');
+              await unlockStep('stopOverlayBlocker(retry)', () => devicePolicy.stopOverlayBlocker());
+            }
+            if (await devicePolicy.isInKioskMode()) {
+              console.warn('[Unlock] still pinned after teardown — unpinning again');
+              await unlockStep('stopKioskMode(retry)', () => devicePolicy.stopKioskMode());
+            }
+          } catch (e) {
+            console.warn('[Unlock] teardown verification failed:', e);
+          }
+          if (failures.length) {
+            console.error(`[Unlock] teardown finished with failures: ${failures.join(', ')}`);
+          } else {
+            console.log('[Unlock] teardown complete');
+          }
         }
       }
     } catch (error) {
@@ -757,18 +809,59 @@ export default function ClientHome() {
     }
   };
 
-  const fetchStatus = async (id: string) => {
+  type FetchResult = { ok: boolean; locked: boolean; offline: boolean; heldBack: boolean; stale?: boolean };
+
+  const fetchStatus = async (id: string, opts: { force?: boolean } = {}): Promise<FetchResult> => {
+    const seq = ++fetchSeqRef.current;
+    inFlightCountRef.current += 1;
+    inFlightSinceRef.current = Date.now();
+    try {
+      return await fetchStatusInner(id, opts, seq);
+    } finally {
+      inFlightCountRef.current = Math.max(0, inFlightCountRef.current - 1);
+    }
+  };
+
+  /** Tear down any leftover lock state when the server says "unlocked" (stale cache / kiosk / overlay). */
+  const reconcileUnlocked = async (force: boolean) => {
+    if (Platform.OS !== 'android') return;
+    const now = Date.now();
+    if (!force && now - lastTeardownCheckRef.current < 15000) return;
+    lastTeardownCheckRef.current = now;
+    if (tamperRef.current.active) return; // a local tamper lock is meant to outlive a server unlock
+    const cached = await devicePolicy.getCachedLockState();
+    const overlay = await devicePolicy.isOverlayBlockerRunning();
+    const kiosk = await devicePolicy.isInKioskMode();
+    if (cached.isLocked || overlay || kiosk) {
+      console.warn(`[Unlock] Server says unlocked but local state is stale (cache=${cached.isLocked}, overlay=${overlay}, kiosk=${kiosk}) — tearing down`);
+      await updateLockState(false);
+    }
+  };
+
+  const fetchStatusInner = async (id: string, opts: { force?: boolean }, seq: number): Promise<FetchResult> => {
+    const result: FetchResult = { ok: false, locked: !!wasLocked.current, offline: true, heldBack: false };
     // Add null check
     if (!id || id.trim() === '') {
       console.log('fetchStatus: No valid client ID');
-      return;
+      return result;
     }
     try {
       // Use offline sync manager for smart caching
-      const data = await OfflineSyncManager.syncStatus(id, API_URL);
+      const data = await OfflineSyncManager.syncStatus(id, API_URL, { force: !!opts.force });
+
+      // A slower, older request must not overwrite what a newer one already applied.
+      if (seq < appliedSeqRef.current) {
+        console.log(`[Status] Discarding stale response #${seq} (newer #${appliedSeqRef.current} already applied)`);
+        return { ...result, stale: true };
+      }
+      appliedSeqRef.current = seq;
       
       // Update offline indicator
+      isOfflineRef.current = !!data.offline;
       setIsOffline(data.offline || false);
+      result.ok = !data.offline;
+      result.offline = !!data.offline;
+      result.heldBack = !!data._unverified_unlock;
       
       // Send device info update (throttled to every 5 minutes)
       if (!data.offline) {
@@ -817,7 +910,7 @@ export default function ClientHome() {
       }
       if (httpStatus === 404) {
         await handleNotFound();
-        return;
+        return result;
       } else if (!data.offline) {
         notFoundCountRef.current = 0;
       }
@@ -848,6 +941,7 @@ export default function ClientHome() {
       }
 
       setStatus(statusToSet);
+      result.locked = !!statusToSet.is_locked;
       
       // Store admin plan for feature gating
       if (data.admin_plan) {
@@ -894,6 +988,9 @@ export default function ClientHome() {
           !(incomingLevel === 'restricted' && lastLockLevelRef.current === 'full_fallback'))
       ) {
         updateLockState(statusToSet.is_locked, statusToSet.lock_message, statusToSet.lock_level, statusToSet.lock_allowlist);
+      } else if (!statusToSet.is_locked && !data.offline) {
+        // Fresh "unlocked" answer: make sure no stale cache / overlay / kiosk outlives it.
+        reconcileUnlocked(!!opts.force).catch((e) => console.warn('[Unlock] reconcile failed:', e));
       } else if (statusToSet.is_locked && Platform.OS === 'android' && incomingLevel === 'full') {
         // Android may kill the overlay / monitor (Doze, OOM). Re-check at most every
         // 10s and only restart what is actually down. Re-applying kiosk, immersive mode
@@ -914,13 +1011,16 @@ export default function ClientHome() {
           })();
         }
       }
+      return result;
     } catch (error: any) {
       console.error('Error fetching status:', error);
+      if (seq < appliedSeqRef.current) return { ...result, stale: true };
+      isOfflineRef.current = true;
       setIsOffline(true);
       if (error?.status === 401 || error?.status === 403) setNeedsRelink(true);
       if (error?.status === 404) {
         await handleNotFound();
-        return;
+        return result;
       }
       
       // On error, check and enforce cached lock state (includes native SharedPreferences fallback)
@@ -944,8 +1044,10 @@ export default function ClientHome() {
           };
         });
         wasLocked.current = true;
+        result.locked = true;
         console.log('[Error] Enforcing cached lock state (native fallback)');
       }
+      return result;
     }
   };
 
@@ -1199,28 +1301,44 @@ export default function ClientHome() {
   useEffect(() => {
     if (!clientId) return;
 
-    // Poll faster when locked (2s) so an unlock lands quickly if push is missed.
-    // Offline: 3s to reconnect. Otherwise 5s.
-    const getInterval = () => {
-      if (wasLocked.current) return 2000;
-      return isOffline ? 3000 : 5000;
-    };
-    
-    const startPolling = () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      intervalRef.current = setInterval(() => {
-        if (!isRefreshingRef.current) {
-          fetchStatus(clientId).catch(() => {});
+    // Self-rescheduling poll (the delay is re-evaluated every round, so it really gets
+    // faster while locked / offline). A new round never starts while a request is still in
+    // flight (unless it hangs for > 25 s), so answers cannot pile up out of order.
+    //   locked: 3 s (an unlock lands quickly if push is missed) · offline: 3 s · else 5 s
+    let pollCancelled = false;
+    const nextDelay = () => (wasLocked.current ? 3000 : isOfflineRef.current ? 3000 : 5000);
+    const pollOnce = async () => {
+      if (pollCancelled) return;
+      try {
+        const busy = inFlightCountRef.current > 0 && Date.now() - inFlightSinceRef.current < 25000;
+        if (!isRefreshingRef.current && !busy) {
+          await fetchStatus(clientId);
         }
         // Re-check permissions every 30 s while the app is open (quick-settings
         // toggles, re-grants during the tamper fix window).
         if (Platform.OS === 'android' && Date.now() - lastTamperEvalRef.current > 30000) {
           refreshAndEvaluate(false).catch(() => {});
         }
-      }, getInterval());
+      } catch (_) {}
+      if (!pollCancelled) intervalRef.current = setTimeout(pollOnce, nextDelay()) as any;
     };
-    
+    const startPolling = () => {
+      if (intervalRef.current) clearTimeout(intervalRef.current as any);
+      intervalRef.current = setTimeout(pollOnce, nextDelay()) as any;
+    };
+
     startPolling();
+
+    // Back online: check immediately instead of waiting for the next round.
+    let wasConnected: boolean | null = null;
+    const netUnsub = NetInfo.addEventListener((state) => {
+      const connected = !!state.isConnected;
+      if (wasConnected === false && connected) {
+        console.log('[Network] Back online — checking lock status now');
+        fetchStatus(clientId).catch(() => {});
+      }
+      wasConnected = connected;
+    });
 
     // Listen for push notifications — immediately refresh status on lock/unlock/warning
     const applyPush = async (data: any, source: string) => {
@@ -1232,6 +1350,9 @@ export default function ClientHome() {
           if (applied) {
             let statusToSet = { ...applied };
             if (applied.is_locked === false && applied._lock_verified !== true) {
+              // Unsigned unlock push (legacy server): do not trust the payload itself,
+              // ask the server — the status poll applies it (and the legacy unlock rules).
+              fetchStatus(clientId).catch(() => {});
               return;
             }
             setStatus(prev => ({ ...(prev || {}), ...statusToSet }));
@@ -1261,7 +1382,10 @@ export default function ClientHome() {
     // Handle app state changes
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        // Resume / screen on: check right now and once more shortly after, so an admin
+        // action taken while the phone was asleep shows up without waiting for a poll.
         fetchStatus(clientId).catch(() => {});
+        setTimeout(() => { fetchStatus(clientId).catch(() => {}); }, 2500);
         updateLocation(clientId).catch(() => {});
         
         // CRITICAL: Immediately re-engage kiosk protection if device is locked
@@ -1300,9 +1424,11 @@ export default function ClientHome() {
     });
 
     return () => {
+      pollCancelled = true;
       if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+        clearTimeout(intervalRef.current as any);
       }
+      try { netUnsub(); } catch (_) {}
       subscription.remove();
       notifReceivedSub.remove();
       notifResponseSub.remove();
@@ -1446,6 +1572,41 @@ export default function ClientHome() {
     })();
   }, [clientId]);
 
+
+  /** "Check again" on the lock screen: force a fresh status fetch and clear the lock if the server says unlocked. */
+  const forceCheckStatus = async () => {
+    const id = clientIdRef.current || clientId;
+    if (!id || checkingAgain) return;
+    setCheckingAgain(true);
+    setCheckAgainNote('');
+    try {
+      // Re-granted permissions clear a local tamper lock — evaluate them first.
+      if (Platform.OS === 'android') await refreshAndEvaluate(true).catch(() => null);
+      let r = await fetchStatus(id, { force: true });
+      if (r.ok && r.heldBack) {
+        // Legacy server, unsigned unlock: needs one more consecutive confirmation.
+        await new Promise((res) => setTimeout(res, 1500));
+        r = await fetchStatus(id, { force: true });
+      }
+      if (r.stale) {
+        // a newer request answered meanwhile; its result is already on screen
+        setCheckAgainNote('');
+      } else if (!r.ok) {
+        setCheckAgainNote(t('checkAgainOffline'));
+      } else if (!r.locked) {
+        setCheckAgainNote(t('checkAgainUnlocked'));
+      } else if (!serverLockedRef.current) {
+        setCheckAgainNote(t('checkAgainLocalHold'));
+      } else {
+        setCheckAgainNote(t('checkAgainStillLocked'));
+      }
+    } catch (e) {
+      console.log('Check again failed:', e);
+      setCheckAgainNote(t('checkAgainOffline'));
+    } finally {
+      setCheckingAgain(false);
+    }
+  };
 
   const onRefresh = useCallback(async () => {
     if (!clientId || isRefreshingRef.current) return;
@@ -1790,6 +1951,22 @@ export default function ClientHome() {
             </Text>
           )}
           
+          {/* Check again: force a status fetch; clears the lock if the server says unlocked */}
+          <Pressable
+            style={[styles.checkAgainBtn, checkingAgain && { opacity: 0.6 }]}
+            onPress={forceCheckStatus}
+            disabled={checkingAgain}
+            data-testid="check-again-btn"
+          >
+            {checkingAgain ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="refresh" size={18} color="#fff" />
+            )}
+            <Text style={styles.checkAgainText}>{checkingAgain ? t('checkingAgain') : t('checkAgain')}</Text>
+          </Pressable>
+          {!!checkAgainNote && <Text style={styles.checkAgainNote}>{checkAgainNote}</Text>}
+
           {/* Protection Status */}
           <View style={styles.protectionStatus}>
             <Ionicons 
@@ -3000,6 +3177,32 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#F97316',
+  },
+  checkAgainBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 28,
+    paddingVertical: 13,
+    borderRadius: 26,
+    marginTop: 18,
+    minWidth: 220,
+    borderWidth: 1,
+    borderColor: '#93C5FD',
+  },
+  checkAgainText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  checkAgainNote: {
+    color: '#CBD5E1',
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 16,
   },
   emergencyCallBtn: {
     flexDirection: 'row',

@@ -19,10 +19,10 @@ const PERMISSIONS = [
 ];
 
 const PKG = 'expo.modules.emideviceadmin';
-const RECEIVERS = ['EMIDeviceAdminReceiver', 'EMIBootReceiver', 'EMIRestartReceiver'];
+const RECEIVERS = ['EMIDeviceAdminReceiver', 'EMIBootReceiver', 'EMIRestartReceiver', 'EMILockSyncAlarmReceiver'];
 const SERVICES = [
   'EMIAccessibilityService', 'EMIOverlayService', 'EMILockSyncService',
-  'EMIForegroundMonitorService', 'EMINotificationListenerService',
+  'EMIForegroundMonitorService', 'EMINotificationListenerService', 'EMILockSyncJobService',
 ];
 
 module.exports = function withAdminSlim(config) {

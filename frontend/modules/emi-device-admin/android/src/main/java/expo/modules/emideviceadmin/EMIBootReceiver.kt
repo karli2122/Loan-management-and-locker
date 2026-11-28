@@ -63,6 +63,8 @@ class EMIBootReceiver : BroadcastReceiver() {
         // so a lock issued while the app is closed still applies.
         try {
             Log.d(TAG, "Lock sync: ${EMILockSyncService.start(context)}")
+            LockSyncBackup.scheduleAlarm(context, 20_000L)
+            LockSyncBackup.scheduleJob(context)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start lock sync: ${e.message}")
         }

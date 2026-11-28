@@ -4,7 +4,10 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.IntentFilter
+import android.net.ConnectivityManager
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
@@ -46,12 +49,68 @@ class EMILockSyncService : Service() {
         }
 
         fun stop(context: Context) {
+            LockSyncBackup.cancelAll(context)
             try { context.stopService(Intent(context, EMILockSyncService::class.java)) } catch (_: Exception) {}
         }
     }
 
     private var thread: HandlerThread? = null
     private var worker: Handler? = null
+    private var triggersRegistered = false
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    @Volatile private var lastTriggerAt = 0L
+
+    /** Screen on / unlock / network back: check right away instead of waiting for the next tick. */
+    private fun checkNow(reason: String) {
+        val now = System.currentTimeMillis()
+        if (now - lastTriggerAt < 3_000L) return
+        lastTriggerAt = now
+        Log.d(TAG, "Immediate lock check ($reason)")
+        worker?.removeCallbacks(tick)
+        worker?.post(tick)
+    }
+
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            checkNow(intent?.action ?: "screen")
+        }
+    }
+
+    private fun registerTriggers() {
+        if (triggersRegistered) return
+        try {
+            val f = IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_USER_PRESENT)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(screenReceiver, f, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(screenReceiver, f)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                val cb = object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: android.net.Network) { checkNow("network_available") }
+                }
+                cm?.registerDefaultNetworkCallback(cb)
+                networkCallback = cb
+            }
+            triggersRegistered = true
+        } catch (e: Exception) {
+            Log.w(TAG, "trigger registration failed: ${e.message}")
+        }
+    }
+
+    private fun unregisterTriggers() {
+        try { unregisterReceiver(screenReceiver) } catch (_: Exception) {}
+        try {
+            networkCallback?.let { (getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager)?.unregisterNetworkCallback(it) }
+        } catch (_: Exception) {}
+        networkCallback = null
+        triggersRegistered = false
+    }
+
     private val tick = object : Runnable {
         override fun run() {
             val p = LockSync.prefs(this@EMILockSyncService)
@@ -69,6 +128,9 @@ class EMILockSyncService : Service() {
                 Log.w(TAG, "tamper enforce error: ${e.message}")
             }
             val locked = p.getBoolean(LockSync.KEY_LOCKED, false)
+            // Keep the Doze-proof backups armed (alarm + periodic job).
+            LockSyncBackup.scheduleAlarm(this@EMILockSyncService)
+            LockSyncBackup.scheduleJob(this@EMILockSyncService)
             worker?.postDelayed(this, if (locked) INTERVAL_LOCKED_MS else INTERVAL_UNLOCKED_MS)
         }
     }
@@ -91,6 +153,7 @@ class EMILockSyncService : Service() {
         thread = HandlerThread("emi-lock-sync").also { it.start() }
         worker = Handler(thread!!.looper)
         worker?.post(tick)
+        registerTriggers()
         Log.d(TAG, "Lock sync started")
     }
 
@@ -105,6 +168,7 @@ class EMILockSyncService : Service() {
 
     override fun onDestroy() {
         isRunning = false
+        unregisterTriggers()
         worker?.removeCallbacksAndMessages(null)
         thread?.quitSafely()
         worker = null
