@@ -1,5 +1,4 @@
-import { authedFetch } from '../../src/utils/adminAuth';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -10,351 +9,147 @@ import {
   TextInput,
   ActivityIndicator,
   Modal,
-  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { useTheme } from '../../src/context/ThemeContext';
-import API_URL from '../../src/constants/api';
-import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 import { resolveLoanStatus } from '../../src/theme/loanStatus';
+import { useClients, clientOutstanding, clientDaysOverdue } from '../../src/utils/clientsStore';
+import { heartbeatAgeMs, heartbeatStatus, parseServerDate } from '../../src/utils/heartbeat';
+import { ClientChips } from '../../src/components/admin/ClientChips';
+import { ta } from '../../src/utils/adminI18n';
 
+type FilterKey = 'all' | 'locked' | 'unlocked' | 'silent' | 'tamper' | 'unregistered';
+type SortKey = 'overdue' | 'balance' | 'lastSeen' | 'name';
 
-interface Client {
-  id: string;
-  name: string;
-  phone: string;
-  email: string;
-  device_id: string;
-  device_model: string;
-  registration_code: string;
-  emi_amount: number;
-  emi_due_date: string | null;
-  is_locked: boolean;
-  is_registered: boolean;
-  last_heartbeat?: string | null;
-  admin_mode_active?: boolean;
-  tamper_attempts?: number;
-  outstanding_balance?: number;
-  loan_amount?: number;
-  lock_level?: string;
-  days_overdue?: number;
-  loan_due_date?: string | null;
-  next_payment_due?: string | null;
-}
+const PAGE_SIZE = 30;
+const FILTERS: FilterKey[] = ['all', 'locked', 'unlocked', 'silent', 'tamper', 'unregistered'];
+const SORTS: SortKey[] = ['overdue', 'balance', 'lastSeen', 'name'];
 
-interface SilentClient {
-  id: string;
-  name: string;
-  phone: string;
-  last_heartbeat: string | null;
-  is_locked: boolean;
-  admin_mode_active: boolean;
-  tamper_attempts: number;
-}
+const text = (v: any) => (v === null || v === undefined ? '' : String(v));
 
 export default function ClientsList() {
   const router = useRouter();
   const { filter: filterParam } = useLocalSearchParams<{ filter?: string }>();
   const { t, language } = useLanguage();
-  const { formatAmount, currencySymbol } = useCurrency();
+  const { formatAmount } = useCurrency();
   const { colors } = useTheme();
-  const [clients, setClients] = useState<Client[]>([]);
-  const [filteredClients, setFilteredClients] = useState<Client[]>([]);
-  const [silentClients, setSilentClients] = useState<SilentClient[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'locked' | 'unlocked' | 'silent'>('all');
-  const [silentLoading, setSilentLoading] = useState(false);
-  const [showFilterPicker, setShowFilterPicker] = useState(false);
+  const { clients, loaded, refreshing, error, refresh } = useClients();
 
-  // Sync filter from URL params (e.g., from dashboard heartbeat widget)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filter, setFilter] = useState<FilterKey>('all');
+  const [sort, setSort] = useState<SortKey>('overdue');
+  const [visible, setVisible] = useState(PAGE_SIZE);
+  const [picker, setPicker] = useState<null | 'filter' | 'sort'>(null);
+
   useEffect(() => {
-    if (filterParam === 'silent') {
-      setFilter('silent');
+    if (filterParam && (FILTERS as string[]).includes(String(filterParam))) {
+      setFilter(String(filterParam) as FilterKey);
     }
   }, [filterParam]);
 
-  const fetchClients = async () => {
-    try {
-      const adminToken = await getSecureItem('admin_token');
-      if (!adminToken) {
-        console.error('No admin token found');
-        return;
+  // Search / filter / sort are derived from state on every render, so a background refresh
+  // can never reset them (the old list re-applied stale values after returning from a client).
+  const filtered = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    let list = clients.filter((c) => {
+      if (q) {
+        const hay = `${text(c.name)} ${text(c.phone)} ${text(c.email)} ${text(c.device_model)}`.toLowerCase();
+        if (!hay.includes(q)) return false;
       }
-      const query = `?limit=500&admin_token=${adminToken}`;
-      // Fetch with pagination - get first 500 records (increased limit for admin panel)
-      const response = await authedFetch(`${API_URL}/api/clients${query}`);
-      
-      if (response.status === 401) {
-        handleAuthFailure();
-        return;
+      switch (filter) {
+        case 'locked':
+          return c.is_locked === true;
+        case 'unlocked':
+          return !c.is_locked;
+        case 'silent':
+          return !!c.is_registered && heartbeatStatus(c.last_heartbeat) !== 'online' && heartbeatStatus(c.last_heartbeat) !== 'stale';
+        case 'tamper':
+          return Number(c.tamper_attempts || 0) > 0 || (!!c.is_registered && c.admin_mode_active === false);
+        case 'unregistered':
+          return !c.is_registered;
+        default:
+          return true;
       }
-
-      const data = await response.json();
-      if (!response.ok) {
-        console.error('Failed to fetch clients:', response.status, data);
-        return;
+    });
+    const lastSeenKey = (c: any) => parseServerDate(c.last_heartbeat)?.getTime() ?? -1; // never seen first
+    list = [...list].sort((a, b) => {
+      switch (sort) {
+        case 'overdue':
+          return clientDaysOverdue(b) - clientDaysOverdue(a) || clientOutstanding(b) - clientOutstanding(a);
+        case 'balance':
+          return clientOutstanding(b) - clientOutstanding(a);
+        case 'lastSeen':
+          return lastSeenKey(a) - lastSeenKey(b);
+        default:
+          return text(a.name).localeCompare(text(b.name));
       }
-
-      // Handle both old and new API response format
-      const clientList = Array.isArray(data) ? data : data?.clients;
-      if (!Array.isArray(clientList)) {
-        console.error('Unexpected clients response shape');
-        return;
-      }
-      setClients(clientList);
-      applyFilters(clientList, searchQuery, filter);
-      
-      // Log pagination info if available
-      if (data.pagination) {
-        console.log(`Loaded ${data.pagination.skip + clientList.length} of ${data.pagination.total} clients`);
-        if (data.pagination.has_more) {
-          console.log('More clients available - consider implementing load more');
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch clients:', error);
-    }
-  };
-
-  const fetchSilentClients = async () => {
-    setSilentLoading(true);
-    try {
-      const adminToken = await getSecureItem('admin_token');
-      if (!adminToken) return;
-      
-      // Silent clients: haven't sent heartbeat in 60 minutes
-      const response = await authedFetch(`${API_URL}/api/clients/silent?admin_token=${adminToken}&minutes=1440`);
-      if (response.ok) {
-        const data = await response.json();
-        setSilentClients(data.silent_clients || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch silent clients:', error);
-    } finally {
-      setSilentLoading(false);
-    }
-  };
-
-  const applyFilters = (clientList: Client[], query: string, filterType: string) => {
-    // Filter out null/undefined clients
-    let filtered = clientList.filter(c => c && c.name && c.phone);
-
-    if (query) {
-      filtered = filtered.filter(
-        (c) =>
-          (c.name && c.name.toLowerCase().includes(query.toLowerCase())) ||
-          (c.phone && c.phone.includes(query)) ||
-          (c.email && c.email.toLowerCase().includes(query.toLowerCase()))
-      );
-    }
-
-    if (filterType === 'locked') {
-      filtered = filtered.filter((c) => c.is_locked === true);
-    } else if (filterType === 'unlocked') {
-      filtered = filtered.filter((c) => c.is_locked === false || c.is_locked === undefined);
-    }
-
-    setFilteredClients(filtered);
-  };
+    });
+    return list;
+  }, [clients, searchQuery, filter, sort]);
 
   useEffect(() => {
-    fetchClients();
-  }, []);
+    setVisible(PAGE_SIZE);
+  }, [searchQuery, filter, sort]);
 
-  // Re-fetch clients when screen comes back into focus (e.g., after payment)
-  useFocusEffect(
-    useCallback(() => {
-      fetchClients();
-    }, [])
-  );
+  const shown = filtered.slice(0, visible);
 
-  useEffect(() => {
-    if (filter === 'silent') {
-      fetchSilentClients();
-    } else {
-      applyFilters(clients, searchQuery, filter);
-    }
-  }, [searchQuery, filter]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    if (filter === 'silent') {
-      await fetchSilentClients();
-    } else {
-      await fetchClients();
-    }
-    setRefreshing(false);
-  }, [filter]);
-
-  const getFilterLabel = (f: string) => {
+  const filterLabel = (f: FilterKey) => {
     switch (f) {
       case 'all': return t('all');
       case 'locked': return t('locked');
       case 'unlocked': return t('unlocked');
       case 'silent': return t('silent');
-      default: return f;
+      case 'tamper': return ta(language, 'filterTamper');
+      default: return ta(language, 'filterUnregistered');
+    }
+  };
+  const sortLabel = (s: SortKey) => {
+    switch (s) {
+      case 'overdue': return ta(language, 'sortOverdue');
+      case 'balance': return ta(language, 'sortBalance');
+      case 'lastSeen': return ta(language, 'sortLastSeen');
+      default: return ta(language, 'sortName');
     }
   };
 
-  const formatLastSeen = (dateStr: string | null) => {
-    if (!dateStr) return t('neverConnected');
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const rawMins = Math.floor(diffMs / 60000);
-    // Round to nearest 5 minutes
-    const diffMins = Math.round(rawMins / 5) * 5;
-    const diffHours = Math.floor(diffMins / 60);
-    const remainMins = Math.round((diffMins % 60) / 5) * 5;
-    const diffDays = Math.floor(diffMins / 1440);
-    const remainHours = Math.floor((diffMins % 1440) / 60);
-    
-    if (diffDays > 0) {
-      const suffix = remainHours > 0 ? ` ${remainHours}h` : '';
-      return language === 'et' ? `${diffDays}p${suffix} tagasi` : `${diffDays}d${suffix} ago`;
-    } else if (diffHours > 0) {
-      const suffix = remainMins > 0 ? ` ${remainMins}m` : '';
-      return language === 'et' ? `${diffHours}h${suffix} tagasi` : `${diffHours}h${suffix} ago`;
-    } else if (diffMins < 5) {
-      return language === 'et' ? '< 5 min tagasi' : '< 5 min ago';
-    } else {
-      return language === 'et' ? `${diffMins} min tagasi` : `${diffMins} min ago`;
-    }
-  };
-
-  const renderSilentClient = ({ item }: { item: SilentClient }) => {
-    if (!item || !item.id) return null;
-    
+  const renderClient = ({ item }: { item: any }) => {
+    const outstanding = clientOutstanding(item);
+    const daysOverdue = clientDaysOverdue(item);
+    const isPaid = outstanding <= 0 && Number(item.loan_amount || 0) > 0;
+    const isOverdue = daysOverdue > 0 && outstanding > 0;
+    const dueColor = resolveLoanStatus({
+      outstanding_balance: outstanding,
+      loan_amount: item.loan_amount,
+      days_overdue: daysOverdue,
+      loan_due_date: item.loan_due_date || item.emi_due_date,
+      next_payment_due: item.next_payment_due,
+    }).color;
     return (
       <TouchableOpacity
-        style={[styles.clientCard, styles.silentClientCard, { backgroundColor: colors.surface, borderColor: colors.warning }]}
+        style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
         onPress={() => router.push({ pathname: '/admin/client-details', params: { id: item.id } })}
-        data-testid={`silent-client-${item.id}`}
       >
-        <View style={styles.clientInfo}>
-          <View style={styles.clientHeader}>
-            <Text style={[styles.clientName, { color: colors.text }]}>{item.name || 'N/A'}</Text>
-            <View style={styles.silentBadge}>
-              <Ionicons name="alert-circle" size={12} color="#F97316" />
-              <Text style={styles.silentBadgeText}>
-                {t('silent')}
-              </Text>
-            </View>
-          </View>
-          <Text style={[styles.clientPhone, { color: colors.textMuted }]}>{item.phone || 'N/A'}</Text>
-          <View style={styles.silentMeta}>
-            <Ionicons name="time-outline" size={14} color={colors.textMuted} />
-            <Text style={[styles.lastSeenText, { color: colors.textMuted }]}>
-              {t('lastSeen')}
-              {formatLastSeen(item.last_heartbeat)}
-            </Text>
-          </View>
-          {item.tamper_attempts > 0 && (
-            <View style={styles.tamperWarning}>
-              <Ionicons name="warning" size={14} color={colors.error} />
-              <Text style={[styles.tamperText, { color: colors.error }]}>
-                {language === 'et' ? `${item.tamper_attempts} rikkumiskatset` : `${item.tamper_attempts} tamper attempts`}
-              </Text>
-            </View>
-          )}
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+            {item.name || item.phone || '—'}
+          </Text>
+          <Text style={[styles.phone, { color: colors.textMuted }]}>{item.phone || '—'}</Text>
+          <Text style={[styles.amount, { color: dueColor }]}>
+            {isPaid ? '100% Paid' : `${t('due')}: ${formatAmount(outstanding)}`}
+            {isOverdue ? ` (${daysOverdue}d ${t('overdue') || 'overdue'})` : ''}
+          </Text>
+          <ClientChips client={item} language={language} />
         </View>
         <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
       </TouchableOpacity>
     );
   };
 
-  const renderClient = ({ item }: { item: Client }) => {
-    // Defensive null checks
-    if (!item || !item.id) {
-      return null;
-    }
-    
-    return (
-      <TouchableOpacity
-        style={[styles.clientCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-        onPress={() => router.push({ pathname: '/admin/client-details', params: { id: item.id } })}
-      >
-        <View style={styles.clientInfo}>
-          <View style={styles.clientHeader}>
-            <Text style={[styles.clientName, { color: colors.text }]}>{item.name || 'N/A'}</Text>
-            <View style={[styles.statusBadge, item.is_locked ? styles.lockedBadge : styles.unlockedBadge]}>
-              <Ionicons
-                name={item.is_locked ? 'lock-closed' : 'lock-open'}
-                size={12}
-                color={item.is_locked ? '#EF4444' : '#10B981'}
-              />
-              <Text style={[styles.statusText, item.is_locked ? styles.lockedText : styles.unlockedText]}>
-                {item.is_locked ? t('locked') : t('unlocked')}
-              </Text>
-            </View>
-          </View>
-          <Text style={[styles.clientPhone, { color: colors.textMuted }]}>{item.phone || 'N/A'}</Text>
-          <View style={styles.clientMeta}>
-            {(() => {
-              const outstanding = item.outstanding_balance || 0;
-              const daysOverdue = (item as any).days_overdue || 0;
-              const isPaid = outstanding <= 0 && (item.loan_amount || 0) > 0;
-              const isOverdue = daysOverdue > 0 && outstanding > 0;
-              const dueColor = resolveLoanStatus({
-                outstanding_balance: outstanding,
-                loan_amount: item.loan_amount,
-                days_overdue: daysOverdue,
-                loan_due_date: item.loan_due_date || item.emi_due_date,
-                next_payment_due: item.next_payment_due,
-              }).color;
-              return (
-                <Text style={[styles.emiAmount, { color: dueColor }]}>
-                  {isPaid ? '100% Paid' : `${t('due')}: ${formatAmount(outstanding)}`}
-                  {isOverdue ? ` (${daysOverdue}d ${t('overdue') || 'overdue'})` : ''}
-                </Text>
-              );
-            })()}
-            {item.is_registered ? (
-              <View style={styles.registeredBadge}>
-                <Ionicons name="checkmark-circle" size={14} color="#10B981" />
-                <Text style={styles.registeredText}>{t('registered')}</Text>
-              </View>
-            ) : (
-              <View style={styles.pendingBadge}>
-                <Ionicons name="time" size={14} color="#F59E0B" />
-                <Text style={styles.pendingText}>{t('pending')}</Text>
-              </View>
-            )}
-          </View>
-          {item.last_heartbeat ? (
-            <Text style={[styles.regCode, { color: colors.textMuted }]}>
-              {t('lastSeen2')}: {(() => {
-                const rawMins = Math.floor((Date.now() - new Date(item.last_heartbeat).getTime()) / 60000);
-                const mins = Math.round(rawMins / 5) * 5;
-                if (mins < 5) return '< 5 min ' + t('ago');
-                if (mins < 60) return `${mins}m ${t('ago')}`;
-                const hours = Math.floor(mins / 60);
-                const remainMins = Math.round((mins % 60) / 5) * 5;
-                if (hours < 24) return remainMins > 0 ? `${hours}h ${remainMins}m ${t('ago')}` : `${hours}h ${t('ago')}`;
-                const days = Math.floor(mins / 1440);
-                const remainHours = Math.floor((mins % 1440) / 60);
-                return remainHours > 0 ? `${days}d ${remainHours}h ${t('ago')}` : `${days}d ${t('ago')}`;
-              })()}
-            </Text>
-          ) : item.registration_code ? (
-            <Text style={[styles.regCode, { color: colors.textMuted }]}>{t('code')}: {item.registration_code}</Text>
-          ) : (
-            <Text style={[styles.regCodeNotGenerated, { color: colors.textMuted }]}>
-              {t('keyNotGenerated')}
-            </Text>
-          )}
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-      </TouchableOpacity>
-    );
-  };
+  const pickerItems = picker === 'sort' ? SORTS : FILTERS;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -363,127 +158,118 @@ export default function ClientsList() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.text }]}>{t('clients')}</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => router.push('/admin/add-client')}
-        >
+        <TouchableOpacity style={styles.addButton} onPress={() => router.push('/admin/add-client')}>
           <Ionicons name="add" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
 
       <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
-        <Ionicons name="search" size={20} color={colors.textMuted} style={styles.searchIcon} />
+        <Ionicons name="search" size={20} color={colors.textMuted} style={{ marginRight: 8 }} />
         <TextInput
           style={[styles.searchInput, { color: colors.text }]}
           placeholder={t('searchPlaceholder')}
           placeholderTextColor={colors.textMuted}
           value={searchQuery}
           onChangeText={setSearchQuery}
+          autoCorrect={false}
         />
+        {!!searchQuery && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        )}
       </View>
 
-      <View style={styles.filterContainer}>
+      <View style={styles.pickerRow}>
         <TouchableOpacity
-          style={[styles.filterDropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => setShowFilterPicker(true)}
+          style={[styles.dropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={() => setPicker('filter')}
           data-testid="filter-dropdown"
         >
-          {filter === 'silent' && <Ionicons name="alert-circle" size={16} color="#F97316" style={{marginRight: 6}} />}
-          <Text style={[
-            styles.filterDropdownText,
-            { color: colors.text },
-            filter === 'silent' && styles.silentFilterDropdownText
-          ]}>
-            {getFilterLabel(filter)}
-          </Text>
-          <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+          <Ionicons name="filter" size={16} color={colors.textMuted} style={{ marginRight: 6 }} />
+          <Text style={{ color: colors.text, flex: 1 }} numberOfLines={1}>{filterLabel(filter)}</Text>
+          <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.dropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={() => setPicker('sort')}
+          data-testid="sort-dropdown"
+        >
+          <Ionicons name="swap-vertical" size={16} color={colors.textMuted} style={{ marginRight: 6 }} />
+          <Text style={{ color: colors.text, flex: 1 }} numberOfLines={1}>{sortLabel(sort)}</Text>
+          <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
         </TouchableOpacity>
       </View>
 
-      {filter === 'silent' && silentLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#F97316" />
-          <Text style={[styles.loadingText, { color: colors.textMuted }]}>
-            {t('loadingSilentClients')}
-          </Text>
+      {!!error && (
+        <TouchableOpacity onPress={() => refresh(true)} style={styles.errorBanner}>
+          <Ionicons name="cloud-offline" size={16} color="#fff" />
+          <Text style={styles.errorText}>{ta(language, 'offlineBanner')}</Text>
+          <Text style={styles.errorRetry}>{ta(language, 'retry')}</Text>
+        </TouchableOpacity>
+      )}
+
+      {!loaded && clients.length === 0 ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      ) : filter === 'silent' ? (
-        <FlatList
-          data={silentClients}
-          keyExtractor={(item) => item.id}
-          renderItem={renderSilentClient}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F97316" />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="checkmark-circle" size={64} color={colors.success} />
-              <Text style={[styles.emptyText, { color: colors.text }]}>
-                {t('noSilentClients')}
-              </Text>
-              <Text style={[styles.emptySubText, { color: colors.textMuted }]}>
-                {t('allDevicesAreConnected')}
-              </Text>
-            </View>
-          }
-        />
       ) : (
         <FlatList
-          data={filteredClients}
-          keyExtractor={(item) => item.id}
+          data={shown}
+          keyExtractor={(item) => String(item.id)}
           renderItem={renderClient}
           contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+          initialNumToRender={12}
+          windowSize={7}
+          removeClippedSubviews
+          onEndReachedThreshold={0.4}
+          onEndReached={() => {
+            if (visible < filtered.length) setVisible((v) => v + PAGE_SIZE);
+          }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => refresh(true)} tintColor={colors.primary} />}
+          ListFooterComponent={
+            visible < filtered.length ? (
+              <TouchableOpacity style={styles.loadMore} onPress={() => setVisible((v) => v + PAGE_SIZE)}>
+                <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                  {ta(language, 'loadMore')} ({filtered.length - visible})
+                </Text>
+              </TouchableOpacity>
+            ) : null
           }
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
+            <View style={styles.center}>
               <Ionicons name="people-outline" size={64} color={colors.textMuted} />
-              <Text style={[styles.emptyText, { color: colors.text }]}>{t('noClientsFound')}</Text>
+              <Text style={{ color: colors.text, fontSize: 16, marginTop: 12 }}>{t('noClientsFound')}</Text>
             </View>
           }
         />
       )}
 
-      {/* Filter Picker Modal */}
-      <Modal visible={showFilterPicker} transparent animationType="fade">
-        <TouchableOpacity 
-          style={styles.filterModalOverlay} 
-          activeOpacity={1}
-          onPress={() => setShowFilterPicker(false)}
-        >
-          <View style={[styles.filterModalContent, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.filterModalTitle, { color: colors.text }]}>
-              {t('filterClients')}
+      <Modal visible={picker !== null} transparent animationType="fade" onRequestClose={() => setPicker(null)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setPicker(null)}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              {picker === 'sort' ? ta(language, 'sortBy') : t('filterClients')}
             </Text>
-            {(['all', 'locked', 'unlocked', 'silent'] as const).map((f) => (
-              <TouchableOpacity
-                key={f}
-                style={[
-                  styles.filterModalItem,
-                  { borderBottomColor: colors.border },
-                  filter === f && styles.filterModalItemActive
-                ]}
-                onPress={() => {
-                  setFilter(f);
-                  setShowFilterPicker(false);
-                }}
-              >
-                {f === 'silent' && <Ionicons name="alert-circle" size={18} color={filter === f ? '#fff' : '#F97316'} style={{marginRight: 8}} />}
-                <Text style={[
-                  styles.filterModalItemText,
-                  { color: colors.text },
-                  filter === f && styles.filterModalItemTextActive,
-                  f === 'silent' && filter !== f && styles.silentFilterModalText
-                ]}>
-                  {getFilterLabel(f)}
-                </Text>
-                {filter === f && (
-                  <Ionicons name="checkmark" size={20} color="#fff" />
-                )}
-              </TouchableOpacity>
-            ))}
+            {pickerItems.map((k: any) => {
+              const active = picker === 'sort' ? sort === k : filter === k;
+              return (
+                <TouchableOpacity
+                  key={k}
+                  style={[styles.modalItem, { borderBottomColor: colors.border }, active && { backgroundColor: colors.primary }]}
+                  onPress={() => {
+                    if (picker === 'sort') setSort(k);
+                    else setFilter(k);
+                    setPicker(null);
+                  }}
+                >
+                  <Text style={{ color: active ? '#fff' : colors.text, flex: 1 }}>
+                    {picker === 'sort' ? sortLabel(k) : filterLabel(k)}
+                  </Text>
+                  {active && <Ionicons name="checkmark" size={20} color="#fff" />}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </TouchableOpacity>
       </Modal>
@@ -492,330 +278,27 @@ export default function ClientsList() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0B1527',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#152035',
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#152035',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#2563EB',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#152035',
-    borderRadius: 12,
-    marginHorizontal: 20,
-    marginTop: 16,
-    paddingHorizontal: 16,
-    height: 48,
-  },
-  searchIcon: {
-    marginRight: 12,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#fff',
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginTop: 12,
-    marginBottom: 8,
-    gap: 8,
-  },
-  filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#152035',
-  },
-  filterButtonActive: {
-    backgroundColor: '#2563EB',
-  },
-  filterText: {
-    fontSize: 14,
-    color: '#94A3B8',
-  },
-  filterTextActive: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  listContent: {
-    padding: 20,
-    paddingTop: 8,
-  },
-  clientCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#152035',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#1E3050',
-  },
-  clientInfo: {
-    flex: 1,
-  },
-  clientHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  clientName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-  lockedBadge: {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-  },
-  unlockedBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  lockedText: {
-    color: '#EF4444',
-  },
-  unlockedText: {
-    color: '#10B981',
-  },
-  clientPhone: {
-    fontSize: 14,
-    color: '#94A3B8',
-    marginBottom: 8,
-  },
-  clientMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  emiAmount: {
-    fontSize: 14,
-    color: '#2563EB',
-    fontWeight: '500',
-  },
-  registeredBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  registeredText: {
-    fontSize: 12,
-    color: '#10B981',
-  },
-  pendingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  pendingText: {
-    fontSize: 12,
-    color: '#F59E0B',
-  },
-  regCode: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 4,
-  },
-  regCodeNotGenerated: {
-    fontSize: 12,
-    color: '#94A3B8',
-    fontStyle: 'italic',
-    marginTop: 4,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#64748B',
-    marginTop: 12,
-  },
-  emptySubText: {
-    fontSize: 14,
-    color: '#475569',
-    marginTop: 4,
-  },
-  // Silent filter styles
-  silentFilterButton: {
-    backgroundColor: 'rgba(249, 115, 22, 0.1)',
-    borderWidth: 1,
-    borderColor: '#F97316',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  silentFilterButtonActive: {
-    backgroundColor: '#F97316',
-    borderColor: '#F97316',
-  },
-  silentFilterText: {
-    color: '#F97316',
-  },
-  // Silent client card styles
-  silentClientCard: {
-    borderColor: '#F97316',
-    borderWidth: 1,
-    backgroundColor: 'rgba(249, 115, 22, 0.05)',
-  },
-  silentBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: 'rgba(249, 115, 22, 0.2)',
-    gap: 4,
-  },
-  silentBadgeText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#F97316',
-  },
-  silentMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  lastSeenText: {
-    fontSize: 12,
-    color: '#94A3B8',
-  },
-  tamperWarning: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  tamperText: {
-    fontSize: 12,
-    color: '#EF4444',
-    fontWeight: '500',
-  },
-  // Loading styles
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#94A3B8',
-    marginTop: 12,
-  },
-  // Dropdown filter styles
-  filterDropdown: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#152035',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: '#1E3050',
-    gap: 8,
-  },
-  filterDropdownText: {
-    fontSize: 14,
-    color: '#fff',
-    fontWeight: '500',
-  },
-  silentFilterDropdownText: {
-    color: '#F97316',
-  },
-  // Filter modal styles
-  filterModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  filterModalContent: {
-    backgroundColor: '#152035',
-    borderRadius: 16,
-    padding: 20,
-    width: '100%',
-    maxWidth: 320,
-  },
-  filterModalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  filterModalItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0B1527',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#1E3050',
-  },
-  filterModalItemActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
-  },
-  filterModalItemText: {
-    flex: 1,
-    fontSize: 15,
-    color: '#fff',
-    fontWeight: '500',
-  },
-  filterModalItemTextActive: {
-    color: '#fff',
-  },
-  silentFilterModalText: {
-    color: '#F97316',
-  },
+  container: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1 },
+  backButton: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 20, fontWeight: 'bold' },
+  addButton: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#2563EB', alignItems: 'center', justifyContent: 'center' },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', margin: 16, marginBottom: 8, paddingHorizontal: 14, borderRadius: 12 },
+  searchInput: { flex: 1, paddingVertical: 12, fontSize: 16 },
+  pickerRow: { flexDirection: 'row', paddingHorizontal: 16, marginBottom: 8 },
+  dropdown: { flex: 1, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginRight: 8 },
+  errorBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#B45309', marginHorizontal: 16, marginBottom: 8, padding: 10, borderRadius: 10 },
+  errorText: { color: '#fff', flex: 1, marginLeft: 8, fontSize: 13 },
+  errorRetry: { color: '#fff', fontWeight: '700', textDecorationLine: 'underline' },
+  listContent: { padding: 16, paddingTop: 4 },
+  card: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 14, borderWidth: 1, marginBottom: 10 },
+  name: { fontSize: 17, fontWeight: '700' },
+  phone: { fontSize: 14, marginTop: 2 },
+  amount: { fontSize: 14, fontWeight: '600', marginTop: 4 },
+  center: { alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
+  loadMore: { alignItems: 'center', padding: 14 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 24 },
+  modalContent: { borderRadius: 16, padding: 16 },
+  modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
+  modalItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 12, borderBottomWidth: 1, borderRadius: 8 },
 });

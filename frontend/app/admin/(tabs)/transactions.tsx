@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCurrency } from '../../../src/context/CurrencyContext';
@@ -19,7 +18,11 @@ import { useLanguage } from '../../../src/context/LanguageContext';
 import { useTheme } from '../../../src/context/ThemeContext';
 import { useEnterpriseAccess } from '../../../src/hooks/useEnterpriseAccess';
 import API_URL from '../../../src/constants/api';
-import { getSecureItem, setSecureItem, deleteSecureItem } from '../../../src/utils/secureStorage';
+import { useClients } from '../../../src/utils/clientsStore';
+import { ta } from '../../../src/utils/adminI18n';
+import { parseServerDate } from '../../../src/utils/heartbeat';
+
+const paymentCache = new Map<string, any[]>();
 
 
 interface Transaction {
@@ -45,101 +48,102 @@ export default function TransactionsTab() {
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
-  const fetchTransactions = async () => {
-    try {
-      const adminToken = await getSecureItem('admin_token');
-      if (!adminToken) {
-        setTransactions([]);
-        return;
-      }
-      const response = await authedFetch(`${API_URL}/api/clients?limit=500&admin_token=${adminToken}`);
-      if (!response.ok) {
-        setTransactions([]);
-        return;
-      }
-      const data = await response.json();
-      const allTransactions: Transaction[] = [];
+  const [loadError, setLoadError] = useState(false);
+  const { clients: allClients, refresh: refreshClients } = useClients();
+  const loadingRef = React.useRef(false);
 
-      const clients = data.clients || (Array.isArray(data) ? data : []);
-      
-      // Fetch payments for each client in parallel
-      const paymentPromises = clients.map(async (client: any) => {
-        const clientTransactions: Transaction[] = [];
-        
-        // Add loan disbursement as a transaction
+  // Payments are fetched per client, but only for clients that have actually paid
+  // something, at most 5 at a time, and only again when that client's payment totals
+  // changed (cached by total_paid + last_payment_date). Mount and focus share one run.
+  const buildTransactions = useCallback(async (clients: any[]) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    try {
+      const all: Transaction[] = [];
+      const toFetch: any[] = [];
+      for (const client of clients) {
         const loanAmount = client.loan_amount || client.principal_amount || 0;
         if (loanAmount > 0) {
-          clientTransactions.push({
+          all.push({
             id: `disbursement-${client.id}`,
             client_id: client.id,
-            client_name: client.name,
+            client_name: client.name || client.phone || '—',
             amount: loanAmount,
-            date: client.loan_start_date || client.created_at || new Date().toISOString(),
+            date: client.loan_start_date || client.created_at || '',
             type: 'disbursement',
             notes: t('loanDisbursement'),
           });
         }
+        const paid = Number(client.total_paid || 0);
+        if (paid > 0 || client.last_payment_date) toFetch.push(client);
+      }
 
-        // Fetch actual payments from the payments API
-        try {
-          const paymentsRes = await authedFetch(`${API_URL}/api/loans/${client.id}/payments?admin_token=${adminToken}`);
-          if (paymentsRes.ok) {
-            const payments = await paymentsRes.json();
-            if (Array.isArray(payments)) {
-              payments.forEach((payment: any) => {
-                clientTransactions.push({
-                  id: payment.id || `payment-${client.id}-${payment.payment_date}`,
-                  client_id: client.id,
-                  client_name: client.name,
-                  amount: payment.amount,
-                  date: payment.payment_date,
-                  type: 'payment',
-                  payment_method: payment.payment_method,
-                  notes: payment.notes,
-                });
-              });
+      let failed = 0;
+      let cursor = 0;
+      const worker = async () => {
+        while (cursor < toFetch.length) {
+          const client = toFetch[cursor++];
+          const cacheKey = `${client.id}|${client.total_paid || 0}|${client.last_payment_date || ''}`;
+          let payments = paymentCache.get(cacheKey);
+          if (!payments) {
+            try {
+              const res = await authedFetch(`${API_URL}/api/loans/${client.id}/payments`);
+              if (!res.ok) { failed++; continue; }
+              const data = await res.json();
+              payments = Array.isArray(data) ? data : [];
+              paymentCache.set(cacheKey, payments);
+            } catch {
+              failed++;
+              continue;
             }
           }
-        } catch (e) {
-          // Non-fatal — skip payments for this client
+          for (const payment of payments) {
+            all.push({
+              id: payment.id || `payment-${client.id}-${payment.payment_date}`,
+              client_id: client.id,
+              client_name: client.name || client.phone || '—',
+              amount: payment.amount,
+              date: payment.payment_date || '',
+              type: 'payment',
+              payment_method: payment.payment_method,
+              notes: payment.notes,
+            });
+          }
         }
+      };
+      await Promise.all([worker(), worker(), worker(), worker(), worker()]);
 
-        return clientTransactions;
-      });
-
-      const results = await Promise.all(paymentPromises);
-      results.forEach(txns => allTransactions.push(...txns));
-
-      // Sort by date (most recent first)
-      allTransactions.sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-
-      setTransactions(allTransactions);
-    } catch (error) {
-      console.error('Error fetching transactions:', error);
+      const time = (d: string) => {
+        const v = parseServerDate(d)?.getTime();
+        return v === undefined ? 0 : v;
+      };
+      all.sort((a, b) => time(b.date) - time(a.date));
+      // only replace what is on screen when we got something (never blank the list on errors)
+      if (all.length > 0 || failed === 0) setTransactions(all);
+      setLoadError(failed > 0);
+    } finally {
+      loadingRef.current = false;
     }
-  };
+  }, [t]);
 
+  // Rebuild whenever the shared client list changes (it already refreshes on focus).
   useEffect(() => {
-    fetchTransactions();
-  }, []);
-
-  // Auto-refresh when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      fetchTransactions();
-    }, [])
-  );
+    if (allClients.length > 0) buildTransactions(allClients);
+  }, [allClients, buildTransactions]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchTransactions();
+    const r = await refreshClients(true);
+    if (r && r.ok && r.clients) {
+      paymentCache.clear();
+      await buildTransactions(r.clients);
+    }
     setRefreshing(false);
-  }, []);
+  }, [buildTransactions, refreshClients]);
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    const date = parseServerDate(dateString);
+    if (!date) return '—';
     return date.toLocaleDateString(t('enus'), {
       year: 'numeric',
       month: 'short',
@@ -268,6 +272,11 @@ export default function TransactionsTab() {
         </TouchableOpacity>
       </View>
 
+      {loadError && (
+        <View style={{ backgroundColor: '#B45309', marginHorizontal: 16, marginBottom: 8, padding: 10, borderRadius: 10 }}>
+          <Text style={{ color: '#fff', fontSize: 13 }}>{ta(language, 'offlineBanner')}</Text>
+        </View>
+      )}
       <FlatList
         data={paginatedTransactions}
         renderItem={renderTransaction}

@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
+import { parseServerDate } from '../../src/utils/heartbeat';
+import { ta } from '../../src/utils/adminI18n';
 import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 
 interface Notification {
@@ -44,7 +46,7 @@ export default function NotificationsScreen() {
         return;
       }
 
-      const response = await authedFetch(`${API_URL}/api/notifications?admin_token=${token}&limit=100`);
+      const response = await authedFetch(`${API_URL}/api/notifications?limit=100`);
       if (response.ok) {
         const data = await response.json();
         setNotifications(data.notifications || []);
@@ -83,7 +85,11 @@ export default function NotificationsScreen() {
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'tamper':
+      case 'tamper_attempt':
         return { name: 'warning', color: '#EF4444' };
+      case 'reboot':
+      case 'device_reboot':
+        return { name: 'refresh', color: '#3B82F6' };
       case 'heartbeat':
         return { name: 'pulse', color: '#F59E0B' };
       case 'payment':
@@ -98,7 +104,7 @@ export default function NotificationsScreen() {
   };
 
   const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
+    const date = parseServerDate(dateString) || new Date();
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const minutes = Math.floor(diff / 60000);
@@ -172,6 +178,11 @@ export default function NotificationsScreen() {
                   !notification.is_read && styles.unreadCard,
                 ]}
                 onPress={() => {
+                  if (!notification.is_read) {
+                    authedFetch(`${API_URL}/api/notifications/mark-read?notification_id=${encodeURIComponent(notification.id)}`, { method: 'POST' }).catch(() => {});
+                    setNotifications((list) => list.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n)));
+                    setUnreadCount((c) => Math.max(0, c - 1));
+                  }
                   if (notification.client_id) {
                     router.push(`/admin/client-details?id=${notification.client_id}`);
                   }

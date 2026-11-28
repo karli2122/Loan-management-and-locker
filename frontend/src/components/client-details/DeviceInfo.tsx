@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { styles } from './styles';
 import { Client } from './types';
+import { HB_COLORS, formatAgo, heartbeatStatus } from '../../utils/heartbeat';
 
 interface Props {
   client: Client;
@@ -56,32 +57,9 @@ export const DeviceInfo = ({
           </TouchableOpacity>
           {client.last_heartbeat && (
             <View style={styles.infoRow}>
-              <Ionicons 
-                name="pulse" 
-                size={18} 
-                color={(() => {
-                  const diff = Date.now() - new Date(client.last_heartbeat).getTime();
-                  if (diff < 5 * 60 * 1000) return '#10B981';
-                  if (diff < 12 * 60 * 60 * 1000) return '#F59E0B';
-                  return '#EF4444';
-                })()} 
-              />
-              <Text style={[styles.infoText, { color: (() => {
-                  const diff = Date.now() - new Date(client.last_heartbeat).getTime();
-                  if (diff < 5 * 60 * 1000) return '#10B981';
-                  if (diff < 12 * 60 * 60 * 1000) return '#F59E0B';
-                  return '#EF4444';
-                })() }]}>
-                {t('lastHeartbeat') || 'Last Heartbeat'}: {(() => {
-                  const diff = Date.now() - new Date(client.last_heartbeat).getTime();
-                  const mins = Math.floor(diff / 60000);
-                  if (mins < 1) return t('justNow') || 'Just now';
-                  if (mins < 60) return `${mins}m ago`;
-                  const hrs = Math.floor(mins / 60);
-                  if (hrs < 24) return `${hrs}h ago`;
-                  const days = Math.floor(hrs / 24);
-                  return `${days}d ago`;
-                })()}
+              <Ionicons name="pulse" size={18} color={HB_COLORS[heartbeatStatus(client.last_heartbeat)]} />
+              <Text style={[styles.infoText, { color: HB_COLORS[heartbeatStatus(client.last_heartbeat)] }]}>
+                {t('lastHeartbeat') || 'Last Heartbeat'}: {formatAgo(client.last_heartbeat, language)}
               </Text>
             </View>
           )}

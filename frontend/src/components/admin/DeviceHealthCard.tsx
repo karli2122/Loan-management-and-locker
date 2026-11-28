@@ -1,111 +1,125 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { authedFetch } from '../../utils/adminAuth';
 import API_URL from '../../constants/api';
 import { StatusChip } from '../../theme/StatusChip';
+import { HB_COLORS, formatAgo, heartbeatStatus, parseServerDate } from '../../utils/heartbeat';
+import { ta } from '../../utils/adminI18n';
+import { tamperTypeLabel } from './ClientChips';
 
-const STATUS_COLOR: Record<string, string> = {
-  online: '#10B981',
-  stale: '#F59E0B',
-  offline: '#EF4444',
-};
+// The deployed server has no /device-health endpoint. After the first 404 we stop asking and
+// build the card from the client record (the fields the old server does return).
+let endpointUnsupported = false;
 
 function fmt(value: any) {
-  if (!value) return '—';
-  try {
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return String(value);
-    return d.toLocaleString();
-  } catch {
-    return String(value);
-  }
+  const d = parseServerDate(value);
+  return d ? d.toLocaleString() : '—';
 }
 
-export function DeviceHealthCard({ clientId, colors }: { clientId: string; colors: any }) {
-  const [health, setHealth] = useState<any>(null);
+function fromClient(c: any) {
+  return {
+    heartbeat_status: heartbeatStatus(c?.last_heartbeat),
+    last_check_in: c?.last_heartbeat,
+    location: c?.latitude != null ? { latitude: c.latitude, longitude: c.longitude } : null,
+    last_location_update: c?.last_location_update,
+    tamper: { attempts: c?.tamper_attempts || 0, last_type: c?.last_tamper_type, last_at: c?.last_tamper_attempt },
+    last_reboot: c?.last_reboot,
+    lock_mode: c?.lock_mode,
+    device_admin_active: c?.admin_mode_active,
+    device_owner_active: c?.device_owner_active,
+    app_version: c?.app_version,
+    android_version: c?.android_version,
+    device_model: [c?.device_make, c?.device_model].filter(Boolean).join(' '),
+    battery_level: c?.battery_level,
+    is_locked: c?.is_locked,
+    lock_level: c?.lock_level,
+    outstanding_balance: c?.outstanding_balance,
+    days_overdue: c?.days_overdue,
+    next_payment_due: c?.next_payment_due,
+  };
+}
+
+export function DeviceHealthCard({
+  clientId,
+  client,
+  colors,
+  language = 'en',
+}: {
+  clientId: string;
+  client?: any;
+  colors: any;
+  language?: string;
+}) {
+  const [remote, setRemote] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  const load = async () => {
-    if (!clientId) return;
+  const load = useCallback(async () => {
+    if (!clientId || endpointUnsupported) return;
     setLoading(true);
     try {
       const res = await authedFetch(`${API_URL}/api/clients/${clientId}/device-health`);
-      if (res.ok) setHealth(await res.json());
-    } catch (e) {
-      console.log('device health error', e);
+      if (res.ok) setRemote(await res.json());
+      else if (res.status === 404 || res.status === 405) endpointUnsupported = true;
+    } catch {
+      // network problem: fall back to the client record below
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId]);
 
   useEffect(() => {
     load();
-  }, [clientId]);
+  }, [load, client?.last_heartbeat]);
 
-  if (!health && loading) {
-    return (
+  const health: any = { ...fromClient(client), ...(remote || {}) };
+  if (!client && !remote) {
+    return loading ? (
       <View style={{ padding: 16 }}>
         <ActivityIndicator color="#2563EB" />
       </View>
-    );
+    ) : null;
   }
-  if (!health) return null;
 
-  const status = health.heartbeat_status || 'offline';
-  const color = STATUS_COLOR[status] || '#64748B';
+  const status = health.heartbeat_status || 'never';
+  const color = HB_COLORS[status as keyof typeof HB_COLORS] || '#64748B';
   const loc = health.location || {};
-  const rows = [
-    { icon: 'pulse', label: 'Last check-in', value: fmt(health.last_check_in) },
-    { icon: 'battery-half', label: 'Battery', value: health.battery_level != null ? `${health.battery_level}%` : '—' },
-    {
-      icon: 'location',
-      label: 'Location',
-      value: loc.latitude != null ? `${Number(loc.latitude).toFixed(5)}, ${Number(loc.longitude).toFixed(5)}` : '—',
-    },
+  const enrollment = (health.lock_mode || health.capabilities?.enrollment || 'device_admin') === 'device_owner'
+    ? 'Device Owner (9-digit code)'
+    : 'Device Admin (8-digit code)';
+  const tamperType = tamperTypeLabel(health.tamper?.last_type, language);
+  const rows: { icon: string; label: string; value: string }[] = [
+    { icon: 'pulse', label: ta(language, 'lastCheckIn'), value: health.last_check_in ? `${fmt(health.last_check_in)} (${formatAgo(health.last_check_in, language)})` : ta(language, 'neverSeen') },
+  ];
+  if (health.battery_level != null) rows.push({ icon: 'battery-half', label: ta(language, 'battery'), value: `${health.battery_level}%` });
+  rows.push(
+    { icon: 'location', label: ta(language, 'locationLabel'), value: loc.latitude != null ? `${Number(loc.latitude).toFixed(5)}, ${Number(loc.longitude).toFixed(5)}` : '—' },
     {
       icon: 'warning',
-      label: 'Tamper',
-      value: `${health.tamper?.attempts || 0} attempt(s)${health.tamper?.last_type ? ` · ${health.tamper.last_type}` : ''}`,
+      label: ta(language, 'tamperLabel'),
+      value: `${health.tamper?.attempts || 0}${tamperType ? ` · ${tamperType}` : ''}${health.tamper?.last_at ? ` · ${formatAgo(health.tamper.last_at, language)}` : ''}`,
     },
-    { icon: 'refresh', label: 'Last reboot', value: fmt(health.last_reboot) },
-    {
-      icon: 'shield',
-      label: 'Enrollment',
-      value: (health.lock_mode || health.capabilities?.enrollment || 'device_admin') === 'device_owner'
-        ? 'Device Owner (9-digit code)'
-        : 'Device Admin (8-digit code)',
-    },
+    { icon: 'refresh', label: ta(language, 'lastReboot'), value: fmt(health.last_reboot) },
+    { icon: 'shield', label: ta(language, 'enrollment'), value: enrollment },
     {
       icon: 'shield-checkmark',
-      label: 'Device Admin',
-      value: health.device_admin_active ? 'Active' : 'Inactive',
+      label: ta(language, 'deviceAdminLabel'),
+      value: health.device_admin_active === undefined || health.device_admin_active === null ? '—' : health.device_admin_active ? ta(language, 'active') : ta(language, 'inactive'),
     },
-    {
-      icon: 'hardware-chip',
-      label: 'Device Owner',
-      value: health.device_owner_active ? 'Active' : 'Inactive',
-    },
-    {
-      icon: 'lock-closed',
-      label: 'Lock levels',
-      value: (health.capabilities?.supported_lock_levels || ['none', 'warning', 'full']).join(', '),
-    },
-    { icon: 'information-circle', label: 'App version', value: health.app_version || '—' },
-    { icon: 'phone-portrait', label: 'Android', value: health.android_version || health.device_model || '—' },
-  ];
+  );
+  if (health.app_version) rows.push({ icon: 'information-circle', label: 'App', value: String(health.app_version) });
+  if (health.android_version || health.device_model) rows.push({ icon: 'phone-portrait', label: 'Android', value: String(health.android_version || health.device_model) });
 
   return (
     <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 14, marginBottom: 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-        <Text style={{ color: colors.text, fontWeight: '700', fontSize: 16, flex: 1 }}>Device health</Text>
+        <Text style={{ color: colors.text, fontWeight: '700', fontSize: 16, flex: 1 }}>{ta(language, 'deviceHealth')}</Text>
         <StatusChip
           input={{
             is_locked: health.is_locked,
             lock_level: health.lock_level,
             outstanding_balance: health.outstanding_balance,
             days_overdue: health.days_overdue,
-            days_until_due: health.days_until_due,
             next_payment_due: health.next_payment_due,
           }}
           compact

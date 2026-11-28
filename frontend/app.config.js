@@ -84,6 +84,8 @@ export default {
     },
     plugins: [
       "expo-router",
+      // Admin app only: remove the client-phone lock services/permissions from the manifest
+      ...(IS_ADMIN_APP ? [require("./plugins/withAdminSlim")] : []),
       [
         "expo-notifications",
         {

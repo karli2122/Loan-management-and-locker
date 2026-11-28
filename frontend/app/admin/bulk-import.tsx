@@ -66,12 +66,13 @@ function BulkImportContent() {
         method: 'POST',
         body: formData,
       });
-      const data = await resp.json();
+      const data = await resp.json().catch(() => ({} as any));
+      if (resp.status === 401) return;
       if (resp.ok) {
         setImportResult(data);
         Alert.alert(t('importComplete') || 'Import Complete', `${data.total_imported || data.imported || 0} clients imported`);
       } else {
-        Alert.alert(t('importFailed') || 'Import Failed', data.error || data.detail || 'Unknown error');
+        Alert.alert(t('importFailed') || 'Import Failed', data.error || data.detail || `HTTP ${resp.status}`);
       }
     } catch (e) {
       Alert.alert(t('error') || 'Error', e.message);
@@ -101,9 +102,22 @@ function BulkImportContent() {
         method: 'POST',
         body: formData,
       });
-      const data = await resp.json();
+      const data = await resp.json().catch(() => ({} as any));
+      if (resp.status === 401) return;
+      if (resp.status === 404 || resp.status === 405) {
+        // Older server without the preview endpoint: offer a direct import instead.
+        Alert.alert(
+          'Preview not available',
+          'This server version cannot preview a CSV first. Import it directly now? Rows whose phone number already exists will be skipped.',
+          [
+            { text: t('cancel') || 'Cancel', style: 'cancel' },
+            { text: 'Import', onPress: () => { setPendingFile(file); importFile(file, true); } },
+          ],
+        );
+        return;
+      }
       if (!resp.ok) {
-        Alert.alert(t('importFailed') || 'Preview failed', data.error || data.detail || 'Unknown error');
+        Alert.alert(t('importFailed') || 'Preview failed', data.error || data.detail || `HTTP ${resp.status}`);
         return;
       }
       setPreview(data);
@@ -115,47 +129,53 @@ function BulkImportContent() {
     }
   };
 
-  const confirmPendingImport = async () => {
-    if (!pendingFile) return;
+  const importFile = async (file: any, skipDuplicates: boolean) => {
+    if (!file) return;
     setUploading(true);
     try {
       const token = await getSecureItem('admin_token');
       const formData = new FormData();
       formData.append('admin_token', token || '');
-      formData.append('skip_duplicates', 'false');
+      formData.append('skip_duplicates', skipDuplicates ? 'true' : 'false');
       formData.append('file', {
-        uri: pendingFile.uri,
-        name: pendingFile.name || 'import.csv',
+        uri: file.uri,
+        name: file.name || 'import.csv',
         type: 'text/csv',
-      });
+      } as any);
       const resp = await authedFetch(`${API_URL}/api/import/clients/csv`, {
         method: 'POST',
         body: formData,
       });
-      const data = await resp.json();
+      const data = await resp.json().catch(() => ({} as any));
+      if (resp.status === 401) return;
       if (resp.ok) {
         setImportResult(data);
         setPreview(null);
+        setPendingFile(null);
         Alert.alert(t('importComplete') || 'Import Complete', `${data.total_imported || data.imported || 0} clients imported`);
+      } else if (resp.status === 404 || resp.status === 405) {
+        Alert.alert(t('importFailed') || 'Import Failed', 'CSV import is not available on this server version.');
       } else {
-        Alert.alert(t('importFailed') || 'Import Failed', data.error || data.detail || 'Unknown error');
+        Alert.alert(t('importFailed') || 'Import Failed', data.error || data.detail || `HTTP ${resp.status}`);
       }
-    } catch (e) {
+    } catch (e: any) {
       Alert.alert(t('error') || 'Error', e.message);
     } finally {
       setUploading(false);
     }
   };
 
+  const confirmPendingImport = () => importFile(pendingFile, false);
+
   const loadPlans = async () => {
     try {
       const resp = await authedFetch(`${API_URL}/api/loan-plans`);
       if (resp.ok) {
-        const data = await resp.json();
+        const data = await resp.json().catch(() => ({} as any));
         setPlans(Array.isArray(data) ? data : (data.plans || []));
       }
     } catch (e) {
-      console.log('load plans', e);
+      /* plans are optional */
     }
   };
 
@@ -174,9 +194,11 @@ function BulkImportContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ client_ids: ids, loan_plan_id: selectedPlanId }),
       });
-      const data = await resp.json();
+      const data = await resp.json().catch(() => ({} as any));
+      if (resp.status === 401) return;
+      if (resp.status === 404 || resp.status === 405) throw new Error('Bulk plan assignment is not available on this server version. Assign the plan on each client instead.');
       if (!resp.ok) throw new Error(data.detail || data.error || 'Assign failed');
-      Alert.alert('Plan assigned', `Updated ${data.updated}, skipped ${data.skipped}`);
+      Alert.alert('Plan assigned', `Updated ${data.updated ?? 0}, skipped ${data.skipped ?? 0}`);
     } catch (e) {
       Alert.alert(t('error') || 'Error', e.message);
     } finally {
@@ -228,8 +250,9 @@ function BulkImportContent() {
         method: 'POST',
         body: formData,
       });
-      const data = await resp.json();
+      const data = await resp.json().catch(() => ({} as any));
       
+      if (resp.status === 401) return;
       if (resp.ok) {
         setReconcileResult(data);
         setShowResultsModal(true);

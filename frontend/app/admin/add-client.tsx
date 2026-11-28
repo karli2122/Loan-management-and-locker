@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { useLanguage } from '../../src/context/LanguageContext';
 import API_URL from '../../src/constants/api';
-import { authedFetch, getAuthInfo, handleAuthFailure } from '../../src/utils/adminAuth';
+import { authedFetch, getAuthInfo, responseError } from '../../src/utils/adminAuth';
+import { parseAmount, round2 } from '../../src/utils/money';
+import { useClients, invalidateClients } from '../../src/utils/clientsStore';
+import { shareHandover } from '../../src/utils/handover';
+import { ta } from '../../src/utils/adminI18n';
 import { DatePicker } from '../../src/components/DatePicker';
 
 
@@ -26,6 +30,12 @@ export default function AddClient() {
   const { t, language } = useLanguage();
   const { formatAmount, currencySymbol } = useCurrency();
   const [loading, setLoading] = useState(false);
+  const { clients } = useClients();
+  const submitting = useRef(false);
+  // Remembers a client that was already created, so a retry after a failed loan setup
+  // (or a dropped connection) never creates the same client twice.
+  const createdRef = useRef<{ id: string; name: string; code?: string } | null>(null);
+  const [result, setResult] = useState<null | { id: string; name: string; code?: string; totalDue?: number; loanFailed?: string }>(null);
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -33,6 +43,7 @@ export default function AddClient() {
     address: '',
     birth_number: '',
     loan_amount: '',
+    down_payment: '',
     loan_given_date: new Date().toISOString().split('T')[0],
     emi_due_date: '',
     interest_rate: '',
@@ -40,9 +51,12 @@ export default function AddClient() {
 
   // Live preview calculation (simple month-based interest, not day-count)
   const loanPreview = React.useMemo(() => {
-    const amount = parseFloat(form.loan_amount);
-    const rate = parseFloat(form.interest_rate);
-    if (!form.emi_due_date || !form.loan_given_date || isNaN(amount) || amount <= 0 || isNaN(rate) || rate < 0) return null;
+    const amount = parseAmount(form.loan_amount);
+    const rate = parseAmount(form.interest_rate);
+    const down = parseAmount(form.down_payment) || 0;
+    if (!form.emi_due_date || !form.loan_given_date || amount === null || amount <= 0 || rate === null || rate < 0) return null;
+    const principal = Math.max(0, amount - down);
+    if (principal <= 0) return null;
 
     const start = new Date(form.loan_given_date);
     const due = new Date(form.emi_due_date);
@@ -50,27 +64,36 @@ export default function AddClient() {
     const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
     const months = Math.max(1, Math.round(days / 30)); // Round to nearest month
 
-    // Simple month-based: Interest = Principal × (Rate/100) × Months
-    const totalInterest = amount * (rate / 100) * months;
-    const totalAmount = amount + totalInterest;
-
+    // Simple month-based: Interest = Principal × (Rate/100) × Months (principal = amount − down payment)
+    const totalInterest = principal * (rate / 100) * months;
     return {
-      principal: amount,
-      totalInterest: Math.round(totalInterest * 100) / 100,
-      totalAmount: Math.round(totalAmount * 100) / 100,
+      principal: round2(principal),
+      totalInterest: round2(totalInterest),
+      totalAmount: round2(principal + totalInterest),
       months,
       days,
     };
-  }, [form.loan_amount, form.interest_rate, form.loan_given_date, form.emi_due_date]);
+  }, [form.loan_amount, form.interest_rate, form.down_payment, form.loan_given_date, form.emi_due_date]);
 
-  const handleSubmit = async () => {
-    if (!form.name.trim() || !form.phone.trim() || !form.email.trim()) {
+  const phoneKey = (p: string) => (p || '').replace(/[^\d]/g, '').replace(/^0+/, '');
+
+  const handleSubmit = async (skipDuplicateCheck = false) => {
+    if (submitting.current) return;
+    if (!form.name.trim() || !form.phone.trim()) {
       Alert.alert(t('error'), t('fillAllFields'));
+      return;
+    }
+    const email = form.email.trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      Alert.alert(t('error'), language === 'et' ? 'E-posti aadress ei ole korrektne' : 'Email address is not valid');
       return;
     }
 
     // Validate loan fields if any loan info is provided
-    const hasLoanInfo = form.loan_amount || form.interest_rate || form.emi_due_date;
+    const hasLoanInfo = !!(form.loan_amount || form.interest_rate || form.emi_due_date);
+    const amount = parseAmount(form.loan_amount);
+    const rate = parseAmount(form.interest_rate);
+    const down = parseAmount(form.down_payment) || 0;
     if (hasLoanInfo) {
       if (!form.loan_amount || !form.interest_rate || !form.emi_due_date) {
         Alert.alert(t('error'), language === 'et' 
@@ -78,117 +101,151 @@ export default function AddClient() {
           : 'If adding loan details, please fill all loan fields (amount, interest, due date)');
         return;
       }
+      if (amount === null || amount <= 0 || rate === null || rate < 0) {
+        Alert.alert(t('error'), ta(language, 'invalidAmount'));
+        return;
+      }
+      if (down < 0 || down >= amount) {
+        Alert.alert(t('error'), language === 'et' ? 'Sissemakse peab olema väiksem kui laenusumma' : 'Down payment must be smaller than the loan amount');
+        return;
+      }
     }
 
+    if (!createdRef.current && !skipDuplicateCheck) {
+      const key = phoneKey(form.phone);
+      const dup = key && clients.find((c: any) => phoneKey(c.phone) === key);
+      if (dup) {
+        Alert.alert(
+          ta(language, 'duplicatePhoneTitle'),
+          ta(language, 'duplicatePhoneBody', { name: dup.name || dup.phone }),
+          [
+            { text: t('cancel'), style: 'cancel' },
+            { text: ta(language, 'openClient'), onPress: () => router.replace(`/admin/client-details?id=${dup.id}`) },
+            { text: ta(language, 'createAnyway'), style: 'destructive', onPress: () => handleSubmit(true) },
+          ],
+        );
+        return;
+      }
+    }
+
+    submitting.current = true;
     setLoading(true);
     try {
       const auth = await getAuthInfo();
-      if (!auth) { await handleAuthFailure(router, language); return; }
+      if (!auth) return; // session-expired flow takes over
 
-      // Step 1: Create client
-      const clientData = {
-        name: form.name,
-        phone: form.phone,
-        email: form.email,
-        address: form.address,
-        birth_number: form.birth_number,
-      };
-      
-      console.log('Creating client:', clientData);
-      const clientResponse = await authedFetch(`${API_URL}/api/clients?admin_token=${auth.token}`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(clientData),
-      });
+      // Step 1: Create client (skipped when a previous attempt already created it)
+      if (!createdRef.current) {
+        const clientData: Record<string, string> = { name: form.name.trim(), phone: form.phone.trim() };
+        if (email) clientData.email = email;
+        if (form.address.trim()) clientData.address = form.address.trim();
+        if (form.birth_number.trim()) clientData.birth_number = form.birth_number.trim();
 
-      if (clientResponse.status === 401) {
-        await handleAuthFailure(router, language);
-        return;
-      }
-
-      const clientText = await clientResponse.text();
-      let client;
-      try {
-        client = JSON.parse(clientText);
-      } catch (e) {
-        console.error('Parse error:', clientText.substring(0, 200));
-        throw new Error('Server error. Please try again.');
-      }
-
-      if (!clientResponse.ok) {
-        let errorMessage = 'Failed to create client';
-        if (client.detail) {
-          if (typeof client.detail === 'string') errorMessage = client.detail;
-          else if (Array.isArray(client.detail)) errorMessage = client.detail.map((err: any) => err.msg || err.message).join(', ');
+        const clientResponse = await authedFetch(`${API_URL}/api/clients`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(clientData),
+        });
+        if (clientResponse.status === 401) return;
+        if (!clientResponse.ok) throw new Error(await responseError(clientResponse, 'Failed to create client'));
+        let client: any;
+        try {
+          client = await clientResponse.json();
+        } catch {
+          throw new Error('Server error. Please try again.');
         }
-        throw new Error(errorMessage);
+        createdRef.current = { id: client.id, name: client.name || form.name.trim(), code: client.registration_code || undefined };
+        invalidateClients();
       }
-
-      console.log('Client created:', client.id);
+      const created = createdRef.current;
 
       // Step 2: Setup loan if loan data provided
-      if (hasLoanInfo && form.loan_amount && form.interest_rate && form.emi_due_date) {
+      if (hasLoanInfo && amount !== null && rate !== null) {
         const loanData = {
-          loan_amount: parseFloat(form.loan_amount),
-          interest_rate: parseFloat(form.interest_rate),
+          loan_amount: amount,
+          interest_rate: rate,
           given_date: form.loan_given_date,
           due_date: form.emi_due_date,
-          down_payment: 0,
+          down_payment: down,
         };
-
-        console.log('Setting up loan:', loanData);
-        const loanResponse = await authedFetch(`${API_URL}/api/loans/${client.id}/setup?admin_token=${auth.token}`, {
+        const loanResponse = await authedFetch(`${API_URL}/api/loans/${created.id}/setup`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(loanData),
         });
-
         if (!loanResponse.ok) {
-          const loanError = await loanResponse.text();
-          console.error('Loan setup error:', loanError);
-          // Client created but loan failed - still show partial success
+          const loanError = await responseError(loanResponse, 'Loan setup failed');
           Alert.alert(
             t('partialSuccess') || 'Partial Success',
-            language === 'et' 
-              ? `Klient loodud, kuid laenu seadistamine ebaõnnestus: ${loanError}`
-              : `Client created, but loan setup failed: ${loanError}`,
-            [{ text: 'OK', onPress: () => router.back() }]
+            language === 'et'
+              ? `Klient on loodud, kuid laenu seadistamine ebaõnnestus: ${loanError}\n\nVajutage "Loo klient" uuesti, et proovida ainult laenu – klienti ei looda teist korda.`
+              : `The client was created, but the loan setup failed: ${loanError}\n\nTap "Create client" again to retry just the loan – the client will not be created twice.`,
           );
           return;
         }
-
-        const loanResult = await loanResponse.json();
-        console.log('Loan setup complete:', loanResult);
-        
+        const loanResult = await loanResponse.json().catch(() => ({}));
         const details = loanResult.loan_details || {};
-        Alert.alert(
-          t('success'),
-          language === 'et'
-            ? `Klient ja laen loodud!\nKokku tasuda: ${formatAmount(details.total_amount || 0)}\nTähtaeg: ${form.emi_due_date}`
-            : `Client and loan created!\nTotal due: ${formatAmount(details.total_amount || 0)}\nDue: ${form.emi_due_date}`,
-          [{ text: 'OK', onPress: () => router.back() }]
-        );
+        invalidateClients();
+        setResult({ id: created.id, name: created.name, code: created.code, totalDue: details.total_amount });
       } else {
-        Alert.alert(
-          t('success'),
-          t('clientCreatedGoToClientDetails'),
-          [{ text: 'OK', onPress: () => router.back() }]
-        );
+        setResult({ id: created.id, name: created.name, code: created.code });
       }
+      createdRef.current = null;
     } catch (error: any) {
-      console.error('Add client error:', error);
       let errorMessage = 'Something went wrong';
       if (typeof error === 'string') errorMessage = error;
       else if (error instanceof Error) errorMessage = error.message;
-      else if (error && typeof error === 'object') errorMessage = error.message || error.detail || JSON.stringify(error);
       Alert.alert(t('error'), errorMessage);
     } finally {
+      submitting.current = false;
       setLoading(false);
     }
   };
+
+  if (result) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
+          <View style={{ alignItems: 'center', marginBottom: 20 }}>
+            <Ionicons name="checkmark-circle" size={64} color="#10B981" />
+            <Text style={{ color: '#fff', fontSize: 22, fontWeight: '800', marginTop: 8 }}>{ta(language, 'clientCreated')}</Text>
+            <Text style={{ color: '#CBD5E1', fontSize: 16, marginTop: 4 }}>{result.name}</Text>
+            {result.totalDue ? (
+              <Text style={{ color: '#94A3B8', marginTop: 4 }}>
+                {language === 'et' ? 'Kokku tasuda' : 'Total due'}: {formatAmount(result.totalDue)}
+              </Text>
+            ) : null}
+          </View>
+          {result.code ? (
+            <>
+              <View style={{ backgroundColor: '#152035', borderRadius: 14, padding: 16, alignItems: 'center', marginBottom: 12 }}>
+                <Text style={{ color: '#94A3B8', fontSize: 12 }}>{ta(language, 'codeReady')}</Text>
+                <Text style={{ color: '#fff', fontSize: 28, fontWeight: '800', letterSpacing: 3, marginTop: 4 }}>{result.code}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.submitButton, { marginTop: 0 }]}
+                onPress={() => shareHandover({ name: result.name, code: result.code!, language })}
+              >
+                <Ionicons name="share-social" size={20} color="#fff" />
+                <Text style={styles.submitButtonText}>{ta(language, 'shareCode')}</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <Text style={{ color: '#F59E0B', textAlign: 'center', marginBottom: 12 }}>{ta(language, 'generateCodeFirst')}</Text>
+          )}
+          <TouchableOpacity
+            style={[styles.submitButton, { marginTop: 12, backgroundColor: '#334155' }]}
+            onPress={() => router.replace(`/admin/client-details?id=${result.id}`)}
+          >
+            <Text style={styles.submitButtonText}>{ta(language, 'openClient')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{ alignItems: 'center', marginTop: 16 }} onPress={() => router.back()}>
+            <Text style={{ color: '#94A3B8' }}>{ta(language, 'done')}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -231,7 +288,7 @@ export default function AddClient() {
               />
             </View>
 
-            <Text style={styles.label}>{t('emailAddress')} *</Text>
+            <Text style={styles.label}>{t('emailAddress')} ({ta(language, 'emailOptional')})</Text>
             <View style={styles.inputContainer}>
               <Ionicons name="mail" size={20} color="#64748B" style={styles.inputIcon} />
               <TextInput
@@ -284,7 +341,20 @@ export default function AddClient() {
                 placeholderTextColor="#64748B"
                 value={form.loan_amount}
                 onChangeText={(text) => setForm({ ...form, loan_amount: text })}
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
+              />
+            </View>
+
+            <Text style={styles.label}>{ta(language, 'downPayment')}</Text>
+            <View style={styles.inputContainer}>
+              <Text style={styles.currencySymbol}>{currencySymbol}</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0"
+                placeholderTextColor="#64748B"
+                value={form.down_payment}
+                onChangeText={(text) => setForm({ ...form, down_payment: text })}
+                keyboardType="decimal-pad"
               />
             </View>
 
@@ -297,7 +367,7 @@ export default function AddClient() {
                 placeholderTextColor="#64748B"
                 value={form.interest_rate}
                 onChangeText={(text) => setForm({ ...form, interest_rate: text })}
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
               />
             </View>
 
@@ -350,7 +420,7 @@ export default function AddClient() {
 
             <TouchableOpacity
               style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-              onPress={handleSubmit}
+              onPress={() => handleSubmit()}
               disabled={loading}
             >
               {loading ? (

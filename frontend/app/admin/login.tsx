@@ -21,6 +21,8 @@ import { useLanguage } from '../../src/context/LanguageContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import API_URL, { API_BASE_URL, buildApiUrl } from '../../src/constants/api';
 import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
+import { invalidateClients } from '../../src/utils/clientsStore';
+import { resetSessionExpired } from '../../src/utils/adminAuth';
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -38,6 +40,8 @@ export default function AdminLogin() {
   useEffect(() => {
     const hydrateSession = async () => {
       try {
+        const lastUser = await AsyncStorage.getItem('admin_username');
+        if (lastUser) setUsername((u) => u || lastUser);
         const stay = await AsyncStorage.getItem('admin_stay_signed_in');
         if (stay === 'true') {
           const token = await getSecureItem('admin_token');
@@ -45,6 +49,7 @@ export default function AdminLogin() {
             try {
               const res = await fetch(`${API_URL}/api/admin/verify/${token}`);
               if (res.ok) {
+                resetSessionExpired();
                 router.replace('/admin/(tabs)');
                 return;
               }
@@ -123,8 +128,6 @@ export default function AdminLogin() {
       const primaryUrl = buildApiUrl('admin/login');
       const fallbackUrl = `${baseUrl}/api/admin/login`;
       const REDIRECT_FIELDS = ['redirect_to', 'redirectTo'];
-      
-      console.log('[AdminLogin] Attempting login with URLs:', { baseUrl, primaryUrl, fallbackUrl });
 
       const extractValue = (data: any, keys: string[]): string | null => {
         if (!data) return null;
@@ -194,25 +197,21 @@ export default function AdminLogin() {
       let triedFallback = false;
 
       try {
-        console.log('[AdminLogin] Trying primary URL:', primaryUrl);
         response = await attemptLogin(primaryUrl);
       } catch (err: unknown) {
         console.error('[AdminLogin] Primary URL failed:', err);
         throw networkError(err);
       }
       parsed = await consumeResponse(response, primaryUrl);
-      console.log('[AdminLogin] Primary response:', { status: response.status, hasData: !!parsed.data, textPreview: parsed.text?.substring(0, 100) });
 
       if (
         !response.ok &&
-        (response.status === 404 || response.status === 401 || response.status === 403)
+        response.status === 404
       ) {
         try {
-          console.log('[AdminLogin] Trying fallback URL:', fallbackUrl);
           response = await attemptLogin(fallbackUrl);
           parsed = await consumeResponse(response, fallbackUrl);
           triedFallback = true;
-          console.log('[AdminLogin] Fallback response:', { status: response.status, hasData: !!parsed.data });
         } catch (err: unknown) {
           console.error('[AdminLogin] Fallback URL failed:', err);
           throw networkError(err);
@@ -271,23 +270,16 @@ export default function AdminLogin() {
       }
 
       await setSecureItem('admin_token', token);
+      invalidateClients();
+      resetSessionExpired();
       
       // Safely extract admin data with fallbacks
       const adminData = parsed.data || {};
       
-      // Log for debugging
-      console.log('[AdminLogin] Admin data extracted:', {
-        hasId: !!adminData.id,
-        hasUsername: !!adminData.username,
-        hasRole: !!adminData.role,
-        role: adminData.role
-      });
-      
       // Validate required fields
       if (!adminData.id || !adminData.username) {
         throw new Error(
-          'Login succeeded but response missing required fields (id or username). ' +
-          `Response: ${JSON.stringify(adminData).substring(0, 200)}`
+          'Login succeeded but the response is missing required fields (id or username).'
         );
       }
       

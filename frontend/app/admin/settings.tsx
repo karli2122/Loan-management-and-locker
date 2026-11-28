@@ -1,4 +1,8 @@
-import { authedFetch } from '../../src/utils/adminAuth';
+import { authedFetch, expireSession } from '../../src/utils/adminAuth';
+import { redactText, redactUrl } from '../../src/utils/redact';
+import { invalidateClients } from '../../src/utils/clientsStore';
+import { ta } from '../../src/utils/adminI18n';
+import { CLIENT_APP_LINK_KEY, DEFAULT_CLIENT_APP_LINK } from '../../src/constants/clientApp';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -33,7 +37,6 @@ import SessionManagementModal from '../../src/components/admin/SessionManagement
 import { CurrencyPicker } from '../../src/components/CurrencyPicker';
 import { useEnterpriseAccess } from '../../src/hooks/useEnterpriseAccess';
 import API_URL from '../../src/constants/api';
-import devicePolicy from '../../src/utils/DevicePolicy';
 import { getApiErrors, getDiagnosticLogs } from '../../src/utils/diagnostics';
 import { StripeConnectSection } from '../../src/components/admin/StripeConnectSection';
 import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
@@ -106,13 +109,24 @@ export default function AdminSettings() {
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [diagnosticExporting, setDiagnosticExporting] = useState(false);
 
+  // No usable login: the root admin layout shows the "session expired" screen.
   const handleAuthError = async () => {
-    await Promise.all([deleteSecureItem('admin_token'), AsyncStorage.multiRemove(['admin_stay_signed_in'])]);
-    Alert.alert(
-      t('sessionExpired'),
-      t('pleaseLogInAgain'),
-      [{ text: 'OK', onPress: () => router.replace('/admin/login') }]
-    );
+    await expireSession();
+  };
+
+  const [clientAppLink, setClientAppLink] = useState('');
+  useEffect(() => {
+    AsyncStorage.getItem(CLIENT_APP_LINK_KEY).then((v) => setClientAppLink(v || DEFAULT_CLIENT_APP_LINK));
+  }, []);
+  const saveClientAppLink = async () => {
+    const v = clientAppLink.trim();
+    if (v && !/^https?:\/\//i.test(v)) {
+      Alert.alert(t('error'), 'https://…');
+      return;
+    }
+    if (!v || v === DEFAULT_CLIENT_APP_LINK) await AsyncStorage.removeItem(CLIENT_APP_LINK_KEY);
+    else await AsyncStorage.setItem(CLIENT_APP_LINK_KEY, v);
+    Alert.alert(t('success'), ta(language, 'bulkDone'));
   };
 
   useEffect(() => {
@@ -145,21 +159,23 @@ export default function AdminSettings() {
       await fetchAdminSettings(token);
       
       // Always check if user is superadmin
+      let isSuper = false;
       try {
         const creditsResponse = await authedFetch(`${API_URL}/api/admin/credits?admin_token=${token}`);
         if (creditsResponse.ok) {
           const creditsData = await creditsResponse.json();
-          setIsSuperAdmin(creditsData.is_super_admin === true);
+          isSuper = creditsData.is_super_admin === true;
+          setIsSuperAdmin(isSuper);
           // Also update role if superadmin
           if (creditsData.is_super_admin) {
             setCurrentUserRole('admin');
             await AsyncStorage.setItem('admin_role', 'admin');
           }
         }
-      } catch (e) { console.error('Credits check failed', e); }
+      } catch (e) { /* credits check is optional */ }
       
       // Only fetch admin list if user is an admin or superadmin
-      if (token && (role === 'admin' || role === 'superadmin' || creditsData?.is_super_admin)) {
+      if (token && (role === 'admin' || role === 'superadmin' || isSuper)) {
         await fetchAdminList(token);
       }
       
@@ -383,15 +399,6 @@ export default function AdminSettings() {
   const generateDiagnosticReport = async () => {
     setDiagnosticExporting(true);
     try {
-      const entries = await AsyncStorage.multiGet([
-        'client_id',
-        'registration_code',
-        'admin_id',
-      ]);
-      const clientId = entries.find((e) => e[0] === 'client_id')?.[1] || null;
-      const registrationCode = entries.find((e) => e[0] === 'registration_code')?.[1] || null;
-      const adminId = entries.find((e) => e[0] === 'admin_id')?.[1] || null;
-
       const logs = await getDiagnosticLogs();
       const apiErrors = await getApiErrors();
 
@@ -411,12 +418,6 @@ export default function AdminSettings() {
         Notifications.getPermissionsAsync().catch(() => ({ status: 'unknown' } as any)),
       ]);
 
-      const overlay = await devicePolicy.canDrawOverlays().catch(() => null);
-      const accessibility = await devicePolicy.isAccessibilityEnabled().catch(() => null);
-      const batteryOptimization = await devicePolicy.isIgnoringBatteryOptimizations().catch(() => null);
-      const adminActive = await devicePolicy.isAdminActive().catch(() => null);
-      const autoStart = (await AsyncStorage.getItem('autostart_enabled')) === 'true';
-
       const escapeHtml = (value: any) =>
         String(value ?? 'N/A')
           .replace(/&/g, '&amp;')
@@ -424,10 +425,10 @@ export default function AdminSettings() {
           .replace(/>/g, '&gt;');
 
       const logLines = logs
-        .map((log: any) => `${log.timestamp || ''} [${log.level || 'log'}] ${log.message || ''}`)
+        .map((log: any) => `${log.timestamp || ''} [${log.level || 'log'}] ${redactText(log.message || '')}`)
         .join('\n');
       const apiLines = apiErrors
-        .map((err: any) => `${err.timestamp || ''} ${err.method || ''} ${err.url || ''} ${err.status || ''} ${err.statusText || err.error || ''}`)
+        .map((err: any) => `${err.timestamp || ''} ${err.method || ''} ${redactUrl(err.url || '')} ${err.status || ''} ${redactText(err.statusText || err.error || '')}`)
         .join('\n');
 
       const html = `
@@ -435,13 +436,6 @@ export default function AdminSettings() {
           <body style="font-family: Helvetica, Arial, sans-serif; padding: 24px; color: #0f172a;">
             <h1>Diagnostic Report</h1>
             <p>Generated: ${new Date().toLocaleString()}</p>
-            <h2>Registration</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Admin ID</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(adminId)}</td></tr>
-              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Client ID</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(clientId)}</td></tr>
-              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Registration Code</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(registrationCode)}</td></tr>
-            </table>
-
             <h2>Device Info</h2>
             <table style="width: 100%; border-collapse: collapse;">
               <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Manufacturer</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(deviceInfo.manufacturer)}</td></tr>
@@ -454,13 +448,8 @@ export default function AdminSettings() {
 
             <h2>Permission Status</h2>
             <table style="width: 100%; border-collapse: collapse;">
-              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Overlay</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(overlay)}</td></tr>
-              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Accessibility</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(accessibility)}</td></tr>
-              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Battery Optimization Ignored</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(batteryOptimization)}</td></tr>
               <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Location</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(locationPerm.status)}</td></tr>
               <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Notifications</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(notificationPerm.status)}</td></tr>
-              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Device Admin Active</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(adminActive)}</td></tr>
-              <tr><td style="padding: 6px; border: 1px solid #e2e8f0;">Auto Start Flag</td><td style="padding: 6px; border: 1px solid #e2e8f0;">${escapeHtml(autoStart)}</td></tr>
             </table>
 
             <h2>Last 50 App Logs</h2>
@@ -728,6 +717,7 @@ export default function AdminSettings() {
           text: t('logout'),
           style: 'destructive',
           onPress: async () => {
+            invalidateClients();
             await Promise.all([deleteSecureItem('admin_token'), deleteSecureItem('admin_id'), AsyncStorage.multiRemove(['admin_username'])]);
             router.replace('/');
           },
@@ -1116,6 +1106,28 @@ export default function AdminSettings() {
             </TouchableOpacity>
           </View>
         )}
+
+        {/* Client app link used by the "share code" handover message */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{ta(language, 'clientAppLink')}</Text>
+          <View style={styles.diagnosticCard}>
+            <Text style={styles.diagnosticText}>{ta(language, 'clientAppLinkHint')}</Text>
+            <TextInput
+              style={[styles.input, { marginTop: 8 }]}
+              value={clientAppLink}
+              onChangeText={setClientAppLink}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              placeholder="https://"
+              placeholderTextColor="#64748B"
+            />
+            <TouchableOpacity style={[styles.diagnosticButton, { marginTop: 10 }]} onPress={saveClientAppLink}>
+              <Ionicons name="save" size={18} color="#fff" />
+              <Text style={styles.diagnosticButtonText}>{ta(language, 'save')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {/* Diagnostic Report - Enterprise Feature */}
         {isSuperAdmin && canAccess('audit_log') && (

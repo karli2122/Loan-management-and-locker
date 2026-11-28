@@ -1,5 +1,5 @@
-import { authedFetch } from '../../src/utils/adminAuth';
-import React, { useState, useEffect } from 'react';
+import { authedFetch, responseError } from '../../src/utils/adminAuth';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,9 @@ import API_URL from '../../src/constants/api';
 import { getErrorMessage } from '../../src/utils/errorHandler';
 import { DatePicker } from '../../src/components/DatePicker';
 import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
+import { parseAmount, round2 } from '../../src/utils/money';
+import { useClients, invalidateClients } from '../../src/utils/clientsStore';
+import { ta } from '../../src/utils/adminI18n';
 
 interface Client {
   id: string;
@@ -46,13 +49,17 @@ export default function AddLoan() {
   const { language, t } = useLanguage();
   const { formatAmount, currencySymbol } = useCurrency();
   const [loading, setLoading] = useState(false);
-  const [loadingClients, setLoadingClients] = useState(true);
+  const { clients: storeClients, loaded: clientsLoaded } = useClients();
+  const clients = storeClients as Client[];
+  const loadingClients = !clientsLoaded;
+  const submitting = useRef(false);
+  const createdClientId = useRef<string | null>(null);
+  const [downPayment, setDownPayment] = useState('');
   const [loadingPlans, setLoadingPlans] = useState(true);
   
   // Client selection
   const [clientMode, setClientMode] = useState<'existing' | 'new'>('existing');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [clients, setClients] = useState<Client[]>([]);
   const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [showClientPicker, setShowClientPicker] = useState(false);
   
@@ -74,7 +81,6 @@ export default function AddLoan() {
   const [isRenewal, setIsRenewal] = useState(false);
 
   useEffect(() => {
-    fetchClients();
     fetchLoanPlans();
   }, []);
 
@@ -103,16 +109,13 @@ export default function AddLoan() {
     try {
       const adminToken = await getSecureItem('admin_token');
       if (!adminToken) {
-        console.log('No admin token found for renewal fetch');
         return;
       }
-      console.log('Fetching last loan for renewal, clientId:', clientId);
       const response = await authedFetch(
         `${API_URL}/api/paid-loans/${clientId}/latest?admin_token=${adminToken}`
       );
       if (response.ok) {
         const data = await response.json();
-        console.log('Renewal data received:', data);
         // Use explicit checks for undefined/null instead of truthy checks (0 is valid)
         if (data.loan_amount !== undefined && data.loan_amount !== null) {
           setLoanAmount(String(data.loan_amount));
@@ -128,19 +131,20 @@ export default function AddLoan() {
           setDueDate(due.toISOString().split('T')[0]);
         }
       } else {
-        console.log('Renewal fetch failed with status:', response.status);
       }
     } catch (error) {
-      console.error('Error fetching last loan for renewal:', error);
     }
   };
 
   // Real-time interest calculator (simple month-based method)
   // Example: 200 loan, 50% monthly rate, 2 months = 200 * 0.5 * 2 = 200
   const emiPreview = React.useMemo(() => {
-    const amount = parseFloat(loanAmount);
-    const rate = parseFloat(interestRate); // Monthly interest rate %
-    if (!dueDate || !givenDate || isNaN(amount) || amount <= 0 || isNaN(rate) || rate < 0) return null;
+    const gross = parseAmount(loanAmount);
+    const rate = parseAmount(interestRate); // Monthly interest rate %
+    const down = parseAmount(downPayment) || 0;
+    if (!dueDate || !givenDate || gross === null || gross <= 0 || rate === null || rate < 0) return null;
+    const amount = gross - down; // principal after the down payment
+    if (amount <= 0) return null;
 
     const start = new Date(givenDate);
     const due = new Date(dueDate);
@@ -159,56 +163,33 @@ export default function AddLoan() {
       months,
       days,
     };
-  }, [loanAmount, interestRate, givenDate, dueDate]);
-
-  const fetchClients = async () => {
-    try {
-      const adminToken = await getSecureItem('admin_token');
-      const query = adminToken ? `?limit=500&admin_token=${adminToken}` : '?limit=500';
-      const response = await authedFetch(`${API_URL}/api/clients${query}`);
-      if (response.ok) {
-        const data = await response.json();
-        const clientList = data?.clients || (Array.isArray(data) ? data : []);
-        setClients(clientList);
-      }
-    } catch (error) {
-      console.error('Error fetching clients:', error);
-    } finally {
-      setLoadingClients(false);
-    }
-  };
+  }, [loanAmount, interestRate, downPayment, givenDate, dueDate]);
 
   const fetchLoanPlans = async () => {
     try {
       const adminToken = await getSecureItem('admin_token');
       if (!adminToken) {
-        console.error('Admin token not found');
         return;
       }
       
-      console.log('Fetching loan plans from:', `${API_URL}/api/loan-plans?admin_token=${adminToken}`);
       const response = await authedFetch(`${API_URL}/api/loan-plans?admin_token=${adminToken}`);
-      console.log('Loan plans response status:', response.status);
       if (response.ok) {
         const data = await response.json();
-        console.log('Loan plans fetched:', data.length, 'plans');
         setLoanPlans(data);
       } else {
-        console.error('Failed to fetch loan plans:', response.status);
       }
     } catch (error) {
-      console.error('Error fetching loan plans:', error);
     } finally {
       setLoadingPlans(false);
     }
   };
 
-  const filteredClients = clients.filter(c =>
-    c && c.name && c.phone && (
-      c.name.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
-      c.phone.includes(clientSearchQuery)
-    )
-  );
+  const filteredClients = clients.filter((c) => {
+    if (!c) return false;
+    const q = clientSearchQuery.toLowerCase();
+    if (!q) return true;
+    return (c.name || '').toLowerCase().includes(q) || (c.phone || '').includes(clientSearchQuery);
+  });
 
   const handlePlanSelect = (plan: LoanPlan) => {
     setSelectedPlan(plan);
@@ -220,50 +201,44 @@ export default function AddLoan() {
     setShowPlanPicker(false);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (skipDuplicateCheck = false) => {
+    if (submitting.current) return;
     // Validate inputs
     if (clientMode === 'existing' && !selectedClient) {
-      Alert.alert(
-        t('error'),
-        t('pleaseSelectAClient')
-      );
+      Alert.alert(t('error'), t('pleaseSelectAClient'));
       return;
     }
 
+    const newEmail = newClientEmail.trim();
     if (clientMode === 'new') {
-      if (!newClientName.trim() || !newClientPhone.trim() || !newClientEmail.trim()) {
-        Alert.alert(
-          t('error'),
-          t('pleaseFillAllClientFields')
-        );
+      if (!newClientName.trim() || !newClientPhone.trim()) {
+        Alert.alert(t('error'), t('pleaseFillAllClientFields'));
+        return;
+      }
+      if (newEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+        Alert.alert(t('error'), language === 'et' ? 'E-posti aadress ei ole korrektne' : 'Email address is not valid');
         return;
       }
     }
 
-    const loanAmountNum = parseFloat(loanAmount);
-    const interestRateNum = parseFloat(interestRate);
+    const loanAmountNum = parseAmount(loanAmount);
+    const interestRateNum = parseAmount(interestRate);
+    const downNum = parseAmount(downPayment) || 0;
 
-    if (!loanAmount.trim() || isNaN(loanAmountNum) || loanAmountNum <= 0) {
-      Alert.alert(
-        t('error'),
-        t('pleaseEnterAValidLoanAmount')
-      );
+    if (!loanAmount.trim() || loanAmountNum === null || loanAmountNum <= 0) {
+      Alert.alert(t('error'), t('pleaseEnterAValidLoanAmount'));
       return;
     }
-
-    if (!interestRate.trim() || isNaN(interestRateNum) || interestRateNum < 0) {
-      Alert.alert(
-        t('error'),
-        t('pleaseEnterAValidInterestRate')
-      );
+    if (downNum < 0 || downNum >= loanAmountNum) {
+      Alert.alert(t('error'), language === 'et' ? 'Sissemakse peab olema väiksem kui laenusumma' : 'Down payment must be smaller than the loan amount');
       return;
     }
-
+    if (!interestRate.trim() || interestRateNum === null || interestRateNum < 0) {
+      Alert.alert(t('error'), t('pleaseEnterAValidInterestRate'));
+      return;
+    }
     if (!dueDate) {
-      Alert.alert(
-        t('error'),
-        t('pleaseSelectADueDate')
-      );
+      Alert.alert(t('error'), t('pleaseSelectADueDate'));
       return;
     }
 
@@ -273,132 +248,97 @@ export default function AddLoan() {
     const tomorrow = new Date();
     tomorrow.setHours(0, 0, 0, 0);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
     if (selectedDate < tomorrow) {
-      Alert.alert(
-        t('error'),
-        t('dueDateMustBeAtLeast')
-      );
+      Alert.alert(t('error'), t('dueDateMustBeAtLeast'));
       return;
     }
 
+    // Same phone number already in the client list?
+    if (clientMode === 'new' && !createdClientId.current && !skipDuplicateCheck) {
+      const key = (n: string) => (n || '').replace(/[^\d]/g, '').replace(/^0+/, '');
+      const k = key(newClientPhone);
+      const dup = k && clients.find((c) => key(c.phone) === k);
+      if (dup) {
+        Alert.alert(
+          ta(language, 'duplicatePhoneTitle'),
+          ta(language, 'duplicatePhoneBody', { name: dup.name || dup.phone }),
+          [
+            { text: t('cancel'), style: 'cancel' },
+            { text: ta(language, 'createAnyway'), style: 'destructive', onPress: () => handleSubmit(true) },
+          ],
+        );
+        return;
+      }
+    }
+
+    submitting.current = true;
     setLoading(true);
     try {
-      let clientId = selectedClient?.id;
+      let targetClientId = selectedClient?.id;
 
-      // Create new client if needed
+      // Create new client if needed. The id is remembered, so retrying after a failed loan
+      // setup reuses the same client instead of creating a duplicate.
       if (clientMode === 'new') {
-        const adminToken = await getSecureItem('admin_token');
-        const newClientData = {
-          name: newClientName.trim(),
-          phone: newClientPhone.trim(),
-          email: newClientEmail.trim(),
-          address: newClientAddress.trim(),
-          birth_number: newClientBirthNumber.trim(),
-        };
-        
-        console.log('Creating new client for loan:', newClientData);
-        const clientResponse = await authedFetch(`${API_URL}/api/clients?admin_token=${adminToken || ''}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newClientData),
-        });
+        if (!createdClientId.current) {
+          const newClientData: Record<string, string> = {
+            name: newClientName.trim(),
+            phone: newClientPhone.trim(),
+          };
+          if (newEmail) newClientData.email = newEmail;
+          if (newClientAddress.trim()) newClientData.address = newClientAddress.trim();
+          if (newClientBirthNumber.trim()) newClientData.birth_number = newClientBirthNumber.trim();
 
-        console.log('Client creation response status:', clientResponse.status);
-        if (!clientResponse.ok) {
-          // Try to get error message from response
-          let errorMessage = `Failed to create client (${clientResponse.status})`;
-          try {
-            const contentType = clientResponse.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-              const errorData = await clientResponse.json();
-              console.error('Client creation error data:', errorData);
-              errorMessage = errorData?.detail || errorData?.message || errorMessage;
-            } else {
-              const errorText = await clientResponse.text();
-              console.error('Client creation error text:', errorText.substring(0, 200));
-              // If it's an HTML error page, just use the status code
-              if (errorText.toLowerCase().includes('<!doctype') || errorText.toLowerCase().includes('<html')) {
-                errorMessage = `Server error (${clientResponse.status}). Please check backend connection.`;
-              } else if (errorText && errorText.length < 200) {
-                // Only use text if it's short and likely a real error message
-                errorMessage = errorText;
-              }
-            }
-          } catch (parseError) {
-            console.error('Error parsing error response:', parseError);
-          }
-          throw new Error(errorMessage);
+          const clientResponse = await authedFetch(`${API_URL}/api/clients`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newClientData),
+          });
+          if (clientResponse.status === 401) return;
+          if (!clientResponse.ok) throw new Error(await responseError(clientResponse, `Failed to create client (${clientResponse.status})`));
+          const newClient = await clientResponse.json();
+          createdClientId.current = newClient.id;
+          invalidateClients();
         }
-
-        const newClient = await clientResponse.json();
-        console.log('New client created successfully:', newClient.id);
-        clientId = newClient.id;
+        targetClientId = createdClientId.current!;
       }
 
       // Setup loan for the client
-      const adminToken = await getSecureItem('admin_token');
       const loanData = {
         loan_amount: loanAmountNum,
         interest_rate: interestRateNum,
         given_date: givenDate,
         due_date: dueDate,
-        down_payment: 0,
+        down_payment: downNum,
       };
-      
-      console.log('Setting up loan for client:', clientId, loanData);
-      const loanResponse = await authedFetch(`${API_URL}/api/loans/${clientId}/setup?admin_token=${adminToken || ''}`, {
+      const loanResponse = await authedFetch(`${API_URL}/api/loans/${targetClientId}/setup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loanData),
       });
-
-      console.log('Loan setup response status:', loanResponse.status);
+      if (loanResponse.status === 401) return;
       if (!loanResponse.ok) {
-        // Try to get error message from response
-        let errorMessage = `Failed to setup loan (${loanResponse.status})`;
-        try {
-          const contentType = loanResponse.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            const errorData = await loanResponse.json();
-            console.error('Loan setup error data:', errorData);
-            errorMessage = errorData?.detail || errorData?.message || errorMessage;
-          } else {
-            const errorText = await loanResponse.text();
-            console.error('Loan setup error text:', errorText.substring(0, 200));
-            // If it's an HTML error page, just use the status code
-            if (errorText.toLowerCase().includes('<!doctype') || errorText.toLowerCase().includes('<html')) {
-              errorMessage = `Server error (${loanResponse.status}). Please check backend connection.`;
-            } else if (errorText && errorText.length < 200) {
-              // Only use text if it's short and likely a real error message
-              errorMessage = errorText;
-            }
-          }
-        } catch (parseError) {
-          console.error('Error parsing error response:', parseError);
-        }
-        throw new Error(errorMessage);
+        const msg = await responseError(loanResponse, `Failed to setup loan (${loanResponse.status})`);
+        throw new Error(
+          createdClientId.current
+            ? (language === 'et'
+                ? `${msg}\n\nKlient on juba loodud – proovige uuesti, klienti ei looda teist korda.`
+                : `${msg}\n\nThe client was already created – retry and it will not be created twice.`)
+            : msg,
+        );
       }
+      await loanResponse.json().catch(() => ({}));
+      invalidateClients();
+      createdClientId.current = null;
 
-      const loanResponseData = await loanResponse.json();
-      console.log('Loan setup successful:', loanResponseData);
-      
       Alert.alert(
         t('success'),
-        language === 'et' 
-          ? `Laen loodud!`
-          : `Loan created successfully!`,
+        language === 'et' ? `Laen loodud!` : `Loan created successfully!`,
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error: any) {
-      const errorMessage = getErrorMessage(error, 'Failed to add loan. Please try again.');
-      console.error('Add loan error:', error);
-      
-      Alert.alert(
-        t('error'),
-        errorMessage
-      );
+      Alert.alert(t('error'), getErrorMessage(error, 'Failed to add loan. Please try again.'));
     } finally {
+      submitting.current = false;
       setLoading(false);
     }
   };
@@ -505,7 +445,7 @@ export default function AddLoan() {
                 <Ionicons name="mail" size={20} color="#64748B" />
                 <TextInput
                   style={styles.input}
-                  placeholder={t('email')}
+                  placeholder={`${t('email')} (${ta(language, 'emailOptional')})`}
                   placeholderTextColor="#64748B"
                   value={newClientEmail}
                   onChangeText={setNewClientEmail}
@@ -575,6 +515,19 @@ export default function AddLoan() {
               placeholderTextColor="#64748B"
               value={loanAmount}
               onChangeText={setLoanAmount}
+              keyboardType="decimal-pad"
+            />
+          </View>
+
+          <Text style={styles.label}>{ta(language, 'downPayment')} ({currencySymbol})</Text>
+          <View style={styles.inputContainer}>
+            <Ionicons name="wallet" size={20} color="#64748B" />
+            <TextInput
+              style={styles.input}
+              placeholder="0"
+              placeholderTextColor="#64748B"
+              value={downPayment}
+              onChangeText={setDownPayment}
               keyboardType="decimal-pad"
             />
           </View>
@@ -668,7 +621,7 @@ export default function AddLoan() {
 
         <TouchableOpacity
           style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
+          onPress={() => handleSubmit()}
           disabled={loading}
         >
           {loading ? (

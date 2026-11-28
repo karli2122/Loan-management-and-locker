@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { DatePicker } from '../../components/DatePicker';
 import { styles } from './styles';
+import { ta } from '../../utils/adminI18n';
 import { Client, LoanPreview } from './types';
 
 // ─── Payment Modal ───────────────────────────────────────────────
@@ -23,16 +24,25 @@ interface PaymentModalProps {
   onChangeNotes: (v: string) => void;
   onConfirm: () => void;
   onClose: () => void;
+  paymentDate?: string;
+  onChangeDate?: (v: string) => void;
+  dueAmount?: number;
+  fullAmount?: number;
+  onPayDue?: () => void;
+  onPayFull?: () => void;
+  formatAmount?: (n: number) => string;
 }
 
 export const PaymentModal = ({
   visible, client, language, t, actionLoading,
   paymentAmount, paymentMethod, paymentNotes,
   onChangeAmount, onChangeMethod, onChangeNotes, onConfirm, onClose,
+  paymentDate, onChangeDate, dueAmount, fullAmount, onPayDue, onPayFull, formatAmount,
 }: PaymentModalProps) => (
   <Modal visible={visible} transparent animationType="slide">
     <View style={styles.modalOverlay}>
-      <View style={styles.modalContent}>
+      <View style={[styles.modalContent, { maxHeight: '92%' }]}>
+       <ScrollView keyboardShouldPersistTaps="handled">
         <Text style={styles.modalTitle}>{t('recordPayment')}</Text>
 
         <View style={styles.inputGroup}>
@@ -45,7 +55,38 @@ export const PaymentModal = ({
             keyboardType="decimal-pad"
             placeholderTextColor="#64748B"
           />
+          {(onPayDue || onPayFull) && (
+            <View style={{ flexDirection: 'row', marginTop: 8 }}>
+              {onPayDue && (dueAmount || 0) > 0 && (
+                <TouchableOpacity
+                  onPress={onPayDue}
+                  style={{ flex: 1, backgroundColor: '#1E3A5F', borderRadius: 8, paddingVertical: 8, alignItems: 'center', marginRight: 8 }}
+                >
+                  <Text style={{ color: '#93C5FD', fontWeight: '700', fontSize: 13 }}>
+                    {ta(language, 'payDue')}{formatAmount ? ` (${formatAmount(dueAmount || 0)})` : ''}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {onPayFull && (fullAmount || 0) > 0 && (
+                <TouchableOpacity
+                  onPress={onPayFull}
+                  style={{ flex: 1, backgroundColor: '#14532D', borderRadius: 8, paddingVertical: 8, alignItems: 'center' }}
+                >
+                  <Text style={{ color: '#86EFAC', fontWeight: '700', fontSize: 13 }}>
+                    {ta(language, 'payFull')}{formatAmount ? ` (${formatAmount(fullAmount || 0)})` : ''}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </View>
+
+        {onChangeDate && (
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>{ta(language, 'paymentDate')}</Text>
+            <DatePicker value={paymentDate || ''} onChange={onChangeDate} maxDate={new Date()} />
+          </View>
+        )}
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>{t('paymentMethod')}</Text>
@@ -96,6 +137,7 @@ export const PaymentModal = ({
             )}
           </TouchableOpacity>
         </View>
+       </ScrollView>
       </View>
     </View>
   </Modal>

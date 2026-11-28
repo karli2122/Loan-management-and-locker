@@ -1,4 +1,4 @@
-import { authedFetch } from '../../src/utils/adminAuth';
+import { authedFetch, responseError } from '../../src/utils/adminAuth';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Linking,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -49,10 +50,18 @@ import type { Client, LoanHistoryItem, LoanPreview } from '../../src/components/
 import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 import { DeviceHealthCard } from '../../src/components/admin/DeviceHealthCard';
 import { stripLockMarker, withRestrictedMarker } from '../../src/utils/lockCompat';
+import { LockStatusBanner } from '../../src/components/admin/LockStatusBanner';
+import { ConfirmDeleteModal } from '../../src/components/admin/ConfirmDeleteModal';
+import { parseAmount, round2 } from '../../src/utils/money';
+import { recordLockRequest } from '../../src/utils/lockRequests';
+import { shareHandover } from '../../src/utils/handover';
+import { ta } from '../../src/utils/adminI18n';
+import { invalidateClients } from '../../src/utils/clientsStore';
+import { parseServerDate } from '../../src/utils/heartbeat';
 
 export default function ClientDetails() {
   const router = useRouter();
-  const { id } = useLocalSearchParams();
+  const { id, pay } = useLocalSearchParams();
   const { t, language } = useLanguage();
   const { formatAmount } = useCurrency();
   const { colors } = useTheme();
@@ -78,6 +87,15 @@ export default function ClientDetails() {
   // Remove unused restructure state
   const [loanRefreshKey, setLoanRefreshKey] = useState(0);
   const [docVaultModal, setDocVaultModal] = useState(false);
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [offline, setOffline] = useState(false);
+  const [lockSyncKey, setLockSyncKey] = useState(0);
+  const [paymentDate, setPaymentDate] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
+  const [receipt, setReceipt] = useState<null | {
+    amount: number; date: string; method: string; outstanding: number | null; fullyPaid: boolean; notes: string; ref?: string;
+  }>(null);
+  const paySubmitting = useRef(false);
+  const payPrompted = useRef(false);
 
   // Modal form state
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -122,15 +140,6 @@ export default function ClientDetails() {
   // ─── Auth helpers ──────────────────────────────────────────────
   const getAdminToken = async () => await getSecureItem('admin_token');
 
-  const handleAuthFailure = async () => {
-    await Promise.all([deleteSecureItem('admin_token'), deleteSecureItem('admin_id'), AsyncStorage.multiRemove(['admin_username', 'admin_stay_signed_in'])]);
-    Alert.alert(
-      t('sessionExpired'),
-      t('pleaseLogInAgain'),
-      [{ text: 'OK', onPress: () => router.replace('/admin/login') }]
-    );
-  };
-
   const buildAdminTokenQuery = async (hasQuery = false) => {
     const token = await getAdminToken();
     return token ? `${hasQuery ? '&' : '?'}admin_token=${token}` : '';
@@ -138,24 +147,29 @@ export default function ClientDetails() {
 
   // ─── Data fetching ─────────────────────────────────────────────
 
-  const fetchClient = async () => {
+  // Returns the loaded client. A failed refresh (network error, server error, expired token)
+  // never leaves the screen and never clears what is shown: it only raises the offline banner.
+  const fetchClient = async (): Promise<Client | null> => {
     try {
       const token = await getAdminToken();
-      if (!token) {
-        Alert.alert(t('error'), 'Not authenticated');
-        router.back();
-        return;
-      }
+      if (!token) return null; // session flow takes over
       setAdminToken(token);
-      const response = await authedFetch(`${API_URL}/api/clients/${id}?admin_token=${token}`);
-      if (response.status === 401) { handleAuthFailure(); return; }
-      if (!response.ok) throw new Error('Client not found');
+      const response = await authedFetch(`${API_URL}/api/clients/${id}`);
+      if (response.status === 401) return null; // handled centrally (session expired screen)
+      if (response.status === 404) {
+        Alert.alert(t('error'), language === 'et' ? 'Klienti ei leitud' : 'Client not found');
+        router.back();
+        return null;
+      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       setClient(data);
       setLockMessage(stripLockMarker(data.lock_message));
+      setOffline(false);
+      return data;
     } catch (error) {
-      Alert.alert(t('error'), 'Failed to load client details');
-      router.back();
+      setOffline(true);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -196,8 +210,6 @@ export default function ClientDetails() {
   };
 
   // ─── Effects ───────────────────────────────────────────────────
-  useEffect(() => { fetchClient(); }, [id]);
-
   // Auto-refresh when screen comes into focus
   useFocusEffect(
     useCallback(() => {
@@ -208,8 +220,16 @@ export default function ClientDetails() {
 
   const isModalOpenRef = useRef(false);
   useEffect(() => {
-    isModalOpenRef.current = warningModal || lockModal || paymentModal || editDeviceModal || editClientModal || editLoanModal;
-  }, [warningModal, lockModal, paymentModal, editDeviceModal, editClientModal, editLoanModal]);
+    isModalOpenRef.current = warningModal || lockModal || paymentModal || editDeviceModal || editClientModal || editLoanModal || deleteModal || !!receipt;
+  }, [warningModal, lockModal, paymentModal, editDeviceModal, editClientModal, editLoanModal, deleteModal, receipt]);
+
+  // Opened from the overdue queue ("Record payment"): jump straight into the payment dialog.
+  useEffect(() => {
+    if (pay === '1' && client && !payPrompted.current) {
+      payPrompted.current = true;
+      openPaymentModal(paymentDue());
+    }
+  }, [client, pay]);
 
   useEffect(() => {
     const interval = setInterval(() => { if (!isModalOpenRef.current) fetchClient(); }, 15000);
@@ -275,15 +295,23 @@ export default function ClientDetails() {
               const token = await getSecureItem('admin_token');
               if (!token) { Alert.alert(t('error'), 'Not authenticated'); return; }
               const response = await authedFetch(`${API_URL}/api/clients/${id}/generate-code?admin_token=${token}&lock_mode=${lockMode}`, { method: 'POST' });
-              if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error || errorData.detail || 'Failed to generate code'); }
+              if (!response.ok) throw new Error(await responseError(response, 'Failed to generate code'));
               const data = await response.json();
               if (client) setClient({ ...client, registration_code: data.registration_code, lock_mode: data.lock_mode });
               const modeLabel = lockMode === 'device_owner' ? 'Device Owner (9-digit code)' : 'Device Admin (8-digit code)';
+              invalidateClients();
               Alert.alert(
                 t('success'),
                 language === 'et'
                   ? `Uus registreerimiskood: ${data.registration_code}\nRežiim: ${modeLabel}`
-                  : `New registration code: ${data.registration_code}\nMode: ${modeLabel}`
+                  : `New registration code: ${data.registration_code}\nMode: ${modeLabel}`,
+                [
+                  { text: 'OK', style: 'cancel' },
+                  {
+                    text: ta(language, 'shareCode'),
+                    onPress: () => shareHandover({ name: client?.name, code: data.registration_code, language }),
+                  },
+                ],
               );
             } catch (error: any) { Alert.alert(t('error'), error.message); }
             finally { setGeneratingCode(false); }
@@ -310,8 +338,11 @@ export default function ClientDetails() {
           ? 'Teie makse on hilinenud. Palun tasuge, et vältida telefoni lukustamist.'
           : 'Your payment is overdue. Please pay to avoid your phone being locked.');
         const response = await authedFetch(`${API_URL}/api/clients/${id}/warning?message=${encodeURIComponent(msg)}${adminQuery}`, { method: 'POST' });
-        if (!response.ok) throw new Error('Failed to send warning');
+        if (!response.ok) throw new Error(await responseError(response, 'Failed to send warning'));
+        if (client?.is_locked) await recordLockRequest(String(id), 'unlock', client?.last_heartbeat);
         await fetchClient();
+        setLockSyncKey((k) => k + 1);
+        invalidateClients();
         setLockModal(false);
         Alert.alert(t('success'), t('warningSentSuccess') || 'Warning sent');
         return;
@@ -322,9 +353,12 @@ export default function ClientDetails() {
       const message = level === 'restricted' ? withRestrictedMarker(lockMessage) : stripLockMarker(lockMessage);
       const allow = level === 'restricted' && lockAllowlist.trim() ? `&lock_allowlist=${encodeURIComponent(lockAllowlist)}` : '';
       const response = await authedFetch(`${API_URL}/api/clients/${id}/lock?message=${encodeURIComponent(message)}&lock_level=${encodeURIComponent(level)}${allow}${adminQuery}`, { method: 'POST' });
-      if (!response.ok) throw new Error('Failed to lock device');
+      if (!response.ok) throw new Error(await responseError(response, 'Failed to lock device'));
       const lockResult = await response.json().catch(() => ({}));
+      await recordLockRequest(String(id), 'lock', client?.last_heartbeat);
       await fetchClient();
+      setLockSyncKey((k) => k + 1);
+      invalidateClients();
       setLockModal(false);
       if (lockResult.lock_fallback_reason === 'device_admin_no_package_suspend') {
         Alert.alert(
@@ -348,8 +382,11 @@ export default function ClientDetails() {
           try {
             const adminQuery = await buildAdminTokenQuery();
             const response = await authedFetch(`${API_URL}/api/clients/${id}/unlock${adminQuery}`, { method: 'POST' });
-            if (!response.ok) throw new Error('Failed to unlock device');
+            if (!response.ok) throw new Error(await responseError(response, 'Failed to unlock device'));
+            await recordLockRequest(String(id), 'unlock', client?.last_heartbeat);
             await fetchClient();
+            setLockSyncKey((k) => k + 1);
+            invalidateClients();
             Alert.alert(t('success'), t('deviceUnlockedSuccess'));
           } catch (error: any) { Alert.alert(t('error'), error.message); }
           finally { setActionLoading(false); }
@@ -364,8 +401,9 @@ export default function ClientDetails() {
     try {
       const adminQuery = await buildAdminTokenQuery(true);
       const response = await authedFetch(`${API_URL}/api/clients/${id}/warning?message=${encodeURIComponent(warningMessage)}${adminQuery}`, { method: 'POST' });
-      if (!response.ok) throw new Error('Failed to send warning');
+      if (!response.ok) throw new Error(await responseError(response, 'Failed to send warning'));
       await fetchClient();
+      invalidateClients();
       setWarningModal(false);
       setWarningMessage('');
       Alert.alert(t('success'), t('warningSentSuccess'));
@@ -394,28 +432,19 @@ export default function ClientDetails() {
     ]);
   };
 
-  const handleDelete = async () => {
-    Alert.alert(
-      t('deleteClient'),
-      t('areYouSureThisWillAlso'),
-      [
-        { text: t('cancel'), style: 'cancel' },
-        {
-          text: t('yesDelete'), style: 'destructive',
-          onPress: async () => {
-            setActionLoading(true);
-            try {
-              const adminQuery = await buildAdminTokenQuery();
-              const deleteRes = await authedFetch(`${API_URL}/api/clients/${id}${adminQuery}`, { method: 'DELETE' });
-              if (!deleteRes.ok) { const err = await deleteRes.json(); throw new Error(err.detail || 'Failed to delete client'); }
-              Alert.alert(t('success'), t('clientDeletedSuccess'));
-              router.back();
-            } catch (error: any) { Alert.alert(t('error'), error.message); }
-            finally { setActionLoading(false); }
-          },
-        },
-      ]
-    );
+  const handleDelete = () => setDeleteModal(true);
+
+  const performDelete = async () => {
+    setActionLoading(true);
+    try {
+      const deleteRes = await authedFetch(`${API_URL}/api/clients/${id}`, { method: 'DELETE' });
+      if (!deleteRes.ok) throw new Error(await responseError(deleteRes, 'Failed to delete client'));
+      invalidateClients();
+      setDeleteModal(false);
+      Alert.alert(t('success'), t('clientDeletedSuccess'));
+      router.back();
+    } catch (error: any) { Alert.alert(t('error'), error.message); }
+    finally { setActionLoading(false); }
   };
 
   const handleFetchPrice = async () => {
@@ -500,46 +529,139 @@ export default function ClientDetails() {
     finally { setActionLoading(false); }
   };
 
+  // Amounts the payment dialog can fill in for the admin.
+  const localDate = (d = new Date()) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const numOrNull = (x: any): number | null =>
+    x === null || x === undefined || x === '' || !Number.isFinite(Number(x)) ? null : Number(x);
+
+  // null = unknown. For a selected loan only that loan's own balance counts (never the client total).
+  const paymentOutstanding = (): number | null => {
+    const o = selectedLoanId ? numOrNull((selectedLoan as any)?.outstanding_balance) : numOrNull(client?.outstanding_balance);
+    return o === null ? null : Math.max(0, o);
+  };
+  const paymentDue = (): number => {
+    const outstanding = paymentOutstanding();
+    if (outstanding === null || outstanding <= 0) return 0;
+    const emi = Number((selectedLoan as any)?.monthly_emi ?? client?.monthly_emi ?? 0);
+    return round2(emi > 0 ? Math.min(emi, outstanding) : outstanding);
+  };
+
+  const openPaymentModal = (prefill?: number) => {
+    setPaymentDate(localDate());
+    setPaymentAmount(prefill !== undefined && prefill > 0 ? String(round2(prefill)) : '');
+    setPaymentNotes('');
+    setPaymentModal(true);
+  };
+
   const handleRecordPayment = async () => {
-    if (!paymentAmount) {
-      Alert.alert(t('error'), t('pleaseEnterPaymentAmount'));
+    if (paySubmitting.current) return; // double-tap guard
+    const amount = parseAmount(paymentAmount);
+    const outstanding = paymentOutstanding();
+    if (amount === null || amount <= 0) {
+      Alert.alert(t('error'), ta(language, 'invalidAmount'));
       return;
     }
+    if (outstanding !== null && outstanding <= 0.005) {
+      Alert.alert(t('error'), ta(language, 'fullyPaid'));
+      return;
+    }
+    if (outstanding !== null && amount > outstanding + 0.005) {
+      Alert.alert(t('error'), ta(language, 'amountTooHigh', { max: formatAmount(outstanding) }));
+      return;
+    }
+    paySubmitting.current = true;
     setActionLoading(true);
+    let data: any = {};
+    let paidAmount = amount;
+    const today = localDate();
     try {
-      const token = await getSecureItem('admin_token');
-      
-      // Use loan-specific endpoint if a loan is selected, otherwise use legacy endpoint
-      const endpoint = selectedLoanId 
-        ? `${API_URL}/api/loans/${selectedLoanId}/payment?admin_token=${token}&amount=${parseFloat(paymentAmount)}&notes=${encodeURIComponent(paymentNotes || '')}`
-        : `${API_URL}/api/loans/${id}/payments?admin_token=${token}`;
-      
+      const datePart = paymentDate && paymentDate !== today ? `${paymentDate}T12:00:00` : undefined;
+      const endpoint = selectedLoanId
+        ? `${API_URL}/api/loans/${selectedLoanId}/payment?amount=${amount}&payment_method=${encodeURIComponent(paymentMethod)}&notes=${encodeURIComponent(paymentNotes || '')}${datePart ? `&payment_date=${encodeURIComponent(datePart)}` : ''}`
+        : `${API_URL}/api/loans/${id}/payments`;
+
       const response = await authedFetch(endpoint, {
-        method: 'POST', 
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: selectedLoanId ? undefined : JSON.stringify({ amount: parseFloat(paymentAmount), payment_method: paymentMethod, notes: paymentNotes }),
+        body: selectedLoanId
+          ? undefined
+          : JSON.stringify({ amount, payment_method: paymentMethod, notes: paymentNotes, ...(datePart ? { payment_date: datePart } : {}) }),
       });
-      if (!response.ok) { const errorData = await response.json().catch(() => ({})); throw new Error(errorData.detail || errorData.message || 'Failed to record payment'); }
-      const data = await response.json();
-      const paidAmount = data.payment_amount ?? data.payment?.amount ?? parseFloat(paymentAmount);
-      const outstandingBalance = data.new_outstanding ?? data.updated_balance?.outstanding_balance ?? 0;
-      const fullyPaid = data.loan_fully_paid || outstandingBalance === 0;
-      
+      if (!response.ok) throw new Error(await responseError(response, 'Failed to record payment'));
+      data = (await response.json().catch(() => null)) ?? {};
+    } catch (error: any) {
+      // A timeout may still have been recorded by the server: the admin must check before retrying.
+      const aborted = error?.name === 'AbortError';
       Alert.alert(
-        t('success'),
-        language === 'et'
-          ? `Makse salvestatud!\n\nMakstud: ${formatAmount(paidAmount)}\nJääk: ${formatAmount(outstandingBalance)}${fullyPaid ? '\n\n✓ Laen täielikult makstud!' : ''}`
-          : `Payment recorded!\n\nPaid: ${formatAmount(paidAmount)}\nOutstanding: ${formatAmount(outstandingBalance)}${fullyPaid ? '\n\n✓ Loan fully paid!' : ''}`
+        t('error'),
+        aborted
+          ? (language === 'et'
+              ? 'Server ei vastanud õigel ajal. Makse võib olla salvestatud – kontrollige makseajalugu enne uuesti proovimist.'
+              : 'The server did not answer in time. The payment may have been recorded – check the payment history before trying again.')
+          : (error?.message || 'Failed to record payment'),
       );
+      if (aborted) { invalidateClients(); fetchClient(); setLoanRefreshKey(prev => prev + 1); }
+      paySubmitting.current = false;
+      setActionLoading(false);
+      return;
+    }
+
+    // The payment IS recorded from here on: nothing below may report it as failed.
+    try {
+      const pick = (...vals: any[]) => {
+        for (const v of vals) if (typeof v === 'number' && Number.isFinite(v)) return v;
+        return null;
+      };
+      let newOutstanding = pick(data.new_outstanding, data.updated_balance?.outstanding_balance, data.outstanding_balance);
+      paidAmount = pick(data.payment_amount, data.payment?.amount) ?? amount;
+
       setPaymentModal(false);
       setPaymentAmount('');
+      const notes = paymentNotes;
       setPaymentNotes('');
       setSelectedLoanId(null);
       setSelectedLoan(null);
       setLoanRefreshKey(prev => prev + 1);
-      fetchClient();
-    } catch (error) { Alert.alert(t('error'), error.message || 'Failed to record payment'); }
-    finally { setActionLoading(false); }
+      invalidateClients();
+      const refreshed = await fetchClient().catch(() => null);
+      if (newOutstanding === null && refreshed && numOrNull(refreshed.outstanding_balance) !== null) {
+        newOutstanding = numOrNull(refreshed.outstanding_balance);
+      }
+      // "Fully paid" only when the server says so, or we KNOW the balance is zero.
+      const fullyPaid = data.loan_fully_paid === true || (newOutstanding !== null && newOutstanding <= 0.005);
+      setReceipt({
+        amount: paidAmount,
+        date: paymentDate || today,
+        method: paymentMethod,
+        outstanding: newOutstanding,
+        fullyPaid,
+        notes,
+        ref: data.payment?.id || data.payment_id || data.id,
+      });
+    } catch {
+      setReceipt({ amount: paidAmount, date: paymentDate, method: paymentMethod, outstanding: null, fullyPaid: false, notes: '' });
+    } finally {
+      paySubmitting.current = false;
+      setActionLoading(false);
+    }
+  };
+
+  const shareReceipt = async () => {
+    if (!receipt || !client) return;
+    const methodLabel = receipt.method === 'cash' ? t('cash') : receipt.method === 'bank_transfer' ? t('transfer') : t('card');
+    const lines = [
+      `PayLock – ${ta(language, 'receipt')}`,
+      `${t('client') || 'Client'}: ${client.name}`,
+      `${ta(language, 'paid')}: ${formatAmount(receipt.amount)}`,
+      `${ta(language, 'paymentDate')}: ${receipt.date}`,
+      `${t('paymentMethod')}: ${methodLabel}`,
+      receipt.outstanding !== null ? `${ta(language, 'outstanding')}: ${formatAmount(receipt.outstanding)}` : '',
+      receipt.fullyPaid ? ta(language, 'fullyPaid') : '',
+      receipt.notes ? `${t('notesOptional')}: ${receipt.notes}` : '',
+      receipt.ref ? `Ref: ${String(receipt.ref).slice(0, 8)}` : '',
+    ].filter(Boolean);
+    try { await Share.share({ message: lines.join('\n') }); } catch {}
   };
 
   // ─── Loan edit handlers ────────────────────────────────────────
@@ -627,21 +749,17 @@ export default function ClientDetails() {
     }
   };
 
-  const handleDownloadContract = async () => {
-    try {
-      const token = await getSecureItem('admin_token');
-      if (!token) { Alert.alert(t('error'), 'Not authenticated'); return; }
-      await Linking.openURL(`${API_URL}/api/contracts/${id}/download?admin_token=${token}&language=${language}`);
-    } catch (error: any) { Alert.alert(t('error'), error.message); }
-  };
-
+  // The deployed server needs ?admin_token= on the contract URL. The file is downloaded inside
+  // the app (never opened in the browser) so the token does not end up in browser history.
   const handleShareContract = async () => {
     try {
       const token = await getSecureItem('admin_token');
-      if (!token) { Alert.alert(t('error'), 'Not authenticated'); return; }
-      const downloadUrl = `${API_URL}/api/contracts/${id}/download?admin_token=${token}&language=${language}`;
+      if (!token) return;
+      const downloadUrl = `${API_URL}/api/contracts/${id}/download?admin_token=${encodeURIComponent(token)}&language=${language}`;
       const fileUri = `${FileSystem.cacheDirectory}loan-contract-${id}.pdf`;
       const downloadResult = await FileSystem.downloadAsync(downloadUrl, fileUri);
+      if (downloadResult.status === 401) { await authedFetch(`${API_URL}/api/admin/credits`); return; }
+      if (downloadResult.status && downloadResult.status >= 400) throw new Error(`Contract download failed (${downloadResult.status})`);
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(downloadResult.uri, {
           mimeType: 'application/pdf',
@@ -655,6 +773,7 @@ export default function ClientDetails() {
       if (error.message !== 'User did not share') Alert.alert(t('error'), error.message);
     }
   };
+  const handleDownloadContract = handleShareContract;
 
   // ─── Render ────────────────────────────────────────────────────
   if (loading) {
@@ -667,7 +786,26 @@ export default function ClientDetails() {
     );
   }
 
-  if (!client) return null;
+  if (!client) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.surface }]} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.title, { color: colors.text }]}>{t('clientDetails')}</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <Ionicons name="cloud-offline" size={48} color="#F59E0B" />
+          <Text style={{ color: colors.text, marginVertical: 12, textAlign: 'center' }}>{ta(language, 'offlineBanner')}</Text>
+          <TouchableOpacity onPress={() => { setLoading(true); fetchClient(); }} style={{ backgroundColor: '#2563EB', borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10 }}>
+            <Text style={{ color: '#fff', fontWeight: '700' }}>{ta(language, 'retry')}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -698,6 +836,12 @@ export default function ClientDetails() {
           />
         }
       >
+        {offline && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#B45309', marginHorizontal: 16, marginTop: 12, padding: 10, borderRadius: 10 }}>
+            <Ionicons name="cloud-offline" size={16} color="#fff" />
+            <Text style={{ color: '#fff', flex: 1, marginLeft: 8, fontSize: 13 }}>{ta(language, 'offlineBanner')}</Text>
+          </View>
+        )}
         <ClientInfoCard
           client={client}
           language={language}
@@ -710,6 +854,8 @@ export default function ClientDetails() {
           canAccessDeviceLock={canAccess('device_lock')}
           canAccessRegistrationCode={canAccess('registration_code')}
         />
+
+        <LockStatusBanner client={client} language={language} refreshKey={lockSyncKey} />
 
         <ContactInfo
           client={client}
@@ -731,7 +877,7 @@ export default function ClientDetails() {
             onOpenMap={openMap}
             onFetchPrice={handleFetchPrice}
           />
-          {id ? <DeviceHealthCard clientId={String(id)} colors={colors} /> : null}
+          {id ? <DeviceHealthCard clientId={String(id)} client={client} colors={colors} language={language} /> : null}
           </>
         ) : !client.uninstall_allowed ? (
           <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: '#1E3A5F', borderRadius: 12, padding: 16, alignItems: 'center' }}>
@@ -778,8 +924,7 @@ export default function ClientDetails() {
               onRecordPayment={(loanId, loan, dueTodayAmount) => {
                 setSelectedLoanId(loanId);
                 setSelectedLoan(loan);
-                setPaymentAmount(dueTodayAmount > 0 ? String(dueTodayAmount) : '');
-                setPaymentModal(true);
+                openPaymentModal(dueTodayAmount > 0 ? dueTodayAmount : 0);
               }}
               onAddNewLoan={() => router.push(`/admin/add-loan?clientId=${id}`)}
               onEditLoan={(loanId, loan) => {
@@ -998,7 +1143,51 @@ export default function ClientDetails() {
         onChangeNotes={setPaymentNotes}
         onConfirm={handleRecordPayment}
         onClose={() => setPaymentModal(false)}
+        paymentDate={paymentDate}
+        onChangeDate={setPaymentDate}
+        dueAmount={paymentDue()}
+        fullAmount={paymentOutstanding() ?? 0}
+        onPayDue={() => setPaymentAmount(String(paymentDue()))}
+        onPayFull={() => setPaymentAmount(String(round2(paymentOutstanding() ?? 0)))}
+        formatAmount={formatAmount}
       />
+      <ConfirmDeleteModal
+        visible={deleteModal}
+        clientName={client?.name || ''}
+        language={language}
+        blockedRegistered={!!client?.is_registered && !client?.uninstall_allowed}
+        busy={actionLoading}
+        onCancel={() => setDeleteModal(false)}
+        onConfirm={performDelete}
+        cancelLabel={t('cancel')}
+      />
+      <Modal visible={!!receipt} transparent animationType="fade" onRequestClose={() => setReceipt(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: '#152035', borderRadius: 16, padding: 20 }}>
+            <View style={{ alignItems: 'center', marginBottom: 12 }}>
+              <Ionicons name="checkmark-circle" size={48} color="#10B981" />
+              <Text style={{ color: '#F8FAFC', fontSize: 18, fontWeight: '700', marginTop: 6 }}>{ta(language, 'paymentRecorded')}</Text>
+            </View>
+            {receipt && (
+              <>
+                <Text style={{ color: '#CBD5E1', fontSize: 15, marginVertical: 2 }}>{ta(language, 'paid')}: {formatAmount(receipt.amount)}</Text>
+                <Text style={{ color: '#CBD5E1', fontSize: 15, marginVertical: 2 }}>
+                  {receipt.outstanding !== null ? `${ta(language, 'outstanding')}: ${formatAmount(receipt.outstanding)}` : ta(language, 'balanceUnknown')}
+                </Text>
+                {receipt.fullyPaid && <Text style={{ color: '#10B981', fontWeight: '700', marginTop: 6 }}>{ta(language, 'fullyPaid')}</Text>}
+              </>
+            )}
+            <View style={{ flexDirection: 'row', marginTop: 16 }}>
+              <TouchableOpacity onPress={() => setReceipt(null)} style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: '#334155', alignItems: 'center', marginRight: 8 }}>
+                <Text style={{ color: '#fff', fontWeight: '600' }}>{ta(language, 'done')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={shareReceipt} style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: '#2563EB', alignItems: 'center' }}>
+                <Text style={{ color: '#fff', fontWeight: '700' }}>{ta(language, 'shareReceipt')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <WarningModal
         visible={warningModal}
         language={language}

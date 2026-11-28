@@ -21,6 +21,10 @@ import { useLanguage } from '../../../src/context/LanguageContext';
 import { useTheme } from '../../../src/context/ThemeContext';
 import { useEnterpriseAccess } from '../../../src/hooks/useEnterpriseAccess';
 import API_URL from '../../../src/constants/api';
+import { ta } from '../../../src/utils/adminI18n';
+import { heartbeatStatus } from '../../../src/utils/heartbeat';
+import { ClientChips } from '../../../src/components/admin/ClientChips';
+import { useClients } from '../../../src/utils/clientsStore';
 import { getSecureItem, setSecureItem, deleteSecureItem } from '../../../src/utils/secureStorage';
 
 
@@ -68,7 +72,8 @@ export default function LoansTab() {
   const { formatAmount, currencySymbol } = useCurrency();
   const { colors } = useTheme();
   const { plan, canAccess, loading: planLoading } = useEnterpriseAccess();
-  const [clients, setClients] = useState<Client[]>([]);
+  const { clients: allClients, refresh: refreshClients, error: clientsError } = useClients();
+  const clients = allClients as Client[];
   const [paidLoans, setPaidLoans] = useState<PaidLoan[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -91,52 +96,22 @@ export default function LoansTab() {
   // Derive filter from URL params directly
   const filterParam = params?.filter?.toString().toLowerCase() || undefined;
 
-  const fetchClients = async () => {
-    try {
-      const adminToken = await getSecureItem('admin_token');
-      if (!adminToken) {
-        setClients([]);
-        return;
-      }
-      const response = await authedFetch(`${API_URL}/api/clients?limit=500&admin_token=${adminToken}`);
-      if (!response.ok) {
-        console.error('API error:', response.status);
-        setClients([]);
-        return;
-      }
-      const data = await response.json();
-      // Handle various API response formats
-      const clientList = data?.clients || (Array.isArray(data) ? data : []);
-      setClients(clientList);
-    } catch (error) {
-      console.error('Error fetching clients:', error);
-      setClients([]);
-    }
-  };
-
   const fetchPaidLoans = async () => {
     try {
-      const adminToken = await getSecureItem('admin_token');
-      if (!adminToken) {
-        setPaidLoans([]);
-        return;
-      }
-      const response = await authedFetch(`${API_URL}/api/paid-loans?admin_token=${adminToken}`);
+      const response = await authedFetch(`${API_URL}/api/paid-loans`);
       if (!response.ok) {
+        // keep the list that is already on screen; a 401 is handled centrally
         console.error('Failed to fetch paid loans:', response.status);
-        setPaidLoans([]);
         return;
       }
       const data = await response.json();
       setPaidLoans(data.paid_loans || []);
     } catch (error) {
       console.error('Error fetching paid loans:', error);
-      setPaidLoans([]);
     }
   };
 
   useEffect(() => {
-    fetchClients();
     fetchPaidLoans();
   }, []);
 
@@ -155,26 +130,21 @@ export default function LoansTab() {
     }
   }, [filterParam]);
 
-  // Helper: is heartbeat silent (>12h ago or never)
+  // Helper: heartbeat silent = not seen for more than 24h (shared definition)
   const isHeartbeatSilent = (lastHeartbeat?: string): boolean => {
-    if (!lastHeartbeat) return true;
-    const hb = new Date(lastHeartbeat);
-    const now = new Date();
-    const diffMs = now.getTime() - hb.getTime();
-    return diffMs > 12 * 60 * 60 * 1000; // 12 hours
+    const st = heartbeatStatus(lastHeartbeat);
+    return st === 'offline' || st === 'never';
   };
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchClients();
-    await fetchPaidLoans();
+    await Promise.all([refreshClients(true), fetchPaidLoans()]);
     setRefreshing(false);
   }, []);
 
   // Auto-refresh when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      fetchClients();
       fetchPaidLoans();
     }, [])
   );
@@ -237,8 +207,8 @@ export default function LoansTab() {
 
     return list.filter(
       (client) =>
-        client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        client.phone.includes(searchQuery)
+        String(client.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        String(client.phone || '').includes(searchQuery)
     );
   }, [clients, filter, searchQuery, tab, paymentFilter]);
 
@@ -393,35 +363,8 @@ export default function LoansTab() {
                   </Text>
                 </View>
               )}
-              {item.is_registered && item.last_heartbeat && (
-                <View style={[styles.nextPaymentBadge, { backgroundColor: colors.surfaceAlt }]}>
-                  <Ionicons 
-                    name="pulse" 
-                    size={12} 
-                    color={(() => {
-                      const diff = Date.now() - new Date(item.last_heartbeat!).getTime();
-                      if (diff < 5 * 60 * 1000) return '#10B981';
-                      if (diff < 12 * 60 * 60 * 1000) return '#F59E0B';
-                      return '#EF4444';
-                    })()} 
-                  />
-                  <Text style={[styles.nextPaymentText, { color: (() => {
-                      const diff = Date.now() - new Date(item.last_heartbeat!).getTime();
-                      if (diff < 5 * 60 * 1000) return '#10B981';
-                      if (diff < 12 * 60 * 60 * 1000) return '#F59E0B';
-                      return '#EF4444';
-                    })() }]}>
-                    {(() => {
-                      const diff = Date.now() - new Date(item.last_heartbeat!).getTime();
-                      const mins = Math.floor(diff / 60000);
-                      if (mins < 1) return 'Online';
-                      if (mins < 60) return `${mins}m`;
-                      const hrs = Math.floor(mins / 60);
-                      if (hrs < 24) return `${hrs}h`;
-                      return `${Math.floor(hrs / 24)}d`;
-                    })()}
-                  </Text>
-                </View>
+              {item.is_registered && (
+                <ClientChips client={item} language={language} showLock={false} />
               )}
             </View>
               </>
@@ -481,21 +424,21 @@ export default function LoansTab() {
               <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
                 {t('emi')}
               </Text>
-              <Text style={[styles.loanDetailValue, { color: colors.text }]}>{formatAmount(item.loan_amount?.toFixed(0) || '0')}</Text>
+              <Text style={[styles.loanDetailValue, { color: colors.text }]}>{formatAmount(Math.round(Number(item.loan_amount) || 0))}</Text>
             </View>
             
             <View style={styles.loanDetailItem}>
               <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
                 {t('totalPaid')}
               </Text>
-              <Text style={[styles.loanDetailValue, { color: '#10B981' }]}>{formatAmount(item.total_paid?.toFixed(0) || '0')}</Text>
+              <Text style={[styles.loanDetailValue, { color: '#10B981' }]}>{formatAmount(Math.round(Number(item.total_paid) || 0))}</Text>
             </View>
             
             <View style={styles.loanDetailItem}>
               <Text style={[styles.loanDetailLabel, { color: colors.textMuted }]}>
                 {t('interest')}
               </Text>
-              <Text style={[styles.loanDetailValue, { color: '#F59E0B' }]}>{formatAmount(item.total_interest?.toFixed(0) || '0')}</Text>
+              <Text style={[styles.loanDetailValue, { color: '#F59E0B' }]}>{formatAmount(Math.round(Number(item.total_interest) || 0))}</Text>
             </View>
           </View>
           
@@ -549,13 +492,23 @@ export default function LoansTab() {
         )}
       </View>
 
+      {!!clientsError && (
+        <TouchableOpacity
+          onPress={() => refreshClients(true)}
+          style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#B45309', marginHorizontal: 16, marginBottom: 8, padding: 10, borderRadius: 10 }}
+        >
+          <Ionicons name="cloud-offline" size={16} color="#fff" />
+          <Text style={{ color: '#fff', flex: 1, marginLeft: 8, fontSize: 13 }}>{ta(language, 'offlineBanner')}</Text>
+          <Text style={{ color: '#fff', fontWeight: '700', textDecorationLine: 'underline' }}>{ta(language, 'retry')}</Text>
+        </TouchableOpacity>
+      )}
       {filter && (
         <View style={[styles.filterBanner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.filterText, { color: colors.textSecondary }]}>
             {filter === 'overdue'
               ? t('filterOverdue')
               : filter === 'silent'
-              ? (t('filterSilent') || 'Silent Devices (No heartbeat >12h)')
+              ? (t('filterSilent') || 'Silent Devices (No heartbeat >24h)')
               : t('filterPaid')}
           </Text>
           <TouchableOpacity onPress={() => setFilter(undefined)}>

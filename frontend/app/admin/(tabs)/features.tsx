@@ -12,6 +12,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../../src/context/LanguageContext';
+import { invalidateClients } from '../../../src/utils/clientsStore';
+import { ta } from '../../../src/utils/adminI18n';
 import { LanguagePicker } from '../../../src/components/LanguagePicker';
 import { useEnterpriseAccess } from '../../../src/hooks/useEnterpriseAccess';
 import { getSecureItem, setSecureItem, deleteSecureItem } from '../../../src/utils/secureStorage';
@@ -28,6 +30,8 @@ interface FeatureItem {
   featureGateKey?: string;
   requiredPlan: PlanTier;
   testId?: string;
+  title?: string;
+  desc?: string;
 }
 
 const PLAN_BADGE: Record<PlanTier, { label: string; color: string; bg: string }> = {
@@ -62,7 +66,8 @@ export default function FeaturesTab() {
         text: t('logout'),
         style: 'destructive',
         onPress: async () => {
-          await Promise.all([deleteSecureItem('admin_token'), deleteSecureItem('admin_id'), AsyncStorage.multiRemove(['admin_username', 'admin_role', 'is_super_admin', 'admin_first_name', 'admin_last_name'])]);
+          invalidateClients();
+          await Promise.all([deleteSecureItem('admin_token'), deleteSecureItem('admin_id'), AsyncStorage.multiRemove(['admin_username', 'admin_role', 'is_super_admin', 'admin_first_name', 'admin_last_name', 'admin_stay_signed_in'])]);
           router.replace('/');
         },
       },
@@ -70,6 +75,13 @@ export default function FeaturesTab() {
   };
 
   const sections: { title: string; items: FeatureItem[] }[] = [
+    {
+      title: ta(language, 'queueTitle'),
+      items: [
+        { key: 'overdue_queue', icon: 'alarm', color: '#EF4444', titleKey: 'queueTitle', descKey: 'queueTitle', title: ta(language, 'queueTitle'), desc: language === 'et' ? 'Hilinenud maksed, kiirtegevused ja hulgihoiatus' : 'Late payers with one-tap call, WhatsApp, warn, lock', route: '/admin/overdue-queue', requiredPlan: 'starter', testId: 'overdue-queue-link' },
+        { key: 'alerts', icon: 'notifications-circle', color: '#F59E0B', titleKey: 'alertsTitle', descKey: 'alertsTitle', title: ta(language, 'alertsTitle'), desc: language === 'et' ? 'Rikkumiskatsed, taaskäivitused ja teavitused' : 'Tamper attempts, reboots and other alerts', route: '/admin/notifications', requiredPlan: 'starter', testId: 'alerts-link' },
+      ],
+    },
     {
       title: t('analytics'),
       items: [
@@ -113,7 +125,7 @@ export default function FeaturesTab() {
       const badge = PLAN_BADGE[item.requiredPlan];
       Alert.alert(
         `${badge.label} Feature`,
-        `${t(item.titleKey)} requires the ${badge.label} plan or higher. Would you like to upgrade?`,
+        `${item.title ?? t(item.titleKey)} requires the ${badge.label} plan or higher. Would you like to upgrade?`,
         [
           { text: t('cancel'), style: 'cancel' },
           { text: 'Upgrade', onPress: () => router.push('/admin/settings') },
@@ -142,7 +154,7 @@ export default function FeaturesTab() {
         <View style={styles.featureInfo}>
           <View style={styles.featureTitleRow}>
             <Text style={[styles.featureTitle, !hasAccess && styles.featureTitleLocked]}>
-              {t(item.titleKey)}
+              {item.title ?? t(item.titleKey)}
             </Text>
             {badge && (
               <View style={[styles.planBadge, { backgroundColor: badge.bg }]}>
@@ -151,7 +163,7 @@ export default function FeaturesTab() {
               </View>
             )}
           </View>
-          <Text style={styles.featureDescription}>{t(item.descKey)}</Text>
+          <Text style={styles.featureDescription}>{item.desc ?? t(item.descKey)}</Text>
         </View>
         <Ionicons name={hasAccess ? 'chevron-forward' : 'lock-closed'} size={20} color={hasAccess ? '#64748B' : '#475569'} />
       </TouchableOpacity>

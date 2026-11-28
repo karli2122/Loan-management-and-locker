@@ -27,6 +27,10 @@ import { LineChart } from 'react-native-chart-kit';
 import * as Notifications from 'expo-notifications';
 import NetInfo from '@react-native-community/netinfo';
 import { getSecureItem, setSecureItem, deleteSecureItem } from '../../../src/utils/secureStorage';
+import Constants from 'expo-constants';
+import { UpdateBanner } from '../../../src/components/admin/UpdateBanner';
+import { useAlertsBadge } from '../../../src/hooks/useAlertsBadge';
+import { ta } from '../../../src/utils/adminI18n';
 
 
 interface LoanStats {
@@ -63,7 +67,8 @@ export default function Dashboard() {
   const { language, setLanguage, t } = useLanguage();
   const { formatAmount, currencySymbol } = useCurrency();
   const { colors, isDark } = useTheme();
-  const { currentVersion } = useVersionCheck('admin');
+  const { currentVersion, updateInfo } = useVersionCheck('admin');
+  const { unread: unreadAlerts } = useAlertsBadge();
   const [loanStats, setLoanStats] = useState<LoanStats>({
     total_clients: 0,
     active_loans: 0,
@@ -111,8 +116,6 @@ export default function Dashboard() {
   
   // Offline mode state
   const [isOffline, setIsOffline] = useState(false);
-  const [offlineQueue, setOfflineQueue] = useState<any[]>([]);
-  const [syncingOffline, setSyncingOffline] = useState(false);
   
   // Admin filter state
   const [adminList, setAdminList] = useState<AdminUser[]>([]);
@@ -362,11 +365,11 @@ export default function Dashboard() {
           finalStatus = status;
         }
         if (finalStatus === 'granted') {
-          const projectId = '7be3aec1-6fef-4200-9987-5868c4320a07';
+          const projectId = (Constants.expoConfig?.extra as any)?.eas?.projectId;
           const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
           const adminToken = await getSecureItem('admin_token');
           if (adminToken && tokenData?.data) {
-            authedFetch(`${API_URL}/api/push/register-token?token=${encodeURIComponent(tokenData.data)}&admin_token=${adminToken}`, { method: 'POST' }).catch(() => {});
+            authedFetch(`${API_URL}/api/push/register-token?token=${encodeURIComponent(tokenData.data)}`, { method: 'POST' }).catch(() => {});
           }
         }
       } catch (e) {
@@ -375,20 +378,25 @@ export default function Dashboard() {
     };
     setupPushNotifications();
 
-    // Check payments due today
+    // Check payments due today (the phone notification is shown at most once per day)
     const checkDueToday = async () => {
       try {
         const adminToken = await getSecureItem('admin_token');
         if (!adminToken) return;
-        const resp = await authedFetch(`${API_URL}/api/push/due-today?admin_token=${adminToken}`);
+        const resp = await authedFetch(`${API_URL}/api/push/due-today`);
         if (resp.ok) {
           const data = await resp.json();
           setDueTodayCount(data.count || 0);
           if (data.count > 0) {
-            await Notifications.scheduleNotificationAsync({
-              content: { title: 'Payments Due Today', body: `${data.count} payment(s) due today`, sound: 'default' },
-              trigger: null,
-            });
+            const today = new Date().toISOString().slice(0, 10);
+            const last = await AsyncStorage.getItem('due_today_notified');
+            if (last !== today) {
+              await AsyncStorage.setItem('due_today_notified', today);
+              await Notifications.scheduleNotificationAsync({
+                content: { title: 'Payments Due Today', body: `${data.count} payment(s) due today`, sound: 'default' },
+                trigger: null,
+              });
+            }
           }
         }
       } catch (e) { console.log('Due today check skipped:', e); }
@@ -396,55 +404,13 @@ export default function Dashboard() {
     checkDueToday();
   }, []);
 
-  // Offline mode: network monitoring + queue sync
+  // Network monitoring (banner only)
   useEffect(() => {
-    const loadOfflineQueue = async () => {
-      const q = await AsyncStorage.getItem('offline_queue');
-      if (q) setOfflineQueue(JSON.parse(q));
-    };
-    loadOfflineQueue();
-
     const unsubscribe = NetInfo.addEventListener(state => {
-      const wasOffline = isOffline;
-      const nowOffline = !state.isConnected;
-      setIsOffline(nowOffline);
-      if (wasOffline && !nowOffline) {
-        syncOfflineQueue();
-      }
+      setIsOffline(state.isConnected === false);
     });
     return () => unsubscribe();
   }, []);
-
-  const addToOfflineQueue = async (action: any) => {
-    const newQueue = [...offlineQueue, { ...action, timestamp: Date.now() }];
-    setOfflineQueue(newQueue);
-    await AsyncStorage.setItem('offline_queue', JSON.stringify(newQueue));
-  };
-
-  const syncOfflineQueue = async () => {
-    if (offlineQueue.length === 0) return;
-    setSyncingOffline(true);
-    const adminToken = await getSecureItem('admin_token');
-    let remaining: any[] = [];
-    for (const action of offlineQueue) {
-      try {
-        await authedFetch(`${API_URL}${action.url}${action.url.includes('?') ? '&' : '?'}admin_token=${adminToken}`, {
-          method: action.method || 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: action.body ? JSON.stringify(action.body) : undefined,
-        });
-      } catch {
-        remaining.push(action);
-      }
-    }
-    setOfflineQueue(remaining);
-    await AsyncStorage.setItem('offline_queue', JSON.stringify(remaining));
-    setSyncingOffline(false);
-    if (remaining.length === 0) {
-      Alert.alert('Sync Complete', 'All offline actions have been synced.');
-      onRefresh();
-    }
-  };
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -500,6 +466,27 @@ export default function Dashboard() {
             </Text>
           </View>
         </View>
+        <TouchableOpacity
+          onPress={() => router.push('/admin/overdue-queue')}
+          style={{ padding: 8, marginRight: 4 }}
+          accessibilityLabel="Overdue queue"
+          data-testid="overdue-queue-btn"
+        >
+          <Ionicons name="alert-circle-outline" size={26} color={colors.text} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => router.push('/admin/notifications')}
+          style={{ padding: 8, marginRight: 4 }}
+          accessibilityLabel="Alerts"
+          data-testid="alerts-bell"
+        >
+          <Ionicons name="notifications-outline" size={26} color={colors.text} />
+          {unreadAlerts > 0 && (
+            <View style={{ position: 'absolute', top: 2, right: 2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{unreadAlerts > 99 ? '99+' : unreadAlerts}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
         <View style={styles.langSwitcher}>
           <LanguagePicker compact colors={colors} />
         </View>
@@ -510,24 +497,13 @@ export default function Dashboard() {
         contentContainerStyle={styles.contentContainer}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />}
       >
+        <UpdateBanner info={updateInfo} language={language} />
+
         {/* Offline Mode Banner */}
         {isOffline && (
           <View style={{ backgroundColor: '#f59e0b', padding: 12, borderRadius: 8, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}>
             <Ionicons name="cloud-offline" size={20} color="#fff" />
-            <Text style={{ color: '#fff', marginLeft: 8, fontWeight: '600', flex: 1 }}>Offline Mode — Actions will sync when back online</Text>
-            {offlineQueue.length > 0 && (
-              <View style={{ backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
-                <Text style={{ color: '#f59e0b', fontWeight: '700', fontSize: 12 }}>{offlineQueue.length}</Text>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Syncing Banner */}
-        {syncingOffline && (
-          <View style={{ backgroundColor: '#2563EB', padding: 12, borderRadius: 8, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}>
-            <ActivityIndicator size="small" color="#fff" />
-            <Text style={{ color: '#fff', marginLeft: 8, fontWeight: '600' }}>Syncing offline actions...</Text>
+            <Text style={{ color: '#fff', marginLeft: 8, fontWeight: '600', flex: 1 }}>{ta(language, 'offlineBanner')}</Text>
           </View>
         )}
 
@@ -552,10 +528,15 @@ export default function Dashboard() {
 
         {/* Payments Due Today Alert */}
         {dueTodayCount > 0 && (
-          <View style={{ backgroundColor: '#ef4444', padding: 12, borderRadius: 8, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }} data-testid="due-today-banner">
+          <TouchableOpacity
+            onPress={() => router.push('/admin/overdue-queue?dueToday=1')}
+            style={{ backgroundColor: '#ef4444', padding: 12, borderRadius: 8, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}
+            data-testid="due-today-banner"
+          >
             <Ionicons name="alarm" size={20} color="#fff" />
             <Text style={{ color: '#fff', marginLeft: 8, fontWeight: '600', flex: 1 }}>{dueTodayCount} payment(s) due today</Text>
-          </View>
+            <Ionicons name="chevron-forward" size={18} color="#fff" />
+          </TouchableOpacity>
         )}
 
         {/* Admin Filter for Superadmins */}

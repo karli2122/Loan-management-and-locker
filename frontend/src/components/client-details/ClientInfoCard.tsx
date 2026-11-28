@@ -1,6 +1,9 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { ClientChips } from '../admin/ClientChips';
+import { shareHandover } from '../../utils/handover';
+import { ta } from '../../utils/adminI18n';
 import { styles } from './styles';
 import { Client } from './types';
 import { StatusChip } from '../../theme/StatusChip';
@@ -40,7 +43,7 @@ export const ClientInfoCard = ({
   return (
   <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
     <View style={[styles.avatarContainer, { backgroundColor: colors.primary }]}>
-      <Text style={styles.avatarText}>{client.name.charAt(0).toUpperCase()}</Text>
+      <Text style={styles.avatarText}>{(client.name || '?').charAt(0).toUpperCase()}</Text>
     </View>
     <View style={styles.clientNameWithScore}>
       <Text style={[styles.clientName, { color: colors.text }]}>{client.name}</Text>
@@ -102,15 +105,9 @@ export const ClientInfoCard = ({
         </Text>
       </View>
     )}
-    {client.tamper_attempts > 0 && (
-      <View style={[styles.statusBadge, { backgroundColor: '#FEE2E2', borderColor: '#EF4444', borderWidth: 1 }]}>
-        <Ionicons name="warning" size={14} color="#EF4444" />
-        <Text style={[styles.statusText, { color: '#EF4444', fontWeight: '700' }]}>
-          {`${client.tamper_attempts} tamper${client.tamper_attempts > 1 ? 's' : ''}`}
-          {client.last_tamper_type ? ` (${client.last_tamper_type.replace(/_/g, ' ')})` : ''}
-        </Text>
-      </View>
-    )}
+    <View style={{ paddingHorizontal: 4, marginBottom: 6 }}>
+      <ClientChips client={client} language={language} showLock={false} />
+    </View>
     {/* Hide registration code section if uninstall allowed */}
     {!isUninstallAllowed && (
     <View style={styles.regCodeRow}>
@@ -119,12 +116,11 @@ export const ClientInfoCard = ({
           <Text style={[styles.regCode, { color: colors.textMuted }]}>{t('registrationCode')}: {client.registration_code}</Text>
           <TouchableOpacity
             style={styles.copyButton}
-            onPress={async () => {
-              await Share.share({ message: client.registration_code });
-            }}
+            onPress={() => shareHandover({ name: client.name, code: client.registration_code, language })}
+            data-testid="share-code-btn"
           >
-            <Ionicons name="copy" size={18} color={colors.textMuted} />
-            <Text style={[styles.copyText, { color: colors.textMuted }]}>{t('copy')}</Text>
+            <Ionicons name="share-social" size={18} color="#2563EB" />
+            <Text style={[styles.copyText, { color: '#2563EB' }]}>{ta(language, 'shareCode')}</Text>
           </TouchableOpacity>
         </>
       ) : (
