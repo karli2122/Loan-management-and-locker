@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useCurrency } from '../../src/context/CurrencyContext';
 import { useLanguage } from '../../src/context/LanguageContext';
@@ -22,11 +22,15 @@ import { parseAmount, round2 } from '../../src/utils/money';
 import { useClients, invalidateClients } from '../../src/utils/clientsStore';
 import { shareHandover } from '../../src/utils/handover';
 import { ta } from '../../src/utils/adminI18n';
+import { checkIsikukood } from '../../src/utils/statementIdentity';
+import { shareLoanContract } from '../../src/utils/contract';
 import { DatePicker } from '../../src/components/DatePicker';
 
 
 export default function AddClient() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ firstName?: string; lastName?: string; address?: string; personalId?: string; fromStatement?: string }>();
+  const fromStatement = params.fromStatement === '1';
   const { t, language } = useLanguage();
   const { formatAmount, currencySymbol } = useCurrency();
   const [loading, setLoading] = useState(false);
@@ -35,19 +39,24 @@ export default function AddClient() {
   // Remembers a client that was already created, so a retry after a failed loan setup
   // (or a dropped connection) never creates the same client twice.
   const createdRef = useRef<{ id: string; name: string; code?: string } | null>(null);
-  const [result, setResult] = useState<null | { id: string; name: string; code?: string; totalDue?: number; loanFailed?: string }>(null);
+  const [result, setResult] = useState<null | { id: string; name: string; code?: string; totalDue?: number; hasLoan?: boolean }>(null);
+  const [contractBusy, setContractBusy] = useState(false);
+
   const [form, setForm] = useState({
-    name: '',
+    first_name: typeof params.firstName === 'string' ? params.firstName : '',
+    last_name: typeof params.lastName === 'string' ? params.lastName : '',
     phone: '',
     email: '',
-    address: '',
-    birth_number: '',
+    address: typeof params.address === 'string' ? params.address : '',
+    birth_number: typeof params.personalId === 'string' ? params.personalId : '',
     loan_amount: '',
     down_payment: '',
     loan_given_date: new Date().toISOString().split('T')[0],
     emi_due_date: '',
     interest_rate: '',
   });
+  const fullName = `${form.first_name.trim()} ${form.last_name.trim()}`.trim();
+  const idCheck = checkIsikukood(form.birth_number);
 
   // Live preview calculation (simple month-based interest, not day-count)
   const loanPreview = React.useMemo(() => {
@@ -79,7 +88,7 @@ export default function AddClient() {
 
   const handleSubmit = async (skipDuplicateCheck = false) => {
     if (submitting.current) return;
-    if (!form.name.trim() || !form.phone.trim()) {
+    if (!form.first_name.trim() || !form.phone.trim()) {
       Alert.alert(t('error'), t('fillAllFields'));
       return;
     }
@@ -111,6 +120,18 @@ export default function AddClient() {
       }
     }
 
+    if (!createdRef.current && !skipDuplicateCheck && form.birth_number.trim() && !idCheck.valid) {
+      Alert.alert(
+        ta(language, `idBad_${idCheck.reason === 'empty' ? 'format' : idCheck.reason}`),
+        ta(language, 'idSaveAnyway'),
+        [
+          { text: ta(language, 'fixIt'), style: 'cancel' },
+          { text: ta(language, 'saveAnyway'), style: 'destructive', onPress: () => handleSubmit(true) },
+        ],
+      );
+      return;
+    }
+
     if (!createdRef.current && !skipDuplicateCheck) {
       const key = phoneKey(form.phone);
       const dup = key && clients.find((c: any) => phoneKey(c.phone) === key);
@@ -136,8 +157,8 @@ export default function AddClient() {
 
       // Step 1: Create client (skipped when a previous attempt already created it)
       if (!createdRef.current) {
-        const clientData: Record<string, string> = { name: form.name.trim(), phone: form.phone.trim() };
-        if (email) clientData.email = email;
+        // the deployed server's ClientCreate requires an email field, so send '' when none was given
+        const clientData: Record<string, string> = { name: fullName, phone: form.phone.trim(), email };
         if (form.address.trim()) clientData.address = form.address.trim();
         if (form.birth_number.trim()) clientData.birth_number = form.birth_number.trim();
 
@@ -154,7 +175,7 @@ export default function AddClient() {
         } catch {
           throw new Error('Server error. Please try again.');
         }
-        createdRef.current = { id: client.id, name: client.name || form.name.trim(), code: client.registration_code || undefined };
+        createdRef.current = { id: client.id, name: client.name || fullName, code: client.registration_code || undefined };
         invalidateClients();
       }
       const created = createdRef.current;
@@ -186,9 +207,9 @@ export default function AddClient() {
         const loanResult = await loanResponse.json().catch(() => ({}));
         const details = loanResult.loan_details || {};
         invalidateClients();
-        setResult({ id: created.id, name: created.name, code: created.code, totalDue: details.total_amount });
+        setResult({ id: created.id, name: created.name, code: created.code, totalDue: details.total_amount, hasLoan: true });
       } else {
-        setResult({ id: created.id, name: created.name, code: created.code });
+        setResult({ id: created.id, name: created.name, code: created.code, hasLoan: false });
       }
       createdRef.current = null;
     } catch (error: any) {
@@ -201,6 +222,39 @@ export default function AddClient() {
       setLoading(false);
     }
   };
+
+  const runContract = async () => {
+    if (!result || contractBusy) return;
+    setContractBusy(true);
+    const r = await shareLoanContract(result.id, language, ta(language, 'contractPromptTitle'));
+    setContractBusy(false);
+    if (r.ok) return;
+    if (r.needsLoan) { askAddLoan(); return; }
+    if (r.error === 'session_expired') return;
+    Alert.alert(ta(language, 'contractFailed'), r.error || '');
+  };
+  const askAddLoan = () => {
+    if (!result) return;
+    Alert.alert(ta(language, 'contractPromptTitle'), ta(language, 'contractNeedsLoan'), [
+      { text: ta(language, 'contractNo'), style: 'cancel' },
+      { text: ta(language, 'addLoanNow'), onPress: () => router.replace(`/admin/add-loan?clientId=${result.id}&contract=1`) },
+    ]);
+  };
+  // Right after the client exists, ask about the contract (once).
+  const asked = useRef<string | null>(null);
+  useEffect(() => {
+    if (!result || asked.current === result.id) return;
+    asked.current = result.id;
+    const t = setTimeout(() => {
+      if (result.hasLoan) {
+        Alert.alert(ta(language, 'contractPromptTitle'), ta(language, 'contractPromptBody', { name: result.name }), [
+          { text: ta(language, 'contractNo'), style: 'cancel' },
+          { text: ta(language, 'contractYes'), onPress: runContract },
+        ]);
+      } else askAddLoan();
+    }, 400);
+    return () => clearTimeout(t);
+  }, [result]);
 
   if (result) {
     return (
@@ -234,6 +288,18 @@ export default function AddClient() {
             <Text style={{ color: '#F59E0B', textAlign: 'center', marginBottom: 12 }}>{ta(language, 'generateCodeFirst')}</Text>
           )}
           <TouchableOpacity
+            style={[styles.submitButton, { marginTop: 12, backgroundColor: '#7C3AED' }]}
+            onPress={result.hasLoan ? runContract : askAddLoan}
+            disabled={contractBusy}
+          >
+            {contractBusy ? <ActivityIndicator color="#fff" /> : (
+              <>
+                <Ionicons name="document-text" size={20} color="#fff" />
+                <Text style={styles.submitButtonText}>{ta(language, 'contractPromptTitle')}</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[styles.submitButton, { marginTop: 12, backgroundColor: '#334155' }]}
             onPress={() => router.replace(`/admin/client-details?id=${result.id}`)}
           >
@@ -263,15 +329,33 @@ export default function AddClient() {
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.form}>
-            <Text style={styles.label}>{t('fullName')} *</Text>
+            {fromStatement && (
+              <View style={{ backgroundColor: '#1E3A5F', borderRadius: 10, padding: 10, marginBottom: 4, flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="document-text" size={18} color="#93C5FD" />
+                <Text style={{ color: '#BFDBFE', marginLeft: 8, flex: 1, fontSize: 13 }}>{ta(language, 'prefilledBanner')}</Text>
+              </View>
+            )}
+            <Text style={styles.label}>{ta(language, 'firstName')} *</Text>
             <View style={styles.inputContainer}>
               <Ionicons name="person" size={20} color="#64748B" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder={t('enterClientName')}
+                placeholder={ta(language, 'firstName')}
                 placeholderTextColor="#64748B"
-                value={form.name}
-                onChangeText={(text) => setForm({ ...form, name: text })}
+                value={form.first_name}
+                onChangeText={(text) => setForm({ ...form, first_name: text })}
+              />
+            </View>
+
+            <Text style={styles.label}>{ta(language, 'lastName')}</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="person-outline" size={20} color="#64748B" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder={ta(language, 'lastName')}
+                placeholderTextColor="#64748B"
+                value={form.last_name}
+                onChangeText={(text) => setForm({ ...form, last_name: text })}
               />
             </View>
 
@@ -314,7 +398,7 @@ export default function AddClient() {
               />
             </View>
 
-            <Text style={styles.label}>{t('birthNumber')}</Text>
+            <Text style={styles.label}>{ta(language, 'personalId')}</Text>
             <View style={styles.inputContainer}>
               <Ionicons name="card" size={20} color="#64748B" style={styles.inputIcon} />
               <TextInput
@@ -325,6 +409,13 @@ export default function AddClient() {
                 onChangeText={(text) => setForm({ ...form, birth_number: text })}
               />
             </View>
+            {form.birth_number.trim() !== '' && (
+              <Text style={{ marginTop: 6, fontSize: 12, color: idCheck.valid ? '#10B981' : '#F59E0B' }}>
+                {idCheck.valid
+                  ? `${ta(language, 'idOk')} · ${idCheck.birthDate}`
+                  : ta(language, `idBad_${idCheck.reason === 'empty' ? 'format' : idCheck.reason}`)}
+              </Text>
+            )}
 
             <View style={styles.sectionDivider}>
               <View style={styles.dividerLine} />

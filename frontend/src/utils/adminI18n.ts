@@ -6,6 +6,31 @@
 type Dict = Record<string, { en: string; et: string }>;
 
 const S: Dict = {
+  // bank statement -> add client
+  addClientAction: { en: 'Add client', et: 'Lisa klient' },
+  addClientFromStatement: { en: 'Add this person as a client', et: 'Lisa see isik kliendiks' },
+  addClientFromStatementHint: { en: 'Opens the new-client form with name, address and personal ID filled in from the statement. Check everything before saving.', et: 'Avab uue kliendi vormi, kus nimi, aadress ja isikukood on väljavõttest täidetud. Kontrolli kõik üle enne salvestamist.' },
+  readingStatement: { en: 'Reading the statement…', et: 'Loen väljavõtet…' },
+  prefilledBanner: { en: 'Filled in from the bank statement – please check it. Anything we could not find is left empty.', et: 'Täidetud pangaväljavõtte põhjal – palun kontrolli üle. Mida ei leidnud, on tühi.' },
+  firstName: { en: 'First name', et: 'Eesnimi' },
+  lastName: { en: 'Last name', et: 'Perekonnanimi' },
+  personalId: { en: 'Personal ID (isikukood)', et: 'Isikukood' },
+  idOk: { en: 'Valid personal ID', et: 'Isikukood on korrektne' },
+  idBad_format: { en: 'An Estonian personal ID has 11 digits', et: 'Eesti isikukood on 11-kohaline' },
+  idBad_date: { en: 'The birth date inside this ID is not a real date', et: 'Isikukoodis olev sünniaeg ei ole päris kuupäev' },
+  idBad_checksum: { en: 'Checksum does not match – there is probably a typo', et: 'Kontrollnumber ei klapi – tõenäoliselt on trükiviga' },
+  idSaveAnyway: { en: 'The personal ID looks wrong. Save the client anyway?', et: 'Isikukood tundub vale. Salvestan kliendi sellegipoolest?' },
+  saveAnyway: { en: 'Save anyway', et: 'Salvesta ikkagi' },
+  fixIt: { en: 'Fix it', et: 'Paranda' },
+  contractPromptTitle: { en: 'Generate loan contract?', et: 'Koosta laenuleping?' },
+  contractPromptBody: { en: 'Create the loan contract PDF for {name} now, so it can be shared and signed.', et: 'Koosta kliendi {name} laenulepingu PDF kohe, et seda saaks jagada ja allkirjastada.' },
+  contractYes: { en: 'Yes, generate contract', et: 'Jah, koosta leping' },
+  contractNo: { en: 'Not now', et: 'Mitte praegu' },
+  contractNeedsLoan: { en: 'A contract needs a loan first. Add the loan now? The contract is offered right after.', et: 'Lepingu jaoks on vaja laenu. Lisa laen nüüd? Leping pakutakse kohe pärast.' },
+  addLoanNow: { en: 'Add loan', et: 'Lisa laen' },
+  contractFailed: { en: 'Could not create the contract', et: 'Lepingut ei õnnestunud koostada' },
+  contractWorking: { en: 'Creating the contract…', et: 'Koostan lepingut…' },
+  statementTypeNote: { en: 'PDF, ASiC-E (.asice), CSV or XML', et: 'PDF, ASiC-E (.asice), CSV või XML' },
   // session
   sessionExpiredTitle: { en: 'Session expired', et: 'Seanss on aegunud' },
   sessionExpiredBody: {

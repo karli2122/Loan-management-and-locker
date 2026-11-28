@@ -24,6 +24,7 @@ import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/
 import { parseAmount, round2 } from '../../src/utils/money';
 import { useClients, invalidateClients } from '../../src/utils/clientsStore';
 import { ta } from '../../src/utils/adminI18n';
+import { shareLoanContract } from '../../src/utils/contract';
 
 interface Client {
   id: string;
@@ -283,8 +284,10 @@ export default function AddLoan() {
           const newClientData: Record<string, string> = {
             name: newClientName.trim(),
             phone: newClientPhone.trim(),
+            email: '',
           };
-          if (newEmail) newClientData.email = newEmail;
+          // the deployed server's ClientCreate requires an email field: send '' when none was given
+          newClientData.email = newEmail;
           if (newClientAddress.trim()) newClientData.address = newClientAddress.trim();
           if (newClientBirthNumber.trim()) newClientData.birth_number = newClientBirthNumber.trim();
 
@@ -330,11 +333,30 @@ export default function AddLoan() {
       invalidateClients();
       createdClientId.current = null;
 
-      Alert.alert(
-        t('success'),
-        language === 'et' ? `Laen loodud!` : `Loan created successfully!`,
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      const offerContract = params.contract === '1' && targetClientId;
+      if (offerContract) {
+        Alert.alert(
+          ta(language, 'contractPromptTitle'),
+          ta(language, 'contractPromptBody', { name: selectedClient?.name || '' }),
+          [
+            { text: ta(language, 'contractNo'), style: 'cancel', onPress: () => router.replace(`/admin/client-details?id=${targetClientId}`) },
+            {
+              text: ta(language, 'contractYes'),
+              onPress: async () => {
+                const r = await shareLoanContract(String(targetClientId), language, ta(language, 'contractPromptTitle'));
+                if (!r.ok && r.error !== 'session_expired') Alert.alert(ta(language, 'contractFailed'), r.error || '');
+                router.replace(`/admin/client-details?id=${targetClientId}`);
+              },
+            },
+          ],
+        );
+      } else {
+        Alert.alert(
+          t('success'),
+          language === 'et' ? `Laen loodud!` : `Loan created successfully!`,
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      }
     } catch (error: any) {
       Alert.alert(t('error'), getErrorMessage(error, 'Failed to add loan. Please try again.'));
     } finally {

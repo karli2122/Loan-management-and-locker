@@ -213,13 +213,25 @@ def _parse_seb_money(value: str):
         return None
     cleaned = value.replace("\u00a0", " ").replace(" ", "")
     cleaned = cleaned.replace("EUR", "").replace("€", "")
-    cleaned = cleaned.replace(",", ".")
     if cleaned in ("", "-", "+"):
         return None
+    # "1.234,56" / "1,234.56" / "1234,56": the LAST separator is the decimal one, others group thousands
+    last_comma, last_dot = cleaned.rfind(","), cleaned.rfind(".")
+    if last_comma >= 0 and last_dot >= 0:
+        if last_comma > last_dot:
+            cleaned = cleaned.replace(".", "").replace(",", ".")
+        else:
+            cleaned = cleaned.replace(",", "")
+    elif last_comma >= 0:
+        cleaned = cleaned.replace(",", ".")
     try:
         return float(cleaned)
     except ValueError:
         return None
+
+
+# One amount like "-1 234,56", "1.234,56" or "12,50" (space/nbsp/dot thousands, comma or dot decimals)
+_AMT = r"(-?\d{1,3}(?:[ \u00a0.]\d{3})+(?:[.,]\d{2})?|-?\d+(?:[.,]\d{2})?)"
 
 
 def extract_seb_summary(statement_text: str):
@@ -234,6 +246,9 @@ def extract_seb_summary(statement_text: str):
     for line in lines:
         if "KONTO VÄLJAVÕTE" in line:
             account_holder = line.split("KONTO VÄLJAVÕTE")[0].strip()
+            # text before the title is usually the bank's own name ("SEB Pank"), not a person
+            if re.search(r"\b(seb|pank|bank|swedbank|lhv|luminor|coop)\b", account_holder, re.IGNORECASE):
+                account_holder = None
             if account_holder:
                 break
 
@@ -247,10 +262,10 @@ def extract_seb_summary(statement_text: str):
                 account_holder = line.title()
                 break
 
-    opening_match = re.search(r"Algsaldo\s*([\d.,-]+)", statement_text, re.IGNORECASE)
-    closing_match = re.search(r"Lõppsaldo\s*([\d.,-]+)", statement_text, re.IGNORECASE)
-    income_match = re.search(r"Perioodi\s+sissetulekud\s*([\d.,-]+)", statement_text, re.IGNORECASE)
-    expense_match = re.search(r"Perioodi\s+väljaminekud\s*([\d.,-]+)", statement_text, re.IGNORECASE)
+    opening_match = re.search(r"Algsaldo\s*" + _AMT, statement_text, re.IGNORECASE)
+    closing_match = re.search(r"Lõppsaldo\s*" + _AMT, statement_text, re.IGNORECASE)
+    income_match = re.search(r"Perioodi\s+sissetulekud\s*" + _AMT, statement_text, re.IGNORECASE)
+    expense_match = re.search(r"Perioodi\s+väljaminekud\s*" + _AMT, statement_text, re.IGNORECASE)
 
     opening_balance = _parse_seb_money(opening_match.group(1)) if opening_match else None
     closing_balance = _parse_seb_money(closing_match.group(1)) if closing_match else None
@@ -258,7 +273,7 @@ def extract_seb_summary(statement_text: str):
     total_expenses = _parse_seb_money(expense_match.group(1)) if expense_match else None
 
     if total_income is None or total_expenses is None or closing_balance is None:
-        tail_amounts = re.findall(r"-?\d+[.,]\d{2}", statement_text)
+        tail_amounts = re.findall(r"-?\d+[.,]\d{2}(?!\d)", statement_text)
         if len(tail_amounts) >= 5:
             tail = tail_amounts[-5:]
             if total_expenses is None:
@@ -420,7 +435,8 @@ Categorize ALL transactions. Supported banks: Swedbank, SEB, LHV, Coop Pank, Rev
 
     # Truncate text if too long (GPT context limit)
     max_chars = 80000
-    if len(statement_text) > max_chars:
+    truncated = len(statement_text) > max_chars
+    if truncated:
         statement_text = statement_text[:max_chars] + "\n\n[Statement truncated due to length]"
 
     user_message = UserMessage(
@@ -439,7 +455,11 @@ Categorize ALL transactions. Supported banks: Swedbank, SEB, LHV, Coop Pank, Rev
             cleaned = cleaned[:-3]
         if cleaned.startswith("json"):
             cleaned = cleaned[4:]
-        return json.loads(cleaned.strip())
+        parsed = json.loads(cleaned.strip())
+        if isinstance(parsed, dict) and truncated:
+            # totals below only cover the first part of the statement: tell the admin
+            parsed["statement_truncated"] = True
+        return parsed
     except json.JSONDecodeError:
         logger.error(f"Failed to parse AI response as JSON: {response[:200]}")
         return {
@@ -624,6 +644,14 @@ async def analyze_bank_statement(
     }
     await db.bank_statement_analyses.insert_one(record)
     record.pop("_id", None)
+
+    # Identity for pre-filling the "add client" form. Returned to the caller only; the personal ID
+    # is deliberately NOT written to the stored analysis record above.
+    try:
+        from utils.statement_identity import extract_identity
+        record["analysis"] = {**record["analysis"], "identity": extract_identity(statement_text, analysis)}
+    except Exception as e:  # never fail the analysis because of this
+        logger.warning(f"identity extraction failed: {e}")
 
     return record
 

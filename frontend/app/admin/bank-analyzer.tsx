@@ -21,6 +21,9 @@ import { useTheme } from '../../src/context/ThemeContext';
 import { EnterpriseGate } from '../../src/components/EnterpriseGate';
 import API_URL from '../../src/constants/api';
 import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
+import { base64ToBytes, statementBytesToText } from '../../src/utils/statementText';
+import { extractIdentity } from '../../src/utils/statementIdentity';
+import { ta } from '../../src/utils/adminI18n';
 
 interface AnalysisResult {
   id: string;
@@ -79,6 +82,8 @@ function BankAnalyzerContent() {
   const [selectedFileName, setSelectedFileName] = useState('');
   const [sebLikely, setSebLikely] = useState(false);
   const [forceOcr, setForceOcr] = useState(false);
+  const [pickedFile, setPickedFile] = useState<{ uri?: string; file?: File; name: string } | null>(null);
+  const [readingIdentity, setReadingIdentity] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const isSebText = (text: string) => text.includes('SEB') || text.includes('SEB Pank');
@@ -97,7 +102,7 @@ function BankAnalyzerContent() {
 
   const detectSebFromNativeFile = async (uri: string): Promise<boolean> => {
     try {
-      const text = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.UTF8 });
+      const text = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.UTF8, position: 0, length: 20000 });
       return isSebText(text);
     } catch (e) {
       return false;
@@ -119,7 +124,7 @@ function BankAnalyzerContent() {
       const asset = docResult.assets[0];
       setSelectedFileName(asset.name || '');
       const ext = (asset.name || '').toLowerCase().split('.').pop();
-      if (ext !== 'pdf' && ext !== 'asice') {
+      if (ext !== 'pdf' && ext !== 'asice' && ext !== 'csv' && ext !== 'xml') {
         setError(t('onlyPdfAndAsiceFilesSupported'));
         setSebLikely(false);
         return;
@@ -127,6 +132,7 @@ function BankAnalyzerContent() {
       const nameLower = (asset.name || '').toLowerCase();
       const sebDetected = nameLower.includes('seb') || await detectSebFromNativeFile(asset.uri);
       setSebLikely(sebDetected);
+      setPickedFile({ uri: asset.uri, name: asset.name || '' });
       await uploadFile(asset.uri, asset.name, asset.mimeType || 'application/octet-stream');
     } catch (err: any) {
       setError(err.message || 'File picker failed');
@@ -172,6 +178,7 @@ function BankAnalyzerContent() {
     setError('');
     setResult(null);
     setSelectedFileName(file.name || '');
+    setPickedFile({ file, name: file.name || '' });
     const nameLower = (file.name || '').toLowerCase();
     const sebDetected = nameLower.includes('seb') || await detectSebFromWebFile(file);
     setSebLikely(sebDetected);
@@ -198,6 +205,44 @@ function BankAnalyzerContent() {
       setError(err.message || 'Analysis failed');
     } finally {
       setUploading(false);
+    }
+  };
+
+  // Reads the statement again on the phone and pulls out name / address / personal ID. The analysis
+  // response (old backend: only account_holder) fills the gaps. Missing pieces stay empty.
+  const startAddClient = async () => {
+    if (readingIdentity) return;
+    setReadingIdentity(true);
+    try {
+      await new Promise((r) => setTimeout(r, 50)); // let the spinner paint before the synchronous parsing
+      let text = '';
+      try {
+        let bytes: Uint8Array | null = null;
+        if (pickedFile?.file) bytes = new Uint8Array(await pickedFile.file.arrayBuffer());
+        else if (pickedFile?.uri) {
+          const info: any = await FileSystem.getInfoAsync(pickedFile.uri);
+          if (!info?.size || info.size <= 25 * 1024 * 1024) {
+            const b64 = await FileSystem.readAsStringAsync(pickedFile.uri, { encoding: FileSystem.EncodingType.Base64 });
+            bytes = base64ToBytes(b64);
+          }
+        }
+        if (bytes) text = statementBytesToText(bytes, pickedFile?.name || result?.filename || '');
+      } catch {
+        text = '';
+      }
+      const id = extractIdentity(text, result?.analysis);
+      router.push({
+        pathname: '/admin/add-client',
+        params: {
+          fromStatement: '1',
+          firstName: id.firstName,
+          lastName: id.lastName,
+          address: id.address,
+          personalId: id.personalId,
+        },
+      });
+    } finally {
+      setReadingIdentity(false);
     }
   };
 
@@ -260,7 +305,7 @@ function BankAnalyzerContent() {
           <input
             ref={fileInputRef as any}
             type="file"
-            accept=".pdf,.asice"
+            accept=".pdf,.asice,.csv,.xml"
             style={{ display: 'none' }}
             onChange={(e: any) => {
               const file = e.target?.files?.[0];
@@ -323,6 +368,7 @@ function BankAnalyzerContent() {
                   setResult(null);
                   setError('');
                   setSelectedFileName('');
+                  setPickedFile(null);
                 }}
                 data-testid="new-analysis-btn"
               >
@@ -350,6 +396,19 @@ function BankAnalyzerContent() {
                 <Text style={styles.cardValue}>{result.filename}</Text>
               </View>
             </View>
+
+            <TouchableOpacity
+              onPress={startAddClient}
+              disabled={readingIdentity}
+              style={{ backgroundColor: '#2563EB', borderRadius: 14, padding: 14, marginBottom: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', opacity: readingIdentity ? 0.7 : 1 }}
+              data-testid="add-client-from-statement"
+            >
+              {readingIdentity ? <ActivityIndicator color="#fff" /> : <Ionicons name="person-add" size={20} color="#fff" />}
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16, marginLeft: 8 }}>
+                {readingIdentity ? ta(language, 'readingStatement') : ta(language, 'addClientFromStatement')}
+              </Text>
+            </TouchableOpacity>
+            <Text style={{ color: '#94A3B8', fontSize: 12, marginBottom: 14, textAlign: 'center' }}>{ta(language, 'addClientFromStatementHint')}</Text>
 
             {s && (
               <View style={styles.summaryRow}>
@@ -513,7 +572,7 @@ function BankAnalyzerContent() {
                       {t('debttoincomeRatio')}
                     </Text>
                     <Text style={styles.cardValue}>
-                      {(a.credit_recommendation.debt_to_income_ratio * 100).toFixed(1)}%
+                      {(a.credit_recommendation.debt_to_income_ratio > 1.5 ? a.credit_recommendation.debt_to_income_ratio : a.credit_recommendation.debt_to_income_ratio * 100).toFixed(1)}%
                     </Text>
                   </View>
                 )}
