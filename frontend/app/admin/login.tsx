@@ -22,7 +22,7 @@ import { useTheme } from '../../src/context/ThemeContext';
 import API_URL, { API_BASE_URL, buildApiUrl } from '../../src/constants/api';
 import { getSecureItem, setSecureItem, deleteSecureItem } from '../../src/utils/secureStorage';
 import { invalidateClients } from '../../src/utils/clientsStore';
-import { resetSessionExpired } from '../../src/utils/adminAuth';
+import { resetSessionExpired, verifyTokenSilent, expireSession } from '../../src/utils/adminAuth';
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -46,26 +46,14 @@ export default function AdminLogin() {
         if (stay === 'true') {
           const token = await getSecureItem('admin_token');
           if (token) {
-            try {
-              const res = await fetch(`${API_URL}/api/admin/verify/${token}`);
-              if (res.ok) {
-                resetSessionExpired();
-                router.replace('/admin/(tabs)');
-                return;
-              }
-              // Only clear token if server explicitly says it's invalid (not a network error)
-              if (res.status === 401 || res.status === 403) {
-                await Promise.all([deleteSecureItem('admin_token'), AsyncStorage.multiRemove(['admin_stay_signed_in'])]);
-              } else {
-                // Server error or timeout — keep token and redirect, home will handle it
-                router.replace('/admin/(tabs)');
-                return;
-              }
-            } catch (_) {
-              // Network error — don't clear the token; redirect to tabs (offline mode)
-              router.replace('/admin/(tabs)');
-              return;
-            }
+            // Never wait for the network on startup (the API can be asleep): go straight in and
+            // check the token in the background. An explicit rejection shows "session expired".
+            resetSessionExpired();
+            router.replace('/admin/(tabs)');
+            verifyTokenSilent().then((ok) => {
+              if (!ok) expireSession();
+            }).catch(() => {});
+            return;
           }
         }
       } finally {

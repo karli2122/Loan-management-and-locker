@@ -7,11 +7,14 @@
  */
 const { withAndroidManifest } = require('@expo/config-plugins');
 
+// NOTE: DETECT_SCREEN_CAPTURE must NOT be removed. expo-screen-capture registers a screen-capture
+// observer when its JS module loads (the router loads every screen at startup) and Android 14+
+// throws a SecurityException without it -> the app died on the splash (1.5.8 - 1.5.10).
 const PERMISSIONS = [
   'SYSTEM_ALERT_WINDOW', 'CALL_PHONE', 'READ_PHONE_STATE', 'PACKAGE_USAGE_STATS',
   'KILL_BACKGROUND_PROCESSES', 'EXPAND_STATUS_BAR', 'USE_FULL_SCREEN_INTENT',
   'SCHEDULE_EXACT_ALARM', 'USE_EXACT_ALARM', 'RECEIVE_BOOT_COMPLETED',
-  'BLUETOOTH', 'BLUETOOTH_ADMIN', 'BLUETOOTH_CONNECT', 'DETECT_SCREEN_CAPTURE',
+  'BLUETOOTH', 'BLUETOOTH_ADMIN', 'BLUETOOTH_CONNECT',
   'FOREGROUND_SERVICE_SPECIAL_USE', 'REQUEST_IGNORE_BATTERY_OPTIMIZATIONS', 'CAMERA',
 ];
 

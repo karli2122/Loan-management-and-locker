@@ -9,6 +9,17 @@ import { CurrencyProvider } from '../src/context/CurrencyContext';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 import { initializeDiagnostics } from '../src/utils/diagnostics';
 import { initializeNotifications } from '../src/services/BackgroundNotificationService';
+import * as SplashScreen from 'expo-splash-screen';
+import { markStarted } from '../src/bootstrap/startupGuard';
+import { StartupError } from '../src/components/StartupError';
+
+// A screen that throws while rendering shows this (and never leaves the user on a frozen splash).
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Promise<void> }) {
+  React.useEffect(() => {
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
+  return <StartupError error={error} onRetry={retry} />;
+}
 
 // Set foreground notification handler at module level (runs before any component mounts)
 // This ensures notifications display correctly app-wide (admin + client sections)
@@ -45,13 +56,23 @@ export default function RootLayout() {
   const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {
-    initializeDiagnostics();
+    markStarted();
+    // The splash must always go away, even if something below is slow or fails.
+    const splashTimer = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    }, 2500);
+    try {
+      initializeDiagnostics();
+    } catch (e) {
+      console.log('[RootLayout] Diagnostics init:', e);
+    }
     // Register background notification task at app root so it's available
     // even when the OS wakes the JS runtime for a background push
     initializeNotifications().catch(e =>
       console.log('[RootLayout] Notification init:', e)
     );
     setIsMounted(true);
+    return () => clearTimeout(splashTimer);
   }, []);
 
   if (!isMounted) {

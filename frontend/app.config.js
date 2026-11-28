@@ -21,9 +21,9 @@ export default {
     userInterfaceStyle: "dark",
     newArchEnabled: true,
     splash: {
-      image: "./assets/images/splash-image.png",
+      image: "./assets/images/paylock-logo.png",
       resizeMode: "contain",
-      backgroundColor: "#0B1527"
+      backgroundColor: "#FFFFFF"
     },
     ios: {
       supportsTablet: true,
@@ -112,10 +112,10 @@ export default {
       [
         "expo-splash-screen",
         {
-          image: "./assets/images/splash-image.png",
-          imageWidth: 200,
+          image: "./assets/images/paylock-logo.png",
+          imageWidth: 220,
           resizeMode: "contain",
-          backgroundColor: "#0B1527"
+          backgroundColor: "#FFFFFF"
         }
       ],
     ],

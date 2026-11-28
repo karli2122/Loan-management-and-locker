@@ -40,7 +40,6 @@ import { initializeNotifications } from '../../src/services/BackgroundNotificati
 import { sendDeviceInfoUpdateThrottled } from '../../src/services/DeviceInfoService';
 import { registerHeartbeatTask, sendHeartbeat, getHeartbeatStatus } from '../../src/services/BackgroundHeartbeatService';
 import API_URL from '../../src/constants/api';
-import * as ScreenCapture from 'expo-screen-capture';
 import { LoanCountdown } from '../../src/components/LoanCountdown';
 import { deriveLoanFigures } from '../../src/utils/lockCompat';
 import { clearLocalRegistration, startNativeSync } from '../../src/utils/clientSession';
@@ -1123,6 +1122,8 @@ export default function ClientHome() {
         // Prevent screenshots and screen recording on client app
         if (Platform.OS === 'android') {
           try {
+            // loaded lazily: importing it at startup must never be able to take the whole app down
+            const ScreenCapture = require('expo-screen-capture');
             await ScreenCapture.preventScreenCaptureAsync();
           } catch (scErr) {
             console.log('Screen capture prevention not available:', scErr);
